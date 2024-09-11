@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
+from datetime import timezone
 
 import mock
 import pytest
@@ -75,7 +76,7 @@ def test_request_logger_tween_factory_init(mock_factory):
 )
 def test_request_logger_tween_factory_log(mock_clog, mock_factory):
     mock_factory._log(
-        timestamp=datetime.fromtimestamp(1589828049),
+        timestamp=datetime.fromtimestamp(1589828049, timezone.utc),
         level="ERROR",
         additional_fields={"additional_key": "additional_value"},
     )
@@ -86,7 +87,7 @@ def test_request_logger_tween_factory_log(mock_clog, mock_factory):
                 '{"additional_key": "additional_value", '
                 '"cluster": "a_cluster", '
                 '"hostname": "a_hostname", '
-                '"human_timestamp": "2020-05-18T18:54:09", '
+                '"human_timestamp": "2020-05-18T18:54:09UTC", '
                 '"level": "ERROR", '
                 '"unix_timestamp": 1589828049.0}'
             ),

@@ -28,7 +28,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 try:
     from scribereader import scribereader
-    from clog.readers import StreamTailerSetupError
+    from scribereader.clog.readers import StreamTailerSetupError
 except ImportError:
     scribereader = None
 

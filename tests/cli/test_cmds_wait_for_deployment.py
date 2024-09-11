@@ -24,7 +24,7 @@ from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_version
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_version_is_latest
 from paasta_tools.cli.utils import NoSuchService
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import DeploymentVersion
@@ -136,7 +136,7 @@ def test_check_if_instance_is_done(
         instance="fake_instance",
         cluster="fake_cluster",
         version=DeploymentVersion(sha="abc123", image_version=None),
-        instance_config=mock_marathon_instance_config("fake_instance"),
+        instance_config=mock_kubernetes_deployment_config("fake_instance"),
     )
 
 
@@ -159,9 +159,9 @@ def test_wait_for_deployment(
 ):
     mock_get_instance_configs_for_service_in_deploy_group_all_clusters.return_value = {
         "cluster1": [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
-            mock_marathon_instance_config("instance3"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
+            mock_kubernetes_deployment_config("instance3"),
         ],
     }
 
@@ -193,12 +193,12 @@ def test_wait_for_deployment(
 
     mock_get_instance_configs_for_service_in_deploy_group_all_clusters.return_value = {
         "cluster1": [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
         "cluster2": [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
     }
     with patch("sys.stdout", autospec=True, flush=Mock()):
@@ -213,12 +213,12 @@ def test_wait_for_deployment(
 
     mock_get_instance_configs_for_service_in_deploy_group_all_clusters.return_value = {
         "cluster1": [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
         "cluster2": [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance3"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance3"),
         ],
     }
     with raises(TimeoutError):
@@ -308,7 +308,7 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock__log2.return_value = None
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
-        mock_marathon_instance_config("some_instance")
+        mock_kubernetes_deployment_config("some_instance")
     ]
     mock_list_deploy_groups.return_value = {"test_deploy_group"}
     mock_validate_git_sha.return_value = fake_args.commit
@@ -365,8 +365,8 @@ def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs, 
     )
 
 
-def mock_marathon_instance_config(fake_name) -> "MarathonServiceConfig":
-    return MarathonServiceConfig(
+def mock_kubernetes_deployment_config(fake_name) -> "KubernetesDeploymentConfig":
+    return KubernetesDeploymentConfig(
         service="fake_service",
         cluster="fake_cluster",
         instance=fake_name,

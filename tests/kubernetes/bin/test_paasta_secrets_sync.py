@@ -43,6 +43,9 @@ def test_main():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
         autospec=True,
     ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.metrics_lib.system_timer",
+        autospec=True,
+    ), mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.KubeClient", autospec=True
     ), mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_all_secrets",

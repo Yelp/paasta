@@ -14,6 +14,7 @@
 import json
 
 import pytest
+from mock import MagicMock
 from mock import Mock
 from mock import patch
 
@@ -121,6 +122,39 @@ def sys_stdin_kubernetes_structured_burstable_systemd_cgroup():
 
 
 @pytest.fixture
+def sys_stdin_kubernetes_containerd_systemd_cgroup_structured():
+    return [
+        "some random line1\n",
+        "1720128512 dev37-devc [ 7195.442797] python3 invoked oom-killer: "
+        "gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=999\n",
+        "some random line2\n",
+        "1720128512 dev37-devc [ 7195.442928] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "cpuset=cri-containerd-e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c.scope,"
+        "mems_allowed=0,oom_memcg=/kubepods.slice/kubepods-burstable.slice/"
+        "kubepods-burstable-pod08768c36_163c_40e5_8e49_09cf42ff5046.slice,"
+        "task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod08768c36_163c_40e5_8e49_09cf42ff5046.slice/"
+        "cri-containerd-e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c.scope,task=python3,pid=485850,uid=33\n",
+    ]
+
+
+@pytest.fixture
+def sys_stdin_kubernetes_containerd_systemd_cgroup():
+    return [
+        "some random line1\n",
+        "1720128512 dev208-uswest1adevc [42201.484624] python3 invoked oom-killer: "
+        "gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=999\n",
+        "some random line2\n",
+        "1720128512 dev208-uswest1adevc [42201.484749] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "nodemask=(null),cpuset=kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,"
+        "mems_allowed=0,oom_memcg=/system.slice/kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,"
+        "task_memcg=/system.slice/kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,task=python3,pid=4190418,uid=33\n",
+    ]
+
+
+@pytest.fixture
 def sys_stdin_process_name_with_slashes():
     return [
         "some random line1\n",
@@ -179,6 +213,19 @@ def docker_inspect():
 
 
 @pytest.fixture
+def containerd_inspect():
+    return {
+        "process": {
+            "env": [
+                "PAASTA_SERVICE=fake_service",
+                "PAASTA_INSTANCE=fake_instance",
+                "PAASTA_RESOURCE_MEM=512",
+            ]
+        }
+    }
+
+
+@pytest.fixture
 def log_line():
     return LogLine(
         timestamp=1500316300,
@@ -189,6 +236,21 @@ def log_line():
         instance="fake_instance",
         process_name="apache2",
         mesos_container_id="mesos-a04c14a6-83ea-4047-a802-92b850b1624e",
+        mem_limit="512",
+    )
+
+
+@pytest.fixture
+def log_line_containerd():
+    return LogLine(
+        timestamp=1720128512,
+        hostname="dev37-devc",
+        container_id="e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
+        cluster="fake_cluster",
+        service="fake_service",
+        instance="fake_instance",
+        process_name="python3",
+        mesos_container_id="mesos-null",
         mem_limit="512",
     )
 
@@ -244,6 +306,42 @@ def test_capture_oom_events_from_stdin_kubernetes_structured_burstable_systemd_c
     )
     test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
     assert test_output == [(1500316300, "dev37-devc", "e7ba37bd3708", "apache2")]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup(
+    mock_sys_stdin,
+    sys_stdin_kubernetes_containerd_systemd_cgroup,
+):
+    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_containerd_systemd_cgroup
+    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+    assert test_output == [
+        (
+            1720128512,
+            "dev208-uswest1adevc",
+            "52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199",
+            "python3",
+        )
+    ]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup_structured(
+    mock_sys_stdin,
+    sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
+):
+    mock_sys_stdin.readline.side_effect = (
+        sys_stdin_kubernetes_containerd_systemd_cgroup_structured
+    )
+    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+    assert test_output == [
+        (
+            1720128512,
+            "dev37-devc",
+            "e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
+            "python3",
+        )
+    ]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
@@ -351,7 +449,9 @@ def test_send_sfx_event(mock_get_instance_config):
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
 @patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
+@patch("paasta_tools.oom_logger.parse_args", autospec=True)
 def test_main(
+    mock_parse_args,
     mock_get_docker_client,
     mock_log_to_paasta,
     mock_log_to_clog,
@@ -365,6 +465,7 @@ def test_main(
 ):
 
     mock_sys_stdin.readline.side_effect = sys_stdin
+    mock_parse_args.return_value.containerd = False
     docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
     mock_get_docker_client.return_value = docker_client
     mock_load_system_paasta_config.return_value.get_cluster.return_value = (
@@ -374,6 +475,53 @@ def test_main(
     main()
     mock_log_to_paasta.assert_called_once_with(log_line)
     mock_log_to_clog.assert_called_once_with(log_line)
+    mock_send_sfx_event.assert_called_once_with(
+        "fake_service", "fake_instance", "fake_cluster"
+    )
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+@patch("paasta_tools.oom_logger.clog", autospec=True)
+@patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
+@patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
+@patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
+@patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
+@patch("paasta_tools.oom_logger.parse_args", autospec=True)
+@patch("paasta_tools.oom_logger.get_containerd_container", autospec=True)
+@patch("paasta_tools.oom_logger.json.loads", autospec=True)
+def test_main_containerd(
+    mock_json_loads,
+    mock_get_containerd_container,
+    mock_parse_args,
+    mock_log_to_paasta,
+    mock_log_to_clog,
+    mock_load_system_paasta_config,
+    mock_send_sfx_event,
+    mock_clog,
+    mock_sys_stdin,
+    sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
+    log_line_containerd,
+    containerd_inspect,
+):
+
+    mock_sys_stdin.readline.side_effect = (
+        sys_stdin_kubernetes_containerd_systemd_cgroup_structured
+    )
+    mock_parse_args.return_value.containerd = True
+
+    mock_container_info = MagicMock()
+    mock_container_info.spec.value.decode.return_value = str(containerd_inspect)
+
+    mock_get_containerd_container.return_value = mock_container_info
+    mock_json_loads.return_value = containerd_inspect
+
+    mock_load_system_paasta_config.return_value.get_cluster.return_value = (
+        "fake_cluster"
+    )
+
+    main()
+    mock_log_to_paasta.assert_called_once_with(log_line_containerd)
+    mock_log_to_clog.assert_called_once_with(log_line_containerd)
     mock_send_sfx_event.assert_called_once_with(
         "fake_service", "fake_instance", "fake_cluster"
     )

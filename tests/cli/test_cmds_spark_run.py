@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import os
 
 import mock
 import pytest
+from service_configuration_lib.spark_config import AWS_CREDENTIALS_DIR
+from service_configuration_lib.spark_config import get_aws_credentials
 
 from paasta_tools import spark_tools
 from paasta_tools import utils
@@ -490,6 +493,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_shm_size = False
         args.tronfig = None
         args.job_id = None
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -604,6 +608,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -718,6 +723,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         args.docker_shm_size = False
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -789,7 +795,9 @@ class TestConfigureAndRunDockerContainer:
                 "spark.app.name": "fake app",
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
-            args = mock.MagicMock(cmd="pyspark", nvidia=True)
+            args = mock.MagicMock(
+                cmd="pyspark", nvidia=True, use_service_auth_token=False
+            )
 
             configure_and_run_docker_container(
                 args=args,
@@ -825,7 +833,9 @@ class TestConfigureAndRunDockerContainer:
                 "spark.app.name": "fake_app",
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
-            args = mock.MagicMock(cmd="python mrjob_wrapper.py", mrjob=True)
+            args = mock.MagicMock(
+                cmd="python mrjob_wrapper.py", mrjob=True, use_service_auth_token=False
+            )
 
             configure_and_run_docker_container(
                 args=args,
@@ -853,7 +863,7 @@ class TestConfigureAndRunDockerContainer:
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
         ):
             mock_create_spark_config_str.return_value = "--conf spark.cores.max=5"
-            args = mock.MagicMock(cmd="bash", mrjob=False)
+            args = mock.MagicMock(cmd="bash", mrjob=False, use_service_auth_token=False)
 
             configure_and_run_docker_container(
                 args=args,
@@ -865,6 +875,46 @@ class TestConfigureAndRunDockerContainer:
                 cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
                 pod_template_path="unique-run",
             )
+
+    @mock.patch("paasta_tools.cli.cmds.spark_run.get_service_auth_token", autospec=True)
+    def test_configure_and_run_docker_container_auth_token(
+        self,
+        mock_get_service_auth_token,
+        mock_create_spark_config_str,
+        mock_get_docker_cmd,
+        mock_get_webui_url,
+        mock_run_docker_container,
+        mock_get_username,
+    ):
+        mock_get_service_auth_token.return_value = "foobar"
+        with mock.patch(
+            "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
+        ):
+            spark_conf = {
+                "spark.cores.max": "5",
+                "spark.executor.cores": 1,
+                "spark.executor.memory": "2g",
+                "spark.master": "mesos://spark.master",
+                "spark.ui.port": "1234",
+                "spark.app.name": "fake app",
+                "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
+            }
+            args = mock.MagicMock(
+                cmd="pyspark",
+                use_service_auth_token=True,
+            )
+            configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+                aws_creds=("id", "secret", "token"),
+                spark_conf=spark_conf,
+                cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+                pod_template_path="unique-run",
+            )
+            args, kwargs = mock_run_docker_container.call_args
+            assert kwargs["environment"]["YELP_SVC_AUTHZ_TOKEN"] == "foobar"
 
 
 @pytest.mark.parametrize(
@@ -966,7 +1016,6 @@ def test_paasta_spark_run_bash(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -980,6 +1029,7 @@ def test_paasta_spark_run_bash(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1013,6 +1063,7 @@ def test_paasta_spark_run_bash(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1091,7 +1142,6 @@ def test_paasta_spark_run(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -1105,6 +1155,7 @@ def test_paasta_spark_run(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1141,6 +1192,7 @@ def test_paasta_spark_run(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1216,7 +1268,6 @@ def test_paasta_spark_run_pyspark(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=70 spark.executor.cores=10",
@@ -1230,6 +1281,7 @@ def test_paasta_spark_run_pyspark(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1268,6 +1320,7 @@ def test_paasta_spark_run_pyspark(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1416,3 +1469,92 @@ def test_build_and_push_docker_image_unexpected_output_format(
     with pytest.raises(ValueError) as e:
         build_and_push_docker_image(args)
     assert "Could not determine digest from output" in str(e.value)
+
+
+def test_get_aws_credentials():
+    with mock.patch.dict(
+        os.environ,
+        {
+            "AWS_WEB_IDENTITY_TOKEN_FILE": "./some-file.txt",
+            "AWS_ROLE_ARN": "some-role-for-test",
+        },
+    ), mock.patch(
+        "service_configuration_lib.spark_config.open",
+        mock.mock_open(read_data="token-content"),
+        autospec=False,
+    ), mock.patch(
+        "service_configuration_lib.spark_config.boto3.client",
+        autospec=False,
+    ) as boto3_client:
+        get_aws_credentials(
+            service="some-service",
+            use_web_identity=True,
+        )
+    boto3_client.assert_called_once_with("sts")
+    boto3_client.return_value.assume_role_with_web_identity.assert_called_once_with(
+        DurationSeconds=3600,
+        RoleArn="some-role-for-test",
+        RoleSessionName=mock.ANY,
+        WebIdentityToken="token-content",
+    )
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_session(mock_boto3_session, mock_use_aws_profile):
+    # prioritize session over `profile_name` if both are provided
+    session = mock_boto3_session()
+
+    get_aws_credentials(
+        service="some-service",
+        session=session,
+        profile_name="some-profile",
+    )
+
+    mock_use_aws_profile.assert_called_once_with(session=session)
+    session.assert_not_called()
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_profile(mock_boto3_session, mock_use_aws_profile):
+    # prioritize `profile_name` over `service` if both are provided
+    profile_name = "some-profile"
+
+    get_aws_credentials(service="some-service", profile_name=profile_name)
+
+    mock_use_aws_profile.assert_called_once_with(profile_name=profile_name)
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("os.path.exists", autospec=False)
+@mock.patch(
+    "service_configuration_lib.spark_config._load_aws_credentials_from_yaml",
+    autospec=True,
+)
+def test_get_aws_credentials_boto_cfg(
+    mock_load_aws_credentials_from_yaml, mock_os_path_exists, mock_use_aws_profile
+):
+    # use `service` if profile_name is not provided
+    service_name = "some-service"
+
+    get_aws_credentials(
+        service=service_name,
+    )
+
+    credentials_path = f"{AWS_CREDENTIALS_DIR}{service_name}.yaml"
+    mock_os_path_exists.return_value = True
+
+    mock_load_aws_credentials_from_yaml.assert_called_once_with(credentials_path)
+    mock_use_aws_profile.assert_not_called()
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_default_profile(mock_boto3_session, mock_use_aws_profile):
+    # use `default` profile if no valid options are provided
+    get_aws_credentials(
+        service="spark",
+    )
+
+    mock_use_aws_profile.assert_called_once_with()

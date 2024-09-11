@@ -203,13 +203,16 @@ def main(args):
                         },
                     }
                     if args.metrics_provider is not None or args.setpoint is not None:
-                        instance_config["autoscaling"] = {}
+                        instance_config["autoscaling"] = {"metrics_providers": []}
+                        metrics_provider_config = {}
                         if args.metrics_provider is not None:
-                            instance_config["autoscaling"][
-                                "metrics_provider"
-                            ] = args.metrics_provider
+                            metrics_provider_config["type"] = args.metrics_provider
                         if args.setpoint is not None:
-                            instance_config["autoscaling"]["setpoint"] = args.setpoint
+                            metrics_provider_config["setpoint"] = args.setpoint
+                        instance_config["autoscaling"]["metrics_providers"].append(
+                            metrics_provider_config
+                        )
+
                     if args.cpus is not None:
                         instance_config["cpus"] = args.cpus
                     if args.mem is not None:

@@ -1,0 +1,90 @@
+{
+    "$id": "autoscaling_schema.json",
+    "metrics_provider_config": {
+        "type": "object",
+        "properties": {
+            "type": {
+                "enum": [
+                    "uwsgi",
+                    "cpu",
+                    "piscina",
+                    "gunicorn",
+                    "arbitrary_promql",
+                    "active-requests"
+                ]
+            },
+            "decision_policy": {
+                "type": "string"
+            },
+            "desired_active_requests_per_replica": {
+                "type": "number"
+            },
+            "setpoint": {
+                "type": "number"
+            },
+            "max_instances_alert_threshold": {
+                "type": "number"
+            },
+            "forecast_policy": {
+                "enum": [
+                    "moving_average",
+                    "current"
+                ]
+            },
+            "moving_average_window_seconds": {
+                "type": "integer"
+            },
+            "prometheus_adapter_config": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "seriesQuery": {
+                        "type": "string"
+                    },
+                    "metricsQuery": {
+                        "type": "string"
+                    },
+                    "resources": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "overrides": {
+                                "type": "object",
+                                "properties": {
+                                    "group": {
+                                        "type": "string"
+                                    },
+                                    "resource": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "template": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "metricsQuery"
+                ]
+            }
+        },
+        "additionalProperties": false
+    },
+    "autoscaling_params": {
+        "type": "object",
+        "properties": {
+            "metrics_providers": {
+                "type": "array",
+                "items": {
+                    "$ref": "#metrics_provider_config"
+                }
+            },
+            "scaledown_policies": {
+                "type": "object"
+            }
+        },
+        "additionalProperties": false
+    }
+}

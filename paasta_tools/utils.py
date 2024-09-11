@@ -63,6 +63,7 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
+from typing import TextIO
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -73,7 +74,8 @@ import dateutil.tz
 import ldap3
 import requests_cache
 import service_configuration_lib
-from docker import Client
+import yaml
+from docker import APIClient
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
@@ -125,7 +127,6 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
-    "marathon",
     "paasta_native",
     "adhoc",
     "kubernetes",
@@ -138,6 +139,7 @@ INSTANCE_TYPES = (
     "vitesscluster",
     "monkrelays",
     "nrtsearchservice",
+    "nrtsearchserviceeks",
 )
 
 PAASTA_K8S_INSTANCE_TYPES = {
@@ -155,6 +157,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "kafkacluster": "paasta-kafkaclusters",
     "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
+    "nrtsearchserviceeks": "paasta-nrtsearchservices",
 }
 
 SHARED_SECRETS_K8S_NAMESPACES = {"paasta-spark", "paasta-cassandraclusters"}
@@ -244,7 +247,7 @@ UnsafeDeployWhitelist = Optional[Sequence[Union[str, Sequence[str]]]]
 
 Constraint = Sequence[str]
 
-# e.g. ['GROUP_BY', 'habitat', 2]. Marathon doesn't like that so we'll convert to Constraint later.
+# e.g. ['GROUP_BY', 'habitat', 2]. Tron doesn't like that so we'll convert to Constraint later.
 UnstringifiedConstraint = Sequence[Union[str, int, float]]
 
 SecurityConfigDict = Dict  # Todo: define me.
@@ -283,6 +286,12 @@ class SecretVolume(TypedDict, total=False):
     container_path: str
     default_mode: Union[str, int]
     items: List[SecretVolumeItem]
+
+
+class ProjectedSAVolume(TypedDict, total=False):
+    container_path: str
+    audience: str
+    expiration_seconds: int
 
 
 class TronSecretVolume(SecretVolume, total=False):
@@ -329,6 +338,7 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_volumes: List[DockerVolume]
     aws_ebs_volumes: List[AwsEbsVolume]
     secret_volumes: List[SecretVolume]
+    projected_sa_volumes: List[ProjectedSAVolume]
     security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
@@ -341,6 +351,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role: str
     iam_role_provider: str
     service: str
+    uses_bulkdata: bool
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -613,7 +624,8 @@ class InstanceConfig:
 
         Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 1024 MiB if not specified"""
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified
+        """
         disk = self.config_dict.get("disk", default)
         return disk
 
@@ -837,20 +849,10 @@ class InstanceConfig:
         if security is None:
             return True, ""
 
-        inbound_firewall = security.get("inbound_firewall")
         outbound_firewall = security.get("outbound_firewall")
 
-        if inbound_firewall is None and outbound_firewall is None:
+        if outbound_firewall is None:
             return True, ""
-
-        if inbound_firewall is not None and inbound_firewall not in (
-            "allow",
-            "reject",
-        ):
-            return (
-                False,
-                'Unrecognized inbound_firewall value "%s"' % inbound_firewall,
-            )
 
         if outbound_firewall is not None and outbound_firewall not in (
             "block",
@@ -862,7 +864,6 @@ class InstanceConfig:
             )
 
         unknown_keys = set(security.keys()) - {
-            "inbound_firewall",
             "outbound_firewall",
         }
         if unknown_keys:
@@ -958,6 +959,9 @@ class InstanceConfig:
     def get_secret_volumes(self) -> List[SecretVolume]:
         return self.config_dict.get("secret_volumes", [])
 
+    def get_projected_sa_volumes(self) -> List[ProjectedSAVolume]:
+        return self.config_dict.get("projected_sa_volumes", [])
+
     def get_iam_role(self) -> str:
         return self.config_dict.get("iam_role", "")
 
@@ -976,7 +980,8 @@ class InstanceConfig:
 
         Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
 
-        :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
+        :returns: the "pool" attribute in your config dict, or the string "default" if not specified.
+        """
         return self.config_dict.get("pool", "default")
 
     def get_pool_constraints(self) -> List[Constraint]:
@@ -995,8 +1000,27 @@ class InstanceConfig:
         """
         return self.config_dict.get("net", "bridge")
 
-    def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
+    def get_volumes(
+        self, system_volumes: Sequence[DockerVolume], uses_bulkdata_default: bool = True
+    ) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
+        # we used to add bulkdata as a default mount - but as part of the
+        # effort to deprecate the entire system, we're swapping to an opt-in
+        # model so that we can shrink the blast radius of any changes
+        if self.config_dict.get(
+            "uses_bulkdata",
+            uses_bulkdata_default,
+        ):
+            # bulkdata is mounted RO as the data is produced by another
+            # system and we want to ensure that there are no inadvertent
+            # changes by misbehaved code
+            volumes.append(
+                {
+                    "hostPath": "/nail/bulkdata",
+                    "containerPath": "/nail/bulkdata",
+                    "mode": "RO",
+                }
+            )
         return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
@@ -1016,28 +1040,13 @@ class InstanceConfig:
 
         Defaults to None if not specified in the config.
 
-        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified"""
+        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified
+        """
         dependencies = self.config_dict.get("dependencies")
         if not dependencies:
             return None
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
-
-    def get_inbound_firewall(self) -> Optional[str]:
-        """Return 'allow', 'reject', or None as configured in security->inbound_firewall
-        Defaults to None if not specified in the config
-
-        Setting this to a value other than `allow` is uncommon, as doing so will restrict the
-        availability of your service. The only other supported value is `reject` currently,
-        which will reject all remaining inbound traffic to the service port after all other rules.
-
-        This option exists primarily for sensitive services that wish to opt into this functionality.
-
-        :returns: A string specified in the config, None if not specified"""
-        security = self.config_dict.get("security")
-        if not security:
-            return None
-        return security.get("inbound_firewall")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
@@ -1113,7 +1122,6 @@ def compose(
 
 
 class PaastaColors:
-
     """Collection of static variables and methods to assist in coloring text."""
 
     # ANSI color codes
@@ -1239,13 +1247,6 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             {
                 "color": PaastaColors.green,
                 "help": "Logs from Sensu checks for the service",
-            },
-        ),
-        (
-            "marathon",
-            {
-                "color": PaastaColors.magenta,
-                "help": "Logs from Marathon for the service (deprecated).",
             },
         ),
         (
@@ -1380,6 +1381,7 @@ class LogWriterConfig(TypedDict):
 class LogReaderConfig(TypedDict):
     driver: str
     options: Dict
+    components: Optional[List]
 
 
 # The active log writer.
@@ -1887,12 +1889,6 @@ class ResourcePoolSettings(TypedDict):
 PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
 
 
-class MarathonConfigDict(TypedDict, total=False):
-    user: str
-    password: str
-    url: List[str]
-
-
 class LocalRunConfig(TypedDict, total=False):
     default_cluster: str
 
@@ -1949,12 +1945,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
-    boost_regions: List[str]
-    cluster_autoscaler_max_decrease: float
-    cluster_autoscaler_max_increase: float
-    cluster_autoscaling_draining_enabled: bool
-    cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
-    cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
     cluster: str
@@ -1964,16 +1954,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     default_push_groups: List
     default_should_use_uwsgi_exporter: bool
     deploy_blacklist: UnsafeDeployBlacklist
-    deployd_big_bounce_deadline: float
-    deployd_log_level: str
-    deployd_maintenance_polling_frequency: int
-    deployd_max_service_instance_failures: int
     deployd_metrics_provider: str
-    deployd_number_workers: int
-    deployd_startup_bounce_deadline: float
-    deployd_startup_oracle_enabled: bool
-    deployd_use_zk_queue: bool
-    deployd_worker_failure_backoff_factor: int
     deploy_whitelist: UnsafeDeployWhitelist
     disabled_watchers: List
     dockercfg_location: str
@@ -2002,9 +1983,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     ldap_search_ou: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
+    log_readers: List[LogReaderConfig]
     log_writer: LogWriterConfig
-    maintenance_resource_reservation_enabled: bool
-    marathon_servers: List[MarathonConfigDict]
     mark_for_deployment_max_polling_threads: int
     mark_for_deployment_default_polling_interval: float
     mark_for_deployment_default_diagnosis_interval: float
@@ -2020,11 +2000,10 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
+    pool_node_affinities: Dict[str, Dict[str, List[str]]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
-    previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
-    register_marathon_services: bool
     register_native_services: bool
     remote_run_config: RemoteRunConfig
     resource_pool_settings: PoolToResourcePoolSettingsDict
@@ -2062,6 +2041,16 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
+    use_multiple_log_readers: Optional[List[str]]
+    service_auth_token_settings: ProjectedSAVolume
+    service_auth_vault_role: str
+    always_authenticating_services: List[str]
+    vitess_images: Dict
+    superregion_to_region_mapping: Dict
+    vitess_tablet_types: List[str]
+    vitess_tablet_pool_type_mapping: Dict
+    vitess_throttling_config: Dict
+    uses_bulkdata_default: bool
 
 
 def load_system_paasta_config(
@@ -2366,6 +2355,25 @@ class SystemPaastaConfig:
                 % self.directory
             )
 
+    def get_log_readers(self) -> List[LogReaderConfig]:
+        """Get the log_readers configuration out of global paasta config
+
+        :returns: the log_readers list of dicts.
+        """
+        try:
+            return self.config_dict["log_readers"]
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                "Could not find log_readers in configuration directory: %s"
+                % self.directory
+            )
+
+    def use_multiple_log_readers(self) -> Optional[List[str]]:
+        """
+        Get the list of clusters that are using multiple log readers
+        """
+        return self.config_dict.get("use_multiple_log_readers")
+
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config
 
@@ -2375,39 +2383,6 @@ class SystemPaastaConfig:
         if deployd_metrics_provider is not None:
             return deployd_metrics_provider
         return self.config_dict.get("metrics_provider")
-
-    def get_deployd_worker_failure_backoff_factor(self) -> int:
-        """Get the factor for calculating exponential backoff when a deployd worker
-        fails to bounce a service
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_worker_failure_backoff_factor", 30)
-
-    def get_deployd_maintenance_polling_frequency(self) -> int:
-        """Get the frequency in seconds that the deployd maintenance watcher should
-        poll mesos's api for new draining hosts
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_maintenance_polling_frequency", 30)
-
-    def get_deployd_startup_oracle_enabled(self) -> bool:
-        """This controls whether deployd will add all services that need a bounce on
-        startup. Generally this is desirable behavior. If you are performing a bounce
-        of *all* services you will want to disable this.
-
-        :returns: A boolean
-        """
-        return self.config_dict.get("deployd_startup_oracle_enabled", True)
-
-    def get_deployd_max_service_instance_failures(self) -> int:
-        """Determines how many times a service instance entry in deployd's queue
-        can fail before it will be removed from the queue.
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_max_service_instance_failures", 20)
 
     def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.
@@ -2446,49 +2421,14 @@ class SystemPaastaConfig:
         """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
         arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
 
-        :returns: A format string for constructing the URL of haproxy-synapse's status page."""
+        :returns: A format string for constructing the URL of haproxy-synapse's status page.
+        """
         return self.config_dict.get(
             "synapse_haproxy_url_format", DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
         )
 
     def get_service_discovery_providers(self) -> Dict[str, Any]:
         return self.config_dict.get("service_discovery_providers", {})
-
-    def get_cluster_autoscaling_resources(self) -> IdToClusterAutoscalingResourcesDict:
-        return self.config_dict.get("cluster_autoscaling_resources", {})
-
-    def get_cluster_autoscaling_draining_enabled(self) -> bool:
-        """Enable mesos maintenance mode and trigger draining of instances before the
-        autoscaler terminates the instance.
-
-        :returns A bool"""
-        return self.config_dict.get("cluster_autoscaling_draining_enabled", True)
-
-    def get_cluster_autoscaler_max_increase(self) -> float:
-        """Set the maximum increase that the cluster autoscaler can make in each run
-
-        :returns A float"""
-        return self.config_dict.get("cluster_autoscaler_max_increase", 0.2)
-
-    def get_cluster_autoscaler_max_decrease(self) -> float:
-        """Set the maximum decrease that the cluster autoscaler can make in each run
-
-        :returns A float"""
-        return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
-
-    def get_maintenance_resource_reservation_enabled(self) -> bool:
-        """Enable un/reserving of resources when we un/drain a host in mesos maintenance
-        *and* after tasks are killed in setup_marathon_job etc.
-
-        :returns A bool"""
-        return self.config_dict.get("maintenance_resource_reservation_enabled", True)
-
-    def get_cluster_boost_enabled(self) -> bool:
-        """Enable the cluster boost. Note that the boost only applies to the CPUs.
-        If the boost is toggled on here but not configured, it will be transparent.
-
-        :returns A bool: True means cluster boost is enabled."""
-        return self.config_dict.get("cluster_boost_enabled", False)
 
     def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
         return self.config_dict.get("resource_pool_settings", {})
@@ -2497,14 +2437,9 @@ class SystemPaastaConfig:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
 
-        :returns: A format string for constructing the FQDN of the masters in a given cluster."""
+        :returns: A format string for constructing the FQDN of the masters in a given cluster.
+        """
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
-
-    def get_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get("marathon_servers", [])
-
-    def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get("previous_marathon_servers", [])
 
     def get_paasta_status_version(self) -> str:
         """Get paasta status version string (new | old). Defaults to 'old'.
@@ -2575,44 +2510,6 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("security_check_command", None)
 
-    def get_deployd_number_workers(self) -> int:
-        """Get the number of workers to consume deployment q
-
-        :return: integer
-        """
-        return self.config_dict.get("deployd_number_workers", 4)
-
-    def get_deployd_big_bounce_deadline(self) -> float:
-        """Get the amount of time in the future to set the deadline when enqueuing instances for SystemPaastaConfig
-        changes.
-
-        :return: float
-        """
-
-        return float(
-            self.config_dict.get("deployd_big_bounce_deadline", 7 * 24 * 60 * 60)
-        )
-
-    def get_deployd_startup_bounce_deadline(self) -> float:
-        """Get the amount of time in the future to set the deadline when enqueuing instances on deployd startup.
-
-        :return: float
-        """
-
-        return float(
-            self.config_dict.get("deployd_startup_bounce_deadline", 7 * 24 * 60 * 60)
-        )
-
-    def get_deployd_log_level(self) -> str:
-        """Get the log level for paasta-deployd
-
-        :return: string name of python logging level, e.g. INFO, DEBUG etc.
-        """
-        return self.config_dict.get("deployd_log_level", "INFO")
-
-    def get_deployd_use_zk_queue(self) -> bool:
-        return self.config_dict.get("deployd_use_zk_queue", True)
-
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
         return self.config_dict.get("hacheck_sidecar_image_url")
@@ -2631,10 +2528,6 @@ class SystemPaastaConfig:
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
 
-    def get_register_marathon_services(self) -> bool:
-        """Enable registration of marathon services in nerve"""
-        return self.config_dict.get("register_marathon_services", True)
-
     def get_register_native_services(self) -> bool:
         """Enable registration of native paasta services in nerve"""
         return self.config_dict.get("register_native_services", False)
@@ -2644,6 +2537,10 @@ class SystemPaastaConfig:
 
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
+
+    def get_pool_node_affinities(self) -> Dict[str, Dict[str, List[str]]]:
+        """Node selectors that will be applied to all Pods in a pool"""
+        return self.config_dict.get("pool_node_affinities", {})
 
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
@@ -2701,9 +2598,6 @@ class SystemPaastaConfig:
 
     def get_pdb_max_unavailable(self) -> Union[str, int]:
         return self.config_dict.get("pdb_max_unavailable", 0)
-
-    def get_boost_regions(self) -> List[str]:
-        return self.config_dict.get("boost_regions", [])
 
     def get_pod_defaults(self) -> Dict[str, Any]:
         return self.config_dict.get("pod_defaults", {})
@@ -2863,6 +2757,61 @@ class SystemPaastaConfig:
 
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})
+
+    def get_service_auth_token_volume_config(self) -> ProjectedSAVolume:
+        return self.config_dict.get("service_auth_token_settings", {})
+
+    def get_service_auth_vault_role(self) -> str:
+        return self.config_dict.get("service_auth_vault_role", "service_authz")
+
+    def get_always_authenticating_services(self) -> List[str]:
+        return self.config_dict.get("always_authenticating_services", [])
+
+    def get_vitess_images(self) -> Dict:
+        return self.config_dict.get(
+            "vitess_images",
+            {
+                "vtctld_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtgate_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vttablet_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtadmin_image": "docker-paasta.yelpcorp.com:443/vtadmin:v16.0.3",
+            },
+        )
+
+    def get_superregion_to_region_mapping(self) -> Dict:
+        return self.config_dict.get("superregion_to_region_mapping", {})
+
+    def get_vitess_tablet_types(self) -> List:
+        return self.config_dict.get("vitess_tablet_types", ["primary", "migration"])
+
+    def get_vitess_tablet_pool_type_mapping(self) -> Dict:
+        return self.config_dict.get("vitess_tablet_pool_type_mapping", {})
+
+    def get_vitess_throttling_config(self) -> Dict:
+        return self.config_dict.get(
+            "vitess_throttling_config",
+            {
+                "migration": {
+                    "throttle_query_table": "migration_replication_delay",
+                    "throttle_metrics_threshold": "7200",
+                },
+                "read": {
+                    "throttle_query_table": "read_replication_delay",
+                    "throttle_metrics_threshold": "3",
+                },
+                "reporting": {
+                    "throttle_query_table": "reporting_replication_delay",
+                    "throttle_metrics_threshold": "7200",
+                },
+                "primary": {
+                    "throttle_query_table": "read_replication_delay",
+                    "throttle_metrics_threshold": "3",
+                },
+            },
+        )
+
+    def get_uses_bulkdata_default(self) -> bool:
+        return self.config_dict.get("uses_bulkdata_default", True)
 
 
 def _run(
@@ -3193,7 +3142,7 @@ def list_clusters(
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
-    Includes every cluster that has a ``marathon-*.yaml`` or ``tron-*.yaml`` file associated with it.
+    Includes every cluster that has a ``kubernetes-*.yaml`` or ``tron-*.yaml`` file associated with it.
 
     :param service: The service name. If unspecified, clusters running any service will be included.
     :returns: A sorted list of cluster names
@@ -3310,7 +3259,7 @@ def get_service_instance_list_no_cache(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -3348,7 +3297,7 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -3363,7 +3312,7 @@ def get_services_for_cluster(
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
@@ -3476,12 +3425,12 @@ def get_docker_host() -> str:
     return os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
 
 
-def get_docker_client() -> Client:
+def get_docker_client() -> APIClient:
     client_opts = kwargs_from_env(assert_hostname=False)
     if "base_url" in client_opts:
-        return Client(**client_opts)
+        return APIClient(**client_opts)
     else:
-        return Client(base_url=get_docker_host(), **client_opts)
+        return APIClient(base_url=get_docker_host(), **client_opts)
 
 
 def get_running_mesos_docker_containers() -> List[Dict]:
@@ -3793,7 +3742,7 @@ class NoDockerImageError(Exception):
 
 def get_config_hash(config: Any, force_bounce: str = None) -> str:
     """Create an MD5 hash of the configuration dictionary to be sent to
-    Marathon. Or anything really, so long as str(config) works. Returns
+    Kubernetes. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
 
     :param config: The configuration to hash
@@ -3851,7 +3800,7 @@ def get_deployment_version_from_dockerurl(docker_url: str) -> DeploymentVersion:
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """code_sha is hash extracted from docker url prefixed with "git", short
-    hash is used because it's embedded in marathon app names and there's length
+    hash is used because it's embedded in mesos task names and there's length
     limit.
     """
     try:
@@ -3885,9 +3834,7 @@ def is_under_replicated(
 def deploy_blacklist_to_constraints(
     deploy_blacklist: DeployBlacklist,
 ) -> List[Constraint]:
-    """Converts a blacklist of locations into marathon appropriate constraints.
-
-    https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
+    """Converts a blacklist of locations into tron appropriate constraints.
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -3902,9 +3849,7 @@ def deploy_blacklist_to_constraints(
 def deploy_whitelist_to_constraints(
     deploy_whitelist: DeployWhitelist,
 ) -> List[Constraint]:
-    """Converts a whitelist of locations into marathon appropriate constraints
-
-    https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
+    """Converts a whitelist of locations into tron appropriate constraints
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
@@ -4304,3 +4249,68 @@ def get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
 @lru_cache(maxsize=1)
 def is_using_unprivileged_containers() -> bool:
     return "podman" in os.getenv("DOCKER_HOST", "")
+
+
+def maybe_load_previous_config(
+    filename: str, config_loader: Callable[[TextIO], dict]
+) -> Optional[dict]:
+    """Try to load configuration file
+
+    :param str filename: path to load from
+    :param Callable[[TextIO], dict] config_loader: parser for the configuration
+    :return: configuration data, None if loading fails
+    """
+    try:
+        with open(filename, "r") as fp:
+            previous_config = config_loader(fp)
+            return previous_config
+    except Exception:
+        pass
+    return None
+
+
+def write_json_configuration_file(filename: str, configuration: dict) -> None:
+    """Atomically write configuration to JSON file
+
+    :param str filename: path to write to
+    :param dict configuration: configuration data
+    """
+    with atomic_file_write(filename) as fp:
+        json.dump(
+            obj=configuration,
+            fp=fp,
+            indent=2,
+            sort_keys=True,
+            separators=(",", ": "),
+        )
+
+
+def write_yaml_configuration_file(
+    filename: str, configuration: dict, check_existing: bool = True
+) -> None:
+    """Atomically write configuration to YAML file
+
+    :param str filename: path to write to
+    :param dict configuration: configuration data
+    :param bool check_existing: if existing file already matches config, do not overwrite
+    """
+    if check_existing:
+        previous_config = maybe_load_previous_config(filename, yaml.safe_load)
+        if previous_config and previous_config == configuration:
+            return
+
+    with atomic_file_write(filename) as fp:
+        fp.write(
+            "# This file is automatically generated by paasta_tools.\n"
+            "# It was automatically generated at {now} on {host}.\n".format(
+                host=socket.getfqdn(), now=datetime.datetime.now().isoformat()
+            )
+        )
+        yaml.safe_dump(
+            configuration,
+            fp,
+            indent=2,
+            explicit_start=True,
+            default_flow_style=False,
+            allow_unicode=False,
+        )

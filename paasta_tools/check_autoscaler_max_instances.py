@@ -98,34 +98,66 @@ async def check_max_instances(
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
             ):
-                threshold = job_config.get_autoscaling_max_instances_alert_threshold()
-                setpoint = job_config.get_autoscaling_params()["setpoint"]
-                metric_threshold_target_ratio = threshold / setpoint
+
+                metrics_provider_configs = job_config.get_autoscaling_params()[
+                    "metrics_providers"
+                ]
 
                 status = pysensu_yelp.Status.UNKNOWN
                 output = "how are there no metrics for this thing?"
-                for metric in autoscaling_status["metrics"]:
-                    current_value = suffixed_number_value(metric["current_value"])
-                    target_value = suffixed_number_value(metric["target_value"])
 
-                    if current_value / target_value > metric_threshold_target_ratio:
-                        status = pysensu_yelp.Status.CRITICAL
-                        output = (
-                            f"{service}.{instance}: Service is at max_instances, and"
-                            " ratio of current value to target value"
-                            f" ({current_value} / {target_value}) is greater than the"
-                            " ratio of max_instances_alert_threshold to setpoint"
-                            f" ({threshold} / {setpoint})"
-                        )
+                # This makes an assumption that the metrics currently used by the HPA are exactly the same order (and
+                # length) as the list of metrics_providers dictionaries. This should generally be true, but between
+                # yelpsoa-configs being pushed and the HPA actually being updated it may not be true. This might cause
+                # spurious alerts, but hopefully the frequency is low. We can add some safeguards if it's a problem.
+                # (E.g. smarter matching between the status dicts and the config dicts, or bailing/not alerting if the
+                # lists aren't the same lengths.)
+                for metric, metrics_provider_config in zip(
+                    autoscaling_status["metrics"], metrics_provider_configs
+                ):
+
+                    setpoint = metrics_provider_config["setpoint"]
+                    threshold = metrics_provider_config.get(
+                        "max_instances_alert_threshold",
+                        setpoint,
+                    )
+
+                    try:
+                        current_value = suffixed_number_value(metric["current_value"])
+                        target_value = suffixed_number_value(metric["target_value"])
+                    except KeyError:
+                        # we likely couldn't find values for the current metric from autoscaling status
+                        # if this is the only metric, we will return UNKNOWN+this error
+                        # suggest fixing their autoscaling config
+                        output = f'{service}.{instance}: Service is at max_instances, and there is an error fetching your {metrics_provider_config["type"]} metric. Check your autoscaling configs or reach out to #paasta.'
                     else:
-                        status = pysensu_yelp.Status.OK
-                        output = (
-                            f"{service}.{instance}: Service is at max_instances, but"
-                            " ratio of current value to target value"
-                            f" ({current_value} / {target_value}) is below the ratio of"
-                            f" max_instances_alert_threshold to setpoint ({threshold} /"
-                            f" {setpoint})"
-                        )
+                        # target_value can be 100*setpoint (for cpu), 1 (for uwsgi, piscina, gunicorn,
+                        # active_requests), or setpoint (for promql).
+                        # Here we divide current_value by target_value to find the ratio of utilization to setpoint,
+                        # and then multiply by setpoint to find the actual utilization in the same units as setpoint.
+                        utilization = setpoint * current_value / target_value
+
+                        if threshold == setpoint:
+                            threshold_description = f"setpoint ({threshold})"
+                        else:
+                            threshold_description = (
+                                f"max_instances_alert_threshold ({threshold})"
+                            )
+
+                        if utilization > threshold:
+                            status = pysensu_yelp.Status.CRITICAL
+                            output = (
+                                f"{service}.{instance}: Service is at max_instances, and"
+                                f" utilization ({utilization}) is greater than"
+                                f" {threshold_description}."
+                            )
+                        else:
+                            status = pysensu_yelp.Status.OK
+                            output = (
+                                f"{service}.{instance}: Service is at max_instances, but"
+                                f" utilization ({utilization}) is less than"
+                                f" {threshold_description}."
+                            )
             else:
                 status = pysensu_yelp.Status.OK
                 output = f"{service}.{instance} is below max_instances."
@@ -141,7 +173,7 @@ async def check_max_instances(
                         " because your service is overloaded, but cannot scale any"
                         " higher because of max_instances. You may want to bump"
                         " max_instances. To make this alert quieter, adjust"
-                        " autoscaling.max_instances_alert_threshold in yelpsoa-configs."
+                        " autoscaling.metrics_providers[n].max_instances_alert_threshold in yelpsoa-configs."
                     ),
                 }
             )

@@ -23,11 +23,19 @@ file for it, and send the updated file to Tron.
 import argparse
 import logging
 import sys
+from typing import List
 
 import ruamel.yaml as yaml
 
+from paasta_tools import spark_tools
 from paasta_tools import tron_tools
+from paasta_tools.kubernetes_tools import ensure_service_account
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
+from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import MASTER_NAMESPACE
+from paasta_tools.tron_tools import TronJobConfig
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +69,41 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
+
+
+def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
+    # NOTE: these are lru_cache'd so it should be fine to call these for every service
+    system_paasta_config = load_system_paasta_config()
+    kube_client = KubeClient()
+
+    for job in job_configs:
+        for action in job.get_actions():
+            if action.get_iam_role():
+                ensure_service_account(
+                    action.get_iam_role(),
+                    namespace=KUBERNETES_NAMESPACE,
+                    kube_client=kube_client,
+                )
+                # spark executors are special in that we want the SA to exist in two namespaces:
+                # the tron namespace - for the spark driver (which will be created by the ensure_service_account() above)
+                # and the spark namespace - for the spark executor (which we'll create below)
+                if (
+                    action.get_executor() == "spark"
+                    # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
+                    and action.get_spark_executor_iam_role()
+                ):
+                    # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
+                    spark_kube_client = KubeClient(
+                        config_file=system_paasta_config.get_spark_kubeconfig()
+                    )
+                    # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
+                    # this one is for the actual spark executors to use. if an iam_role is set, we'll use that, otherwise
+                    # there's an executor-specifc default role just like there is for the drivers :)
+                    ensure_service_account(
+                        action.get_spark_executor_iam_role(),
+                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                        kube_client=spark_kube_client,
+                    )
 
 
 def main():
@@ -133,6 +176,18 @@ def main():
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
+                # PaaSTA will not necessarily have created the SAs we want to use
+                # ...so let's go ahead and create them!
+                job_configs = load_tron_service_config(
+                    service=service,
+                    cluster=args.cluster,
+                    load_deployments=False,
+                    soa_dir=args.soa_dir,
+                    # XXX: we can remove for_validation now that we've refactored how service account stuff works
+                    for_validation=False,
+                )
+                ensure_service_accounts(job_configs)
+
                 if client.update_namespace(service, new_config):
                     updated.append(service)
                     log.debug(f"Updated {service}")

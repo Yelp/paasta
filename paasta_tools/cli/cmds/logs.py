@@ -33,12 +33,16 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableSequence
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import Union
 
+import a_sync
 import isodate
+import nats
 import pytz
 from dateutil import tz
 
@@ -48,9 +52,13 @@ try:
 except ImportError:
     scribereader = None
 
+try:
+    from clog.readers import S3LogsReader
+except ImportError:
+    S3LogsReader = None
+
 from pytimeparse.timeparse import timeparse
 
-from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -61,7 +69,6 @@ from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
@@ -92,7 +99,7 @@ def add_subparser(subparsers) -> None:
     status_parser.add_argument(
         "-c",
         "--cluster",
-        help="The cluster to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        help="The cluster to see relevant logs for.",
         nargs=1,
     ).completer = completer_clusters
     status_parser.add_argument(
@@ -280,7 +287,7 @@ def paasta_log_line_passes_filter(
     displayed given the provided levels, components, and clusters; return False
     otherwise.
 
-    NOTE: Pods are optional as services that use Marathon do not operate with pods.
+    NOTE: Pods are optional as services that use Mesos do not operate with pods.
     """
     try:
         parsed_line = json.loads(line)
@@ -291,7 +298,7 @@ def paasta_log_line_passes_filter(
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
-        parsed_line.get("level") in levels
+        (parsed_line.get("level") is None or parsed_line.get("level") in levels)
         and parsed_line.get("component") in components
         and (
             parsed_line.get("cluster") in clusters
@@ -356,48 +363,6 @@ def extract_utc_timestamp_from_log_line(line: str) -> datetime.datetime:
     dt = isodate.parse_datetime(timestamp)
     utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, tz.tzutc())
     return utc_timestamp
-
-
-def parse_marathon_log_line(line: str, clusters: Sequence[str], service: str) -> str:
-    utc_timestamp = extract_utc_timestamp_from_log_line(line)
-    if not utc_timestamp:
-        return ""
-    else:
-        return format_log_line(
-            level="event",
-            cluster=clusters[0],
-            service=service,
-            instance="ALL",
-            component="marathon",
-            line=line.strip(),
-            timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-        )
-
-
-def marathon_log_line_passes_filter(
-    line: str,
-    levels: Sequence[str],
-    service: str,
-    components: Iterable[str],
-    clusters: Sequence[str],
-    instances: List[str],
-    pods: Iterable[str] = None,
-    start_time: datetime.datetime = None,
-    end_time: datetime.datetime = None,
-) -> bool:
-    """Given a (JSON-formatted) log line where the message is a Marathon log line,
-    return True if the line should be displayed given the provided service; return False
-    otherwise."""
-    try:
-        parsed_line = json.loads(line)
-    except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
-        return False
-
-    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
-    if not check_timestamp_in_range(timestamp, start_time, end_time):
-        return False
-    return format_job_id(service, "") in parsed_line.get("message", "")
 
 
 def print_log(
@@ -503,7 +468,9 @@ def register_log_reader(name):
     return outer
 
 
-def get_log_reader_class(name: str) -> Type["ScribeLogReader"]:
+def get_log_reader_class(
+    name: str,
+) -> Union[Type["ScribeLogReader"], Type["VectorLogsReader"]]:
     return _log_reader_classes[name]
 
 
@@ -511,10 +478,42 @@ def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
-def get_log_reader() -> "ScribeLogReader":
+def get_default_log_reader() -> "LogReader":
     log_reader_config = load_system_paasta_config().get_log_reader()
     log_reader_class = get_log_reader_class(log_reader_config["driver"])
     return log_reader_class(**log_reader_config.get("options", {}))
+
+
+def get_log_reader(components: Set[str]) -> "LogReader":
+    log_readers_config = load_system_paasta_config().get_log_readers()
+    # ideally we should use a single "driver" for all components, but in cases where more than one is used for different components,
+    # we should use the first one that supports all requested components
+    # otherwise signal an error and suggest to provide a different list of components
+    components_lists = []
+    for log_reader_config in log_readers_config:
+        supported_components = log_reader_config.get("components", [])
+        components_lists.append(supported_components)
+        if components.issubset(supported_components):
+            log_reader_class = get_log_reader_class(log_reader_config["driver"])
+            print(
+                PaastaColors.cyan(
+                    "Using '{}' driver to fetch logs...".format(
+                        log_reader_config["driver"]
+                    )
+                ),
+                file=sys.stderr,
+            )
+            return log_reader_class(**log_reader_config.get("options", {}))
+    print(
+        PaastaColors.cyan(
+            "Supplied list of components '{}' is not supported by any log reader. Supported components are:\n\t{}".format(
+                ", ".join(components),
+                "\n\tor ".join([",".join(comp_list) for comp_list in components_lists]),
+            )
+        ),
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 class LogReader:
@@ -619,12 +618,6 @@ class ScribeLogReader(LogReader):
             ),
             filter_fn=paasta_app_output_passes_filter,
             parse_fn=None,
-        ),
-        "marathon": ScribeComponentStreamInfo(
-            per_cluster=True,
-            stream_name_fn=lambda service, cluster: "stream_marathon_%s" % cluster,
-            filter_fn=marathon_log_line_passes_filter,
-            parse_fn=parse_marathon_log_line,
         ),
     }
 
@@ -850,15 +843,6 @@ class ScribeLogReader(LogReader):
         strip_headers: bool,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
-
-        if "marathon" in components:
-            print(
-                PaastaColors.red(
-                    "Warning, you have chosen to get marathon logs based "
-                    "on time. This command may take a dozen minutes or so to run.\n"
-                ),
-                file=sys.stderr,
-            )
 
         def callback(
             components: Iterable[str],
@@ -1182,7 +1166,123 @@ class ScribeLogReader(LogReader):
             return env
 
 
-def scribe_env_to_locations(scribe_env):
+@register_log_reader("vector-logs")
+class VectorLogsReader(LogReader):
+    SUPPORTS_TAILING = True
+    SUPPORTS_TIME = True
+
+    def __init__(
+        self, cluster_map: Mapping[str, Any], nats_endpoint_map: Mapping[str, Any]
+    ) -> None:
+        super().__init__()
+
+        if S3LogsReader is None:
+            raise Exception("yelp_clog package must be available to use S3LogsReader")
+
+        self.cluster_map = cluster_map
+        self.nats_endpoint_map = nats_endpoint_map
+
+    def get_superregion_for_cluster(self, cluster: str) -> Optional[str]:
+        return self.cluster_map.get(cluster, None)
+
+    def get_nats_endpoint_for_cluster(self, cluster: str) -> Optional[str]:
+        return self.nats_endpoint_map.get(cluster, None)
+
+    def print_logs_by_time(
+        self,
+        service,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+        levels,
+        components: Iterable[str],
+        clusters,
+        instances,
+        pods,
+        raw_mode,
+        strip_headers,
+    ) -> None:
+        stream_name = get_log_name_for_service(service, prefix="app_output")
+        superregion = self.get_superregion_for_cluster(clusters[0])
+        reader = S3LogsReader(superregion)
+        aggregated_logs: List[Dict[str, Any]] = []
+
+        for line in reader.get_log_reader(
+            log_name=stream_name, start_datetime=start_time, end_datetime=end_time
+        ):
+            if paasta_log_line_passes_filter(
+                line,
+                levels,
+                service,
+                components,
+                clusters,
+                instances,
+                pods,
+                start_time=start_time,
+                end_time=end_time,
+            ):
+                try:
+                    parsed_line = json.loads(line)
+                    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
+                    if not timestamp.tzinfo:
+                        timestamp = pytz.utc.localize(timestamp)
+                except ValueError:
+                    timestamp = pytz.utc.localize(datetime.datetime.min)
+
+                line = {"raw_line": line, "sort_key": timestamp}
+                aggregated_logs.append(line)
+
+        aggregated_logs = list(
+            {line["raw_line"]: line for line in aggregated_logs}.values()
+        )
+        aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
+        for line in aggregated_logs:
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
+
+    def tail_logs(
+        self,
+        service: str,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: List[str],
+        pods: Iterable[str] = None,
+        raw_mode: bool = False,
+        strip_headers: bool = False,
+    ) -> None:
+        stream_name = get_log_name_for_service(service, prefix="app_output")
+        endpoint = self.get_nats_endpoint_for_cluster(clusters[0])
+        if not endpoint:
+            raise NotImplementedError(
+                "Tailing logs is not supported in this cluster yet, sorry"
+            )
+
+        async def tail_logs_from_nats() -> None:
+            nc = await nats.connect(f"nats://{endpoint}")
+            sub = await nc.subscribe(stream_name)
+
+            while True:
+                # Wait indefinitely for a new message (no timeout)
+                msg = await sub.next_msg(timeout=None)
+                decoded_data = msg.data.decode("utf-8")
+
+                if paasta_log_line_passes_filter(
+                    decoded_data,
+                    levels,
+                    service,
+                    components,
+                    clusters,
+                    instances,
+                    pods,
+                ):
+                    await a_sync.run(
+                        print_log, decoded_data, levels, raw_mode, strip_headers
+                    )
+
+        a_sync.block(tail_logs_from_nats)
+
+
+def scribe_env_to_locations(scribe_env) -> Mapping[str, Any]:
     """Converts a scribe environment to a dictionary of locations. The
     return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
     """
@@ -1247,9 +1347,7 @@ def generate_start_end_time(
     return start_time, end_time
 
 
-def validate_filtering_args(
-    args: argparse.Namespace, log_reader: ScribeLogReader
-) -> bool:
+def validate_filtering_args(args: argparse.Namespace, log_reader: LogReader) -> bool:
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
         print(
             PaastaColors.red(
@@ -1313,7 +1411,7 @@ def validate_filtering_args(
 
 def pick_default_log_mode(
     args: argparse.Namespace,
-    log_reader: ScribeLogReader,
+    log_reader: LogReader,
     service: str,
     levels: Sequence[str],
     components: Iterable[str],
@@ -1379,6 +1477,14 @@ def pick_default_log_mode(
     return 1
 
 
+def pick_log_reader(cluster: str, components: Set[str]) -> LogReader:
+    uses_log_readers = load_system_paasta_config().use_multiple_log_readers()
+    if uses_log_readers and cluster in uses_log_readers:
+        return get_log_reader(components)
+    else:
+        return get_default_log_reader()
+
+
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -1386,7 +1492,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     service = figure_out_service_name(args, soa_dir)
 
-    cluster = args.cluster
+    clusters = args.cluster
     if (
         args.cluster is None
         or args.instance is None
@@ -1398,7 +1504,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         )
         return 1
 
-    if verify_instances(args.instance, service, cluster, soa_dir):
+    if verify_instances(args.instance, service, clusters, soa_dir):
         return 1
 
     instance = args.instance
@@ -1421,16 +1527,16 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     levels = [DEFAULT_LOGLEVEL, "debug"]
 
-    log.debug(f"Going to get logs for {service} on cluster {cluster}")
+    log.debug(f"Going to get logs for {service} on cluster {clusters}")
 
-    log_reader = get_log_reader()
+    log_reader = pick_log_reader(clusters[0], components)
 
     if not validate_filtering_args(args, log_reader):
         return 1
     # They haven't specified what kind of filtering they want, decide for them
     if args.line_count is None and args.time_from is None and not args.tail:
         return pick_default_log_mode(
-            args, log_reader, service, levels, components, cluster, instance, pods
+            args, log_reader, service, levels, components, clusters, instance, pods
         )
     if args.tail:
         print(
@@ -1440,7 +1546,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             service=service,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1461,7 +1567,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_count=args.line_count,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1475,7 +1581,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_offset=args.line_offset,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1496,7 +1602,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         end_time=end_time,
         levels=levels,
         components=components,
-        clusters=cluster,
+        clusters=clusters,
         instances=[instance],
         pods=pods,
         raw_mode=args.raw_mode,

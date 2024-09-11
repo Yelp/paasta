@@ -1,3 +1,599 @@
+paasta-tools (1.4.33) xenial; urgency=medium
+
+  * 1.4.33 tagged with 'make release'
+    Commit: Revert "Bump service-configuration-lib to 2.18.22 to reduce
+    logspam + IO (#3952)" (#3953)  Reverts #3952 since there"s one spark
+    config that is mounting /etc/pki/spark unnecessarily and i"m running
+    into issues setting up a test to confirm that it"s indeed not
+    necessary
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Sep 2024 15:42:21 -0700
+
+paasta-tools (1.4.32) xenial; urgency=medium
+
+  * 1.4.32 tagged with 'make release'
+    Commit: Bump service-configuration-lib to 2.18.22 to reduce logspam
+    + IO (#3952)  The previous version printed out a log line for every
+    volume that did not exist on the host running a spark config getter -
+    but that"s not necessarily an error as the set of files on a kube
+    node do not always match those on boxes where s-c-l is being invoked
+    from
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Sep 2024 12:08:38 -0700
+
+paasta-tools (1.4.31) xenial; urgency=medium
+
+  * 1.4.31 tagged with 'make release'
+    Commit: tron: update schema for bulkdata + correctly pass extra
+    volumes (#3948)  We collectively missed that get_volumes() gets
+    called on the TronActionConfig and not the TronJobConfig.
+    Furthermore, we missed that we weren"t actually calling
+    get_volumes() for normal Tron jobs - instead, we were only calling
+    get_extra_volumes() and relying on the Tron `default_volumes` config
+    to add the usual default volumes (which differs from how services
+    work: we always call get_volumes() as we don"t distinguish between
+    user-provided volumes and default ones when generating the config
+    there).  I"ve tested this on tron-infrastage (as well as ensured
+    tests pass for this commit), so this should be safe.  NOTE: this
+    leaves existing uses_bulkdata toggle location in the schema.
+    Otherwise, the timing of this will be annoying since there"s places
+    that use the paasta-tools deb that can take a while to get the
+    latest version (e.g., CICD)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 09 Sep 2024 10:23:21 -0700
+
+paasta-tools (1.4.30) xenial; urgency=medium
+
+  * 1.4.30 tagged with 'make release'
+    Commit: Merge pull request #3934 from
+    Yelp/u/gonabavi/u/gonabavi/DREIMP-
+    10901_add_cloudmap_scripts_add_lifecycle_hooks_for_vtgate_pods  Add
+    lifecycle hooks for cloudmap (de)registration operations on vtgate
+    pods
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 06 Sep 2024 12:17:05 -0700
+
+paasta-tools (1.4.29) xenial; urgency=medium
+
+  * 1.4.29 tagged with 'make release'
+    Commit: Merge pull request #3943 from Yelp/u/ahaswell/perel-4210-per-
+    endpoint-alerting-schema  U/ahaswell/perel 4210 per endpoint
+    alerting schema
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Thu, 05 Sep 2024 10:15:22 -0700
+
+paasta-tools (1.4.28) xenial; urgency=medium
+
+  * 1.4.28 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SEC-19431"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 02 Sep 2024 06:25:12 -0700
+
+paasta-tools (1.4.27) xenial; urgency=medium
+
+  * 1.4.27 tagged with 'make release'
+    Commit: MLCOMPUTE-1496 | bump up service-configuration-lib (#3941)
+    Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 30 Aug 2024 03:05:46 -0700
+
+paasta-tools (1.4.26) xenial; urgency=medium
+
+  * 1.4.26 tagged with 'make release'
+    Commit: Adding containerd compatability to oom_logger - COMPINFRA-
+    3947 (#3904)  * Adding containerd compatability to oom_logger  *
+    Addressing reviews + adding new regex for containerd  * Adding in
+    addition to the nerdctl regex a regex for capturing containerd-cri
+    oom  * Updating packages for the k8s_itest to pass  * use wheels +
+    main internal pypi  * Revert "Updating packages for the k8s_itest to
+    pass"  This reverts commit 52b62c8b3b85ec008cc15832dbd31a57a0ee947f.
+    * update addict  * update argcomplete  * Revert "update argcomplete"
+    This reverts commit 8a9f0d1ad3a7397c48358aee17f3b8c12ec1399f.  *
+    Revert "update addict"  This reverts commit
+    aa1df405459b35b060446fc96f37fb710eec161d.  * prefer binary  * prefer
+    binary harder  * prefer binary this way  * maybe?  * missed a spot
+    * upgrade??  * do we still need deadsnakes here  * anotha one  *
+    more fixes  * deadsnakes  * distutils is fun  * cleanup  * Revert
+    "Updating packages for the k8s_itest to pass"  This reverts commit
+    52b62c8b3b85ec008cc15832dbd31a57a0ee947f.  * Removed the nerdctl
+    regex and the adjusted ones for docker  * Address getting from
+    config when its none  * Add a less structured regex for containerd
+    * Added two tests to test the regex if its working  * Adding a unit
+    test for testing main with containerd=true  * Addressing more
+    reviews  ---------  Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 29 Aug 2024 09:07:01 -0700
+
+paasta-tools (1.4.25) xenial; urgency=medium
+
+  * 1.4.25 tagged with 'make release'
+    Commit: MLCOMPUTE-1209 | allow 0 in spark.driver.maxResultSize
+    (#3937)  Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 27 Aug 2024 07:58:56 -0700
+
+paasta-tools (1.4.24) xenial; urgency=medium
+
+  * 1.4.24 tagged with 'make release'
+    Commit: Merge pull request #3935 from
+    Yelp/u/gonabavi/split_vitess_crs  Add separate fileprefix handlers
+    for vitess crs
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Mon, 26 Aug 2024 12:50:45 -0700
+
+paasta-tools (1.4.23) xenial; urgency=medium
+
+  * 1.4.23 tagged with 'make release'
+    Commit: MLCOMPUTE-1562 | fix Spark driver maxresultsize validation
+    (#3933)  * MLCOMPUTE-1562 | fix Spark driver maxresultsize
+    validation  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 20 Aug 2024 04:59:37 -0700
+
+paasta-tools (1.4.22) xenial; urgency=medium
+
+  * 1.4.22 tagged with 'make release'
+    Commit: Merge pull request #3931 from Yelp/u/gonabavi/DREIMP-
+    10901_add_smartstack_registrations_for_vitess_pods
+    U/gonabavi/dreimp 10901 add smartstack registrations for vitess pods
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 09 Aug 2024 12:32:46 -0700
+
+paasta-tools (1.4.21) xenial; urgency=medium
+
+  * 1.4.21 tagged with 'make release'
+    Commit: MLCOMPUTE-1497 | include spark driver memory overhead in
+    driver pod memory (#3926)  * MLCOMPUTE-1209 | use
+    service_configuration_lib to get total driver memory  * MLCOMPUTE-
+    1209 | increase default Spark driver pod disk to 5GB  * MLCOMPUTE-
+    1209 | prefer disk value if provided  ---------  Co-authored-by:
+    Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 08 Aug 2024 03:24:06 -0700
+
+paasta-tools (1.4.20) xenial; urgency=medium
+
+  * 1.4.20 tagged with 'make release'
+    Commit: Color paasta rollback warnings yellow instead of red (#3925)
+    I"ve noticed a couple folks think that paasta rollback failed
+    because of this coloring - let"s avoid some confusion and color this
+    text yellow instead (which is more accurate anyway since it"s a
+    warning)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 30 Jul 2024 09:04:36 -0700
+
+paasta-tools (1.4.19) xenial; urgency=medium
+
+  * 1.4.19 tagged with 'make release'
+    Commit: Set bounce_margin_factor default to 0.95 (#3576)  In
+    COMPINFRA-2270, several service owners are complaining about stuck
+    deployments because of individual pods that never become healthy.
+    This change would make it so any service with 20-39 containers would
+    ignore a single stuck pod; 40-59 would ignore 2, etc.  From what I
+    can tell from the [code that manages
+    PodDisruptionBudgets](https://github.com/Yelp/paasta/blob/02b165ac87
+    7700b28f98653f8ad2b30f0d73f339/paasta_tools/kubernetes/application/c
+    ontroller_wrappers.py#L147), this won"t affect PDBs - anything that
+    doesn"t have `bounce_margin_factor` set gets the default PDB from
+    SystemPaastaConfig.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Jul 2024 10:46:30 -0700
+
+paasta-tools (1.4.18) xenial; urgency=medium
+
+  * 1.4.18 tagged with 'make release'
+    Commit: MLCOMPUTE-1389 | remove spark.app.id and generate static
+    spark.app.name (#3923)  * MLCOMPUTE-1389 | remove spark.app.id and
+    generate static spark.app.name  * MLCOMPUTE-1389 | fix tests  *
+    don"t override spark.app.name if provided by the user  ---------  Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 23 Jul 2024 09:04:38 -0700
+
+paasta-tools (1.4.17) xenial; urgency=medium
+
+  * 1.4.17 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SEC-19224"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 22 Jul 2024 01:54:51 -0700
+
+paasta-tools (1.4.16) xenial; urgency=medium
+
+  * 1.4.16 tagged with 'make release'
+    Commit: Ensure default Spark executor SA is created in Spark
+    clusters (#3921)  This is mostly a disaster-recovery thing since
+    this SA exists already - but to avoid any unpleasant times should we
+    decide to start these clusters from scratch, it"d be best to ensure
+    that this SA actually exists :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Jul 2024 09:11:21 -0700
+
+paasta-tools (1.4.15) xenial; urgency=medium
+
+  * 1.4.15 tagged with 'make release'
+    Commit: Correctly create Tron-related service accounts (#3920)  The
+    previous code was creating service accounts with an extra `paasta-`
+    prefix - which would then break when anything tried to use these
+    SA"s since they"d still be referencing the expected SA name (without
+    the double `paasta-`)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Jul 2024 10:56:15 -0700
+
+paasta-tools (1.4.14) xenial; urgency=medium
+
+  * 1.4.14 tagged with 'make release'
+    Commit: SEC-19136 | DAR-2360 | don"t force a default value for the --
+    aws-profile if not provided in spark-run (#3901)  * DAR-2360 | don"t
+    force a default value for the --aws-profile if not provided in spark-
+    run  * SEC-19136 | detailed message for preferring --aws-profile
+    over iam_role  * SEC-19136 | bump up service_configuration_lib
+    version  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 15 Jul 2024 06:33:34 -0700
+
+paasta-tools (1.4.13) xenial; urgency=medium
+
+  * 1.4.13 tagged with 'make release'
+    Commit: Merge branch "u/krall/clearer_cami_alert_text"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 11 Jul 2024 16:34:41 -0700
+
+paasta-tools (1.4.12) xenial; urgency=medium
+
+  * 1.4.12 tagged with 'make release'
+    Commit: Merge pull request #3916 from Yelp/yaroliakh-patch-clog
+    Bump yelp_clog version
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Tue, 09 Jul 2024 08:46:34 -0700
+
+paasta-tools (1.4.11) xenial; urgency=medium
+
+  * 1.4.11 tagged with 'make release'
+    Commit: Skip autotune merging for deleted instances (#3914)  It"s
+    possible for autotune results to include instances that no longer
+    exist in a given file: either because the instance has been
+    completely deleted or moved to another cluster.  In these cases, it
+    should be safe to simply skip the config merge since there"s nothing
+    to merge with.  We could technically still do the config
+    update/merge here and simply skip the resource clamping - but imo,
+    we should simply bail out early.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 14:17:57 -0700
+
+paasta-tools (1.4.10) xenial; urgency=medium
+
+  * 1.4.10 tagged with 'make release'
+    Commit: Fix ensure_service_account breakages from the
+    get_or_create_service_account refactor (#3912)  * Wait until the
+    last moment to create kubeclients in s_t_n  This should avoid issues
+    with missing spark kubeconfigs on trons that don"t have that
+    kubeconfig puppeted  * Conditionally call ensure_service_account in
+    controller_wrappers  This was reverted as we were hitting the
+    ValueError that protects us from calling this function without an
+    IAM or k8s role due to the default get_iam_role() retval being ""
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 12:30:41 -0700
+
+paasta-tools (1.4.9) xenial; urgency=medium
+
+  * 1.4.9 tagged with 'make release'
+    Commit: Merge pull request #3905 from Yelp/u/ahaswell/perel-4183-
+    smartstack-schema-alerting-extensions  smartstack alert schema
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 03 Jul 2024 13:36:32 -0700
+
+paasta-tools (1.4.8) xenial; urgency=medium
+
+  * 1.4.8 tagged with 'make release'
+    Commit: Merge pull request #3911 from Yelp/revert-3906-
+    u/krall/ensure_service_account  Revert "Split
+    create_or_find_service_account into a non-mutating method and a
+    mutating method"
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 02 Jul 2024 10:25:31 -0700
+
+paasta-tools (1.4.7) xenial; urgency=medium
+
+  * 1.4.7 tagged with 'make release'
+    Commit: Attempt #2 MLCOMPUTE-1203 | Configure Spark driver pod
+    memory and cores based on Spark args (#3903)  * MLCOMPUTE-1203 |
+    Configure Spark driver pod memory and cores based on Spark args  *
+    MLCOMPUTE-1203 | add validation to prevent users from specifying
+    cpus and mem configs for Spark drivers on k8s  * MLCOMPUTE-1203 |
+    overload instance config methods, add tests  * MLCOMPUTE-1203 | move
+    building spark config to constructor  * MLCOMPUTE-1203 | fix tests
+    and formatting  * DAR-2360 | move the creation of spark config away
+    from the TronActionConfig constructor  * MLCOMPUTE-1203 | add
+    validation signature to methods loading instance configs  *
+    MLCOMPUTE-1203 | add validation signature to methods loading
+    instance configs  * formatting  * MLCOMPUTE-1203 | fix arg type  *
+    add missing pos argument  * Revert "add missing pos argument"  This
+    reverts commit 6d903bea23435dcb9c5b2000acccedd40bbbefdf.  * Revert
+    "MLCOMPUTE-1203 | fix arg type"  This reverts commit
+    b94c2ed64bda2ecf75246e90467e6729849a8477.  * Revert "formatting"
+    This reverts commit 5d27b1b288a257d27ad7f57ee367dd11c02046c9.  *
+    Revert "MLCOMPUTE-1203 | add validation signature to methods loading
+    instance configs"  This reverts commit
+    45f7b4a1b3a26804fab0703a9331994d3806a816.  * Revert "MLCOMPUTE-1203
+    | add validation signature to methods loading instance configs"
+    This reverts commit 01e43d4e032e9e8b787f9e2c57e5dfa0e8199adf.  *
+    Start splitting SA creation and validation (for tron)  Depending on
+    merge order, we"ll want to slightly refactor this after
+    https://github.com/Yelp/paasta/pull/3906 if this goes out first (or
+    refactor this before merging if #3906 goes out first) - but this
+    makes it so that we never create SAs in Tron outside of
+    setup_tron_namespace (which will get called from a host that has the
+    correct permissions)  This avoids needing to pass around any dry-
+    run/validation flags :)  * whoops  * correctly iterate over dicts  i
+    blame copilot for letting me turn off my brain  * correctly parse
+    yaml  i wish that we didn"t pass around a huge string  * remove test
+    call  * use spark kubeconfig  * Use krall"s latest changes  * don"t
+    make kubeclients outside of dry-run  * build spark config in
+    constructor  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com> Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 02 Jul 2024 04:39:19 -0700
+
+paasta-tools (1.4.6) xenial; urgency=medium
+
+  * 1.4.6 tagged with 'make release'
+    Commit: Merge pull request #3902 from Yelp/u/gonabavi/DREIMP-
+    10725_add_paasta_status_for_vitesscluster  Add paasta status for
+    vitesscluster and mount /nail/etc/srv-configs to VTTablets
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Thu, 27 Jun 2024 10:40:09 -0700
+
+paasta-tools (1.4.5) xenial; urgency=medium
+
+  * 1.4.5 tagged with 'make release'
+    Commit: Fix incorrect help text for --cluster in paasta logs (#3895)
+    `paasta logs` only supports grabbing logs from a single cluster at a
+    time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Jun 2024 06:58:16 -0700
+
+paasta-tools (1.4.4) xenial; urgency=medium
+
+  * 1.4.4 tagged with 'make release'
+    Commit: Merge pull request #3889 from Yelp/u/gonabavi/DREIMP-
+    10726_migrate_manifest_generation_to_paasta_tools  Add support for
+    generating vitess config from minimal yelpsoa configs
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 21 Jun 2024 09:15:00 -0700
+
+paasta-tools (1.4.3) xenial; urgency=medium
+
+  * 1.4.3 tagged with 'make release'
+    Commit: Revert "MLCOMPUTE-1203 | Configure Spark driver pod memory
+    and cores based on…" (#3900)  This reverts commit
+    5784aef70b191a83242bf9e9fbae6ae115de8c99.
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 18 Jun 2024 06:31:05 -0700
+
+paasta-tools (1.4.2) xenial; urgency=medium
+
+  * 1.4.2 tagged with 'make release'
+    Commit: Revert "Bump service-configuration-lib to v2.18.18" (#3898)
+
+ -- Chi Chang <chi@yelp.com>  Tue, 18 Jun 2024 03:00:41 -0700
+
+paasta-tools (1.4.1) xenial; urgency=medium
+
+  * 1.4.1 tagged with 'make release'
+    Commit: MLCOMPUTE-1203 | Configure Spark driver pod memory and cores
+    based on Spark args (#3892)  * MLCOMPUTE-1203 | Configure Spark
+    driver pod memory and cores based on Spark args  * MLCOMPUTE-1203 |
+    add validation to prevent users from specifying cpus and mem configs
+    for Spark drivers on k8s  * MLCOMPUTE-1203 | overload instance
+    config methods, add tests  * MLCOMPUTE-1203 | fix tests  * MLCOMPUTE-
+    1203 | move building spark config to constructor  ---------  Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 17 Jun 2024 10:59:06 -0700
+
+paasta-tools (1.4.0) xenial; urgency=medium
+
+  * 1.4.0 tagged with 'make release'
+    Commit: Merge pull request #3894 from Yelp/luisp/dockerpy-to-docker
+    Migrate from docker-py to docker
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 17 Jun 2024 09:39:26 -0700
+
+paasta-tools (1.3.0) xenial; urgency=medium
+
+  * 1.3.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SEC-
+    18955_deploy"
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 12 Jun 2024 08:21:27 -0700
+
+paasta-tools (1.2.0) xenial; urgency=medium
+
+  * 1.2.0 tagged with 'make release'
+    Commit: Merge pull request #3867 from Yelp/u/yaro/OBSPLAT-
+    1830_vector_logs_driver  Enable new vector-logs driver for paasta
+    logs
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Thu, 06 Jun 2024 03:26:51 -0700
+
+paasta-tools (1.1.2) xenial; urgency=medium
+
+  * 1.1.2 tagged with 'make release'
+    Commit: Merge pull request #3890 from Yelp/jfong/PAASTA-18340-bump-
+    sticht  Bump sticht to fix slack buttons
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 05 Jun 2024 13:38:59 -0700
+
+paasta-tools (1.1.1) xenial; urgency=medium
+
+  * 1.1.1 tagged with 'make release'
+    Commit: link generate_authenticating_services in debian package
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 05 Jun 2024 03:12:36 -0700
+
+paasta-tools (1.1.0) xenial; urgency=medium
+
+  * 1.1.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SEC-
+    18955_enumeration"
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 05 Jun 2024 03:02:27 -0700
+
+paasta-tools (1.0.5) xenial; urgency=medium
+
+  * 1.0.5 tagged with 'make release'
+    Commit: Merge pull request #3886 from
+    Yelp/jfong/fix_paasta_rollback_list  Move git sha validation in
+    paasta rollback
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 04 Jun 2024 14:52:49 -0700
+
+paasta-tools (1.0.4) xenial; urgency=medium
+
+  * 1.0.4 tagged with 'make release'
+    Commit: Merge pull request #3858 from Yelp/jfong/PAASTA-18203-
+    missing-metrics-max-instances  PAASTA-18203: Catch missing metrics
+    in check_autoscaler_max_instances
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 03 Jun 2024 09:35:35 -0700
+
+paasta-tools (1.0.3) xenial; urgency=medium
+
+  * 1.0.3 tagged with 'make release'
+    Commit: Merge pull request #3882 from Yelp/drmorr/clean-up-old-
+    autoscaling  clean up code from old autoscaling config
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Tue, 28 May 2024 15:49:56 -0700
+
+paasta-tools (1.0.2) xenial; urgency=medium
+
+  * 1.0.2 tagged with 'make release'
+    Commit: Merge pull request #3878 from Yelp/yaroliakh-patch-requests
+    Pin requests in k8s_itests and requirements-minimal
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Wed, 22 May 2024 07:58:05 -0700
+
+paasta-tools (1.0.1) xenial; urgency=medium
+
+  * 1.0.1 tagged with 'make release'
+    Commit: Delete check_capacity
+
+ -- Evan Krall <krall@yelp.com>  Fri, 17 May 2024 14:14:57 -0700
+
+paasta-tools (1.0.0) xenial; urgency=medium
+
+  * 1.0.0 tagged with 'make release'
+    Commit: Merge pull request #3869 from Yelp/u/cuza/farewell-mesos
+    Farewell Mesos
+
+ -- Dave Cuza <dcuza@yelp.com>  Thu, 16 May 2024 12:39:02 -0700
+
+paasta-tools (0.232.1) xenial; urgency=medium
+
+  * 0.232.1 tagged with 'make release'
+    Commit: Improve paasta rollback messaging (#3862)  Printing out the -
+    -help output when passing a short SHA is not helpful - and neither
+    is not very loudly mentioning that changes *need* to be reverted in
+    Git for a rollback to become permanent
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 15 May 2024 10:48:47 -0700
+
+paasta-tools (0.232.0) xenial; urgency=medium
+
+  * 0.232.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SEC-18955_poc"
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 14 May 2024 07:50:15 -0700
+
+paasta-tools (0.231.0) xenial; urgency=medium
+
+  * 0.231.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/eks_cr"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 13 May 2024 10:08:13 -0700
+
+paasta-tools (0.230.1) xenial; urgency=medium
+
+  * 0.230.1 tagged with 'make release'
+    Commit: Merge pull request #3860 from Yelp/jfong/oops-no-cluster
+    Add cluster to check_services_replication timer
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 10 May 2024 11:53:59 -0700
+
+paasta-tools (0.230.0) xenial; urgency=medium
+
+  * 0.230.0 tagged with 'make release'
+    Commit: Merge pull request #3852 from Yelp/u/jfong/PAASTA-18299-skj
+    Add a timer to some of our slowest cronjobs
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 10 May 2024 10:47:35 -0700
+
+paasta-tools (0.229.0) xenial; urgency=medium
+
+  * 0.229.0 tagged with 'make release'
+    Commit: Merge pull request #3837 from Yelp/drmorr/autoscaling-params-
+    dict-v2  multiple metrics support for paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 06 May 2024 09:51:28 -0700
+
+paasta-tools (0.228.0) xenial; urgency=medium
+
+  * 0.228.0 tagged with 'make release'
+    Commit: Add schema validation for service.yaml (#3841)  This is a
+    tad silly: we have a pre-existing schema in py-gitolite (which we"re
+    trying to get rid of), but none in here - which means that folks can
+    attempt to integrate PRs that pass `paasta validate` but that will
+    fail in py-gitolite.  More silliness: the py-gitolite code does not
+    do any validation on `git_url` which means that folks can pass in
+    URLs that dulwich will not be happy with (see COMPINFRA-3914
+    internally) - so let"s add a regex to validate these :)  NOTE: I
+    tested this locally with: `paasta list | xargs -P10 -n1 --no-run-if-
+    empty paasta validate -y $LOCALSOA -s 2>&1 | rg ✗` and saw that
+    there were no failures (apart from the case from COMPINFRA-3914)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 03 May 2024 08:46:33 -0700
+
+paasta-tools (0.227.0) xenial; urgency=medium
+
+  * 0.227.0 tagged with 'make release'
+    Commit: PAASTA-18198: add pool_node_affinities to improve Karpenter
+    AZ balance (#3849)  This adds a new system config option,
+    `pool_node_affinities`. It"s necessary to configure pods with a
+    preselection of preferred 2-3 AZs per pool so that Karpenter does
+    not try to consider all 6+ AZs in a region for scheduling decisions.
+    This option is a temporary solution and the proper fix will likely
+    be to adopt something like the descheduler to achieve a better AZ
+    balance (along with other benefits).   Signed-off-by: Max Falk
+    <gfalk@yelp.com>
+
+ -- Max Falk <gfalk@yelp.com>  Thu, 02 May 2024 06:03:28 -0700
+
+paasta-tools (0.226.0) xenial; urgency=medium
+
+  * 0.226.0 tagged with 'make release'
+    Commit: Merge pull request #3835 from Yelp/drmorr/update-validation
+    update paasta validation code
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 29 Apr 2024 14:23:15 -0700
+
+paasta-tools (0.225.1) xenial; urgency=medium
+
+  * 0.225.1 tagged with 'make release'
+    Commit: Set default executor pool to batch driver on k8s (#3845)
+
+ -- Chi Chang <chi@yelp.com>  Mon, 29 Apr 2024 11:32:45 -0700
+
+paasta-tools (0.225.0) xenial; urgency=medium
+
+  * 0.225.0 tagged with 'make release'
+    Commit: Merge pull request #3828 from
+    Yelp/u/nalma/spark_run_pod_identity  Support pod identity in `spark-
+    run`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Mon, 29 Apr 2024 11:17:46 -0700
+
 paasta-tools (0.224.0) xenial; urgency=medium
 
   * 0.224.0 tagged with 'make release'

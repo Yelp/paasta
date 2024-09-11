@@ -26,6 +26,7 @@ from service_configuration_lib.spark_config import UnsupportedClusterManagerExce
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
@@ -71,8 +72,6 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
-
-DEFAULT_AWS_PROFILE = "default"
 
 DEPRECATED_OPTS = {
     "j": "spark.jars",
@@ -339,6 +338,18 @@ def add_subparser(subparsers):
         default=None,
     )
 
+    list_parser.add_argument(
+        "--use-service-auth-token",
+        help=(
+            "Acquire service authentication token for the underlying instance,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+
     aws_group = list_parser.add_argument_group(
         title="AWS credentials options",
         description="If --aws-credentials-yaml is specified, it overrides all "
@@ -361,7 +372,6 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default=DEFAULT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -373,7 +383,10 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--assume-aws-role",
-        help="Takes an AWS IAM role ARN and attempts to create a session",
+        help=(
+            "Takes an AWS IAM role ARN and attempts to create a session using "
+            "spark_role_assumer"
+        ),
     )
 
     aws_group.add_argument(
@@ -384,6 +397,18 @@ def add_subparser(subparsers):
         ),
         type=int,
         default=43200,
+    )
+
+    aws_group.add_argument(
+        "--use-web-identity",
+        help=(
+            "If the current environment contains AWS_ROLE_ARN and "
+            "AWS_WEB_IDENTITY_TOKEN_FILE, creates a session to use. These "
+            "ENV vars must be present, and will be in the context of a pod-"
+            "identity enabled pod."
+        ),
+        action="store_true",
+        default=False,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -783,6 +808,9 @@ def configure_and_run_docker_container(
     )  # type:ignore
     environment.update(extra_driver_envs)
 
+    if args.use_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
+
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
 
@@ -1047,16 +1075,15 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if field_name == "spark_args":
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
-            # Befutify for printing
+            # Beautify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
-            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
+            if field_name == "iam_role" and args.aws_profile is not None:
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
-                        "since --aws-profile is provided"
+                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` is provided. "
+                        f"We are giving higher priority to `--aws-profile` in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
@@ -1064,7 +1091,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if hasattr(args, arg_name):
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name} : {value}"
                     ),
                 )
             setattr(args, arg_name, value)
@@ -1172,12 +1199,16 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
         session_duration=args.aws_role_duration,
+        use_web_identity=args.use_web_identity,
     )
     docker_image_digest = get_docker_image(args, instance_config)
     if docker_image_digest is None:
         return 1
 
-    volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
+    volumes = instance_config.get_volumes(
+        system_paasta_config.get_volumes(),
+        system_paasta_config.get_uses_bulkdata_default(),
+    )
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
     user_spark_opts = _parse_user_spark_args(args.spark_args)

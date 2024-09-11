@@ -48,6 +48,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
@@ -158,6 +159,14 @@ def main() -> None:
         cluster = args.cluster
     else:
         cluster = system_paasta_config.get_cluster()
+
+    timer = metrics_lib.system_timer(
+        dimensions=dict(
+            cluster=cluster,
+        )
+    )
+
+    timer.start()
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
@@ -170,7 +179,7 @@ def main() -> None:
         )
     )
 
-    sys.exit(0) if sync_all_secrets(
+    result = sync_all_secrets(
         kube_client=kube_client,
         cluster=cluster,
         services_to_k8s_namespaces_to_allowlist=services_to_k8s_namespaces_to_allowlist,
@@ -180,7 +189,14 @@ def main() -> None:
         vault_token_file=args.vault_token_file,
         overwrite_namespace=args.namespace,
         secret_type=args.secret_type,
-    ) else sys.exit(1)
+    )
+    exit_code = 0 if result else 1
+
+    timer.stop(tmp_dimensions={"result": exit_code})
+    logging.info(
+        f"Stopping timer for {cluster} with result {exit_code}: {timer()}ms elapsed"
+    )
+    sys.exit(exit_code)
 
 
 def get_services_to_k8s_namespaces_to_allowlist(
