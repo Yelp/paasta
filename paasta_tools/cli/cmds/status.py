@@ -170,6 +170,14 @@ def add_subparser(
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    status_parser.add_argument(
+        "-A",
+        "--all-namespaces",
+        dest="all_namespaces",
+        action="store_true",
+        default=False,
+        help="Search all PaaSTA-managed namespaces for possible running versions (Will search only your currently-configured namespace by default). Useful if you are moving your instance(s) to a new namespace",
+    )
 
     version = status_parser.add_mutually_exclusive_group()
 
@@ -292,6 +300,7 @@ def paasta_status_on_api_endpoint(
     verbose: int,
     new: bool = False,
     is_eks: bool = False,
+    all_namespaces: bool = False,
 ) -> int:
     output = [
         "",
@@ -310,6 +319,7 @@ def paasta_status_on_api_endpoint(
             instance=instance,
             verbose=verbose,
             new=new,
+            all_namespaces=all_namespaces,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
@@ -2140,6 +2150,7 @@ def report_status_for_cluster(
     lock: Lock,
     verbose: int = 0,
     new: bool = False,
+    all_namespaces: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -2193,6 +2204,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
+                all_namespaces=all_namespaces,
                 is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
@@ -2416,6 +2428,7 @@ def paasta_status(args) -> int:
                             lock=lock,
                             verbose=args.verbose,
                             new=new,
+                            all_namespaces=args.all_namespaces,
                         ),
                     )
                 )
