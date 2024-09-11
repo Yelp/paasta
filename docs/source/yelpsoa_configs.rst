@@ -393,8 +393,9 @@ instance MAY have:
         * ``type``: Which method the autoscaler will use to determine a service's utilization.
           Should be ``cpu``, ``uwsgi``, ``active-reqeusts``, ``piscina``, ``gunicorn``, or ``arbitrary_promql``.
 
-        * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
-          Should be ``proportional`` or ``bespoke``.
+        * ``decision_policy``: If you want to autoscale with a separate system which calls ``paasta autoscale`` (such as the Kew autoscaler), rather than an HPA, then set this to ``bespoke`` on the first ``metrics_provider`` entry.
+          Otherwise, leave this unset.
+          (It does not make sense to have more than one ``metrics_provider`` with ``decision_policy: bespoke``.)
 
         * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
           Default value is 0.8.

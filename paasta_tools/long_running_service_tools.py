@@ -37,6 +37,8 @@ DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
 DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA = 1
+
+# If you change any of these, make sure to update docs/source/autoscaling.rst
 DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
@@ -345,7 +347,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_autoscaling_params(self) -> AutoscalingParamsDict:
         default_provider_params: MetricsProviderDict = {
             "type": METRICS_PROVIDER_CPU,
-            "decision_policy": "proportional",
             "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
         }
 
