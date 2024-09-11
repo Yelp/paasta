@@ -657,8 +657,7 @@ def test_set_cr_desired_state(
     kube_client.custom.get_namespaced_custom_object.return_value = cr
     set_cr_desired_state(
         kube_client=kube_client,
-        cr_id={},
-        component="vtgate",
+        cr_id={"name": "fake_cell.vtgate"},
         desired_state="start",
     )
     body = kube_client.custom.replace_namespaced_custom_object.call_args[1]["body"]

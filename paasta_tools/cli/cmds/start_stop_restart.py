@@ -46,7 +46,6 @@ def add_subparser(subparsers):
         ("restart", "start or restart", "Start or restart", paasta_restart),
         ("stop", "stop", "Stop", paasta_stop),
     ]:
-        # TODO: rename status_parser to start_stop_restart_parser
         status_parser = subparsers.add_parser(
             command,
             help="%ss a PaaSTA service in a graceful way." % upper,
@@ -67,11 +66,6 @@ def add_subparser(subparsers):
             metavar="SOA_DIR",
             default=DEFAULT_SOA_DIR,
             help="define a different soa config directory",
-        )
-        status_parser.add_argument(
-            "--component",
-            dest="component",
-            help="The component to start/stop/restart",
         )
         status_parser.set_defaults(command=cmd_func)
 
@@ -165,13 +159,6 @@ def print_flink_message(desired_state):
             "'Stop' will put Flink cluster in stopping mode, it may"
             "take some time before shutdown is completed."
         )
-
-
-def print_vitess_message(desired_state: str, component: str):
-    if desired_state == "start":
-        print("'start' will start or restart component {component}.")
-    elif desired_state == "stop":
-        print("'stop' will stop component {component}.")
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
@@ -341,35 +328,40 @@ def paasta_start_or_stop(args, desired_state):
             return_val = 0
 
     if affected_vitess_instances:
-        print_vitess_message(desired_state, args.component)
+        if desired_state == "stop":
+            print(PaastaColors.red("'stop' is not supported for Vitess instances."))
+            return 1
 
         system_paasta_config = load_system_paasta_config()
         for service_config in affected_vitess_instances:
             cluster = service_config.cluster
             service = service_config.service
             instance = service_config.instance
-            is_eks = True
 
-            client = get_paasta_oapi_client(
-                cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
-                system_paasta_config=system_paasta_config,
-            )
-            if not client:
-                print("Cannot get a paasta-api client")
-                exit(1)
+            for arg_instance in args.instances.split(","):
+                if arg_instance != instance:
+                    continue
 
-            try:
-                client.service.instance_set_state(
-                    service=service,
-                    instance=instance,
-                    desired_state=desired_state,
-                    component=args.component,
+                client = get_paasta_oapi_client(
+                    cluster=get_paasta_oapi_api_clustername(
+                        cluster=cluster, is_eks=True
+                    ),
+                    system_paasta_config=system_paasta_config,
                 )
-            except client.api_error as exc:
-                print(exc.reason)
-                return exc.status
+                if not client:
+                    exit(1)
 
-            return_val = 0
+                try:
+                    client.service.instance_set_state(
+                        service=service,
+                        instance=instance,
+                        desired_state=desired_state,
+                    )
+                except client.api_error as exc:
+                    print(exc.reason)
+                    return exc.status
+
+                return_val = 0
 
     if invalid_deploy_groups:
         print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")

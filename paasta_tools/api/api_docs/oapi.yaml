@@ -1389,12 +1389,6 @@ paths:
         required: true
         schema:
           type: string
-      - description: Component name
-        in: query
-        name: component
-        required: false
-        schema:
-          type: string
       - description: Desired state
         in: path
         name: desired_state

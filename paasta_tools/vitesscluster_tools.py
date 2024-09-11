@@ -608,10 +608,12 @@ def get_current_time() -> str:
 def set_cr_desired_state(
     kube_client: KubeClient,
     cr_id: Mapping[str, str],
-    component: str,
     desired_state: str,
 ) -> None:
-    cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
+    instance_without_suffix, component = cr_id["name"].split(".", 1)
+    cr = kube_client.custom.get_namespaced_custom_object(
+        **{**cr_id, "name": instance_without_suffix}
+    )
     current_time = get_current_time()
 
     if component.startswith("vtgate"):
@@ -896,8 +898,9 @@ def load_vitess_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
+    instance_without_suffix = instance.split(".", 1)[0]
     instance_config = load_service_instance_config(
-        service, instance, "vitesscluster", cluster, soa_dir=soa_dir
+        service, instance_without_suffix, "vitesscluster", cluster, soa_dir=soa_dir
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config

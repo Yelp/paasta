@@ -225,7 +225,6 @@ def instance_set_state(
 ) -> None:
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
-    component = request.swagger_data.get("component")
     desired_state = request.swagger_data.get("desired_state")
 
     try:
@@ -250,7 +249,6 @@ def instance_set_state(
                 service=service,
                 instance=instance,
                 instance_type=instance_type,
-                component=component,
                 desired_state=desired_state,
             )
         except RuntimeError as e:

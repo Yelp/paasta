@@ -65,7 +65,7 @@ INSTANCE_TYPES_K8S = {
 }
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
-INSTANCE_TYPES_WITH_SET_STATE = {"flink", "flinkeks"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink", "flinkeks", "vitesscluster"}
 INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     flinkeks=flink_tools.cr_id,
@@ -128,20 +128,13 @@ def set_cr_desired_state(
     service: str,
     instance: str,
     instance_type: str,
-    component: str,
     desired_state: str,
 ) -> None:
     try:
-        desired_state_fn = INSTANCE_TYPE_DESIRED_STATE_SETTER.get(instance_type)
-        if desired_state_fn:
-            desired_state_fn(
-                kube_client=kube_client,
-                cr_id=cr_id(service, instance, instance_type),
-                desired_state=desired_state,
-                component=component,
-            )
-            return
-        kubernetes_tools.set_cr_desired_state(
+        desired_state_fn = INSTANCE_TYPE_DESIRED_STATE_SETTER.get(
+            instance_type, kubernetes_tools.set_cr_desired_state
+        )
+        desired_state_fn(
             kube_client=kube_client,
             cr_id=cr_id(service, instance, instance_type),
             desired_state=desired_state,

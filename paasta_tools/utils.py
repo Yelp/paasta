@@ -3204,6 +3204,12 @@ def read_service_instance_names(
             for name in action_names:
                 instance = f"{job_name}.{name}"
                 instance_list.append((service, instance))
+    elif instance_type == "vitesscluster":
+        for instance_name, instance in config.items():
+            component_names = ["vtgate", "vtadmin", "vtctld", "vttablet"]
+            for name in component_names:
+                instance = f"{instance_name}.{name}"
+                instance_list.append((service, instance))
     else:
         for instance in config:
             instance_list.append((service, instance))

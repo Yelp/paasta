@@ -708,7 +708,6 @@ class ServiceApi(object):
                 desired_state (str): Desired state
 
             Keyword Args:
-                component (str): Component name. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -775,7 +774,6 @@ class ServiceApi(object):
                     'service',
                     'instance',
                     'desired_state',
-                    'component',
                 ],
                 'required': [
                     'service',
@@ -801,20 +799,16 @@ class ServiceApi(object):
                         (str,),
                     'desired_state':
                         (str,),
-                    'component':
-                        (str,),
                 },
                 'attribute_map': {
                     'service': 'service',
                     'instance': 'instance',
                     'desired_state': 'desired_state',
-                    'component': 'component',
                 },
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
                     'desired_state': 'path',
-                    'component': 'query',
                 },
                 'collection_format_map': {
                 }

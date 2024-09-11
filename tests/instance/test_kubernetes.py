@@ -656,7 +656,6 @@ def test_set_cr_desired_state_invalid_instance_type():
             service=mock.Mock(),
             instance=mock.Mock(),
             instance_type="marathon",
-            component=None,
             desired_state=mock.Mock(),
         )
     assert "Unknown instance type" in str(excinfo.value)
@@ -669,7 +668,6 @@ def test_set_cr_desired_state_calls_k8s_tools(mock_set_cr_desired_state):
         service=mock.Mock(),
         instance=mock.Mock(),
         instance_type="flink",
-        component=None,
         desired_state=mock.Mock(),
     )
     assert len(mock_set_cr_desired_state.mock_calls) == 1
