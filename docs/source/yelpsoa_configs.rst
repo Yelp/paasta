@@ -1088,7 +1088,6 @@ These keys provide optional overrides for the default alerting behaviour.
           page_nonprod: true
           error_threshold_ratio: 0.02
           minimum_error_rps: 10
-          namespace_alert: false
           endpoints:
             - name: GET /something
             - name: GET /something/else
@@ -1110,8 +1109,6 @@ These keys provide optional overrides for the default alerting behaviour.
      environments. Defaults to **false**.
    - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
    - ``minimum_error_rps``: Minimum error rate per second, minimum is zero. Defaults to **5**.
-   - ``namespace_alert``: Toggle namespace alerting. Defaults to **true**. Can be used to disable alerting for the
-     namespace when alerts are configured for specific endpoints.
    - ``endpoints``: List of endpoints to create alerts for.
       - ``name``: The name of the endpoint.
       - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the parent.

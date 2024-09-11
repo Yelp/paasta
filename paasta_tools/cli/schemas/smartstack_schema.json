@@ -258,9 +258,6 @@
                         "type": "integer",
                         "minimum": 0
                     },
-                    "namespace_alert": {
-                        "type": "boolean"
-                    },
                     "endpoints": {
                         "type": "array",
                         "items": {
