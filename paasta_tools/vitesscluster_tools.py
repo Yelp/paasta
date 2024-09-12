@@ -142,8 +142,8 @@ class RequestsDict(TypedDict, total=False):
 
 class ResourceConfigDict(TypedDict, total=False):
     replicas: int
-    min_instances: int
-    max_instances: int
+    min_instances: Optional[int]
+    max_instances: Optional[int]
     requests: Dict[str, RequestsDict]
     limits: Dict[str, RequestsDict]
 
@@ -155,6 +155,8 @@ class GatewayConfigDict(TypedDict, total=False):
     extraLabels: Dict[str, str]
     lifecycle: Dict[str, Dict[str, Dict[str, List[str]]]]
     replicas: int
+    min_instances: int
+    max_instances: int
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
 
@@ -858,9 +860,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         return {"type": "Immediate"}
 
     def is_vtgate_autoscaling_enabled(self, cell_config) -> bool:
-        min_instances = self.get_min_instances()
         max_instances = self.get_max_instances()
-        return min_instances and max_instances
+        return max_instances is not None
 
     def get_desired_scalablevtgate_cr(
         self,
@@ -904,7 +905,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             name=name,
         )
 
-    def get_autoscaling_metric_spec(
+    def get_desired_hpa_spec(
         self,
         name: str,
         cluster: str,
@@ -1007,7 +1008,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         )
 
         if should_exist:
-            hpa = self.get_autoscaling_metric_spec(
+            hpa = self.get_desired_hpa_spec(
                 name=name,
                 cluster=self.get_cluster(),
                 kube_client=kube_client,
