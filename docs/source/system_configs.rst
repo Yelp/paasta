@@ -17,7 +17,7 @@ are overlapping keys in different files the last file will win.
 If a file has permissions that prevent us from reading it, then that file will be ignored.
 This is useful for credentials that only some users or scripts need access to.
 
-See `load_system_paasta_config <generated/paasta_tools.utils.html#paasta_tools.utils.load_system_paasta_config>`_ for
+See `load_system_PaaSTA_config <generated/PaaSTA_tools.utils.html#PaaSTA_tools.utils.load_system_PaaSTA_config>`_ for
 more details on how system configs are loaded.
 
 
@@ -26,7 +26,7 @@ Configuration options
 
 These are the keys that may exist in system configs:
 
-  * ``docker_registry``: The name of the docker registry where paasta images will be stored. This can optionally
+  * ``docker_registry``: The name of the docker registry where PaaSTA images will be stored. This can optionally
     be set on a per-service level as well, see `yelpsoa_configs <yelpsoa_configs.html#service-yaml>`_
     Example: ``"docker_registry": "docker-paasta.yelpcorp.com:443"``
 
@@ -98,7 +98,7 @@ These are the keys that may exist in system configs:
 
     Example: ``"synapse_port": 3213``
 
-  * ``synapse_host``: The default host that paasta should interrogate for haproxy-synapse state.
+  * ``synapse_host``: The default host that PaaSTA should interrogate for haproxy-synapse state.
     Defaults to ``localhost``.
 
     Example: ``"synapse_host": 169.254.255.254``

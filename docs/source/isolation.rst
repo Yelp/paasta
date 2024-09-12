@@ -4,16 +4,16 @@ Resource Isolation in PaaSTA, Kubernetes and Docker
 
 PaaSTA instance definitions include fields that specify the required resources
 for your service. The reason for this is two-fold: firstly, so that the Kubernetes scheduler
-can evaluate which Kubernetes nodes have enough capacity to schedule the kubernetes pods (representing paasta instances) on, in the cluster specified;
-secondly, so that the pods can be protected from especially noisy
-neighbours on a box. That is, if a pod under-specifies the resources it
+can evaluate which Kubernetes nodes have enough capacity to schedule the Kubernetes Pods (representing PaaSTA instances) on, in the cluster specified;
+secondly, so that the Pods can be protected from especially noisy
+neighbours on a box. That is, if a Pod under-specifies the resources it
 requires to run, or in another case, has a bug that means that it consumes far
-more resources than it *should* require, then the offending pods can be
+more resources than it *should* require, then the offending Pods can be
 isolated effectively, preventing them from having a negative impact on its
 neighbours.
 
 This document is designed to give a more detailed review of how Kubernetes
-use these requirements to run pods on different Kubernetes nodes, and how these isolation mechanisms are implemented.
+use these requirements to run Pods on different Kubernetes nodes, and how these isolation mechanisms are implemented.
 
 Note: Knowing the details of these systems isn't a requirement of using PaaSTA;
 most service authors may never need to know the details of such things. In
@@ -29,11 +29,10 @@ How Tasks are Scheduled on Hosts
 --------------------------------
 
 To first understand how these resources are used, one must understand how
-a pod is run on a Kubernetes cluster.
+a Pod is run on a Kubernetes cluster.
 
-Kubernetes has two types of nodes: Master and worker nodes. The master node is
-is responsible for managing the cluster. This includes scheduling applications (i.e. paasta services), maintaining
-applications' desired states, scaling applications and rolling out new updates.
+Kubernetes has two types of nodes: Master and worker nodes. The master nodes are
+responsible for managing the cluster.
 
 The master node contains the following components:
 
@@ -45,39 +44,39 @@ The master node contains the following components:
 Worker nodes are the machines that run the workload. Each worker node runs the following components
 to manage the execution and networking of containers:
 
-  * Kubelet: An agent that runs on each node in the cluster. It makes sure that containers are running in a pod.
-  * Kube-proxy: Maintains network rules on nodes. These network rules allow network communication to pods from network sessions inside or outside of the cluster.
+  * Kubelet: An agent that runs on each node in the cluster. It makes sure that containers are running in a Pod.
+  * Kube-proxy: Maintains network rules on nodes. These network rules allow network communication to Pods from network sessions inside or outside of the cluster.
   * Container runtime: The software that is responsible for running containers. Kubernetes supports several container runtimes: Docker, containerd, CRI-O, and any implementation of the Kubernetes CRI (Container Runtime Interface).
 
 
-When a new pod (representing a paasta instance) is created, the Kubernetes scheduler (kube-scheduler) will assign it to the best node for it to run on.
-The scheduler will take into account the resources required by the pod, the resources available on the nodes, and any constraints that are specified. It takes the following
-criteria into account when selecting a node to have the pod run on:
+When a new Pod (representing a PaaSTA instance) is created, the Kubernetes scheduler (kube-scheduler) will assign it to the best node for it to run on.
+The scheduler will take into account the resources required by the Pod, the resources available on the nodes, and any constraints that are specified. It takes the following
+criteria into account when selecting a node to have the Pod run on:
 
-  * Resource requirements: Checks if nodes have enough CPU, memory, and other resources requested by the pod.
-  * Node affinity: Checks if the pod should be scheduled on a node that has a specific label.
-  * Inter-pod affinity/anti-affinity: checks if the pod should be scheduled near or far from another pod.
-  * Taints and tolerations: Checks if the pod should be scheduled on a node that has a specific taint.
-  * Node selectors: Checks if the pod should be scheduled on a node that has a specific label.
-  * Custom Policies: any custom scheduling policies or priorities such as "deploy_whitelist", "deploy_blacklist" and "discovery" (used by smartstack).
+  * Resource requirements: Checks if nodes have enough CPU, memory, and other resources requested by the Pod.
+  * Node affinity: Checks if the Pod should be scheduled on a node that has a specific label.
+  * Inter-Pod affinity/anti-affinity: checks if the Pod should be scheduled near or far from another Pod.
+  * Taints and tolerations: Checks if the Pod should be scheduled on a node that has a specific taint.
+  * Node selectors: Checks if the Pod should be scheduled on a node that has a specific label.
+  * Custom Policies: any custom scheduling policies or priorities such as the Pod Topology Spread Constraints set by the key "topology_spread_constraint".
 
-The scheduler will then score each node that can host the pod, based on the criteria above and any custom policies and then select the node
-with the highest score to run the pod on. If multiple nodes have the same highest score then one of them is chosen randomly. Once a node is selected, the scheduler assigns
-the pod to the node and the decision is then communicated back to the API server, which in turn notifies the kubelet on the chosen node to start the pod.
+The scheduler will then score each node that can host the Pod, based on the criteria above and any custom policies and then select the node
+with the highest score to run the Pod on. If multiple nodes have the same highest score then one of them is chosen randomly. Once a node is selected, the scheduler assigns
+the Pod to the node and the decision is then communicated back to the API server, which in turn notifies the kubelet on the chosen node to start the Pod.
+For more information on how the scheduler works, see the [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling/scheduling-framework/).
 
-How are paasta services isolated from each other.
----------------------------------------
+In PaaSTA, we also run
 
-Given that a node may run multiple pods for paasta services, we need to ensure that pods cannot
+How PaaSTA services are isolated from each other
+------------------------------------------------
+
+Given that a node may run multiple Pods for PaaSTA services, we need to ensure that Pods cannot
 'interfere' with one another. We do this on a file system level using Docker -
 processes launched in Docker containers are protected from each other and the
 host by using kernel namespaces. Note that the use of kernel namespaces is a
-feature of Docker - PaaSTA doesn't do anything 'extra' to enable this. In addition,
-Kubernetes namespaces provide further isolation of resources within the cluster. Each paasta service
-is assigned to a namespace, and resources within a namespace are isolated from those in other namespaces. This helps in managing
-resources for different paasta services.
+feature of Docker - PaaSTA doesn't do anything 'extra' to enable this.
 
-However, these pods are still running and consuming resources on the same
+However, these Pods are still running and consuming resources on the same
 host. The next section aims to explain how PaaSTA services are protected from
 so-called 'noisy neighbours' that can starve others from resources.
 
@@ -119,21 +118,21 @@ If the processes in the cgroup reaches the ``memsw.limit_in_bytes`` value ,
 then the kernel will invoke the OOM killer, which in turn will kill off one of
 the processes in the cgroup (often, but not always, this is the biggest
 contributor to the memory usage). If this is the only process running in the
-Docker container, then the container will die. Kubernetes will attempt to reschedule the pod
-to maintain the desired number of replicas specified in the Deployment. For each paasta instance, a deployment is created
-which manages the state of the pods for that instance, ensuring that a specified number of replicas (specified in soa-configs) are running at any given time.
+Docker container, then the container will die. Kubernetes will attempt to reschedule the Pod
+to maintain the desired number of replicas specified in the Deployment. For each PaaSTA instance, a Deployment is created
+which manages the state of the Pods for that instance, ensuring that a specified number of replicas (specified in soa-configs) are running at any given time.
 
 CPUs
 """"
 
 CPU enforcement is implemented slightly differently. Many people expect the
 value defined in the ``cpus`` field in a service's soa-configs to map to a
-number of cores that are reserved for a pod. However, isolating CPU time like
+number of cores that are reserved for a Pod. However, isolating CPU time like
 this can be particularly wasteful; unless a task spends 100% of its time on
-CPU (and thus has *no* I/O), then there is no need to prevent other pods from
+CPU (and thus has *no* I/O), then there is no need to prevent other Pods from
 running on the spare CPU time available.
 
-Instead, the CPU value is used to give pods a relative priority. This priority
+Instead, the CPU value is used to give Pods a relative priority. This priority
 is used by the Linux Scheduler decide the order in which to run waiting
 threads.
 
@@ -162,6 +161,5 @@ Some notes on this:
 Disk
 """""
 
-Kubernetes supports disk resource isolation through the use of Persistent Volumes (PVs), Persistent Volume Claims (PVCs), and
-storage quotas. Paasta instances pods can claim a portion of storage through PVCs. This doesn't limit the disk space that the pod can use directly but
-it allows for the allocation of storage resources to pods. Disk resource is also isolated through the use of namespaces - each namespace has a set quota for the total amount of storage that can be requested by the paasta service running in it.
+Kubernetes supports disk resource isolation through the use of storage quotas. Disk resource is isolated through the use of
+namespaces - each namespace has a set quota for the total amount of storage that can be requested by the PaaSTA service running in it.

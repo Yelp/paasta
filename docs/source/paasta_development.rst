@@ -18,8 +18,8 @@ PaaSTA playground use cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 There are mainly two use cases for PaaSTA playground:
 
-1) :ref:`If the developer wants to debug different components of PaaSTA <debugging-paasta>`
-2) :ref:`If the developer just wants to run PaaSTA to see a change they developed in PaaSTA components <running-paasta>`
+1) :ref:`If the developer wants to debug different components of PaaSTA <debugging-PaaSTA>`
+2) :ref:`If the developer just wants to run PaaSTA to see a change they developed in PaaSTA components <running-PaaSTA>`
 
 Create a Kind Cluster - K8s Cluster
 -----------------------------------
@@ -29,7 +29,7 @@ Before running or debugging PaaSTA playground, you will need to create a Kuberne
 
 To delete the cluster, run ``make k8s_clean``.
 
-.. _debugging-paasta:
+.. _debugging-PaaSTA:
 
 Debugging PaaSTA playground (in VS Code)
 ----------------------------------------
@@ -54,19 +54,19 @@ and select the configuration you want to run the debugger with, then press on ``
 
 For more information on how to run the VS Code debugger, please refer to `VS Code Documentation <https://code.visualstudio.com/docs/editor/debugging>`_
 
-.. _debugging-paasta-playground:
+.. _debugging-PaaSTA-playground:
 
 Debugging PaaSTA playground components (in VS Code)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Steps below outline running PaaSTA playground components with a debugger attached:
 
-1. Run ``make generate_deployments_for_service`` to run the Make targets that generate the ``etc_paasta_playground`` and ``soa_config_playground`` directories and the ``deployments.json`` file.
+1. Run ``make generate_Deployments_for_service`` to run the Make targets that generate the ``etc_paasta_playground`` and ``soa_config_playground`` directories and the ``Deployments.json`` file.
 2. [This step can be ran one time] From the ``Run and Debug`` tab in VS Code, press on ``Run setup k8s job in playground`` to deploy ``compute-infra-test-service`` service in the cluster, if it's not deployed.
 
    .. sourcecode:: shell
 
-      (py38-linux) user@dev55-uswest1adevc:~/pg/paasta$ KUBECONFIG=./k8s_itests/kubeconfig kubectl get pods -n paasta
+      (py38-linux) user@dev55-uswest1adevc:~/pg/paasta$ KUBECONFIG=./k8s_itests/kubeconfig kubectl get Pods -n paasta
       NAME                                                      READY   STATUS    RESTARTS   AGE
       compute-infra-test-service-autoscaling-6fdf96b485-2fkd5   1/1     Running   0          25s
       compute-infra-test-service-autoscaling-6fdf96b485-44lqp   1/1     Running   0          25s
@@ -79,8 +79,8 @@ Steps below outline running PaaSTA playground components with a debugger attache
       compute-infra-test-service-autoscaling-6fdf96b485-pb6mm   1/1     Running   0          25s
       compute-infra-test-service-autoscaling-6fdf96b485-v8shw   1/1     Running   0          25s
 
-3. From the ``Run and Debug`` tab in VS Code, press on ``paasta API playground`` to run PaaSTA API
-4. Wait until workers are booted in API output then from the ``Run and Debug`` tab in VS Code, press on ``paasta status playground`` to run the PaaSTA ClI client to connect to the API.
+3. From the ``Run and Debug`` tab in VS Code, press on ``PaaSTA API playground`` to run PaaSTA API
+4. Wait until workers are booted in API output then from the ``Run and Debug`` tab in VS Code, press on ``PaaSTA status playground`` to run the PaaSTA ClI client to connect to the API.
 
 Observe paaSTA API logs to check for connection from the client.
 
@@ -96,7 +96,7 @@ Expected output from client:
               ReplicaSet Name                                    Ready / Desired  Created at what localtime         Service git SHA                           Config hash
               compute-infra-test-service-autoscaling-6fdf96b485  10/10            2022-12-14T08:19 (2 minutes ago)  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  configxxxx
 
-.. _running-paasta:
+.. _running-PaaSTA:
 
 Running PaaSTA playground
 -------------------------
@@ -107,11 +107,11 @@ If you didn't run ``setup_kubernetes_job`` to deploy ``compute-infra-test-servic
 
 1. Using ``launch.json`` file
 
-   1. From the ``Run and Debug`` tab in VS Code, press on ``paasta playground``. This will run all PaaSTA components.
+   1. From the ``Run and Debug`` tab in VS Code, press on ``PaaSTA playground``. This will run all PaaSTA components.
 
 
 2. Using make targets
 
-   1. Run ``make setup_kubernetes_job`` to run the Make target that generates the  ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` file and deploys workloads to the cluster.
+   1. Run ``make setup_kubernetes_job`` to run the Make target that generates the  ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``Deployments.json`` file and deploys workloads to the cluster.
    2. Run ``make playground-api`` to run the Make target that runs PaaSTA API.
-   3. Wait until workers are booted in API output then from the ``Run and Debug`` tab in VS Code, press on ``paasta status playground`` to run the PaaSTA ClI client to connect to the API.
+   3. Wait until workers are booted in API output then from the ``Run and Debug`` tab in VS Code, press on ``PaaSTA status playground`` to run the PaaSTA ClI client to connect to the API.

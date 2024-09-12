@@ -13,6 +13,11 @@ PaaSTA uses.
 `Kubernetes <https://kubernetes.io/>`_ (a.k.a. k8s) is the open-source system on which Yelp runs many compute workloads.
 In Kubernetes, tasks are distributed to and run by servers called Kubelets (but a.k.a. kube nodes or Kubernetes agents) from the Kubernetes control plane.
 
+**Kubernetes Deployment**
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A Kubernetes resource that represents a collection of pods running the same application. A Deployment is responsible for creating and updating instances of your application.
+
 **Kubernetes Node**
 ~~~~~~~~~~~~~~~~~~~
 
@@ -22,7 +27,7 @@ In our case, it's usually a virtual machine provisioned via AWS EC2 Fleets or Au
 **Kubernetes Horizontal Pod Autoscaler (HPA)**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It's a Kubernetes feature that automatically scales the number of pods in a deployment based on observed CPU utilization (or, with custom metrics support, on some other application-provided metrics).
+A Kubernetes feature that automatically scales the number of pods in a deployment based on observed CPU utilization (or, with custom metrics support, on some other application-provided metrics).
 
 **clustername**
 ~~~~~~~~~~~~~~~
@@ -30,16 +35,22 @@ It's a Kubernetes feature that automatically scales the number of pods in a depl
 A shortname used to describe a PaaSTA cluster. Use \`paasta
 list-clusters\` to see them all.
 
-**Kubernetes pod**
+**Kubernetes Pod**
 ~~~~~~~~~~~~~~~~~~~
 
 Atomic deployment unit for PaaSTA workloads at Yelp and all Kubernetes clusters. Can be thought of as a collection of 1 or more related containers.
 Pods can be seen as one or more containers that share a network namespace, at Yelp these are individual instances of one of our services, many can run on each server.
 
+**Kubernetes Namespace**
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+It provides a mechanism for isolating groups of resources within a single cluster. Each K8s Namespace can contain resources like
+Pods and Deployments, and it allows for management and access controls to be applied at the Namespace level.
+
 **instancename**
 ~~~~~~~~~~~~~~~~
 
-Logical collection of Kubernetes pods that comprise a Kubernetes Deployment. service
+Logical collection of Kubernetes pods that comprise an application (a Kubernetes Deployment) deployed on Kubernetes. service
 name + instancename = Kubernetes Deployment. Examples: main, canary. Each instance represents a running
 version of a service with its own configuration and resources.
 
@@ -47,8 +58,8 @@ version of a service with its own configuration and resources.
 ~~~~~~~~~~~~~
 
 An haproxy/SmartStack concept grouping backends that listen on a
-particular port. A namespace may route to many healthy paaSTA
-instances. By default, the namespace in which a Kubernetes deployment appears is
+particular port. A namespace may route to many healthy PaaSTA
+instances. By default, the namespace in which a PaaSTA instance appears is
 its instancename.
 
 **Nerve**

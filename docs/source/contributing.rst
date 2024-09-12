@@ -22,7 +22,7 @@ You can run ``make itest`` to execute them.
 Example Cluster
 ^^^^^^^^^^^^^^^^^
 There is a docker compose configuration based on our itest containers that you
-can use to run the paasta code against a semi-realistic cluster whilst you are
+can use to run the PaaSTA code against a semi-realistic cluster whilst you are
 developing. More instructions `here <./installation/example_cluster.html>`_
 
 System Package Building / itests
@@ -37,7 +37,7 @@ Making new versions
 -------------------
 * Make a branch. WRITE TESTS FIRST (TDD)! Add features.
 
-* Submit your branch for review. Include the "paasta" group. Communicate with
+* Submit your branch for review. Include the "PaaSTA" group. Communicate with
   the team to select a single designated Primary Reviewer.
 
 * After ShipIts, merge your branch to master.

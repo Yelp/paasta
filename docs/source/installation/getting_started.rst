@@ -93,7 +93,7 @@ Kubernetes
 ----------
 
 PaaSTA uses `Kubernetes <https://kubernetes.io/>`_ to manage and orchestrate its containerized services.
-See the `PaaSTA documentation <../yelpsoa_configs.html#kubernetes-clustername-yaml>`_ for how to define paasta
+See the `PaaSTA documentation <../yelpsoa_configs.html#kubernetes-clustername-yaml>`_ for how to define PaaSTA
 services in Kubernetes.
 
 Once PaaSTA services are defined in soa-configs, there are a few tools provided by PaaSTA
@@ -125,7 +125,7 @@ To manage the configuration of nerve (detecting which services are running on a 
 we have a package called `nerve-tools <https://github.com/Yelp/nerve-tools>`_.
 This repo builds a .deb package, and should be installed on all slaves.
 Each slave should run ``configure_nerve`` periodically.
-We recommend this runs quite frequently (we run it every 5s), since kubernetes pods created by Paasta are not available
+We recommend this runs quite frequently (we run it every 5s), since Kubernetes Pods created by PaaSTA are not available
 to clients until nerve is reconfigured.
 
 Similarly, to manage the configuration of synapse, we have a package called `synapse-tools <https://github.com/Yelp/synapse-tools>`_.

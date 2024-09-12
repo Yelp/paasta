@@ -1,7 +1,7 @@
-Preparation: paasta_tools and yelpsoa-configs
+Preparation: PaaSTA_tools and yelpsoa-configs
 =========================================================
 
-paasta_tools reads configuration about services from several YAML
+PaaSTA_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
 Each object inside of these YAML files is called an "instance" of a PaaSTA
@@ -14,7 +14,7 @@ so you are free to use them for YAML templates.
 
 **Note** that service names (the name of the folder where your config file is located) should be no more than 63 characters.
 For kubernetes services(config files with kubernetes as prefix), the instance names should be no more than 63 characters as well.
-_ is counted as two character. We convert _  to -- because underscore is not allowed in kubernetes pod names.
+_ is counted as two character. We convert _  to -- because underscore is not allowed in kubernetes Pod names.
 
 Example::
 
@@ -68,7 +68,7 @@ specify the following options:
     * ``PAASTA_GIT_SHA``: The short git sha of the code the container has
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
-    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username of the user who launched the paasta container
+    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username of the user who launched the PaaSTA container
     * ``PAASTA_RESOURCE_CPUS``: Number of cpus allocated to a container
     * ``PAASTA_RESOURCE_MEM``: Amount of ram in MB allocated to a container
     * ``PAASTA_RESOURCE_DISK``: Amount of disk space in MB allocated to a container
@@ -124,12 +124,12 @@ These options are applicable to tasks scheduled through Kubernetes.
 
    would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region.
 
-  * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
+  * ``deploy_whitelist``: A list of lists indicating a set of locations where Deployment is allowed.  For example:
 
       ``deploy_whitelist: ["region", ["uswest1-prod", "uswest2-prod"]]``
 
     would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
-    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
+    is empty (the default), then Deployment is allowed anywhere.  This is superseded by the blacklist; if
     a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
     of whitelisting may be specified.
 
@@ -250,14 +250,14 @@ These options are only applicable to tasks scheduled on Kubernetes.
 
 For more information on selector operators, see the official Kubernetes
 documentation on `node affinities
-<https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
+<https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#node-affinity>`_.
 
-  * ``pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the pods are managed in parallel or in order.
+  * ``Pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the Pods are managed in parallel or in order.
 
-    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-pod-management>`_.
-    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-pod-management>`_. For example::
+    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-Pod-management>`_.
+    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-Pod-management>`_. For example::
 
-      pod_management_policy: Parallel
+      Pod_management_policy: Parallel
 
 
 ``kubernetes-[clustername].yaml``
@@ -333,11 +333,11 @@ instance MAY have:
     See `the bounce docs <bouncing.html>`_ for a more detailed description.
 
   * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
-    to soa-configs or the marked-for-deployment version of an instance.
+    to soa-configs or the marked-for-Deployment version of an instance.
     Defaults to 0. (deadline = now)
     When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
     Set this to a large positive number to allow deployd to process other instances before this one, even if their
-      soa-configs change or mark-for-deployment happened after this one.
+      soa-configs change or mark-for-Deployment happened after this one.
     This setting only affects the first time deployd processes an instance after a change --
       instances that need to be reprocessed will be reenqueued normally.
 
@@ -371,7 +371,7 @@ instance MAY have:
           Default value is 0.8.
 
         * ``desired_active_requests_per_replica``: Only valid for the ``active-requests`` metrics provider.  The
-          target number of requests per second each pod should be receiving.
+          target number of requests per second each Pod should be receiving.
 
         * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
           and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
@@ -384,7 +384,7 @@ instance MAY have:
           ``arbitrary_promql`` metrics provider.
 
     * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
-      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`
+      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-Pod-autoscale/#scaling-policies>`
       for scaling policies.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
@@ -428,7 +428,7 @@ instance MAY have:
     A failing readiness probe will not restart the instance, it will however be
     removed from the mesh and not receive any new traffic.
 
-    To add an additional delay after the pod has started and before probes should
+    To add an additional delay after the Pod has started and before probes should
     start, see ``min_task_uptime``.
 
   * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
@@ -460,14 +460,14 @@ instance MAY have:
     accessed externally. This option is implied when registered to smartstack or
     when specifying a ``prometheus_port``. Defaults to ``false``
 
-  * ``weight``: Load balancer/service mesh weight to assign to pods belonging to this instance.
-    Pods should receive traffic proportional to their weight, i.e. a pod with
-    weight 20 should receive 2x as much traffic as a pod with weight 10.
+  * ``weight``: Load balancer/service mesh weight to assign to Pods belonging to this instance.
+    Pods should receive traffic proportional to their weight, i.e. a Pod with
+    weight 20 should receive 2x as much traffic as a Pod with weight 10.
     Defaults to 10.
     Must be an integer.
-    This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
+    This only makes a difference when some Pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
-  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
+  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `Pod lifecycle <https://kubernetes.io/docs/concepts/workloads/Pods/Pod-lifecycle/#Pod-termination>`_:
     This currently supports two sub-keys:
 
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
@@ -499,7 +499,7 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 This file stores configuration for periodically scheduled jobs for execution on
 `Tron <https://github.com/yelp/tron>`_.
 
-The documentation here is for the PaaSTA-specific options. For all other
+The documentation here is for the paasta-specific options. For all other
 settings, please see the
 `canonical docs <https://tron.readthedocs.io/en/latest/jobs.html>`_.
 
@@ -576,7 +576,7 @@ If a Tron **action** of a job is of executor type ``spark``, it MAY specify the 
 
   * ``spark_args``: Dictionary of spark configurations documented in
     https://spark.apache.org/docs/latest/configuration.html. Note some configurations are non-
-    user-editable as they will be populated by paasta tools. See
+    user-editable as they will be populated by PaaSTA tools. See
     https://github.com/Yelp/service_configuration_lib/blob/master/service_configuration_lib/spark_config.py#L9
     for a complete list of such configurations.
 
@@ -663,7 +663,7 @@ Basic HTTP and TCP options
    it will generate synapse discovery files on every host, but no listening
    port will be allocated. This must be unique across all environments where
    PaaSTA (or synapse) runs. At Yelp, we pick from the range [19000, 21000].
-   Feel free to pick the next available value -- paasta fsm will do this for
+   Feel free to pick the next available value -- PaaSTA fsm will do this for
    you automatically!
 
  * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service
@@ -912,7 +912,7 @@ superregion you are changing::
     [host1-uswest1adevc_0000015910, host2-uswest1cdevc_0000015898, host3-uswest1cdevc_0000015893]
     [zk: 10.40.5.6:22181(CONNECTED) 2]
 
-2b. Run ``paasta status -v`` to verify that paasta has balanced services
+2b. Run ``paasta status -v`` to verify that PaaSTA has balanced services
 across the infrastructure as expected.
 
 3. Once zookeeper shows the proper servers, switch the discovery key::

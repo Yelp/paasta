@@ -71,7 +71,7 @@ Some but not all of the paasta command line tools should work. Try:
     paasta status -s hello-world
 
 Scribe is not included with this example cluster. If you are looking for
-logs, check syslog on the kubernetes node that the pod is running on for the output from cron.
+logs, check syslog on the Kubernetes node that the pod is running on for the output from cron.
 You can get the host the pod is running on by adding "-v" to the command above.
 
 Cleanup

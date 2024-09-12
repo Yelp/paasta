@@ -23,12 +23,12 @@ Examples
 ^^^^^^^^
 
 Good:
- * paasta mark-for-deployment => Goes to stdout. (But also scribe)
+ * paasta mark-for-Deployment => Goes to stdout. (But also scribe)
 Bad:
- * paasta mark-for-deployment => Going to scribe only, which is surprising.
+ * paasta mark-for-Deployment => Going to scribe only, which is surprising.
 
 Good:
- * paasta itest => Sends event-level detail to stdout
+ * PaaSTA itest => Sends event-level detail to stdout
 
 Example::
 
@@ -40,7 +40,7 @@ Example::
   etc"
 
 Bad:
- * paasta itest => Sends all output to scribe, no output to stdout. Jenkins console output is empty and surprises users.
+ * PaaSTA itest => Sends all output to scribe, no output to stdout. Jenkins console output is empty and surprises users.
 
  * Scribe: Tools that contribute to the overall flow of a service pipeline should log to scribe with their given component. Only log lines that are specific to a service should be sent here. Logging to scribe should be selective and precise as to not overwhelm the event stream.
 
@@ -52,9 +52,9 @@ Bad:
  * setup_kubernetes_job | stdint2scribe (no selective filtering, raw stdout dump)
 
 Good:
- * paasta itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log
+ * PaaSTA itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log
 Bad:
- * paasta itest => Sends every line of the ``make itest`` output to ``event`` level, drowning out other key event lines.
+ * PaaSTA itest => Sends every line of the ``make itest`` output to ``event`` level, drowning out other key event lines.
 
  * Syslog: Non-interactive system processes that do not send data to developers can use syslog, but via stdout => logger. Do not send to syslog directly.
 
@@ -79,7 +79,7 @@ Event Level General Guidelines:
 
 * All event-level scribe logs should be as terse as possible while still providing a high level summary of the events occurring in the infrastructure.
 * All state changing events MUST have at least one event-level scribe log line emitted.
-* It is not necessary to repeat redundant information, like service name, as all paasta log invocations already are service-specific anyway.
+* It is not necessary to repeat redundant information, like service name, as all PaaSTA log invocations already are service-specific anyway.
 * All event level logs SHOULD use active verbs to indicate the action that took place.
 * Log lines SHOULD NOT contain the log level that they are using *in* the log line. Don't try to emulate syslog.
 * If an external URL with more context is available, the log line SHOULD reference it, but only if an error or warning is detected.
@@ -87,7 +87,7 @@ Event Level General Guidelines:
 
 Good examples of things that would be in the ``event`` level log stream:
 
-* ``40e74f marked for deployment in cluster.main``
+* ``40e74f marked for Deployment in cluster.main``
 * ``upthendown bounce initiated on instance main``
 * ``itest Passed for 9e2990.``
 * ``itest Failed for 9e2990. More info: http://....``
@@ -104,7 +104,7 @@ Debug Level
 
 Debug Level General Guidelines:
 
-* Viewing Debug level logs SHOULD NOT be necessary under normal paasta operation.
+* Viewing Debug level logs SHOULD NOT be necessary under normal PaaSTA operation.
 * Debug logs are for providing additional context when things go wrong.
 * Debug logs should still use active verbs and not repeat redundant information if possible.
 * All debug-level logs should also go to stderr.

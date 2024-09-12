@@ -8,7 +8,7 @@ What are deploy groups?
 A deploy group is a group of PaaSTA instances that will be deployed together.
 They provide a way to control how new versions of your service are deployed to production and other environments.
 The ``kubernetes-[clustername].yaml``, ``tron-[clustername].yaml``, and ``adhoc-[clustername].yaml`` files should have a ``deploy_group`` field on each instance.
-The ``paasta mark-for-deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells PaaSTA that you want a deploy group to run a specific version of your service.
+The ``paasta mark-for-Deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells PaaSTA that you want a deploy group to run a specific version of your service.
 In ``deploy.yaml``, you specify the order in which the deploy groups pick up new changes.
 
 As an example, consider a service with the following deploy.yaml:
@@ -41,7 +41,7 @@ Deploy groups in kubernetes/tron yamls and deploy.yaml should match
 
 In almost all cases, you want the list of deploy groups in ``deploy.yaml`` (the ``step`` entries under ``pipeline``, except for the special build/test steps) to match the set of ``deploy_group``s defined in your kubernetes.yaml / tron.yaml / adhoc.yaml.
 If an instance has a ``deploy_group`` that is not defined in deploy.yaml, or your Jenkins pipeline has not run since you added the deploy.yaml entry, PaaSTA won't know what version of your container image this instance should run.
-If a deploy group is specified as a ``step`` in deploy.yaml but is not referenced in any kubernetes/adhoc/tron.yaml, this deployment step will have no effect.
+If a deploy group is specified as a ``step`` in deploy.yaml but is not referenced in any kubernetes/adhoc/tron.yaml, this Deployment step will have no effect.
 
 The ``paasta validate`` command can help you check that the ``deploy_group`` parameter on each of your instances is defined in deploy.yaml.
 
