@@ -853,7 +853,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         max_instances = self.get_max_instances()
         return min_instances and max_instances
 
-    def get_desired_vtgate_cr(
+    def get_desired_scalablevtgate_cr(
         self,
         kube_client: KubeClient,
         name: str,
@@ -862,7 +862,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
     ) -> Optional[Dict[str, Any]]:
         return {
             "apiVersion": "yelp.com/v1alpha1",
-            "kind": "Vtgate",
+            "kind": "ScalableVtgate",
             "metadata": {
                 "name": name,
                 "namespace": self.get_namespace(),
@@ -890,7 +890,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
     def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
         return V2beta2CrossVersionObjectReference(
-            api_version="yelp.com/v1alpha1", kind="Vtgate", name=name
+            api_version="yelp.com/v1alpha1", kind="ScalableVtgate", name=name
         )
 
     def get_autoscaling_metric_spec(
@@ -1012,7 +1012,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
     def get_vtgate_hpa_name(self, cell_name: str) -> str:
         return f"{sanitised_cr_name(self.service, self.instance)}-cell-{cell_name}"
 
-    def reconcile_vtgate_cr(
+    def reconcile_scalablevtgate_cr(
         self,
         kube_client: KubeClient,
         owner_uid: str,
@@ -1020,7 +1020,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
     ):
         should_exist = self.is_vtgate_autoscaling_enabled(cell_config)
         name = self.get_vtgate_hpa_name(cell_config["name"])
-        vtgate_cr = self.get_desired_vtgate_cr(
+        scalablevtgate_cr = self.get_desired_scalablevtgate_cr(
             kube_client=kube_client,
             name=name,
             owner_uid=owner_uid,
@@ -1039,7 +1039,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 group="yelp.com",
                 version="v1alpha1",
                 namespace=self.get_namespace(),
-                plural="vtgates",
+                plural="scalablevtgates",
                 name=name,
             )
         except ApiException as e:
@@ -1049,7 +1049,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
         if should_exist:
             if exists:
-                vtgate_cr["metadata"]["resourceVersion"] = cr["metadata"][
+                scalablevtgate_cr["metadata"]["resourceVersion"] = cr["metadata"][
                     "resourceVersion"
                 ]
                 kube_client.custom.replace_namespaced_custom_object(
@@ -1057,16 +1057,16 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                     group="yelp.com",
                     version="v1alpha1",
                     namespace=self.get_namespace(),
-                    plural="vtgates",
-                    body=vtgate_cr,
+                    plural="scalablevtgates",
+                    body=scalablevtgate_cr,
                 )
             else:
                 kube_client.custom.create_namespaced_custom_object(
                     group="yelp.com",
                     version="v1alpha1",
                     namespace=self.get_namespace(),
-                    plural="vtgates",
-                    body=vtgate_cr,
+                    plural="scalablevtgates",
+                    body=scalablevtgate_cr,
                 )
         elif exists:
             kube_client.custom.delete_namespaced_custom_object(
@@ -1074,7 +1074,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 group="yelp.com",
                 version="v1alpha1",
                 namespace=self.get_namespace(),
-                plural="vtgates",
+                plural="scalablevtgates",
             )
 
     def update_related_api_objects(self, kube_client: KubeClient):
@@ -1090,7 +1090,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 owner_uid=vitesscluster_uid,
                 cell_config=cell_config,
             )
-            self.reconcile_vtgate_cr(
+            self.reconcile_scalablevtgate_cr(
                 kube_client,
                 owner_uid=vitesscluster_uid,
                 cell_config=cell_config,
@@ -1113,26 +1113,26 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 continue
 
             name = self.get_vtgate_hpa_name(cell["name"])
-            vtgate_cr = None
+            scalablevtgate_cr = None
             try:
-                vtgate_cr = kube_client.custom.get_namespaced_custom_object(
+                scalablevtgate_cr = kube_client.custom.get_namespaced_custom_object(
                     group="yelp.com",
                     version="v1alpha1",
                     namespace=self.get_namespace(),
-                    plural="vtgates",
+                    plural="scalablevtgates",
                     name=name,
                 )
             except ApiException as e:
                 if e.status != 404:
                     raise e
                 else:
-                    log.error(f"Vtgate {name} has been created yet found")
+                    log.error(f"ScalableVtgate {name} has been created yet found")
 
-            if not vtgate_cr:
-                log.error(f"Vtgate {name} not found")
+            if not scalablevtgate_cr:
+                log.error(f"ScalableVtgate {name} not found")
                 continue
 
-            autoscaled_replicas = vtgate_cr["spec"].get("replicas")
+            autoscaled_replicas = scalablevtgate_cr["spec"].get("replicas")
             if autoscaled_replicas is not None:
                 cell["gateway"]["replicas"] = autoscaled_replicas
 
