@@ -993,7 +993,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
         if should_exist:
             hpa = self.get_autoscaling_metric_spec(
-                name=sanitised_cr_name(self.service, self.instance),
+                name=name,
                 cluster=self.get_cluster(),
                 kube_client=kube_client,
                 namespace=self.get_namespace(),
