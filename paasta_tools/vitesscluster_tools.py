@@ -134,6 +134,8 @@ class GatewayConfigDict(TypedDict, total=False):
     extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
+    extraVolumeMounts: List[Dict[str, Any]]
+    extraVolumes: List[Dict[str, Any]]
     lifecycle: Dict[str, Dict[str, Dict[str, List[str]]]]
     replicas: int
     resources: Dict[str, Any]
@@ -287,6 +289,28 @@ def get_cell_config(
                 "mysql_auth_vault_tls_ca": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
                 "mysql_auth_vault_ttl": "60s",
             },
+            extraVolumeMounts=[
+                {
+                    "mountPath": "/nail/srv",
+                    "name": "srv-configs",
+                    "readOnly": True,
+                },
+                {
+                    "mountPath": "/nail/etc/srv-configs",
+                    "name": "etc-srv-configs",
+                    "readOnly": True,
+                },
+            ],
+            extraVolumes=[
+                {
+                    "name": "srv-configs",
+                    "hostPath": {"path": "/nail/srv"},
+                },
+                {
+                    "name": "etc-srv-configs",
+                    "hostPath": {"path": "/nail/etc/srv-configs"},
+                },
+            ],
             extraLabels=labels,
             replicas=replicas,
             resources={
