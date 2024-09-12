@@ -12,6 +12,7 @@ from typing import Union
 import service_configuration_lib
 from kubernetes.client import ApiClient
 from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1OwnerReference
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
@@ -909,6 +910,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         cluster: str,
         kube_client: KubeClient,
         namespace: str,
+        owner_uid: str,
     ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
@@ -951,7 +953,20 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=dict(), labels=labels
+                name=name,
+                namespace=namespace,
+                annotations=dict(),
+                labels=labels,
+                owner_references=[
+                    V1OwnerReference(
+                        api_version="planetscale.com/v2",
+                        kind="VitessCluster",
+                        name=sanitised_cr_name(self.service, self.instance),
+                        uid=owner_uid,
+                        controller=True,
+                        block_owner_deletion=True,
+                    ),
+                ],
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=scaling_policy,
@@ -997,6 +1012,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 cluster=self.get_cluster(),
                 kube_client=kube_client,
                 namespace=self.get_namespace(),
+                owner_uid=owner_uid,
             )
             if not hpa:
                 return
