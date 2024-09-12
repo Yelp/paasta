@@ -117,6 +117,21 @@ VITESS_CONFIG = {
                     "mysql_auth_vault_ttl": "60s",
                 },
                 "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
+                "extraVolumeMounts": [
+                    {"mountPath": "/nail/srv", "name": "srv-configs", "readOnly": True},
+                    {
+                        "mountPath": "/nail/etc/srv-configs",
+                        "name": "etc-srv-configs",
+                        "readOnly": True,
+                    },
+                ],
+                "extraVolumes": [
+                    {"hostPath": {"path": "/nail/srv"}, "name": "srv-configs"},
+                    {
+                        "hostPath": {"path": "/nail/etc/srv-configs"},
+                        "name": "etc-srv-configs",
+                    },
+                ],
                 "lifecycle": {
                     "postStart": {
                         "exec": {
