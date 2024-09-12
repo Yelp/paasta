@@ -1152,9 +1152,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 if e.status != 404:
                     raise e
                 else:
-                    log.error(
-                        f"{SCALABLEVTGATE_CRD['kind']} {name} has been created yet found"
-                    )
+                    log.error(f"{SCALABLEVTGATE_CRD['kind']} {name} not found")
 
             if not scalablevtgate_cr:
                 log.error(f"{SCALABLEVTGATE_CRD['kind']} {name} not found")
