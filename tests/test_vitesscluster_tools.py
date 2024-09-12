@@ -138,6 +138,8 @@ VITESS_CONFIG = {
                     },
                 },
                 "replicas": 1,
+                "min_instances": None,
+                "max_instances": None,
                 "resources": {
                     "limits": {"cpu": "100m", "memory": "256Mi"},
                     "requests": {"cpu": "100m", "memory": "256Mi"},
@@ -690,6 +692,7 @@ def test_load_vitess_service_instance_configs(
         soa_dir="fake_soa_dir",
         cluster="fake_cluster",
         instance="fake_instance",
+        kube_client="fake_kube_client",
     )
     assert vitess_service_instance_configs == VITESS_CONFIG
 

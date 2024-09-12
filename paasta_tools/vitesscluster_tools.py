@@ -512,8 +512,8 @@ def get_tablet_pool_config(
                 "name": "etc-srv-configs",
                 "hostPath": {"path": "/nail/etc/srv-configs"},
             },
-            {"name": "vttablet-fake-credentials", "emptyDir": {}},
-            {"name": "keyspace-fake-init-script", "emptyDir": {}},
+            {"name": "vttablet-fake-credentials", "hostPath": {"path": "/dev/null"}},
+            {"name": "keyspace-fake-init-script", "hostPath": {"path": "/dev/null"}},
         ],
         replicas=replicas,
         vttablet={
