@@ -114,6 +114,14 @@ VTTABLET_EXTRA_FLAGS = {
     "disable_active_reparents": "true",
 }
 
+SCALABLEVTGATE_CRD = {
+    "group": "yelp.com",
+    "version": "v1alpha1",
+    "api_version": "yelp.com/v1alpha1",
+    "plural": "scalablevtgates",
+    "kind": "ScalableVtgate",
+}
+
 
 class KVEnvVar(TypedDict, total=False):
     name: str
@@ -861,8 +869,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         pod_selector: Dict[str, str],
     ) -> Optional[Dict[str, Any]]:
         return {
-            "apiVersion": "yelp.com/v1alpha1",
-            "kind": "ScalableVtgate",
+            "apiVersion": SCALABLEVTGATE_CRD["api_version"],
+            "kind": SCALABLEVTGATE_CRD["kind"],
             "metadata": {
                 "name": name,
                 "namespace": self.get_namespace(),
@@ -890,7 +898,9 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
     def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
         return V2beta2CrossVersionObjectReference(
-            api_version="yelp.com/v1alpha1", kind="ScalableVtgate", name=name
+            api_version=SCALABLEVTGATE_CRD["api_version"],
+            kind=SCALABLEVTGATE_CRD["kind"],
+            name=name,
         )
 
     def get_autoscaling_metric_spec(
@@ -1036,10 +1046,10 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         cr = None
         try:
             cr = kube_client.custom.get_namespaced_custom_object(
-                group="yelp.com",
-                version="v1alpha1",
+                group=SCALABLEVTGATE_CRD["group"],
+                version=SCALABLEVTGATE_CRD["version"],
                 namespace=self.get_namespace(),
-                plural="scalablevtgates",
+                plural=SCALABLEVTGATE_CRD["plural"],
                 name=name,
             )
         except ApiException as e:
@@ -1054,27 +1064,27 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 ]
                 kube_client.custom.replace_namespaced_custom_object(
                     name=name,
-                    group="yelp.com",
-                    version="v1alpha1",
+                    group=SCALABLEVTGATE_CRD["group"],
+                    version=SCALABLEVTGATE_CRD["version"],
                     namespace=self.get_namespace(),
-                    plural="scalablevtgates",
+                    plural=SCALABLEVTGATE_CRD["plural"],
                     body=scalablevtgate_cr,
                 )
             else:
                 kube_client.custom.create_namespaced_custom_object(
-                    group="yelp.com",
-                    version="v1alpha1",
+                    group=SCALABLEVTGATE_CRD["group"],
+                    version=SCALABLEVTGATE_CRD["version"],
                     namespace=self.get_namespace(),
-                    plural="scalablevtgates",
+                    plural=SCALABLEVTGATE_CRD["plural"],
                     body=scalablevtgate_cr,
                 )
         elif exists:
             kube_client.custom.delete_namespaced_custom_object(
                 name=name,
-                group="yelp.com",
-                version="v1alpha1",
+                group=SCALABLEVTGATE_CRD["group"],
+                version=SCALABLEVTGATE_CRD["version"],
                 namespace=self.get_namespace(),
-                plural="scalablevtgates",
+                plural=SCALABLEVTGATE_CRD["plural"],
             )
 
     def update_related_api_objects(self, kube_client: KubeClient):
@@ -1116,20 +1126,22 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             scalablevtgate_cr = None
             try:
                 scalablevtgate_cr = kube_client.custom.get_namespaced_custom_object(
-                    group="yelp.com",
-                    version="v1alpha1",
+                    group=SCALABLEVTGATE_CRD["group"],
+                    version=SCALABLEVTGATE_CRD["version"],
                     namespace=self.get_namespace(),
-                    plural="scalablevtgates",
+                    plural=SCALABLEVTGATE_CRD["plural"],
                     name=name,
                 )
             except ApiException as e:
                 if e.status != 404:
                     raise e
                 else:
-                    log.error(f"ScalableVtgate {name} has been created yet found")
+                    log.error(
+                        f"{SCALABLEVTGATE_CRD['kind']} {name} has been created yet found"
+                    )
 
             if not scalablevtgate_cr:
-                log.error(f"ScalableVtgate {name} not found")
+                log.error(f"{SCALABLEVTGATE_CRD['kind']} {name} not found")
                 continue
 
             autoscaled_replicas = scalablevtgate_cr["spec"].get("replicas")
