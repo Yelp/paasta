@@ -11,6 +11,7 @@ from typing import Union
 
 import service_configuration_lib
 from kubernetes.client import ApiClient
+from kubernetes.client import V1VolumeMount
 
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
@@ -129,13 +130,58 @@ class ResourceConfigDict(TypedDict, total=False):
     limits: Dict[str, RequestsDict]
 
 
+class HostPathVolume(TypedDict, total=False):
+    path: str
+    type: str
+
+
+class KubernetesVolume(TypedDict, total=False):
+    name: str
+    hostPath: HostPathVolume
+
+
+# Extra Volumes and Volume Mounts
+VTTABLET_EXTRA_VOLUMES: List[KubernetesVolume] = [
+    KubernetesVolume(
+        name="vault-secrets",
+        hostPath=HostPathVolume(path="/nail/etc/vault/all_cas"),
+    ),
+    KubernetesVolume(
+        name="vttablet-fake-credentials",
+        hostPath=HostPathVolume(path="/dev/null"),
+    ),
+    KubernetesVolume(
+        name="keyspace-fake-init-script",
+        hostPath=HostPathVolume(path="/dev/null"),
+    ),
+]
+
+VTTABLET_EXTRA_VOLUME_MOUNTS: List[V1VolumeMount] = [
+    V1VolumeMount(
+        mount_path="/etc/vault/all_cas",
+        name="vault-secrets",
+        read_only=True,
+    ),
+    V1VolumeMount(
+        mount_path="/etc/credentials.yaml",
+        name="vttablet-fake-credentials",
+        read_only=True,
+    ),
+    V1VolumeMount(
+        mount_path="/etc/init_db.sql",
+        name="keyspace-fake-init-script",
+        read_only=True,
+    ),
+]
+
+
 class GatewayConfigDict(TypedDict, total=False):
     affinity: Dict[str, Any]
     extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
-    extraVolumeMounts: List[Dict[str, Any]]
-    extraVolumes: List[Dict[str, Any]]
+    extraVolumeMounts: List[V1VolumeMount]
+    extraVolumes: List[KubernetesVolume]
     lifecycle: Dict[str, Dict[str, Dict[str, List[str]]]]
     replicas: int
     resources: Dict[str, Any]
@@ -156,6 +202,8 @@ class VitessDashboardConfigDict(TypedDict, total=False):
     replicas: int
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
+    extraVolumeMounts: List[V1VolumeMount]
+    extraVolumes: List[KubernetesVolume]
 
 
 class VtAdminConfigDict(TypedDict, total=False):
@@ -170,6 +218,8 @@ class VtAdminConfigDict(TypedDict, total=False):
     apiResources: Dict[str, Any]
     webResources: Dict[str, Any]
     annotations: Mapping[str, Any]
+    extraVolumeMounts: List[V1VolumeMount]
+    extraVolumes: List[KubernetesVolume]
 
 
 class VtTabletDict(TypedDict, total=False):
@@ -184,8 +234,8 @@ class TabletPoolDict(TypedDict, total=False):
     affinity: Dict[str, Any]
     extraLabels: Dict[str, str]
     extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
-    extraVolumeMounts: List[Dict[str, Any]]
-    extraVolumes: List[Dict[str, Any]]
+    extraVolumeMounts: List[V1VolumeMount]
+    extraVolumes: List[KubernetesVolume]
     replicas: int
     vttablet: VtTabletDict
     externalDatastore: Dict[str, Any]
@@ -239,7 +289,8 @@ def get_cell_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
-    aws_region: str,
+    extra_volumes: List[KubernetesVolume],
+    extra_volume_mounts: List[V1VolumeMount],
 ) -> CellConfigDict:
     """
     get vtgate config
@@ -266,7 +317,7 @@ def get_cell_config(
                         "command": [
                             "/bin/sh",
                             "-c",
-                            f"/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-{cell} {aws_region}",
+                            f"/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-{cell}",
                         ]
                     }
                 },
@@ -275,7 +326,7 @@ def get_cell_config(
                         "command": [
                             "/bin/sh",
                             "-c",
-                            f"/cloudmap/scripts/register_to_cloudmap.sh vtgate-{cell} {aws_region}",
+                            f"/cloudmap/scripts/register_to_cloudmap.sh vtgate-{cell}",
                         ]
                     }
                 },
@@ -289,28 +340,8 @@ def get_cell_config(
                 "mysql_auth_vault_tls_ca": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
                 "mysql_auth_vault_ttl": "60s",
             },
-            extraVolumeMounts=[
-                {
-                    "mountPath": "/nail/srv",
-                    "name": "srv-configs",
-                    "readOnly": True,
-                },
-                {
-                    "mountPath": "/nail/etc/srv-configs",
-                    "name": "etc-srv-configs",
-                    "readOnly": True,
-                },
-            ],
-            extraVolumes=[
-                {
-                    "name": "srv-configs",
-                    "hostPath": {"path": "/nail/srv"},
-                },
-                {
-                    "name": "etc-srv-configs",
-                    "hostPath": {"path": "/nail/etc/srv-configs"},
-                },
-            ],
+            extraVolumeMounts=extra_volume_mounts,
+            extraVolumes=extra_volumes,
             extraLabels=labels,
             replicas=replicas,
             resources={
@@ -331,6 +362,8 @@ def get_vitess_dashboard_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
+    extra_volumes: List[KubernetesVolume],
+    extra_volume_mounts: List[V1VolumeMount],
 ) -> VitessDashboardConfigDict:
     """
     get vtctld config
@@ -353,6 +386,8 @@ def get_vitess_dashboard_config(
         extraEnv=updated_vtctld_extra_env,
         extraFlags=VTCTLD_EXTRA_FLAGS,
         extraLabels=labels,
+        extraVolumeMounts=extra_volume_mounts,
+        extraVolumes=extra_volumes,
         replicas=replicas,
         resources={
             "requests": requests,
@@ -370,6 +405,8 @@ def get_vt_admin_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
+    extra_volumes: List[KubernetesVolume],
+    extra_volume_mounts: List[V1VolumeMount],
 ) -> VtAdminConfigDict:
     """
     get vtadmin config
@@ -385,6 +422,8 @@ def get_vt_admin_config(
         extraLabels=labels,
         extraFlags=VTADMIN_EXTRA_FLAGS,
         extraEnv=env,
+        extraVolumeMounts=extra_volume_mounts,
+        extraVolumes=extra_volumes,
         replicas=replicas,
         readOnly=False,
         apiResources={
@@ -415,6 +454,8 @@ def get_tablet_pool_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
+    extra_volumes: List[KubernetesVolume],
+    extra_volume_mounts: List[V1VolumeMount],
 ) -> TabletPoolDict:
     """
     get vttablet config
@@ -474,46 +515,8 @@ def get_tablet_pool_config(
         affinity={"nodeAffinity": node_affinity},
         extraLabels=labels,
         extraEnv=updated_vttablet_extra_env,
-        extraVolumeMounts=[
-            {
-                "mountPath": "/etc/vault/all_cas",
-                "name": "vault-secrets",
-                "readOnly": True,
-            },
-            {
-                "mountPath": "/nail/srv",
-                "name": "srv-configs",
-                "readOnly": True,
-            },
-            {
-                "mountPath": "/nail/etc/srv-configs",
-                "name": "etc-srv-configs",
-                "readOnly": True,
-            },
-            {
-                "mountPath": "etc/credentials.yaml",
-                "name": "vttablet-fake-credentials",
-                "readOnly": True,
-            },
-            {
-                "mountPath": "/etc/init_db.sql",
-                "name": "keyspace-fake-init-script",
-                "readOnly": True,
-            },
-        ],
-        extraVolumes=[
-            {"name": "vault-secrets", "hostPath": {"path": "/nail/etc/vault/all_cas"}},
-            {
-                "name": "srv-configs",
-                "hostPath": {"path": "/nail/srv"},
-            },
-            {
-                "name": "etc-srv-configs",
-                "hostPath": {"path": "/nail/etc/srv-configs"},
-            },
-            {"name": "vttablet-fake-credentials", "hostPath": {"path": "/dev/null"}},
-            {"name": "keyspace-fake-init-script", "hostPath": {"path": "/dev/null"}},
-        ],
+        extraVolumeMounts=extra_volume_mounts,
+        extraVolumes=extra_volumes,
         replicas=replicas,
         vttablet={
             "extraFlags": vttablet_extra_flags,
@@ -551,6 +554,8 @@ def get_keyspaces_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
+    extra_volumes: List[KubernetesVolume],
+    extra_volume_mounts: List[V1VolumeMount],
 ) -> List[KeyspaceConfigDict]:
     """
     get vitess keyspace config
@@ -613,6 +618,8 @@ def get_keyspaces_config(
                         labels,
                         node_affinity,
                         annotations,
+                        extra_volumes,
+                        extra_volume_mounts,
                     )
                     for cell in cells
                 ]
@@ -775,16 +782,50 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             }
         }
 
+    def get_kubernetes_volumes(self) -> List[KubernetesVolume]:
+        system_volumes = load_system_paasta_config().get_volumes()
+        docker_volumes = self.get_volumes(
+            system_volumes=system_volumes,
+        )
+        kubernetes_volumes = [
+            KubernetesVolume(
+                name=self.get_docker_volume_name(docker_volume),
+                hostPath=HostPathVolume(
+                    path=docker_volume["hostPath"],
+                ),
+            )
+            for docker_volume in docker_volumes
+        ]
+        return kubernetes_volumes
+
+    def get_kubernetes_volume_mounts(
+        self,
+        kubernetes_volumes: List[KubernetesVolume],
+    ) -> List[V1VolumeMount]:
+        api_client = ApiClient()
+        volume_mounts = [
+            api_client.sanitize_for_serialization(
+                V1VolumeMount(
+                    mount_path=kubernetes_volume["hostPath"]["path"],
+                    name=kubernetes_volume["name"],
+                    read_only=True,
+                )
+            )
+            for kubernetes_volume in kubernetes_volumes
+        ]
+        return volume_mounts
+
     def get_cells(self) -> List[CellConfigDict]:
         cells = self.config_dict.get("cells")
         region = self.get_region()
-        aws_region = self.get_aws_region()
         vtgate_resources = self.config_dict.get("vtgate_resources")
 
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
         annotations = self.get_annotations()
+        extra_volumes = self.get_kubernetes_volumes()
+        extra_volume_mounts = self.get_kubernetes_volume_mounts(extra_volumes)
 
         return [
             get_cell_config(
@@ -795,7 +836,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 labels,
                 node_affinity,
                 annotations,
-                aws_region,
+                extra_volumes,
+                extra_volume_mounts,
             )
             for cell in cells
         ]
@@ -809,6 +851,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
         annotations = self.get_annotations()
+        extra_volumes = self.get_kubernetes_volumes()
+        extra_volume_mounts = self.get_kubernetes_volume_mounts(extra_volumes)
 
         return get_vitess_dashboard_config(
             cells,
@@ -818,6 +862,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             labels,
             node_affinity,
             annotations,
+            extra_volumes,
+            extra_volume_mounts,
         )
 
     def get_vtadmin(self) -> VtAdminConfigDict:
@@ -828,9 +874,18 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
         annotations = self.get_annotations()
+        extra_volumes = self.get_kubernetes_volumes()
+        extra_volume_mounts = self.get_kubernetes_volume_mounts(extra_volumes)
 
         return get_vt_admin_config(
-            cells, vtadmin_resources, formatted_env, labels, node_affinity, annotations
+            cells,
+            vtadmin_resources,
+            formatted_env,
+            labels,
+            node_affinity,
+            annotations,
+            extra_volumes,
+            extra_volume_mounts,
         )
 
     def get_keyspaces(self) -> List[KeyspaceConfigDict]:
@@ -843,6 +898,14 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
         annotations = self.get_annotations()
+        extra_volumes = self.get_kubernetes_volumes()
+        extra_volume_mounts = self.get_kubernetes_volume_mounts(extra_volumes)
+        api_client = ApiClient()
+        extra_volumes.extend(VTTABLET_EXTRA_VOLUMES)
+        for volume_mount in VTTABLET_EXTRA_VOLUME_MOUNTS:
+            extra_volume_mounts.append(
+                api_client.sanitize_for_serialization(volume_mount)
+            )
 
         return get_keyspaces_config(
             cells,
@@ -853,6 +916,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             labels,
             node_affinity,
             annotations,
+            extra_volumes,
+            extra_volume_mounts,
         )
 
     def get_update_strategy(self) -> Dict[str, str]:

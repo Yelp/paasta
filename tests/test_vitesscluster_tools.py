@@ -51,6 +51,30 @@ MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
             "primary": "externalmaster",
             "migration": "externalreplica",
         },
+        "volumes": [
+            {
+                "hostPath": "/nail/etc/services",
+                "containerPath": "/nail/etc/services",
+                "mode": "RO",
+            },
+            {
+                "hostPath": "/nail/etc/habitat",
+                "containerPath": "/nail/etc/habitat",
+                "mode": "RO",
+            },
+        ],
+        "hacheck_sidecar_volumes": [
+            {
+                "hostPath": "/etc/services",
+                "containerPath": "/etc/services",
+                "mode": "RO",
+            },
+            {
+                "hostPath": "/nail/etc/envoy/endpoints",
+                "containerPath": "/nail/etc/envoy/endpoints",
+                "mode": "RO",
+            },
+        ],
     },
     directory="/fake/config/directory",
 )
@@ -118,18 +142,34 @@ VITESS_CONFIG = {
                 },
                 "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
                 "extraVolumeMounts": [
-                    {"mountPath": "/nail/srv", "name": "srv-configs", "readOnly": True},
                     {
-                        "mountPath": "/nail/etc/srv-configs",
-                        "name": "etc-srv-configs",
+                        "mountPath": "/nail/bulkdata",
+                        "name": "host--slash-nailslash-bulkdata",
+                        "readOnly": True,
+                    },
+                    {
+                        "mountPath": "/nail/etc/habitat",
+                        "name": "host--slash-nailslash-etcslash-habitat",
+                        "readOnly": True,
+                    },
+                    {
+                        "mountPath": "/nail/etc/services",
+                        "name": "host--slash-nailslash-etcslash-services",
                         "readOnly": True,
                     },
                 ],
                 "extraVolumes": [
-                    {"hostPath": {"path": "/nail/srv"}, "name": "srv-configs"},
                     {
-                        "hostPath": {"path": "/nail/etc/srv-configs"},
-                        "name": "etc-srv-configs",
+                        "hostPath": {"path": "/nail/bulkdata"},
+                        "name": "host--slash-nailslash-bulkdata",
+                    },
+                    {
+                        "hostPath": {"path": "/nail/etc/habitat"},
+                        "name": "host--slash-nailslash-etcslash-habitat",
+                    },
+                    {
+                        "hostPath": {"path": "/nail/etc/services"},
+                        "name": "host--slash-nailslash-etcslash-services",
                     },
                 ],
                 "lifecycle": {
@@ -138,7 +178,7 @@ VITESS_CONFIG = {
                             "command": [
                                 "/bin/sh",
                                 "-c",
-                                "/cloudmap/scripts/register_to_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
+                                "/cloudmap/scripts/register_to_cloudmap.sh vtgate-fake_cell",
                             ]
                         }
                     },
@@ -147,7 +187,7 @@ VITESS_CONFIG = {
                             "command": [
                                 "/bin/sh",
                                 "-c",
-                                "/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
+                                "/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-fake_cell",
                             ]
                         }
                     },
@@ -281,22 +321,27 @@ VITESS_CONFIG = {
                                     },
                                     "extraVolumeMounts": [
                                         {
+                                            "mountPath": "/nail/bulkdata",
+                                            "name": "host--slash-nailslash-bulkdata",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/habitat",
+                                            "name": "host--slash-nailslash-etcslash-habitat",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/services",
+                                            "name": "host--slash-nailslash-etcslash-services",
+                                            "readOnly": True,
+                                        },
+                                        {
                                             "mountPath": "/etc/vault/all_cas",
                                             "name": "vault-secrets",
                                             "readOnly": True,
                                         },
                                         {
-                                            "mountPath": "/nail/srv",
-                                            "name": "srv-configs",
-                                            "readOnly": True,
-                                        },
-                                        {
-                                            "mountPath": "/nail/etc/srv-configs",
-                                            "name": "etc-srv-configs",
-                                            "readOnly": True,
-                                        },
-                                        {
-                                            "mountPath": "etc/credentials.yaml",
+                                            "mountPath": "/etc/credentials.yaml",
                                             "name": "vttablet-fake-credentials",
                                             "readOnly": True,
                                         },
@@ -308,20 +353,22 @@ VITESS_CONFIG = {
                                     ],
                                     "extraVolumes": [
                                         {
+                                            "hostPath": {"path": "/nail/bulkdata"},
+                                            "name": "host--slash-nailslash-bulkdata",
+                                        },
+                                        {
+                                            "hostPath": {"path": "/nail/etc/habitat"},
+                                            "name": "host--slash-nailslash-etcslash-habitat",
+                                        },
+                                        {
+                                            "hostPath": {"path": "/nail/etc/services"},
+                                            "name": "host--slash-nailslash-etcslash-services",
+                                        },
+                                        {
                                             "hostPath": {
                                                 "path": "/nail/etc/vault/all_cas"
                                             },
                                             "name": "vault-secrets",
-                                        },
-                                        {
-                                            "name": "srv-configs",
-                                            "hostPath": {"path": "/nail/srv"},
-                                        },
-                                        {
-                                            "name": "etc-srv-configs",
-                                            "hostPath": {
-                                                "path": "/nail/etc/srv-configs"
-                                            },
                                         },
                                         {
                                             "hostPath": {"path": "/dev/null"},
@@ -469,22 +516,27 @@ VITESS_CONFIG = {
                                     },
                                     "extraVolumeMounts": [
                                         {
+                                            "mountPath": "/nail/bulkdata",
+                                            "name": "host--slash-nailslash-bulkdata",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/habitat",
+                                            "name": "host--slash-nailslash-etcslash-habitat",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/services",
+                                            "name": "host--slash-nailslash-etcslash-services",
+                                            "readOnly": True,
+                                        },
+                                        {
                                             "mountPath": "/etc/vault/all_cas",
                                             "name": "vault-secrets",
                                             "readOnly": True,
                                         },
                                         {
-                                            "mountPath": "/nail/srv",
-                                            "name": "srv-configs",
-                                            "readOnly": True,
-                                        },
-                                        {
-                                            "mountPath": "/nail/etc/srv-configs",
-                                            "name": "etc-srv-configs",
-                                            "readOnly": True,
-                                        },
-                                        {
-                                            "mountPath": "etc/credentials.yaml",
+                                            "mountPath": "/etc/credentials.yaml",
                                             "name": "vttablet-fake-credentials",
                                             "readOnly": True,
                                         },
@@ -496,20 +548,22 @@ VITESS_CONFIG = {
                                     ],
                                     "extraVolumes": [
                                         {
+                                            "hostPath": {"path": "/nail/bulkdata"},
+                                            "name": "host--slash-nailslash-bulkdata",
+                                        },
+                                        {
+                                            "hostPath": {"path": "/nail/etc/habitat"},
+                                            "name": "host--slash-nailslash-etcslash-habitat",
+                                        },
+                                        {
+                                            "hostPath": {"path": "/nail/etc/services"},
+                                            "name": "host--slash-nailslash-etcslash-services",
+                                        },
+                                        {
                                             "hostPath": {
                                                 "path": "/nail/etc/vault/all_cas"
                                             },
                                             "name": "vault-secrets",
-                                        },
-                                        {
-                                            "name": "srv-configs",
-                                            "hostPath": {"path": "/nail/srv"},
-                                        },
-                                        {
-                                            "name": "etc-srv-configs",
-                                            "hostPath": {
-                                                "path": "/nail/etc/srv-configs"
-                                            },
                                         },
                                         {
                                             "hostPath": {"path": "/dev/null"},
@@ -612,6 +666,37 @@ VITESS_CONFIG = {
             "disable_active_reparents": "true",
             "security_policy": "read-only",
         },
+        "extraVolumeMounts": [
+            {
+                "mountPath": "/nail/bulkdata",
+                "name": "host--slash-nailslash-bulkdata",
+                "readOnly": True,
+            },
+            {
+                "mountPath": "/nail/etc/habitat",
+                "name": "host--slash-nailslash-etcslash-habitat",
+                "readOnly": True,
+            },
+            {
+                "mountPath": "/nail/etc/services",
+                "name": "host--slash-nailslash-etcslash-services",
+                "readOnly": True,
+            },
+        ],
+        "extraVolumes": [
+            {
+                "hostPath": {"path": "/nail/bulkdata"},
+                "name": "host--slash-nailslash-bulkdata",
+            },
+            {
+                "hostPath": {"path": "/nail/etc/habitat"},
+                "name": "host--slash-nailslash-etcslash-habitat",
+            },
+            {
+                "hostPath": {"path": "/nail/etc/services"},
+                "name": "host--slash-nailslash-etcslash-services",
+            },
+        ],
         "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
         "replicas": 1,
         "resources": {
@@ -649,6 +734,37 @@ VITESS_CONFIG = {
         "cells": ["fake_cell"],
         "extraEnv": [],
         "extraFlags": {"grpc-allow-reflection": "true"},
+        "extraVolumeMounts": [
+            {
+                "mountPath": "/nail/bulkdata",
+                "name": "host--slash-nailslash-bulkdata",
+                "readOnly": True,
+            },
+            {
+                "mountPath": "/nail/etc/habitat",
+                "name": "host--slash-nailslash-etcslash-habitat",
+                "readOnly": True,
+            },
+            {
+                "mountPath": "/nail/etc/services",
+                "name": "host--slash-nailslash-etcslash-services",
+                "readOnly": True,
+            },
+        ],
+        "extraVolumes": [
+            {
+                "hostPath": {"path": "/nail/bulkdata"},
+                "name": "host--slash-nailslash-bulkdata",
+            },
+            {
+                "hostPath": {"path": "/nail/etc/habitat"},
+                "name": "host--slash-nailslash-etcslash-habitat",
+            },
+            {
+                "hostPath": {"path": "/nail/etc/services"},
+                "name": "host--slash-nailslash-etcslash-services",
+            },
+        ],
         "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
         "readOnly": False,
         "replicas": 1,
