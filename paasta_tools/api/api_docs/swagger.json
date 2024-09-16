@@ -540,6 +540,13 @@
                         "name": "new",
                         "required": false,
                         "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Search all namespaces for running copies",
+                        "name": "all_namespaces",
+                        "required": false,
+                        "type": "boolean"
                     }
                 ]
             }

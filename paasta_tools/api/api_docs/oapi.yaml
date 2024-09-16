@@ -1480,6 +1480,12 @@ paths:
         required: false
         schema:
           type: boolean
+      - description: Search all namespaces for running copies
+        in: query
+        name: all_namespaces
+        required: false
+        schema:
+          type: boolean
       responses:
         "200":
           content:

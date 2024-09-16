@@ -340,6 +340,7 @@ def test_status_calls_sergeants(
     args.registration = None
     args.service_instance = None
     args.new = False
+    args.all_namespaces = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -355,6 +356,7 @@ def test_status_calls_sergeants(
         lock=mock.ANY,
         verbose=False,
         new=False,
+        all_namespaces=False,
     )
 
 
@@ -390,6 +392,7 @@ class StatusArgs:
         service_instance=None,
         new=False,
         old=False,
+        all_namespaces=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -402,6 +405,7 @@ class StatusArgs:
         self.service_instance = service_instance
         self.new = new
         self.old = old
+        self.all_namespaces = all_namespaces
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -890,6 +894,7 @@ def test_status_with_registration(
         verbose=False,
         service_instance=None,
         new=False,
+        all_namespaces=True,  # Bonus all_namespaces test
     )
     return_value = paasta_status(args)
 
@@ -908,6 +913,7 @@ def test_status_with_registration(
         lock=mock.ANY,
         verbose=args.verbose,
         new=False,
+        all_namespaces=True,
     )
 
 
