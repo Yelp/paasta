@@ -1,3 +1,12 @@
+paasta-tools (1.4.34) xenial; urgency=medium
+
+  * 1.4.34 tagged with 'make release'
+    Commit: Merge pull request #3958 from Yelp/jfong/PAASTA-18194-all-
+    namespaces-option  PAASTA-18194: Stop querying all managed
+    namespaces by default for paasta status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 16 Sep 2024 12:11:03 -0700
+
 paasta-tools (1.4.33) xenial; urgency=medium
 
   * 1.4.33 tagged with 'make release'
