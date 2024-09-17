@@ -1,3 +1,22 @@
+paasta-tools (1.5.0) xenial; urgency=medium
+
+  * 1.5.0 tagged with 'make release'
+    Commit: Attempt to batch config loading for tron deployments (#3956)
+    Right now we make at most 2N calls to the Tron API during config
+    deployments: N to get the current configs and at most N if all
+    services have changes.  To start, I"d like to reduce this to N by
+    allowing GET /api/config to return all the configs so that the only
+    requests needed are POSTs for changed configs. Since I"m a little
+    worried about how tron-pnw-prod will fare with returning all the
+    configs in a single request, using this new endpoint is behind a
+    feature toggle. Hopefully this works out and we don"t need to add
+    pagination to the endpoint :)  Depending on how this goes, we can
+    look into batching up the POSTs so that we can also do that in a
+    single request (or at least <N requests if we want to chunk things a
+    bit more).
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 17 Sep 2024 12:46:59 -0700
+
 paasta-tools (1.4.34) xenial; urgency=medium
 
   * 1.4.34 tagged with 'make release'
