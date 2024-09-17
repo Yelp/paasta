@@ -206,11 +206,23 @@ def main():
                         log.debug(f"Skipped {service}")
 
         except Exception:
-            log.exception(
-                f"Failed to create service account for {service} (will skip reconfiguring):"
-            )
+            if args.bulk_config_fetch:
+                # service account creation should be the only action that can throw if this flag is true,
+                # so we can safely assume that's what happened here in the log message
+                log.exception(
+                    f"Failed to create service account for {service} (will skip reconfiguring):"
+                )
+
+                # since service account creation failed, we want to skip reconfiguring this service
+                # as the new config will likely fail due to the missing service account - even though
+                # the rest of the config is valid
+                new_configs.pop(service, None)
+            else:
+                log.exception(f"Update for {service} failed:")
+
+            # NOTE: this happens for both ways of updating (bulk fetch and JIT fetch)
+            # since we need to print out what failed in either case
             failed.append(service)
-            new_configs.pop(service, None)
 
     if args.bulk_config_fetch:
         updated_namespaces = client.update_namespaces(new_configs)
