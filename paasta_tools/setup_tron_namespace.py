@@ -23,6 +23,7 @@ file for it, and send the updated file to Tron.
 import argparse
 import logging
 import sys
+from typing import Dict
 from typing import List
 
 import ruamel.yaml as yaml
@@ -62,6 +63,13 @@ def parse_args():
     )
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("--dry-run", action="store_true", default=False)
+    parser.add_argument(
+        "--bulk-config-fetch",
+        dest="bulk_config_fetch",
+        action="store_true",
+        default=False,
+        help="Attempt to fetch all configs in bulk rather than one by one",
+    )
     parser.add_argument(
         "--cluster",
         help="Cluster to read configs for. Defaults to the configuration in /etc/paasta",
@@ -162,6 +170,7 @@ def main():
     k8s_enabled_for_cluster = (
         yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
     )
+    new_configs: Dict[str, str] = {}  # service -> new_config
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
@@ -171,6 +180,7 @@ def main():
                 k8s_enabled=k8s_enabled_for_cluster,
                 dry_run=args.dry_run,
             )
+            new_configs[service] = new_config
             if args.dry_run:
                 log.info(f"Would update {service} to:")
                 log.info(f"{new_config}")
@@ -187,16 +197,43 @@ def main():
                     for_validation=False,
                 )
                 ensure_service_accounts(job_configs)
+                if not args.bulk_config_fetch:
+                    if client.update_namespace(service, new_config):
+                        updated.append(service)
+                        log.debug(f"Updated {service}")
+                    else:
+                        skipped.append(service)
+                        log.debug(f"Skipped {service}")
 
-                if client.update_namespace(service, new_config):
-                    updated.append(service)
-                    log.debug(f"Updated {service}")
-                else:
-                    skipped.append(service)
-                    log.debug(f"Skipped {service}")
         except Exception:
-            log.exception(f"Update for {service} failed:")
+            if args.bulk_config_fetch:
+                # service account creation should be the only action that can throw if this flag is true,
+                # so we can safely assume that's what happened here in the log message
+                log.exception(
+                    f"Failed to create service account for {service} (will skip reconfiguring):"
+                )
+
+                # since service account creation failed, we want to skip reconfiguring this service
+                # as the new config will likely fail due to the missing service account - even though
+                # the rest of the config is valid
+                new_configs.pop(service, None)
+            else:
+                log.exception(f"Update for {service} failed:")
+
+            # NOTE: this happens for both ways of updating (bulk fetch and JIT fetch)
+            # since we need to print out what failed in either case
             failed.append(service)
+
+    if args.bulk_config_fetch:
+        updated_namespaces = client.update_namespaces(new_configs)
+
+        if updated_namespaces:
+            updated = list(updated_namespaces.keys())
+            log.debug(f"Updated {updated}")
+
+        if updated_namespaces != new_configs.keys():
+            skipped = set(new_configs.keys()) - set(updated_namespaces.keys())
+            log.debug(f"Skipped {skipped}")
 
     skipped_report = skipped if args.verbose else len(skipped)
     log.info(
