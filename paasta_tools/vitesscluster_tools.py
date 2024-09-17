@@ -105,6 +105,7 @@ VTTABLET_EXTRA_FLAGS = {
     "throttle_check_as_check_self": "true",
     "db_charset": "utf8mb4",
     "disable_active_reparents": "true",
+    "init_shard": "0",
 }
 
 
