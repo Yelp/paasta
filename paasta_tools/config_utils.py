@@ -70,7 +70,14 @@ def write_auto_config_data(
         if comment:
             content = (
                 yaml.round_trip_load(
-                    comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+                    comment.format(
+                        # this is a bit of a hack, but we've decided to not rename files back to kubernetes-*
+                        # files. while we still need to update things to reference the eks files directly, there's
+                        # still a couple of places where we still need kubernetes-* files (e.g., unmigrated operators)
+                        # so for now let's just assume that autotuned things will always actually have their human-managed
+                        # config in eks-* files
+                        regular_filename=f"{service}/{extra_info.replace('kubernetes-', 'eks-')}.yaml",
+                    )
                 )
                 if comment
                 else {}
