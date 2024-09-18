@@ -659,7 +659,7 @@ def test_set_cr_desired_state(
 
     set_cr_desired_state(
         kube_client=kube_client,
-        cr_id={"name": "fake_cr.VTGATE"},
+        cr_id={"name": "fake_cr.vtgate"},
         desired_state="start",
     )
     body = kube_client.custom.replace_namespaced_custom_object.call_args[1]["body"]
@@ -685,7 +685,7 @@ def test_set_cr_annotations():
 
     test_table = [
         {
-            "restarted_component": "VTGATE",
+            "restarted_component": "vtgate",
             "expected": {
                 "spec": {
                     "cells": [
@@ -717,7 +717,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTGATE.fake_cell1",
+            "restarted_component": "vtgate.fake_cell1",
             "expected": {
                 "spec": {
                     "cells": [
@@ -744,7 +744,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTADMIN",
+            "restarted_component": "vtadmin",
             "expected": {
                 "spec": {
                     "cells": [
@@ -768,7 +768,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTCTLD",
+            "restarted_component": "vtctld",
             "expected": {
                 "spec": {
                     "cells": [
@@ -792,7 +792,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTORC",
+            "restarted_component": "vtorc",
             "expected": {
                 "spec": {
                     "cells": [
@@ -816,7 +816,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTTABLET",
+            "restarted_component": "vttablet",
             "expected": {
                 "spec": {
                     "cells": [
@@ -848,7 +848,7 @@ def test_set_cr_annotations():
             },
         },
         {
-            "restarted_component": "VTTABLET.tablet1",
+            "restarted_component": "vttablet.tablet1",
             "expected": {
                 "spec": {
                     "cells": [
