@@ -20,6 +20,7 @@ import math
 import os
 import re
 from datetime import datetime
+from datetime import timezone
 from enum import Enum
 from functools import lru_cache
 from inspect import currentframe
@@ -2947,7 +2948,7 @@ def recent_container_restart(
     last_timestamp: Optional[int],
     time_window_s: int = 900,  # 15 mins
 ) -> bool:
-    min_timestamp = datetime.now().timestamp() - time_window_s
+    min_timestamp = datetime.now(timezone.utc).timestamp() - time_window_s
     return (
         restart_count > 0
         and last_state == "terminated"
