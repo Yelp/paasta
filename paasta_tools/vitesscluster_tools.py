@@ -636,12 +636,10 @@ def set_cr_desired_state(
     cr_id: Mapping[str, str],
     desired_state: str,
 ) -> None:
-    instance_without_suffix, component = cr_id["name"].split(".", 1)
-    cr = kube_client.custom.get_namespaced_custom_object(
-        **{**cr_id, "name": instance_without_suffix}
-    )
-    current_time = get_current_time()
-    set_cr_annotations(cr, component, desired_state, current_time)
+    component = cr_id["name"].split(".", 1)[1]
+    cr_id = cr_id_without_suffix(cr_id)
+    cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
+    set_cr_annotations(cr, component, desired_state, get_current_time())
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
 
 
@@ -946,6 +944,13 @@ def load_vitess_service_instance_configs(
         service, instance, cluster, soa_dir=soa_dir
     ).get_vitess_config()
     return vitess_service_instance_configs
+
+
+def cr_id_without_suffix(cr_id: Mapping[str, str]) -> Mapping[str, str]:
+    instance_without_suffix, component = cr_id["name"].split(".", 1)
+    cr_id_without_suffix = cr_id.copy()
+    cr_id_without_suffix["name"] = instance_without_suffix
+    return cr_id_without_suffix
 
 
 # TODO: read this from CRD in service configs
