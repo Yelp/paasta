@@ -1258,7 +1258,31 @@ def create_complete_config(
         )
         for job_config in job_configs
     }
+    if not dry_run:
+        emit_spark_monitoring_metrics(preproccessed_config)
     return yaml.dump(preproccessed_config, Dumper=Dumper, default_flow_style=False)
+
+
+def emit_spark_monitoring_metrics(preproccessed_config: Dict[str, Any]) -> None:
+    """Emit the monitoring configs for Spark actions in the preprocessed config."""
+    for job_name, job_config in preproccessed_config["jobs"].items():
+        for action_name, action_config in job_config["actions"].items():
+            if _is_spark_action(action_config):
+                monitoring_tools.emit_spark_tron_monitoring_metrics(
+                    job_name=job_name,
+                    action_name=action_name,
+                    paasta_cluster=action_config.get("env", {}).get("PAASTA_CLUSTER"),
+                    paasta_service=action_config.get("env", {}).get("PAASTA_SERVICE"),
+                    paasta_instance=action_config.get("env", {}).get("PAASTA_INSTANCE"),
+                    team=action_config.get("monitoring", {}).get("team"),
+                    page=action_config.get("monitoring", {}).get("page"),
+                )
+
+
+def _is_spark_action(action_config: Dict[str, Any]) -> bool:
+    return action_config.get(
+        "executor"
+    ) == "spark" or "paasta spark-run" in action_config.get("command", "")
 
 
 def validate_complete_config(

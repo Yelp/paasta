@@ -366,6 +366,29 @@ def send_replication_event(
     )
 
 
+def emit_spark_tron_monitoring_metrics(
+    job_name: str,
+    action_name: str,
+    paasta_cluster: str,
+    paasta_service: str,
+    paasta_instance: str,
+    team: str,
+    page: bool,
+) -> None:
+    meteorite_dims = {
+        "job_name": job_name,
+        "action_name": action_name,
+        "paasta_service": paasta_service,
+        "paasta_cluster": paasta_cluster,
+        "paasta_instance": paasta_instance,
+        "team": team,
+        "page": page,
+    }
+    yelp_meteorite.create_counter(
+        "spark.tron.monitoring_config", meteorite_dims
+    ).count()
+
+
 def emit_replication_metrics(
     replication_infos: Mapping[str, Mapping[str, Mapping[str, int]]],
     instance_config: LongRunningServiceConfig,
