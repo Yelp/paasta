@@ -605,22 +605,13 @@ def get_current_time() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def set_cr_desired_state(
-    kube_client: KubeClient,
-    cr_id: Mapping[str, str],
-    desired_state: str,
+def set_cr_annotations(
+    cr: dict, component: str, desired_state: str, current_time: str
 ) -> None:
-    instance_without_suffix, component = cr_id["name"].split(".", 1)
-    cr = kube_client.custom.get_namespaced_custom_object(
-        **{**cr_id, "name": instance_without_suffix}
-    )
-    current_time = get_current_time()
-
     if component.startswith("vtgate"):
         cr.setdefault("spec", {}).setdefault("cells", [])
         for cell in cr["spec"]["cells"]:
             if component in ["vtgate", f"vtgate.{cell.get('name')}"]:
-                cell.setdefault("annotations", {})
                 set_annotations(cell, desired_state, current_time)
     elif component == "vtadmin":
         vtadmin = cr.setdefault("spec", {}).setdefault("vtadmin", {})
@@ -631,14 +622,26 @@ def set_cr_desired_state(
     elif component == "vtorc":
         vitess_shard = cr.setdefault("spec", {}).setdefault("vitessShard", {})
         set_annotations(vitess_shard, desired_state, current_time)
-    elif component == "vttablet":
+    elif component.startswith("vttablet"):
         cr.setdefault("spec", {}).setdefault("tabletPools", [])
         for pool in cr["spec"]["tabletPools"]:
-            if component in ["vttablet", f"vttablet.{cell.get('cell')}"]:
+            if component in ["vttablet", f"vttablet.{pool.get('cell')}"]:
                 set_annotations(pool, desired_state, current_time)
     else:
-        raise RuntimeError(f"Unsupported component {component}")
+        raise RuntimeError(f"Unsupported component {repr(component)}")
 
+
+def set_cr_desired_state(
+    kube_client: KubeClient,
+    cr_id: Mapping[str, str],
+    desired_state: str,
+) -> None:
+    instance_without_suffix, component = cr_id["name"].split(".", 1)
+    cr = kube_client.custom.get_namespaced_custom_object(
+        **{**cr_id, "name": instance_without_suffix}
+    )
+    current_time = get_current_time()
+    set_cr_annotations(cr, component, desired_state, current_time)
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
 
 
