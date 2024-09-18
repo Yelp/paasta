@@ -18,6 +18,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.utils import BranchDictV2
@@ -594,7 +595,7 @@ def get_keyspaces_config(
     return config
 
 
-def set_annotations(target: dict, desired_state: str, current_time: str) -> None:
+def update_annotations(target: dict, desired_state: str, current_time: str) -> None:
     annotations = target.setdefault("annotations", {})
     annotations["yelp.com/desired_state"] = desired_state
     annotations["paasta.yelp.com/desired_state"] = desired_state
@@ -611,22 +612,28 @@ def set_cr_annotations(
     if component.startswith("vtgate"):
         cr.setdefault("spec", {}).setdefault("cells", [])
         for cell in cr["spec"]["cells"]:
-            if component in ["vtgate", f"vtgate.{cell.get('name')}"]:
-                set_annotations(cell, desired_state, current_time)
+            names = ["vtgate", f"vtgate.{cell.get('name')}"]
+            if component in [sanitise_kubernetes_name(s) for s in names]:
+                update_annotations(cell["gateway"], desired_state, current_time)
     elif component == "vtadmin":
         vtadmin = cr.setdefault("spec", {}).setdefault("vtadmin", {})
-        set_annotations(vtadmin, desired_state, current_time)
+        update_annotations(vtadmin, desired_state, current_time)
     elif component == "vtctld":
         vitess_dashboard = cr.setdefault("spec", {}).setdefault("vitessDashboard", {})
-        set_annotations(vitess_dashboard, desired_state, current_time)
-    elif component == "vtorc":
-        vitess_shard = cr.setdefault("spec", {}).setdefault("vitessShard", {})
-        set_annotations(vitess_shard, desired_state, current_time)
+        update_annotations(vitess_dashboard, desired_state, current_time)
+    elif component.startswith("vtorc"):
+        cr.setdefault("spec", {}).setdefault("keyspaces", [])
+        for ks in cr["spec"]["keyspaces"]:
+            names = ["vtorc", f"vtorc.{ks.get('name')}"]
+            if component in [sanitise_kubernetes_name(s) for s in names]:
+                vtorc = ks.setdefault("vitessOrchestrator", {})
+                update_annotations(vtorc, desired_state, current_time)
     elif component.startswith("vttablet"):
-        cr.setdefault("spec", {}).setdefault("tabletPools", [])
-        for pool in cr["spec"]["tabletPools"]:
-            if component in ["vttablet", f"vttablet.{pool.get('cell')}"]:
-                set_annotations(pool, desired_state, current_time)
+        cr.setdefault("spec", {}).setdefault("keyspaces", [])
+        for ks in cr["spec"]["keyspaces"]:
+            names = ["vttablet", f"vttablet.{ks.get('name')}"]
+            if component in [sanitise_kubernetes_name(s) for s in names]:
+                update_annotations(ks, desired_state, current_time)
     else:
         raise RuntimeError(f"Unsupported component {repr(component)}")
 
@@ -948,7 +955,7 @@ def load_vitess_service_instance_configs(
 
 def cr_id_without_suffix(cr_id: Mapping[str, str]) -> Mapping[str, str]:
     instance_without_suffix, component = cr_id["name"].split(".", 1)
-    cr_id_without_suffix = cr_id.copy()
+    cr_id_without_suffix = dict(cr_id).copy()
     cr_id_without_suffix["name"] = instance_without_suffix
     return cr_id_without_suffix
 

@@ -649,10 +649,10 @@ def mock_vitess_deployment_config():
     "paasta_tools.vitesscluster_tools.get_current_time",
     autospec=True,
 )
-def test_set_cr_desired_state(
+def test_update_cr_desired_state(
     mock_get_current_time,
 ):
-    cr = {"spec": {"cells": [{"name": "fake_cell1"}]}}
+    cr = {"spec": {"cells": [{"name": "fake_cell1", "gateway": {}}]}}
     mock_get_current_time.return_value = "2024-09-09T19:40:24.680957+00:00"
     kube_client = mock.MagicMock()
     kube_client.custom.get_namespaced_custom_object.return_value = cr
@@ -668,10 +668,12 @@ def test_set_cr_desired_state(
             "cells": [
                 {
                     "name": "fake_cell1",
-                    "annotations": {
-                        "yelp.com/desired_state": "start",
-                        "paasta.yelp.com/desired_state": "start",
-                        "paasta.yelp.com/desired_state_updated_at": mock_get_current_time.return_value,
+                    "gateway": {
+                        "annotations": {
+                            "yelp.com/desired_state": "start",
+                            "paasta.yelp.com/desired_state": "start",
+                            "paasta.yelp.com/desired_state_updated_at": mock_get_current_time.return_value,
+                        },
                     },
                 },
             ],
@@ -691,54 +693,61 @@ def test_set_cr_annotations():
                     "cells": [
                         {
                             "name": "fake_cell1",
-                            "annotations": {
-                                "yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state_updated_at": current_time,
+                            "gateway": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
                             },
                         },
                         {
                             "name": "fake_cell2",
-                            "annotations": {
-                                "yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state_updated_at": current_time,
+                            "gateway": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
                             },
                         },
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {},
                     "vitessShard": {},
-                    "tabletPools": [
-                        {"cell": "tablet1"},
-                        {"cell": "tablet2"},
+                    "keyspaces": [
+                        {"name": "tablet1"},
+                        {"name": "tablet2"},
                     ],
                 },
             },
         },
         {
-            "restarted_component": "vtgate.fake_cell1",
+            "restarted_component": "vtgate.fake--cell1",
             "expected": {
                 "spec": {
                     "cells": [
                         {
                             "name": "fake_cell1",
-                            "annotations": {
-                                "yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state": desired_state,
-                                "paasta.yelp.com/desired_state_updated_at": current_time,
+                            "gateway": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
                             },
                         },
                         {
                             "name": "fake_cell2",
+                            "gateway": {},
                         },
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {},
                     "vitessShard": {},
-                    "tabletPools": [
-                        {"cell": "tablet1"},
-                        {"cell": "tablet2"},
+                    "keyspaces": [
+                        {"name": "tablet1"},
+                        {"name": "tablet2"},
                     ],
                 },
             },
@@ -748,8 +757,8 @@ def test_set_cr_annotations():
             "expected": {
                 "spec": {
                     "cells": [
-                        {"name": "fake_cell1"},
-                        {"name": "fake_cell2"},
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
                     ],
                     "vtadmin": {
                         "annotations": {
@@ -760,9 +769,9 @@ def test_set_cr_annotations():
                     },
                     "vitessDashboard": {},
                     "vitessShard": {},
-                    "tabletPools": [
-                        {"cell": "tablet1"},
-                        {"cell": "tablet2"},
+                    "keyspaces": [
+                        {"name": "tablet1"},
+                        {"name": "tablet2"},
                     ],
                 },
             },
@@ -772,8 +781,8 @@ def test_set_cr_annotations():
             "expected": {
                 "spec": {
                     "cells": [
-                        {"name": "fake_cell1"},
-                        {"name": "fake_cell2"},
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {
@@ -784,9 +793,9 @@ def test_set_cr_annotations():
                         },
                     },
                     "vitessShard": {},
-                    "tabletPools": [
-                        {"cell": "tablet1"},
-                        {"cell": "tablet2"},
+                    "keyspaces": [
+                        {"name": "tablet1"},
+                        {"name": "tablet2"},
                     ],
                 },
             },
@@ -796,21 +805,60 @@ def test_set_cr_annotations():
             "expected": {
                 "spec": {
                     "cells": [
-                        {"name": "fake_cell1"},
-                        {"name": "fake_cell2"},
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {},
-                    "vitessShard": {
-                        "annotations": {
-                            "yelp.com/desired_state": desired_state,
-                            "paasta.yelp.com/desired_state": desired_state,
-                            "paasta.yelp.com/desired_state_updated_at": current_time,
+                    "vitessShard": {},
+                    "keyspaces": [
+                        {
+                            "name": "tablet1",
+                            "vitessOrchestrator": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
+                            },
                         },
-                    },
-                    "tabletPools": [
-                        {"cell": "tablet1"},
-                        {"cell": "tablet2"},
+                        {
+                            "name": "tablet2",
+                            "vitessOrchestrator": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        {
+            "restarted_component": "vtorc.tablet1",
+            "expected": {
+                "spec": {
+                    "cells": [
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
+                    ],
+                    "vtadmin": {},
+                    "vitessDashboard": {},
+                    "vitessShard": {},
+                    "keyspaces": [
+                        {
+                            "name": "tablet1",
+                            "vitessOrchestrator": {
+                                "annotations": {
+                                    "yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state": desired_state,
+                                    "paasta.yelp.com/desired_state_updated_at": current_time,
+                                },
+                            },
+                        },
+                        {"name": "tablet2"},
                     ],
                 },
             },
@@ -820,15 +868,15 @@ def test_set_cr_annotations():
             "expected": {
                 "spec": {
                     "cells": [
-                        {"name": "fake_cell1"},
-                        {"name": "fake_cell2"},
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {},
                     "vitessShard": {},
-                    "tabletPools": [
+                    "keyspaces": [
                         {
-                            "cell": "tablet1",
+                            "name": "tablet1",
                             "annotations": {
                                 "yelp.com/desired_state": desired_state,
                                 "paasta.yelp.com/desired_state": desired_state,
@@ -836,7 +884,7 @@ def test_set_cr_annotations():
                             },
                         },
                         {
-                            "cell": "tablet2",
+                            "name": "tablet2",
                             "annotations": {
                                 "yelp.com/desired_state": desired_state,
                                 "paasta.yelp.com/desired_state": desired_state,
@@ -852,22 +900,22 @@ def test_set_cr_annotations():
             "expected": {
                 "spec": {
                     "cells": [
-                        {"name": "fake_cell1"},
-                        {"name": "fake_cell2"},
+                        {"name": "fake_cell1", "gateway": {}},
+                        {"name": "fake_cell2", "gateway": {}},
                     ],
                     "vtadmin": {},
                     "vitessDashboard": {},
                     "vitessShard": {},
-                    "tabletPools": [
+                    "keyspaces": [
                         {
-                            "cell": "tablet1",
+                            "name": "tablet1",
                             "annotations": {
                                 "yelp.com/desired_state": desired_state,
                                 "paasta.yelp.com/desired_state": desired_state,
                                 "paasta.yelp.com/desired_state_updated_at": current_time,
                             },
                         },
-                        {"cell": "tablet2"},
+                        {"name": "tablet2"},
                     ],
                 },
             },
@@ -878,15 +926,15 @@ def test_set_cr_annotations():
         cr = {
             "spec": {
                 "cells": [
-                    {"name": "fake_cell1"},
-                    {"name": "fake_cell2"},
+                    {"name": "fake_cell1", "gateway": {}},
+                    {"name": "fake_cell2", "gateway": {}},
                 ],
                 "vtadmin": {},
                 "vitessDashboard": {},
                 "vitessShard": {},
-                "tabletPools": [
-                    {"cell": "tablet1"},
-                    {"cell": "tablet2"},
+                "keyspaces": [
+                    {"name": "tablet1"},
+                    {"name": "tablet2"},
                 ],
             },
         }

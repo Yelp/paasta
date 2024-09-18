@@ -3205,8 +3205,17 @@ def read_service_instance_names(
                 instance = f"{job_name}.{name}"
                 instance_list.append((service, instance))
     elif instance_type == "vitesscluster":
-        for instance_name, instance in config.items():
-            component_names = ["vtgate", "vtadmin", "vtctld", "vttablet"]
+        for instance_name, spec in config.items():
+            component_names = ["vtgate", "vtadmin", "vtctld", "vtorc", "vttablet"]
+
+            for cell in spec.get("cells", []):
+                component_names.append(f"vtgate.{cell}")
+
+            for ks in spec.get("keyspaces", []):
+                ks_name = ks["keyspace"]
+                component_names.append(f"vttablet.{ks_name}")
+                component_names.append(f"vtorc.{ks_name}")
+
             for name in component_names:
                 instance = f"{instance_name}.{name}"
                 instance_list.append((service, instance))
