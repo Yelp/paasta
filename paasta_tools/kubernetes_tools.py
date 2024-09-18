@@ -3670,7 +3670,8 @@ async def get_events_for_object(
         )
         events = events.items if events else []
         if max_age_in_seconds and max_age_in_seconds > 0:
-            min_timestamp = datetime.now().timestamp() - max_age_in_seconds
+            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+            min_timestamp = datetime.now(timezone.utc).timestamp() - max_age_in_seconds
             events = [
                 evt
                 for evt in events
