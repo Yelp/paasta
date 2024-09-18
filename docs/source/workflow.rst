@@ -33,7 +33,7 @@ Adhoc tasks are often required to support one-time tasks, like a database
 migration.  Sometimes they are also useful for exploratory purposes, or even
 sometimes for end-to-end tests. PaaSTA supports this use case through ``paasta
 local-run``, which supports building images locally, as well as using the same
-image as a "live" Deployment.
+image as a "live" deployment.
 
 See the `adhoc instances <adhoc_instances.html>`_ doc for more information on
 running adhoc instances using ``paasta local-run``.
@@ -52,14 +52,14 @@ The `Paasta Contract <about/contract.html>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
 
 paasta_tools contains the implementation of several of these rules.
-For example, `generate_Deployments_for_service <generate_Deployments_for_service.html>`_ is
+For example, `generate_deployments_for_service <generate_deployments_for_service.html>`_ is
 the piece that checks each service's git repo for the specially-named branch
 that tells PaaSTA which versions of the service should go to which clusters.
 
 Deployment
 ----------
-A yelpsoa-configs master runs `generate_Deployments_for_service <generated/paasta_tools.generate_Deployments_for_service.html>`_
-frequently. The generated ``Deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
+A yelpsoa-configs master runs `generate_deployments_for_service <generated/paasta_tools.generate_deployments_for_service.html>`_
+frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
 How PaaSTA Runs Docker Containers
 ---------------------------------
@@ -126,14 +126,15 @@ monitoring checks for free:
 
 * **check_kubernetes_services_replication**:
   runs periodically and sends an alert if fewer than 50% of the requested
-  instances are deployed on a cluster. it will look in Smartstack to count the available instances
-  against the expected amount of instances that should've been deployed via Kubernetes.
+  instances are deployed on a cluster. If the service is registered in Smartstack
+  it will look in Smartstack to count the available instances. Otherwise it
+  counts the number of healthy Pods in Kubernetes.
 
 
 The PaaSTA command line
 ------------------------
 
-The PaaSTA command line interface, ``PaaSTA``, gives users of PaaSTA the
+The PaaSTA command line interface, ``paasta``, gives users of PaaSTA the
 ability to inspect the state of services, as well as stop and start existing
 services. See the man pages for a description and detail of options for any
 individual PaaSTA command.  Some of the most frequently used commands are

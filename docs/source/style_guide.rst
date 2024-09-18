@@ -23,12 +23,12 @@ Examples
 ^^^^^^^^
 
 Good:
- * paasta mark-for-Deployment => Goes to stdout. (But also scribe)
+ * paasta mark-for-deployment => Goes to stdout. (But also scribe)
 Bad:
- * paasta mark-for-Deployment => Going to scribe only, which is surprising.
+ * paasta mark-for-deployment => Going to scribe only, which is surprising.
 
 Good:
- * PaaSTA itest => Sends event-level detail to stdout
+ * paasta itest => Sends event-level detail to stdout
 
 Example::
 
@@ -40,7 +40,7 @@ Example::
   etc"
 
 Bad:
- * PaaSTA itest => Sends all output to scribe, no output to stdout. Jenkins console output is empty and surprises users.
+ * paasta itest => Sends all output to scribe, no output to stdout. Jenkins console output is empty and surprises users.
 
  * Scribe: Tools that contribute to the overall flow of a service pipeline should log to scribe with their given component. Only log lines that are specific to a service should be sent here. Logging to scribe should be selective and precise as to not overwhelm the event stream.
 
@@ -52,9 +52,9 @@ Bad:
  * setup_kubernetes_job | stdint2scribe (no selective filtering, raw stdout dump)
 
 Good:
- * PaaSTA itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log
+ * paasta itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log
 Bad:
- * PaaSTA itest => Sends every line of the ``make itest`` output to ``event`` level, drowning out other key event lines.
+ * paasta itest => Sends every line of the ``make itest`` output to ``event`` level, drowning out other key event lines.
 
  * Syslog: Non-interactive system processes that do not send data to developers can use syslog, but via stdout => logger. Do not send to syslog directly.
 
@@ -87,7 +87,7 @@ Event Level General Guidelines:
 
 Good examples of things that would be in the ``event`` level log stream:
 
-* ``40e74f marked for Deployment in cluster.main``
+* ``40e74f marked for deployment in cluster.main``
 * ``upthendown bounce initiated on instance main``
 * ``itest Passed for 9e2990.``
 * ``itest Failed for 9e2990. More info: http://....``

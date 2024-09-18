@@ -1,7 +1,7 @@
-Preparation: PaaSTA_tools and yelpsoa-configs
+Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
-PaaSTA_tools reads configuration about services from several YAML
+paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
 Each object inside of these YAML files is called an "instance" of a PaaSTA
@@ -41,7 +41,9 @@ Example::
 All configuration files that define something to launch on a PaaSTA Cluster can
 specify the following options:
 
-  * ``cpus``: Number of CPUs an instance needs. Defaults to 1. The CPU resource in kubernetes is measured in *CPU* units. One CPU in Kubernetes is equivalent to: 1 AWS vCPU, 1 GCP Core, 1 Azure vCore, 1 Hyperthread on a bare-metal Intel processor with Hyperthreading.
+  * ``cpus``: Number of CPUs an instance needs. Defaults to 1. CPUs in Kubernetes
+    are "shares" and represent a minimal amount of a CPU to share with a Pod
+    relative to the other Pods on a host.
 
   * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use while bursting; if unspecified, PaaSTA defaults to 1 for long-running services, and 0 for scheduled jobs (Tron).
     For example, if a service specifies that it needs 2 CPUs normally and 1 for burst, the service may go up to 3 CPUs, if needed.
@@ -124,12 +126,12 @@ These options are applicable to tasks scheduled through Kubernetes.
 
    would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region.
 
-  * ``deploy_whitelist``: A list of lists indicating a set of locations where Deployment is allowed.  For example:
+  * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
 
       ``deploy_whitelist: ["region", ["uswest1-prod", "uswest2-prod"]]``
 
     would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
-    is empty (the default), then Deployment is allowed anywhere.  This is superseded by the blacklist; if
+    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
     a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
     of whitelisting may be specified.
 
@@ -250,14 +252,14 @@ These options are only applicable to tasks scheduled on Kubernetes.
 
 For more information on selector operators, see the official Kubernetes
 documentation on `node affinities
-<https://kubernetes.io/docs/concepts/configuration/assign-Pod-node/#node-affinity>`_.
+<https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
 
-  * ``Pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the Pods are managed in parallel or in order.
+  * ``pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the Pods are managed in parallel or in order.
 
-    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-Pod-management>`_.
-    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-Pod-management>`_. For example::
+    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-pod-management>`_.
+    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-pod-management>`_. For example::
 
-      Pod_management_policy: Parallel
+      pod_management_policy: Parallel
 
 
 ``kubernetes-[clustername].yaml``
@@ -333,11 +335,11 @@ instance MAY have:
     See `the bounce docs <bouncing.html>`_ for a more detailed description.
 
   * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
-    to soa-configs or the marked-for-Deployment version of an instance.
+    to soa-configs or the marked-for-deployment version of an instance.
     Defaults to 0. (deadline = now)
     When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
     Set this to a large positive number to allow deployd to process other instances before this one, even if their
-      soa-configs change or mark-for-Deployment happened after this one.
+      soa-configs change or mark-for-deployment happened after this one.
     This setting only affects the first time deployd processes an instance after a change --
       instances that need to be reprocessed will be reenqueued normally.
 
@@ -384,7 +386,7 @@ instance MAY have:
           ``arbitrary_promql`` metrics provider.
 
     * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
-      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-Pod-autoscale/#scaling-policies>`
+      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`
       for scaling policies.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
@@ -445,6 +447,10 @@ instance MAY have:
     Defaults to the same uri specified in ``smartstack.yaml``, but can be
     set to something different here.
 
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    adhoc containers of this service should be launched using. Defaults to ``'bridge'``.
+
   * ``prometheus_shard``: Optional name of Prometheus shard to be configured to
     scrape the service. This shard should already exist and will not be
     automatically created.
@@ -467,7 +473,7 @@ instance MAY have:
     Must be an integer.
     This only makes a difference when some Pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
-  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `Pod lifecycle <https://kubernetes.io/docs/concepts/workloads/Pods/Pod-lifecycle/#Pod-termination>`_:
+  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
     This currently supports two sub-keys:
 
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
@@ -576,7 +582,7 @@ If a Tron **action** of a job is of executor type ``spark``, it MAY specify the 
 
   * ``spark_args``: Dictionary of spark configurations documented in
     https://spark.apache.org/docs/latest/configuration.html. Note some configurations are non-
-    user-editable as they will be populated by PaaSTA tools. See
+    user-editable as they will be populated by PaaSTA. See
     https://github.com/Yelp/service_configuration_lib/blob/master/service_configuration_lib/spark_config.py#L9
     for a complete list of such configurations.
 
@@ -592,22 +598,16 @@ The yaml where adhoc instances are defined. Top-level keys are instance names.
 Each instance MAY have:
 
   * Anything in the `Common Settings`_.
+.
+  * ``net``
 
-  * ``net``: Specify which kind of
-    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
-    instances of this service should be launched using. Defaults to ``'bridge'``.
+  * ``cmd``
 
-  * ``cmd``: The command that is executed. Can be used as an alternative to
-    args for containers without an `entrypoint
-    <https://docs.docker.com/reference/builder/#entrypoint>`_. [#note]_.
+  * ``args``
 
-  * ``args``: An array of docker args if you use the `"entrypoint"
-    <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality. [#note]_.
+  * ``deploy_group``
 
-  * ``deploy_group``: A string identifying what deploy group this instance belongs
-    to. The ``step`` parameter in ``deploy.yaml`` references this value
-    to determine the order in which to build & deploy deploy groups. Defaults to
-    ``clustername.instancename``. See the deploy group doc_ for more information.
+See the `kubernetes-[clustername].yaml`_ section for details for each of these parameters.
 
 **Footnotes**:
 
@@ -663,7 +663,7 @@ Basic HTTP and TCP options
    it will generate synapse discovery files on every host, but no listening
    port will be allocated. This must be unique across all environments where
    PaaSTA (or synapse) runs. At Yelp, we pick from the range [19000, 21000].
-   Feel free to pick the next available value -- PaaSTA fsm will do this for
+   Feel free to pick the next available value -- ``paasta fsm`` will do this for
    you automatically!
 
  * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service

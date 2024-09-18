@@ -39,7 +39,6 @@ The master node contains the following components:
   * API Server: Exposes the Kubernetes API. It is the front-end for the Kubernetes control plane.
   * Scheduler: Responsible for distributing workloads across multiple nodes.
   * Controller Manager: Responsible for regulating the state of the cluster.
-  * etcd: Consistent and highly-available key value store used as Kubernetes' backing store for all cluster data.
 
 Worker nodes are the machines that run the workload. Each worker node runs the following components
 to manage the execution and networking of containers:
@@ -62,10 +61,8 @@ criteria into account when selecting a node to have the Pod run on:
 
 The scheduler will then score each node that can host the Pod, based on the criteria above and any custom policies and then select the node
 with the highest score to run the Pod on. If multiple nodes have the same highest score then one of them is chosen randomly. Once a node is selected, the scheduler assigns
-the Pod to the node and the decision is then communicated back to the API server, which in turn notifies the kubelet on the chosen node to start the Pod.
+the Pod to the node and the decision is then communicated back to the API server, which in turn notifies the Kubelet on the chosen node to start the Pod.
 For more information on how the scheduler works, see the [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling/scheduling-framework/).
-
-In PaaSTA, we also run
 
 How PaaSTA services are isolated from each other
 ------------------------------------------------
@@ -118,9 +115,8 @@ If the processes in the cgroup reaches the ``memsw.limit_in_bytes`` value ,
 then the kernel will invoke the OOM killer, which in turn will kill off one of
 the processes in the cgroup (often, but not always, this is the biggest
 contributor to the memory usage). If this is the only process running in the
-Docker container, then the container will die. Kubernetes will attempt to reschedule the Pod
-to maintain the desired number of replicas specified in the Deployment. For each PaaSTA instance, a Deployment is created
-which manages the state of the Pods for that instance, ensuring that a specified number of replicas (specified in soa-configs) are running at any given time.
+Docker container, then the container will die. Kubernetes will restart the container
+as the RestartPolicy for the container is set to "Always".
 
 CPUs
 """"
@@ -162,4 +158,4 @@ Disk
 """""
 
 Kubernetes supports disk resource isolation through the use of storage quotas. Disk resource is isolated through the use of
-namespaces - each namespace has a set quota for the total amount of storage that can be requested by the PaaSTA service running in it.
+namespaces - PaaSTA by default apply storage resource limit for the namespace if none is specified (Note: those limits can be overridden in soaconfigs).

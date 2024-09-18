@@ -37,7 +37,7 @@ Making new versions
 -------------------
 * Make a branch. WRITE TESTS FIRST (TDD)! Add features.
 
-* Submit your branch for review. Include the "PaaSTA" group. Communicate with
+* Submit your branch for review. Include the "paasta" group. Communicate with
   the team to select a single designated Primary Reviewer.
 
 * After ShipIts, merge your branch to master.

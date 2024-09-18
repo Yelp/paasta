@@ -33,7 +33,7 @@ are currently not available, so one must build them and install them manually::
   make itest_xenial
   sudo dpkg -i dist/paasta-tools*.deb
 
-This package must be installed anywhere the PaaSTA CLI and on the kube nodes.
+This package must be installed anywhere the PaaSTA CLI is needed and on the kube nodes.
 
 Once installed, ``paasta_tools`` reads global configuration from ``/etc/paasta/``.
 This configuration is in key/value form encoded as JSON. All files in ``/etc/paasta``
@@ -74,7 +74,7 @@ Docker and a Docker Registry
 
 PaaSTA uses `Docker <https://www.docker.com/>`_ to build and distribute code for each service. PaaSTA
 assumes that a single registry is available and that the associated components
-(Docker commands, unix users, etc) have the correct credentials
+(Docker commands, unix users, Kubernetes Nodes, etc) have the correct credentials
 to use it.
 
 The docker registry needs to be defined in a config file in ``/etc/paasta/``.
@@ -116,7 +116,7 @@ SmartStack and Hacheck
 
 `SmartStack <http://nerds.airbnb.com/smartstack-service-discovery-cloud/>`_ is
 a dynamic service discovery system that allows clients to find and route to
-healthy Kubernetes pods for a particular service.
+healthy Kubernetes Pods for a particular service.
 Smartstack consists of two agents: `nerve <https://github.com/airbnb/nerve>`_ and `synapse <https://github.com/airbnb/synapse>`_.
 Nerve is responsible for health-checking services and registering them in ZooKeeper.
 Synapse then reads that data from ZooKeeper and configures an HAProxy instance.
