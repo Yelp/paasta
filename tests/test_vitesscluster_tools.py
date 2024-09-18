@@ -891,7 +891,7 @@ def test_set_cr_annotations():
             },
         }
         set_cr_annotations(cr, tt["restarted_component"], desired_state, current_time)
-        assert cr == tt["expected"]
+        assert cr == tt["expected"], f"Failed for {tt['restarted_component']}"
 
 
 @mock.patch(
