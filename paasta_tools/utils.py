@@ -3206,7 +3206,7 @@ def read_service_instance_names(
                 instance_list.append((service, instance))
     elif instance_type == "vitesscluster":
         for instance_name, instance in config.items():
-            component_names = ["vtgate", "vtadmin", "vtctld", "vttablet"]
+            component_names = ["VTGATE", "VTADMIN", "VTCTLD", "VTTABLET"]
             for name in component_names:
                 instance = f"{instance_name}.{name}"
                 instance_list.append((service, instance))

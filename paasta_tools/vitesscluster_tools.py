@@ -608,24 +608,24 @@ def get_current_time() -> str:
 def set_cr_annotations(
     cr: dict, component: str, desired_state: str, current_time: str
 ) -> None:
-    if component.startswith("vtgate"):
+    if component.startswith("VTGATE"):
         cr.setdefault("spec", {}).setdefault("cells", [])
         for cell in cr["spec"]["cells"]:
-            if component in ["vtgate", f"vtgate.{cell.get('name')}"]:
+            if component in ["VTGATE", f"VTGATE.{cell.get('name')}"]:
                 set_annotations(cell, desired_state, current_time)
-    elif component == "vtadmin":
+    elif component == "VTADMIN":
         vtadmin = cr.setdefault("spec", {}).setdefault("vtadmin", {})
         set_annotations(vtadmin, desired_state, current_time)
-    elif component == "vtctld":
+    elif component == "VTCTLD":
         vitess_dashboard = cr.setdefault("spec", {}).setdefault("vitessDashboard", {})
         set_annotations(vitess_dashboard, desired_state, current_time)
-    elif component == "vtorc":
+    elif component == "VTORC":
         vitess_shard = cr.setdefault("spec", {}).setdefault("vitessShard", {})
         set_annotations(vitess_shard, desired_state, current_time)
-    elif component.startswith("vttablet"):
+    elif component.startswith("VTTABLET"):
         cr.setdefault("spec", {}).setdefault("tabletPools", [])
         for pool in cr["spec"]["tabletPools"]:
-            if component in ["vttablet", f"vttablet.{pool.get('cell')}"]:
+            if component in ["VTTABLET", f"VTTABLET.{pool.get('cell')}"]:
                 set_annotations(pool, desired_state, current_time)
     else:
         raise RuntimeError(f"Unsupported component {repr(component)}")
