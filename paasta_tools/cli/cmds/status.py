@@ -719,8 +719,11 @@ def should_job_info_be_shown(cluster_state):
 
 
 def get_pod_uptime(pod_deployed_timestamp: str):
-    pod_creation_time = datetime.strptime(pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ")
-    pod_uptime = datetime.utcnow() - pod_creation_time
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    pod_creation_time = datetime.strptime(
+        pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc)
+    pod_uptime = datetime.now(timezone.utc) - pod_creation_time
     pod_uptime_total_seconds = pod_uptime.total_seconds()
     pod_uptime_days = divmod(pod_uptime_total_seconds, 86400)
     pod_uptime_hours = divmod(pod_uptime_days[1], 3600)
@@ -730,7 +733,7 @@ def get_pod_uptime(pod_deployed_timestamp: str):
 
 
 def append_pod_status(pod_status, output: List[str]):
-    output.append(f"    Pods:")
+    output.append("    Pods:")
     rows: List[Union[str, Tuple[str, str, str, str]]] = [
         ("Pod Name", "Host", "Phase", "Uptime")
     ]
@@ -844,7 +847,7 @@ def _print_flink_status_from_job_manager(
         # So that paasta status -v and kubectl get pods show the same consistent result.
         if verbose and len(status["pod_status"]) > 0:
             append_pod_status(status["pod_status"], output)
-        output.append(f"    No other information available in non-running state")
+        output.append("    No other information available in non-running state")
         return 0
 
     if status["state"] == "running":
@@ -854,7 +857,7 @@ def _print_flink_status_from_job_manager(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
 
@@ -879,7 +882,7 @@ def _print_flink_status_from_job_manager(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
 
@@ -890,7 +893,7 @@ def _print_flink_status_from_job_manager(
     try:
         jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
     except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))
         return 1
 
@@ -906,7 +909,7 @@ def _print_flink_status_from_job_manager(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
-    output.append(f"    Jobs:")
+    output.append("    Jobs:")
     if verbose > 1:
         output.append(
             f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
@@ -1313,10 +1316,10 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         #   This logic likely needs refining
         main_container = get_main_container(pod)
         if main_container:
-            # K8s API is returning timestamps in YST, so we use now() instead of utcnow()
+            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
             warming_up = (
                 pod.create_timestamp + main_container.healthcheck_grace_period
-                > datetime.now().timestamp()
+                > datetime.now(timezone.utc).timestamp()
             )
             if pod.mesh_ready is False:
                 if main_container.state != "running":
@@ -1418,14 +1421,17 @@ def create_replica_table(
                 )
             if state == ReplicaState.WARMING_UP:
                 if verbose > 0:
-                    warmup_duration = datetime.now().timestamp() - pod.create_timestamp
+                    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+                    warmup_duration = (
+                        datetime.now(timezone.utc).timestamp() - pod.create_timestamp
+                    )
                     humanized_duration = humanize.naturaldelta(
                         timedelta(seconds=warmup_duration)
                     )
                     grace_period_remaining = (
                         pod.create_timestamp
                         + main_container.healthcheck_grace_period
-                        - datetime.now().timestamp()
+                        - datetime.now(timezone.utc).timestamp()
                     )
                     humanized_remaining = humanize.naturaldelta(
                         timedelta(seconds=grace_period_remaining)
@@ -1790,6 +1796,7 @@ def node_property_to_str(prop: Dict[str, Any], verbose: int) -> str:
         parsed_time = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
             tzinfo=timezone.utc
         )
+        # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
         now = datetime.now(timezone.utc)
         return (
             humanize.naturaldelta(
@@ -1825,7 +1832,7 @@ def print_kafka_status(
     desired_state = annotations.get(paasta_prefixed("desired_state"))
     if desired_state is None:
         raise ValueError(
-            f"expected desired state in kafka annotation, but received none"
+            "expected desired state in kafka annotation, but received none"
         )
     output.append(f"    State: {desired_state}")
 
@@ -1851,7 +1858,7 @@ def print_kafka_status(
             )
 
     brokers = status["brokers"]
-    output.append(f"    Brokers:")
+    output.append("    Brokers:")
 
     if verbose:
         headers = ["Id", "Phase", "IP", "Pod Name", "Started"]
@@ -1864,10 +1871,11 @@ def print_kafka_status(
             PaastaColors.green if broker["phase"] == "Running" else PaastaColors.red
         )
 
+        # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
         start_time = datetime.strptime(
             broker["deployed_timestamp"], "%Y-%m-%dT%H:%M:%SZ"
-        )
-        delta = datetime.utcnow() - start_time
+        ).replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - start_time
         formatted_start_time = f"{str(start_time)} ({humanize.naturaltime(delta)})"
 
         if verbose:
