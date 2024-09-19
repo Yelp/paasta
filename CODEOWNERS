@@ -1,0 +1,96 @@
+# NOTE: "we" in this file will refer to the Compute Infrastructure team at Yelp
+
+# prevent cheeky modifications :)
+CODEOWNERS @Yelp/paasta
+
+## These impact the build process, so we probably want CI review on 'em
+**/Makefile @Yelp/paasta
+Makefile @Yelp/paasta
+# this one is kinda misnamed since it's really a patch/ directory :p
+contrib/ @Yelp/paasta
+tox.ini @Yelp/paasta
+# NOTE: we should probably CODEOWNERS requirements, but this would slow down ML
+# Compute since they have a lot of logic inside service_configuration_lib and
+# tend to make PaaSTA releases that just bump this library
+# XXX: maybe CODEOWNERS to CI + ML Compute?
+
+## These contain entrypoints for PaaSTA or otherwise control entrypoint builds
+setup.py @Yelp/paasta
+debian/control @Yelp/paasta
+debian/paasta-tools.links @Yelp/paasta
+debian/paasta-tools.substvars @Yelp/paasta
+debian/rules @Yelp/paasta
+# this one is unfortunate since operators own the paasta status code for their
+# workloads, but atm all this is in one large file
+paasta_tools/cli/ @Yelp/paasta
+
+
+# we don't own all the API code, but we do own most of it. if this turns into a
+# problem, we can split it up further or see if we can specifically remove
+# CODEOWNERS from the parts we don't own
+paasta_tools/api/ @Yelp/paasta
+paasta_tools/api/* @Yelp/paasta
+
+## common code used in many operators OR core code for paasta services
+# at the time or writing, we only care/use pause_service_autoscaler.py and
+# utils.py, but we might as well own the whole directory
+paasta_tools/autoscaling/ @Yelp/paasta
+# this might not always be true, but for now any file that starts with setup
+# is pretty foundational (and do things like create k8s deployments, CRDs,
+# etc.)
+paasta_tools/setup* @Yelp/paasta
+# and same logic for files that start with cleanup
+paasta_tools/cleanup* @Yelp/paasta
+# ...too bad we didn't call this cleanup_completed_pods.py :p
+paasta_tools/prune_completed_pods.py @Yelp/paasta
+# atm, the only thing we care about/use here is the kubernetes.py file, but
+# just in case we refactor things out a bit
+paasta_tools/instance/ @Yelp/paasta
+# helpers or base classes used in many places
+paasta_tools/*utils.py @Yelp/paasta
+paasta_tools/kubernetes/ @Yelp/paasta
+paasta_tools/long_running_service_tools.py @Yelp/paasta
+# metadata generators - for now all of these are important enough that we
+# should be involved
+paasta_tools/generate* @Yelp/paasta
+# PaaSTA/Tron core code
+paasta_tools/adhoc_tools.py @Yelp/paasta
+paasta_tools/kubernetes_tools.py @Yelp/paasta
+paasta_tools/eks_tools.py @Yelp/paasta
+paasta_tools/paasta* @Yelp/paasta
+# mesh-related code
+paasta_tools/envoy_tools.py@Yelp/paasta
+paasta_tools/hacheck.py @Yelp/paasta
+paasta_tools/smartstack_tools.py @Yelp/paasta
+# same logic as other wildcards above - currently all of these are important
+# and owner by us
+paasta_tools/list* @Yelp/paasta
+paasta_tools/tron/ @Yelp/paasta
+paasta_tools/tron* @Yelp/paasta
+# secret management
+paasta_tools/secret_providers/ @Yelp/paasta
+paasta_tools/secret_tools.py @Yelp/paasta
+
+## directories we want to break apart
+# we have a bad habit of depending on things in here - which is always a fun
+# time since we're pretty lax with the code quality of things we add here
+# initially. hopefully adding CODEOWNERS will help us be more mindful and
+# eventually move these to more appropriate/tested locations (as well as
+# protect important files like the autotune or SSR management code)
+paasta_tools/contrib/* @Yelp/paasta
+
+## files used for alerting
+# NOTE: we could codeowner check*, but there's enough scripts like
+# check_flink_services_health.py, check_spark_jobs.py, etc. that we
+# should break this down to just what we own
+paasta_tools/check_autoscaler_max_instances.py @Yelp/paasta
+paasta_tools/check_kubernetes_api.py @Yelp/paasta
+paasta_tools/check_kubernetes_services_replication.py @Yelp/paasta
+paasta_tools/check_oom_events.py @Yelp/paasta
+paasta_tools/check_services_replication_tools.py @Yelp/paasta
+paasta_tools/monitoring/ @Yelp/paasta
+paasta_tools/monitoring* @Yelp/paasta
+paasta_tools/oom_logger.py @Yelp/paasta
+# not technically alerting, but very useful for spot interruption handling
+# so we should be careful with it
+paasta_tools/broadcast_log_to_services.py @Yelp/paasta
