@@ -23,6 +23,9 @@ debian/rules @Yelp/paasta
 # this one is unfortunate since operators own the paasta status code for their
 # workloads, but atm all this is in one large file
 paasta_tools/cli/ @Yelp/paasta
+# exclude these files from being codeownered to us
+paasta_tools/cli/cmds/spark_run.py
+paasta_tools/cli/cmds/security_check.py
 
 
 # we don't own all the API code, but we do own most of it. if this turns into a
