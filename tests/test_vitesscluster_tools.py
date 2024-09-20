@@ -132,26 +132,6 @@ VITESS_CONFIG = {
                         "name": "etc-srv-configs",
                     },
                 ],
-                "lifecycle": {
-                    "postStart": {
-                        "exec": {
-                            "command": [
-                                "/bin/sh",
-                                "-c",
-                                "/cloudmap/scripts/register_to_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
-                            ]
-                        }
-                    },
-                    "preStop": {
-                        "exec": {
-                            "command": [
-                                "/bin/sh",
-                                "-c",
-                                "/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
-                            ]
-                        }
-                    },
-                },
                 "replicas": 1,
                 "resources": {
                     "limits": {"cpu": "100m", "memory": "256Mi"},
@@ -349,6 +329,7 @@ VITESS_CONFIG = {
                                             "enforce-tableacl-config": "true",
                                             "grpc_max_message_size": "134217728",
                                             "init_tablet_type": "replica",
+                                            "init_shard": "0",
                                             "keep_logs": "72h",
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",
@@ -537,6 +518,7 @@ VITESS_CONFIG = {
                                             "enforce-tableacl-config": "true",
                                             "grpc_max_message_size": "134217728",
                                             "init_tablet_type": "replica",
+                                            "init_shard": "0",
                                             "keep_logs": "72h",
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",
