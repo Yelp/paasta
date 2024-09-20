@@ -4281,7 +4281,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configd2fd7b15"
+            == "config3bd814d2"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4327,7 +4327,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configa2ea39be"
+            == "configf23a3edb"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

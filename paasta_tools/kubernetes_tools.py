@@ -608,9 +608,9 @@ class KubeClient:
         # We need to support apiextensions /v1 and /v1beta1 in order
         # to make our upgrade to k8s 1.22 smooth, otherwise
         # updating the CRDs make this script fail
-        self.apiextensions_v1_beta1 = kube_client.ApiextensionsV1beta1Api(
-            self.api_client
-        )
+        # self.apiextensions_v1_beta1 = kube_client.ApiextensionsV1beta1Api(
+        #     self.api_client
+        # )
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
@@ -4164,10 +4164,7 @@ def update_crds(
                 break
         try:
 
-            if "apiextensions.k8s.io/v1beta1" == desired_crd.api_version:
-                apiextensions = kube_client.apiextensions_v1_beta1
-            else:
-                apiextensions = kube_client.apiextensions
+            apiextensions = kube_client.apiextensions
 
             if existing_crd:
                 desired_crd.metadata[
