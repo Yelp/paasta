@@ -26,12 +26,12 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
-from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -603,7 +603,7 @@ class TestKubernetesDeploymentConfig:
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(
                                 command=[
                                     "/bin/sh",
@@ -649,7 +649,7 @@ class TestKubernetesDeploymentConfig:
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(
                                 command=[
                                     "/bin/sh",
@@ -929,7 +929,7 @@ class TestKubernetesDeploymentConfig:
                     resources=mock_get_resource_requirements.return_value,
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
                         )
                     ),
@@ -2201,7 +2201,7 @@ class TestKubernetesDeploymentConfig:
             self.deployment.config_dict["lifecycle"] = {
                 "pre_stop_command": termination_action
             }
-        handler = V1Handler(_exec=V1ExecAction(command=expected))
+        handler = V1LifecycleHandler(_exec=V1ExecAction(command=expected))
         assert self.deployment.get_kubernetes_container_termination_action() == handler
 
     @pytest.mark.parametrize(
@@ -4281,7 +4281,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configd2fd7b15"
+            == "config3bd814d2"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4327,7 +4327,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configa2ea39be"
+            == "configf23a3edb"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
