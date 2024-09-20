@@ -1000,10 +1000,15 @@ def format_tron_action_dict(action_config: TronActionConfig):
             "app.kubernetes.io/managed-by": "tron",
         }
 
-        # we can hardcode this for now as batches really shouldn't
-        # need routable IPs and we know that Spark probably does.
         result["annotations"] = {
+            # we can hardcode this for now as batches really shouldn't
+            # need routable IPs and we know that Spark  does.
             "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
+            # we have a large amount of tron pods whose instance names are too long for a k8s label
+            # ...so let's toss them into an annotation so that tooling can read them (since the length
+            # limit is much higher (256kb))
+            "paasta.yelp.com/service": action_config.get_service(),
+            "paasta.yelp.com/instance": action_config.get_instance(),
         }
 
         result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
