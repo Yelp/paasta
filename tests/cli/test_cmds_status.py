@@ -2411,16 +2411,16 @@ class TestPrintKafkaStatus:
         expected_output = [
             f"    Kafka View Url: {status['kafka_view_url']}",
             f"    Zookeeper: {status['zookeeper']}",
-            f"    State: testing",
+            "    State: testing",
             f"    Ready: {str(status['cluster_ready']).lower()}",
             f"    Health: {PaastaColors.red('unhealthy')}",
             f"     Reason: {status['health']['message']}",
             f"     Offline Partitions: {status['health']['offline_partitions']}",
             f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
-            f"    Brokers:",
-            f"     Id  Phase    Started",
-            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
-            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+            "    Brokers:",
+            "     Id  Phase    Started",
+            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
+            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 

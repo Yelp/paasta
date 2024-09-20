@@ -20,6 +20,7 @@ import math
 import os
 import re
 from datetime import datetime
+from datetime import timezone
 from enum import Enum
 from functools import lru_cache
 from inspect import currentframe
@@ -2939,7 +2940,7 @@ def recent_container_restart(
     last_timestamp: Optional[int],
     time_window_s: int = 900,  # 15 mins
 ) -> bool:
-    min_timestamp = datetime.now().timestamp() - time_window_s
+    min_timestamp = datetime.now(timezone.utc).timestamp() - time_window_s
     return (
         restart_count > 0
         and last_state == "terminated"
@@ -3661,7 +3662,8 @@ async def get_events_for_object(
         )
         events = events.items if events else []
         if max_age_in_seconds and max_age_in_seconds > 0:
-            min_timestamp = datetime.now().timestamp() - max_age_in_seconds
+            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+            min_timestamp = datetime.now(timezone.utc).timestamp() - max_age_in_seconds
             events = [
                 evt
                 for evt in events
