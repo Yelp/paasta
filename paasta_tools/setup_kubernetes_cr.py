@@ -166,7 +166,6 @@ def setup_all_custom_resources(
     # we need to try both possibilities
     for apiextension in [
         kube_client.apiextensions,
-        kube_client.apiextensions_v1_beta1,
     ]:
 
         try:
@@ -175,7 +174,7 @@ def setup_all_custom_resources(
             ).items
         except ApiException:
             log.debug(
-                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
+                "Listing CRDs with apiextensions/v1 not supported on this cluster"
             )
             crds_list = []
 
