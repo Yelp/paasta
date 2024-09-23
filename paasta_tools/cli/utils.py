@@ -82,6 +82,7 @@ try:
     from vault_tools.paasta_secret import get_client as get_vault_client
     from vault_tools.paasta_secret import get_vault_url
     from vault_tools.paasta_secret import get_vault_ca
+    from okta_auth import get_and_cache_jwt_default
 except ImportError:
 
     def get_vault_client(url: str, capath: str) -> None:
@@ -91,6 +92,9 @@ except ImportError:
         return ""
 
     def get_vault_ca(ecosystem: str) -> str:
+        return ""
+
+    def get_and_cache_jwt_default(client_id: str) -> str:
         return ""
 
 
@@ -1132,3 +1136,9 @@ def get_service_auth_token() -> str:
     )
     response = vault_client.secrets.identity.generate_signed_id_token(name=vault_role)
     return response["data"]["token"]
+
+
+def get_sso_service_auth_token() -> str:
+    """Generate an authentication token for the calling user from the Single Sign On provider"""
+    client_id = load_system_paasta_config().get_service_auth_sso_oidc_client_id()
+    return get_and_cache_jwt_default(client_id)
