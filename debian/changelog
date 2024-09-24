@@ -1,3 +1,12 @@
+paasta-tools (1.5.4) xenial; urgency=medium
+
+  * 1.5.4 tagged with 'make release'
+    Commit: Document minimum_error_rps in smartstack.yaml (#3970)
+    Update the paasta docs with minimum_error_rps for default error
+    alerting endpoints
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 24 Sep 2024 12:09:45 -0700
+
 paasta-tools (1.5.3) xenial; urgency=medium
 
   * 1.5.3 tagged with 'make release'
