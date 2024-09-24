@@ -1112,6 +1112,7 @@ These keys provide optional overrides for the default alerting behaviour.
    - ``endpoints``: List of endpoints to create alerts for.
       - ``name``: The name of the endpoint.
       - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the parent.
+      - ``minimum_error_rps``: Minimum error rate per second for the endpoint. Minimum is zero. Defaults to **5**. If not specified the threshold will be inherited from the parent.
 
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
