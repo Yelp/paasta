@@ -271,6 +271,10 @@
                                     "minimum": 0,
                                     "maximum": 1
                                 },
+                                "minimum_error_rps": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                },
                                 "team": {
                                     "type": "string"
                                 },
