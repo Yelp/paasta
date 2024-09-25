@@ -1403,7 +1403,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     # NOTE: this is necessary as containerd differs in behavior from dockershim: in dockershim
                     # dropped capabilities were overriden if the same capability was added - but in containerd
                     # the dropped capabilities appear to have higher priority.
-                    drop=list(set(CAPS_DROP) - set(cap_add)),
+                    # WARNING: this must be sorted - otherwise the order of the capabilities will be different
+                    # on every setup_kubernetes_job run and cause unnecessary redeployments
+                    drop=sorted(list(set(CAPS_DROP) - set(cap_add))),
                 )
             )
 
