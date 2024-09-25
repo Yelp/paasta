@@ -1067,7 +1067,7 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_security_context_with_cap_add(self):
         self.deployment.config_dict["cap_add"] = ["SETGID"]
-        expected_dropped_caps = list(set(CAPS_DROP) - {"SETGID"})
+        expected_dropped_caps = sorted(list(set(CAPS_DROP) - {"SETGID"}))
         expected_security_context = V1SecurityContext(
             capabilities=V1Capabilities(add=["SETGID"], drop=expected_dropped_caps)
         )
