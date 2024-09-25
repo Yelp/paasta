@@ -1,3 +1,18 @@
+paasta-tools (1.6.0) xenial; urgency=medium
+
+  * 1.6.0 tagged with 'make release'
+    Commit: Add service and instance annotations to tron pods (#3967)
+    We can currently only figure out what service/instance a log belongs
+    to by looking at the k8s labels for the emitting pod, but label
+    values are quite limited in length and we"ve got some pretty large
+    job and/or action names, which means that the instance label for a
+    large chunk of tronjobs ends up getting truncated.  Solution:
+    annotations! these have a significantly higher limit (256kb) and
+    they can still be read by our otel collector - the only downside is
+    that annotations cannot be used for filtering, but that"s fine :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 07:59:52 -0700
+
 paasta-tools (1.5.5) xenial; urgency=medium
 
   * 1.5.5 tagged with 'make release'
