@@ -1,3 +1,13 @@
+paasta-tools (1.6.1) xenial; urgency=medium
+
+  * 1.6.1 tagged with 'make release'
+    Commit: Only drop capabilities that are not added (#3972)  It
+    appears that containerd has changed the behavior around
+    adding/dropping linux capabilities and added caps no longer take
+    precedence over dropped ones
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 09:39:23 -0700
+
 paasta-tools (1.6.0) xenial; urgency=medium
 
   * 1.6.0 tagged with 'make release'
