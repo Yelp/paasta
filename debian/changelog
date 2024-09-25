@@ -1,3 +1,13 @@
+paasta-tools (1.6.2) xenial; urgency=medium
+
+  * 1.6.2 tagged with 'make release'
+    Commit: Sort dropped caps when caps are added (#3973)  As sets are
+    unordered, not sorting the resulting list built from set operations
+    means that we"re constantly changing the order of metadata in the
+    final podspec, leading to bounces almost every time the s_k_j runs
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 15:07:47 -0700
+
 paasta-tools (1.6.1) xenial; urgency=medium
 
   * 1.6.1 tagged with 'make release'
