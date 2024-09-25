@@ -2120,7 +2120,10 @@ def validate_pool(
     cluster: str, pool: str, system_paasta_config: "SystemPaastaConfig"
 ) -> bool:
     if pool:
-        valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
+        if cluster == "pnw-prod-spark":
+            valid_pools = system_paasta_config.get_pools_for_cluster("spark-pnw-prod")
+        else:
+            valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
         if not valid_pools:
             raise PoolsNotConfiguredError
         # at this point, we can be sure that `valid_pools` is populated

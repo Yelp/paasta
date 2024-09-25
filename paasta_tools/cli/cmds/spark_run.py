@@ -232,9 +232,10 @@ def add_subparser(subparsers):
     try:
         system_paasta_config = load_system_paasta_config()
         valid_clusters = system_paasta_config.get_clusters()
-        default_spark_cluster = system_paasta_config.get_spark_run_config().get(
-            "default_cluster"
-        )
+        # default_spark_cluster = system_paasta_config.get_spark_run_config().get(
+        #     "default_cluster"
+        # )
+        default_spark_cluster = "pnw-prod-spark"
         default_spark_pool = system_paasta_config.get_spark_run_config().get(
             "default_pool"
         )
