@@ -1,3 +1,11 @@
+paasta-tools (1.5.5) xenial; urgency=medium
+
+  * 1.5.5 tagged with 'make release'
+    Commit: Fixing paasta clean up stale nodes (#3971)  * Fixing paasta
+    clean up stale nodes  * Fixing paasta clean up stale nodes
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 25 Sep 2024 04:45:30 -0700
+
 paasta-tools (1.5.4) xenial; urgency=medium
 
   * 1.5.4 tagged with 'make release'
