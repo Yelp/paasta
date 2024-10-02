@@ -1088,6 +1088,7 @@ These keys provide optional overrides for the default alerting behaviour.
           page_nonprod: true
           error_threshold_ratio: 0.02
           minimum_error_rps: 10
+          default_endpoint_alerting: true
           endpoints:
             - name: GET /something
             - name: GET /something/else
@@ -1107,9 +1108,12 @@ These keys provide optional overrides for the default alerting behaviour.
      respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
    - ``page_nonprod``: Override the default paging behaviour for non-production
      environments. Defaults to **false**.
-   - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
-   - ``minimum_error_rps``: Minimum error rate per second, minimum is zero. Defaults to **5**.
-   - ``endpoints``: List of endpoints to create alerts for.
+   - ``error_threshold_ratio``: Error threshold ratio (0-1) for errors under this namespace. Defaults to **0.01**.
+   - ``minimum_error_rps``: Minimum error rate per second for errors under this namespace before an alert can be triggered, minimum is zero. Defaults to **5**.
+   - ``default_endpoint_alerting``: Turn on alerts for all endpoints in this namespace. Defaults to **false**.
+   - ``endpoint_error_threshold_ratio``: Error threshold ratio (0-1) for errors to any singular endpoint. Defaults to the namespace ``error_threshold_ratio`` if specified, or **0.01**.
+   - ``endpoint_minimum_error_rps``: Minimum error rate per second for errors to any singular endpoint before an alert can be triggered for errors to any singular endpoint. Defaults to the namespace ``minimum_error_rps`` if specified, or **5**.
+   - ``endpoints``: List of endpoints to create specific alerts for.
       - ``name``: The name of the endpoint.
       - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the parent.
       - ``minimum_error_rps``: Minimum error rate per second for the endpoint. Minimum is zero. Defaults to **5**. If not specified the threshold will be inherited from the parent.
