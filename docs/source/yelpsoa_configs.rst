@@ -1115,8 +1115,8 @@ These keys provide optional overrides for the default alerting behaviour.
    - ``endpoint_minimum_error_rps``: Minimum error rate per second for errors to any singular endpoint before an alert can be triggered for errors to any singular endpoint. Defaults to the namespace ``minimum_error_rps`` if specified, or **5**.
    - ``endpoints``: List of endpoints to create specific alerts for.
       - ``name``: The name of the endpoint.
-      - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the parent.
-      - ``minimum_error_rps``: Minimum error rate per second for the endpoint. Minimum is zero. Defaults to **5**. If not specified the threshold will be inherited from the parent.
+      - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the ``endpoint_error_threshold_ratio``; if that is not specified then the namespace's ``error_threshold_ratio``; otherwise **0.01**.
+      - ``minimum_error_rps``: Minimum error rate per second for the endpoint. Minimum is zero. If not specified the threshold will be inherited from the ``endpoint_minimum_error_rps``; if that is not specified then the namespace's ``minimum_error_rps``; otherwise **5**.
 
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
