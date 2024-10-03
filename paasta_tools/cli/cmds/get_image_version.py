@@ -27,6 +27,7 @@ from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_pipeline_deploy_group_configs
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import optionally_load_system_paasta_config
 from paasta_tools.utils import parse_timestamp
 
 
@@ -71,9 +72,16 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def check_enable_automated_redeploys(service: str, soa_dir: str) -> bool:
-    # TODO: Handle global flag
     deploy_steps = get_pipeline_deploy_group_configs(service, soa_dir)
-    return any([step.get("enable_automated_redeploys", False) for step in deploy_steps])
+    enabled_by_default = (
+        optionally_load_system_paasta_config().get_enable_automated_redeploys_default()
+    )
+    return any(
+        [
+            step.get("enable_automated_redeploys", enabled_by_default)
+            for step in deploy_steps
+        ]
+    )
 
 
 def extract_timestamp(image_version: str) -> Optional[datetime.datetime]:
