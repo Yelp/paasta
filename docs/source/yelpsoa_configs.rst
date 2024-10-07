@@ -43,7 +43,8 @@ specify the following options:
 
   * ``cpus``: Number of CPUs an instance needs. Defaults to 1. CPUs in Kubernetes
     are "shares" and represent a minimal amount of a CPU to share with a Pod
-    relative to the other Pods on a host.
+    relative to the other Pods on a host. For a more detailed read on
+    how this works in practice, see the docs on `isolation <isolation.html>`_.
 
   * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use while bursting; if unspecified, PaaSTA defaults to 1 for long-running services, and 0 for scheduled jobs (Tron).
     For example, if a service specifies that it needs 2 CPUs normally and 1 for burst, the service may go up to 3 CPUs, if needed.
@@ -51,12 +52,10 @@ specify the following options:
   * ``mem``: Memory (in MB) an instance needs. Defaults to 4096 (4GB). In Kubernetes
     memory is constrained to the specified limit, and containers will reach
     out-of-memory (OOM) conditions if they attempt to exceed these limits, and
-    then be killed.
+    then be killed. For more a more detailed read on
+    how this works, see the docs on `isolation <isolation.html>`_
 
-  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
-    may or may not be enforced, but services should set their ``disk`` setting
-    regardless to ensure the scheduler has adequate information for distributing
-    tasks.
+  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB).
 
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables automatically (keep in mind all environment variables are strings in a shell):
@@ -505,7 +504,7 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 This file stores configuration for periodically scheduled jobs for execution on
 `Tron <https://github.com/yelp/tron>`_.
 
-The documentation here is for the paasta-specific options. For all other
+The documentation here is for the PaaSTA-specific options. For all other
 settings, please see the
 `canonical docs <https://tron.readthedocs.io/en/latest/jobs.html>`_.
 
@@ -598,7 +597,7 @@ The yaml where adhoc instances are defined. Top-level keys are instance names.
 Each instance MAY have:
 
   * Anything in the `Common Settings`_.
-.
+
   * ``net``
 
   * ``cmd``
@@ -623,8 +622,6 @@ See the `kubernetes-[clustername].yaml`_ section for details for each of these p
     requirements and check that no more than one of cmd and args
     is specified. If both are specified, an exception is thrown with an
     explanation of the problem, and the program terminates.
-
-.. _doc: deploy_groups.html
 
 ``smartstack.yaml``
 -------------------

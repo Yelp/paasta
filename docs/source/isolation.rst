@@ -157,5 +157,8 @@ Some notes on this:
 Disk
 """""
 
-Kubernetes supports disk resource isolation through the use of storage quotas. Disk resource is isolated through the use of
-namespaces - PaaSTA by default apply storage resource limit for the namespace if none is specified (Note: those limits can be overridden in soaconfigs).
+Kubernetes supports disk resource isolation through the use of storage quotas. Kubernetes
+will periodically poll for usage, so it is possible to temporarily exceed the configured
+limit. When Kubernetes sees that a container has exceeded it's limit, it will evict (i.e., kill) the offending Pod, thereby deleting the containers filesystem and reclaiming the used disk.
+
+NOTE: this usage calculation takes into consideration node-level container logs (i.e., container logs for stdout/stderr stored on-host to power things like ``kubectl logs``) - if an application is particularly "chatty" with its output, the ``disk`` allocation in soa-configs will need to take this into account.```

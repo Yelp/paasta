@@ -66,7 +66,7 @@ Steps below outline running PaaSTA playground components with a debugger attache
 
    .. sourcecode:: shell
 
-      (py38-linux) user@dev55-uswest1adevc:~/pg/paasta$ KUBECONFIG=./k8s_itests/kubeconfig kubectl get Pods -n paasta
+      (py38-linux) user@dev55-uswest1adevc:~/pg/paasta$ KUBECONFIG=./k8s_itests/kubeconfig kubectl get pods -n paasta
       NAME                                                      READY   STATUS    RESTARTS   AGE
       compute-infra-test-service-autoscaling-6fdf96b485-2fkd5   1/1     Running   0          25s
       compute-infra-test-service-autoscaling-6fdf96b485-44lqp   1/1     Running   0          25s
