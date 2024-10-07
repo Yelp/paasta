@@ -4242,7 +4242,7 @@ def test_load_custom_resources():
     ]
 
 
-def test_warning_big_bounce():
+def test_warning_big_bounce_default_config():
     job_config = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         instance="instance",
@@ -4330,6 +4330,53 @@ def test_warning_big_bounce_routable_pod():
             ]
             == "configf23a3edb"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
+
+
+def test_warning_big_bounce_common_config():
+    job_config = kubernetes_tools.KubernetesDeploymentConfig(
+        service="service",
+        instance="instance",
+        cluster="cluster",
+        config_dict={
+            # XXX: this should include other common options that are used
+            "cap_add": ["SET_GID"],
+        },
+        branch_dict={
+            "docker_image": "abcdef",
+            "git_sha": "deadbeef",
+            "image_version": None,
+            "force_bounce": None,
+            "desired_state": "start",
+        },
+    )
+
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "volumes": [],
+                "hacheck_sidecar_volumes": [],
+                "expected_slave_attributes": [{"region": "blah"}],
+                "docker_registry": "docker-registry.local",
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        return_value=ServiceNamespaceConfig(),
+        autospec=True,
+    ):
+        assert (
+            job_config.format_kubernetes_app().spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
+            ]
+            == "configb24f9dd2"
+        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
 @pytest.mark.parametrize(
