@@ -1,3 +1,12 @@
+paasta-tools (1.6.3) xenial; urgency=medium
+
+  * 1.6.3 tagged with 'make release'
+    Commit: Remove vtgate lifecycle hooks (#3966)  Remove vtgate
+    lifecycle hooks as we"re not proceeding with #3959 and would like to
+    have functional vtgate pods for testing
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 07 Oct 2024 12:24:40 -0700
+
 paasta-tools (1.6.2) xenial; urgency=medium
 
   * 1.6.2 tagged with 'make release'
