@@ -104,6 +104,7 @@ VTTABLET_EXTRA_FLAGS = {
     "throttle_check_as_check_self": "true",
     "db_charset": "utf8mb4",
     "disable_active_reparents": "true",
+    "init_shard": "0",
 }
 
 
@@ -260,26 +261,6 @@ def get_cell_config(
     config = CellConfigDict(
         name=cell,
         gateway=GatewayConfigDict(
-            lifecycle={
-                "preStop": {
-                    "exec": {
-                        "command": [
-                            "/bin/sh",
-                            "-c",
-                            f"/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-{cell} {aws_region}",
-                        ]
-                    }
-                },
-                "postStart": {
-                    "exec": {
-                        "command": [
-                            "/bin/sh",
-                            "-c",
-                            f"/cloudmap/scripts/register_to_cloudmap.sh vtgate-{cell} {aws_region}",
-                        ]
-                    }
-                },
-            },
             affinity={"nodeAffinity": node_affinity},
             extraEnv=updated_vtgate_extra_env,
             extraFlags={
