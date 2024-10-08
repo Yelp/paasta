@@ -255,7 +255,7 @@
                         "maximum": 1
                     },
                     "minimum_error_rps": {
-                        "type": "integer",
+                        "type": "number",
                         "minimum": 0
                     },
                     "default_endpoint_alerting": {
@@ -267,7 +267,7 @@
                         "maximum": 1
                     },
                     "endpoint_minimum_error_rps": {
-                        "type": "integer",
+                        "type": "number",
                         "minimum": 0
                     },
                     "endpoints": {
@@ -284,7 +284,7 @@
                                     "maximum": 1
                                 },
                                 "minimum_error_rps": {
-                                    "type": "integer",
+                                    "type": "number",
                                     "minimum": 0
                                 },
                                 "team": {
