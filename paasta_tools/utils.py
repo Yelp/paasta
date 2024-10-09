@@ -2052,6 +2052,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vitess_tablet_pool_type_mapping: Dict
     vitess_throttling_config: Dict
     uses_bulkdata_default: bool
+    enable_automated_redeploys_default: bool
 
 
 def load_system_paasta_config(
@@ -2816,6 +2817,9 @@ class SystemPaastaConfig:
 
     def get_uses_bulkdata_default(self) -> bool:
         return self.config_dict.get("uses_bulkdata_default", True)
+
+    def get_enable_automated_redeploys_default(self) -> bool:
+        return self.config_dict.get("enable_automated_redeploys_default", False)
 
 
 def _run(
