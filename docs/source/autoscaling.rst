@@ -67,7 +67,10 @@ The currently available metrics providers are:
 
 :uwsgi:
   With the ``uwsgi`` metrics provider, Paasta will configure your pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
+  Setpoint refers to the worker utilization, which is the percentage of workers that are busy.
   We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
+
+  You can specify ``moving_average_window_seconds`` (default ``1800``, or 30 minutes) to adjust how long of a time period your worker utilization is averaged over: set a smaller value to autoscale more quickly, or set a larger value to ignore spikes.
 
   .. note::
 
@@ -78,14 +81,20 @@ The currently available metrics providers are:
   With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
   This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
 
+  You can specify ``moving_average_window_seconds`` (default ``1800``, or 30 minutes) to adjust how long of a time period your worker utilization is averaged over: set a smaller value to autoscale more quickly, or set a larger value to ignore spikes.
+
 :active-requests:
   With the ``active-requests`` metrics provider, Paasta will use Envoy metrics to scale your service based on the amount
   of incoming traffic.  Note that, instead of using ``setpoint``, the active requests provider looks at the
   ``desired_active_requests_per_replica`` field of the autoscaling configuration to determine how to scale.
 
+  You can specify ``moving_average_window_seconds`` (default ``1800``, or 30 minutes) to adjust how long of a time period the number of active requests is averaged over: set a smaller value to autoscale more quickly, or set a larger value to ignore spikes.
+
 :piscina:
   This metrics provider is only valid for the Yelp-internal server-side-rendering (SSR) service. With the ``piscina``
   metrics provider, Paasta will scale your SSR instance based on how many Piscina workers are busy.
+
+  You can specify ``moving_average_window_seconds`` (default ``1800``, or 30 minutes) to adjust how long of a time period your worker utilization is averaged over: set a smaller value to autoscale more quickly, or set a larger value to ignore spikes.
 
 :arbitrary_promql:
   The ``arbitrary_promql`` metrics provider allows you to specify any Prometheus query you want using the `Prometheus
@@ -99,25 +108,17 @@ The currently available metrics providers are:
 Decision policies
 ^^^^^^^^^^^^^^^^^
 
-The currently available decicion policies are:
-
-:proportional:
-  (This is the default policy.)
-  Uses a simple proportional model to decide the correct number of instances
-  to scale to, i.e. if load is 110% of the setpoint, scales up by 10%.
-
-  Extra parameters:
-
-  :moving_average_window_seconds:
-    The number of seconds to load data points over in order to calculate the average.
-    Defaults to 1800s (30m).
-    Currently, this is only supported for ``metrics_provider: uwsgi``.
-
 :bespoke:
   Allows a service author to implement their own autoscaling.
   This policy results in no HPA being configured.
   An external process should periodically decide how many replicas this service needs to run, and use the Paasta API to tell Paasta to scale.
   See the :ref:`How to create a custom (bespoke) autoscaling method` section for details.
+  This is most commonly used by the Kew autoscaler.
+
+:Anything other value:
+  The default autoscaling method.
+  Paasta will configure a Kubernetes HPA to scale the service based on the metrics providers and setpoints.
+
 
 Using multiple metrics providers
 --------------------------------

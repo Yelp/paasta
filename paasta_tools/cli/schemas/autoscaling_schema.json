@@ -25,12 +25,6 @@
             "max_instances_alert_threshold": {
                 "type": "number"
             },
-            "forecast_policy": {
-                "enum": [
-                    "moving_average",
-                    "current"
-                ]
-            },
             "moving_average_window_seconds": {
                 "type": "integer"
             },
