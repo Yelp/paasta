@@ -22,15 +22,13 @@ directory. There is one folder per service. Here is an example tree::
   ├── api
   │   ├── adhoc-prod.yaml
   │   ├── deploy.yaml
-  │   ├── marathon-dev.yaml
-  │   ├── marathon-prod.yaml
   │   ├── monitoring.yaml
   │   ├── service.yaml
   │   ├── smartstack.yaml
   │   └── tron-prod.yaml
   ...
 
-See the `paasta-specific soa-configs documentation <yelpsoa_configs.html>`_ for more information
+See the `PaaSTA-specific soa-configs documentation <yelpsoa_configs.html>`_ for more information
 about the structure and contents of some example files in soa-configs that PaaSTA uses.
 
 For more information about why we chose this method of config distribution,

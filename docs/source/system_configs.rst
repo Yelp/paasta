@@ -2,7 +2,7 @@ System Paasta Configs
 =====================
 
 The "System Paasta Configs" inform Paasta about your environment and cluster setup, such as how to connect to
-Marathon/hacheck/etc, what the cluster name is, etc.
+Kubernetes/hacheck/etc, what the cluster name is, etc.
 
 
 Structure
@@ -26,10 +26,7 @@ Configuration options
 
 These are the keys that may exist in system configs:
 
-  * ``zookeeper``: A zookeeper connection url, used for discovering where the Mesos leader is, and some locks.
-    Example: ``"zookeeper": "zk://zookeeper1:2181,zookeeper2:2181,zookeeper3:2181/mesos"``.
-
-  * ``docker_registry``: The name of the docker registry where paasta images will be stored. This can optionally
+  * ``docker_registry``: The name of the docker registry where PaaSTA images will be stored. This can optionally
     be set on a per-service level as well, see `yelpsoa_configs <yelpsoa_configs.html#service-yaml>`_
     Example: ``"docker_registry": "docker-paasta.yelpcorp.com:443"``
 
@@ -44,9 +41,8 @@ These are the keys that may exist in system configs:
     Example::
 
       "dashboard_links": {
-        "uswest1-prod": {
-          "Mesos": "http://mesos.paasta-uswest1-prod.yelpcorp.com",
-          "Cluster charts": "http://kibana.yelpcorp.com/something",
+        "norcal-devc": {
+          "Tron": "http://y/tron-norcal-devc",
         }
       }
 
@@ -97,23 +93,13 @@ These are the keys that may exist in system configs:
 
     Example: ``"sensu_port": 3031``
 
-  * ``dockercfg_location``: A URI of a .dockercfg file, to allow mesos slaves
-    to authenticate with the docker registry.
-    Defaults to ``file:///root/.dockercfg``.
-    While this must be set, this file can contain an empty JSON dictionary (``{}``) if your docker registry does not
-    require authentication.
-    May use any URL scheme supported by Mesos's `fetcher module. <http://mesos.apache.org/documentation/latest/fetcher/>`_
-
-    Example: ``"dockercfg_location": "http://somehost/somepath"``
-
   * ``synapse_port``: The port that haproxy-synapse exposes its status on.
     Defaults to ``3212``.
 
     Example: ``"synapse_port": 3213``
 
-  * ``synapse_host``: The default host that paasta should interrogate for haproxy-synapse state.
+  * ``synapse_host``: The default host that PaaSTA should interrogate for haproxy-synapse state.
     Defaults to ``localhost``.
-    Primarily used in `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_.
 
     Example: ``"synapse_host": 169.254.255.254``
 

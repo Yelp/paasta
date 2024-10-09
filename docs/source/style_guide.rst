@@ -47,9 +47,9 @@ Bad:
  * Anything going to scribe should ALSO go to stdout.
 
 Good:
- * setup_marathon_job => general output to stdout, app-specific output to scribe
+ * setup_kubernetes_job => general output to stdout, app-specific output to scribe
 Bad:
- * setup_marathon_job | stdint2scribe (no selective filtering, raw stdout dump)
+ * setup_kubernetes_job | stdint2scribe (no selective filtering, raw stdout dump)
 
 Good:
  * paasta itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log
@@ -79,7 +79,7 @@ Event Level General Guidelines:
 
 * All event-level scribe logs should be as terse as possible while still providing a high level summary of the events occurring in the infrastructure.
 * All state changing events MUST have at least one event-level scribe log line emitted.
-* It is not necessary to repeat redundant information, like service name, as all paasta log invocations already are service-specific anyway.
+* It is not necessary to repeat redundant information, like service name, as all PaaSTA log invocations already are service-specific anyway.
 * All event level logs SHOULD use active verbs to indicate the action that took place.
 * Log lines SHOULD NOT contain the log level that they are using *in* the log line. Don't try to emulate syslog.
 * If an external URL with more context is available, the log line SHOULD reference it, but only if an error or warning is detected.
@@ -104,7 +104,7 @@ Debug Level
 
 Debug Level General Guidelines:
 
-* Viewing Debug level logs SHOULD NOT be necessary under normal paasta operation.
+* Viewing Debug level logs SHOULD NOT be necessary under normal PaaSTA operation.
 * Debug logs are for providing additional context when things go wrong.
 * Debug logs should still use active verbs and not repeat redundant information if possible.
 * All debug-level logs should also go to stderr.

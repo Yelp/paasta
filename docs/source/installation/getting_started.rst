@@ -33,9 +33,7 @@ are currently not available, so one must build them and install them manually::
   make itest_xenial
   sudo dpkg -i dist/paasta-tools*.deb
 
-This package must be installed anywhere the PaaSTA CLI and on the Mesos/Marathon
-masters. If you are using SmartStack for service discovery, then the package must
-be installed on the Mesos Slaves as well so they can query the local API.
+This package must be installed anywhere the PaaSTA CLI is needed and on the kube nodes.
 
 Once installed, ``paasta_tools`` reads global configuration from ``/etc/paasta/``.
 This configuration is in key/value form encoded as JSON. All files in ``/etc/paasta``
@@ -76,7 +74,7 @@ Docker and a Docker Registry
 
 PaaSTA uses `Docker <https://www.docker.com/>`_ to build and distribute code for each service. PaaSTA
 assumes that a single registry is available and that the associated components
-(Docker commands, unix users, mesos slaves, etc) have the correct credentials
+(Docker commands, unix users, Kubernetes Nodes, etc) have the correct credentials
 to use it.
 
 The docker registry needs to be defined in a config file in ``/etc/paasta/``.
@@ -91,34 +89,24 @@ filename is irrelevant, but here would be an example
 There are many registries available to use, or you can
 `host your own <https://docs.docker.com/registry/>`_.
 
-Mesos
------
+Kubernetes
+----------
 
-PaaSTA uses Mesos to do the heavy lifting of running the actual services on
-pools of machines.  See the `official documentation <http://mesos.apache.org/getting-started/>`_
-on how to get started with Mesos.
+PaaSTA uses `Kubernetes <https://kubernetes.io/>`_ to manage and orchestrate its containerized services.
+See the `PaaSTA documentation <../yelpsoa_configs.html#kubernetes-clustername-yaml>`_ for how to define PaaSTA
+services in Kubernetes.
 
-Marathon
---------
+Once PaaSTA services are defined in soa-configs, there are a few tools provided by PaaSTA
+that interact with the Kubernetes API:
 
-PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising long-running services running in Mesos.
-See the `official documentation <https://mesosphere.github.io/marathon/docs/>`__ for how to get started with Marathon.
-Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_ for how to define Marathon
-jobs.
-
-Once Marathon jobs are defined in soa-configs, there are a few tools provided by PaaSTA
-that interact with the Marathon API:
-
-* ``deploy_marathon_services``: Does the initial sync between soa-configs and the Marathon API.
-  This is the tool that handles "bouncing" to new version of code, and resizing Marathon applications when autoscaling
+* ``setup_kubernetes_job``: Does the initial sync between soa-configs and the Kubernetes API.
+  This is the tool that handles "bouncing" to new version of code, and resizing Kubernetes deployments when autoscaling
   is enabled.
-  This is idempotent, and should be run periodically on a box with a ``marathon.json`` file in the
-  `system paasta config <../system_configs.html>`_ directory (Usually ``/etc/paasta``).
-  We recommend running this frequently - delays between runs of this command will limit how quickly new versions of
-  services or changes to soa-configs are picked up.
-* ``cleanup_marathon_jobs``: Cleans up lost or abandoned services. This tool
-  looks for Marathon jobs that are *not* defined in soa-configs and removes them.
-* ``check_marathon_services_replication``: Iterates over all Marathon services
+  This is idempotent, and is ran periodically on a box with a ``deployments.json`` file in the
+  ``/nail/etc/services`` directory, updating or creating the Kubernetes Deployment object representing the modified service instance.
+* ``cleanup_kubernetes_jobs``: Cleans up lost or abandoned services. This tool
+  looks for Kubernetes instances that are *not* defined in soa-configs and removes them.
+* ``check_kubernetes_services_replication``: Iterates over all Kubernetes services
   and inspects their health. This tool integrates with the monitoring infrastructure
   and will alert the team responsible for the service if it becomes unhealthy to
   the point where manual intervention is required.
@@ -128,7 +116,7 @@ SmartStack and Hacheck
 
 `SmartStack <http://nerds.airbnb.com/smartstack-service-discovery-cloud/>`_ is
 a dynamic service discovery system that allows clients to find and route to
-healthy mesos tasks for a particular service.
+healthy Kubernetes Pods for a particular service.
 Smartstack consists of two agents: `nerve <https://github.com/airbnb/nerve>`_ and `synapse <https://github.com/airbnb/synapse>`_.
 Nerve is responsible for health-checking services and registering them in ZooKeeper.
 Synapse then reads that data from ZooKeeper and configures an HAProxy instance.
@@ -137,7 +125,7 @@ To manage the configuration of nerve (detecting which services are running on a 
 we have a package called `nerve-tools <https://github.com/Yelp/nerve-tools>`_.
 This repo builds a .deb package, and should be installed on all slaves.
 Each slave should run ``configure_nerve`` periodically.
-We recommend this runs quite frequently (we run it every 5s), since Marathon tasks created by Paasta are not available
+We recommend this runs quite frequently (we run it every 5s), since Kubernetes Pods created by PaaSTA are not available
 to clients until nerve is reconfigured.
 
 Similarly, to manage the configuration of synapse, we have a package called `synapse-tools <https://github.com/Yelp/synapse-tools>`_.

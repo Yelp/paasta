@@ -34,7 +34,7 @@ PaaSTA Development
 .. toctree::
    :maxdepth: 2
 
-   paasta_development
+   PaaSTA_development
    contributing
    style_guide
    upgrading_marathon
