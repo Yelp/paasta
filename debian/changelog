@@ -1,3 +1,12 @@
+paasta-tools (1.6.4) xenial; urgency=medium
+
+  * 1.6.4 tagged with 'make release'
+    Commit: Merge pull request #3977 from
+    Yelp/u/calvinli/automated_redeploys_default_toggle  let
+    enable_automated_redeploys default value be configurable
+
+ -- Evan Krall <krall@yelp.com>  Wed, 09 Oct 2024 15:15:13 -0700
+
 paasta-tools (1.6.3) xenial; urgency=medium
 
   * 1.6.3 tagged with 'make release'
