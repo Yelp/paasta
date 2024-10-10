@@ -224,7 +224,7 @@ def main():
             # since we need to print out what failed in either case
             failed.append(service)
 
-    if args.bulk_config_fetch:
+    if args.dry_run and args.bulk_config_fetch:
         updated_namespaces = client.update_namespaces(new_configs)
 
         if updated_namespaces:
