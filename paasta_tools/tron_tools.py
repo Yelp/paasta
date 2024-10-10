@@ -388,9 +388,9 @@ class TronActionConfig(InstanceConfig):
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
                 f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
-            spark_conf[
-                "spark.kubernetes.executor.podTemplateFile"
-            ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf[
+            "spark.kubernetes.executor.podTemplateFile"
+        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
 
         spark_conf.update(
             {
