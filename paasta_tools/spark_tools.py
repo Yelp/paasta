@@ -20,7 +20,7 @@ DEFAULT_SPARK_RUNTIME_TIMEOUT = "12h"
 SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
 SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 SPARK_DRIVER_POOL = "stable"
-SPARK_JOB_USER = "TRON"
+SPARK_TRON_JOB_USER = "TRON"
 SPARK_PROMETHEUS_SHARD = "ml-compute"
 SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 MEM_MULTIPLIER = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
@@ -176,7 +176,9 @@ def inject_spark_conf_str(original_cmd: str, spark_conf_str: str) -> str:
     return original_cmd
 
 
-def auto_add_timeout_for_spark_job(cmd: str, timeout_job_runtime: str) -> str:
+def auto_add_timeout_for_spark_job(
+    cmd: str, timeout_job_runtime: str, silent: bool = False
+) -> str:
     # Timeout only to be added for spark-submit commands
     # TODO: Add timeout for jobs using mrjob with spark-runner
     if "spark-submit" not in cmd:
@@ -189,16 +191,17 @@ def auto_add_timeout_for_spark_job(cmd: str, timeout_job_runtime: str) -> str:
             split_cmd = cmd.split("spark-submit")
             # split_cmd[0] will always be an empty string or end with a space
             cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
-            log.info(
-                PaastaColors.blue(
-                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
-                    f"Adjust timeout value using --timeout-job-timeout. "
-                    f"New Updated Command with timeout: {cmd}"
-                ),
-            )
+            if not silent:
+                log.info(
+                    PaastaColors.blue(
+                        f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                        f"Adjust timeout value using --timeout-job-runtime. "
+                        f"New Updated Command with timeout: {cmd}"
+                    ),
+                )
     except Exception as e:
         err_msg = (
-            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
+            f"'timeout' could not be added to spark command: '{cmd}' due to error '{e}'. "
             "Please report to #spark."
         )
         log.warn(err_msg)
@@ -211,9 +214,12 @@ def build_spark_command(
     spark_config_dict: Dict[str, Any],
     is_mrjob: bool,
     timeout_job_runtime: str,
+    silent: bool = False,
 ) -> str:
-    command = f"{inject_spark_conf_str(original_cmd, create_spark_config_str(spark_config_dict, is_mrjob=is_mrjob))}"
-    return auto_add_timeout_for_spark_job(command, timeout_job_runtime)
+    command = inject_spark_conf_str(
+        original_cmd, create_spark_config_str(spark_config_dict, is_mrjob=is_mrjob)
+    )
+    return auto_add_timeout_for_spark_job(command, timeout_job_runtime, silent=silent)
 
 
 def get_spark_ports_from_config(spark_conf: Dict[str, str]) -> List[int]:
@@ -238,6 +244,7 @@ def get_spark_driver_monitoring_annotations(
 
 def get_spark_driver_monitoring_labels(
     spark_config: Dict[str, str],
+    user: str,
 ) -> Dict[str, str]:
     """
     Returns Spark driver pod labels - generally for Prometheus metric relabeling.
@@ -245,7 +252,7 @@ def get_spark_driver_monitoring_labels(
     ui_port_str = str(spark_config.get("spark.ui.port", ""))
     labels = {
         "paasta.yelp.com/prometheus_shard": SPARK_PROMETHEUS_SHARD,
-        "spark.yelp.com/user": SPARK_JOB_USER,
+        "spark.yelp.com/user": user,
         "spark.yelp.com/driver_ui_port": ui_port_str,
     }
     return labels

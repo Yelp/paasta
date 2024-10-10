@@ -347,7 +347,7 @@ class TronActionConfig(InstanceConfig):
 
         docker_img_url = self.get_docker_url(system_paasta_config)
 
-        spark_conf_builder = SparkConfBuilder()
+        spark_conf_builder = SparkConfBuilder(is_driver_on_k8s_tron=True)
         spark_conf = spark_conf_builder.get_spark_conf(
             cluster_manager="kubernetes",
             spark_app_base_name=spark_app_name,
@@ -366,7 +366,7 @@ class TronActionConfig(InstanceConfig):
             force_spark_resource_configs=self.config_dict.get(
                 "force_spark_resource_configs", False
             ),
-            user=spark_tools.SPARK_JOB_USER,
+            user=spark_tools.SPARK_TRON_JOB_USER,
         )
         # delete the dynamically generated spark.app.id to prevent frequent config updates in Tron.
         # spark.app.id will be generated later by yelp spark-submit wrapper or Spark itself.
@@ -380,16 +380,17 @@ class TronActionConfig(InstanceConfig):
                 if "spark.app.name" not in stringified_spark_args
                 else stringified_spark_args["spark.app.name"]
             )
-        # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
+
+        # TODO(MLCOMPUTE-1220): Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
-            print(
+            log.info(
                 f"Replacing spark.kubernetes.executor.podTemplateFile="
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
                 f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
-            spark_conf[
-                "spark.kubernetes.executor.podTemplateFile"
-            ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf[
+            "spark.kubernetes.executor.podTemplateFile"
+        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
 
         spark_conf.update(
             {
@@ -1044,6 +1045,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 action_config.config_dict.get(
                     "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
                 ),
+                silent=True,
             )
             # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
@@ -1074,7 +1076,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 )
             )
             monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(
-                action_config.action_spark_config
+                action_config.action_spark_config,
+                user=spark_tools.SPARK_TRON_JOB_USER,
             )
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
