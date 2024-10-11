@@ -63,12 +63,14 @@ def parse_args():
         "--min-instance-count",
         help="If a deploy group is added, the min_instance count to create it with",
         required=False,
+        default=1,
         dest="min_instance_count",
     )
     parser.add_argument(
         "--prod-max-instance-count",
         help="If a deploy group is added, the prod max_instance count to create it with",
         required=False,
+        default=100,
         type=int,
         dest="prod_max_instance_count",
     )
@@ -76,6 +78,7 @@ def parse_args():
         "--non-prod-max-instance-count",
         help="If a deploy group is added, the non-prod max_instance count to create it with",
         required=False,
+        default=5,
         type=int,
         dest="non_prod_max_instance_count",
     )
@@ -240,28 +243,16 @@ def main(args):
 
                     instance_config = {
                         "deploy_group": f"{deploy_prefix}.{args.shard_name}",
+                        "min_instances": args.min_instance_count,
+                        "max_instances": (
+                            args.prod_max_instance_count
+                            if deploy_prefix == "prod"
+                            else args.non_prod_max_instance_count
+                        ),
                         "env": {
                             "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
                         },
                     }
-
-                    if args.min_instance_count is not None:
-                        instance_config["min_instances"] = args.min_instance_count
-
-                    if (
-                        args.prod_max_instance_count is not None
-                        and deploy_prefix == "prod"
-                    ):
-                        instance_config["max_instances"] = args.prod_max_instance_count
-
-                    if (
-                        args.non_prod_max_instance_count is not None
-                        and deploy_prefix != "prod"
-                    ):
-                        instance_config[
-                            "max_instances"
-                        ] = args.non_prod_max_instance_count
-
                     if args.metrics_provider is not None or args.setpoint is not None:
                         instance_config["autoscaling"] = {"metrics_providers": []}
                         metrics_provider_config = {}
@@ -287,46 +278,30 @@ def main(args):
                             args.autotune_max_disk,
                         )
                     ):
-                        instance_config["autotune"] = {}
-                        if (
-                            args.autotune_min_cpus is not None
-                            or args.autotune_max_cpus is not None
-                        ):
-                            instance_config["autotune"]["cpus"] = {}
-                            if args.autotune_min_cpus is not None:
-                                instance_config["autotune"]["cpus"][
-                                    "min"
-                                ] = args.autotune_min_cpus
-                            if args.autotune_max_cpus is not None:
-                                instance_config["autotune"]["cpus"][
-                                    "max"
-                                ] = args.autotune_max_cpus
-                        if (
-                            args.autotune_min_mem is not None
-                            or args.autotune_max_mem is not None
-                        ):
-                            instance_config["autotune"]["mem"] = {}
-                            if args.autotune_min_mem is not None:
-                                instance_config["autotune"]["mem"][
-                                    "min"
-                                ] = args.autotune_min_mem
-                            if args.autotune_max_mem is not None:
-                                instance_config["autotune"]["mem"][
-                                    "max"
-                                ] = args.autotune_max_mem
-                        if (
-                            args.autotune_min_disk is not None
-                            or args.autotune_max_disk is not None
-                        ):
-                            instance_config["autotune"]["disk"] = {}
-                            if args.autotune_min_disk is not None:
-                                instance_config["autotune"]["disk"][
-                                    "min"
-                                ] = args.autotune_min_disk
-                            if args.autotune_max_disk is not None:
-                                instance_config["autotune"]["disk"][
-                                    "max"
-                                ] = args.autotune_max_disk
+                        limit_config = {}
+                        limit_config["cpus"] = {
+                            "min": args.autotune_min_cpus,
+                            "max": args.autotune_max_cpus,
+                        }
+                        limit_config["mem"] = {
+                            "min": args.autotune_min_mem,
+                            "max": args.autotune_max_mem,
+                        }
+                        limit_config["disk"] = {
+                            "min": args.autotune_min_disk,
+                            "max": args.autotune_max_disk,
+                        }
+
+                        # remove any None values to keep the config clean
+                        for resource in limit_config:
+                            for key in limit_config[resource]:
+                                if limit_config[resource][key] is None:
+                                    del limit_config[resource][key]
+                            if len(limit_config[resource]) == 0:
+                                del limit_config[resource]
+
+                        if len(limit_config) > 0:
+                            instance_config["autotune_limits"] = limit_config
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in config_file.keys():
