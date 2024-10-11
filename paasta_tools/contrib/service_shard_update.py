@@ -293,8 +293,8 @@ def main(args):
                         }
 
                         # remove any None values to keep the config clean
-                        for resource in limit_config:
-                            for key in limit_config[resource]:
+                        for resource in list(limit_config):
+                            for key in list(limit_config[resource]):
                                 if limit_config[resource][key] is None:
                                     del limit_config[resource][key]
                             if len(limit_config[resource]) == 0:
