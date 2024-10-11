@@ -30,7 +30,7 @@ The HPA will ignore the load on your pods between when they first start up and w
 This ensures that the HPA doesn't incorrectly scale up due to this warm-up CPU usage.
 
 Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary.
-Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service.
+Within the ``autoscaling`` attribute, setting ``metrics_providers`` will allow you to specify one or more methods to determine the utilization of your service.
 If a metrics provider isn't provided, the ``cpu`` metrics provider will be used.
 Specifying a ``setpoint`` allows you to specify a target utilization for your service.
 The default ``setpoint`` is 0.8 (80%).
@@ -46,8 +46,9 @@ Let's look at sample kubernetes config file:
      min_instances: 30
      max_instances: 50
      autoscaling:
-       metrics_provider: cpu
-       setpoint: 0.5
+       metrics_providers:
+         - type: cpu
+           setpoint: 0.5
 
 This makes the instance ``main`` autoscale using the ``cpu`` metrics provider.
 PaaSTA will aim to keep this service's CPU utilization at 50%.
@@ -77,6 +78,23 @@ The currently available metrics providers are:
   With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
   This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
 
+:active-requests:
+  With the ``active-requests`` metrics provider, Paasta will use Envoy metrics to scale your service based on the amount
+  of incoming traffic.  Note that, instead of using ``setpoint``, the active requests provider looks at the
+  ``desired_active_requests_per_replica`` field of the autoscaling configuration to determine how to scale.
+
+:piscina:
+  This metrics provider is only valid for the Yelp-internal server-side-rendering (SSR) service. With the ``piscina``
+  metrics provider, Paasta will scale your SSR instance based on how many Piscina workers are busy.
+
+:arbitrary_promql:
+  The ``arbitrary_promql`` metrics provider allows you to specify any Prometheus query you want using the `Prometheus
+  query language (promql) <https://prometheus.io/docs/prometheus/latest/querying/basics/>`.  The autoscaler will attempt
+  to scale your service to keep the value of this metric at whatever setpoint you specify.
+
+  .. warning:: Using arbitrary prometheus queries to scale your service is challenging, and should only be used by
+  advanced users.  Make sure you know exactly what you're doing, and test your changes thoroughly in a safe environment
+  before deploying to production.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
@@ -90,28 +108,6 @@ The currently available decicion policies are:
 
   Extra parameters:
 
-  :offset:
-    Float between 0.0 and 1.0, representing expected baseline load for each container.
-    Defaults to 0.0.
-
-    **DEPRECATED** - while it was previously more complicated, offset is now simply subtracted from your setpoint.
-    For example, ``setpoint: 0.6`` with ``offset: 0.25`` is equivalent to ``setpoint: 0.35`` with no ``offset``.
-    We recommend you just lower your setpoint by the same amount and remove the ``offset``.
-
-    Previously, offset was used to counteract the fake utilization that would be seen by our old uWSGI metrics provider.
-    Under the old system, the uWSGI metrics provider would always see 1 extra worker busy, because the metrics query was proxied through the actual uWSGI workers.
-    Having the autoscaler understand how much load was fake and how much was real helped it converge faster to your target load.
-    Nowadays, we measure uWSGI utilization in a different way that does not use a uWSGI worker, so this is no longer necessary.
-    Support for ``offset`` was only retained to provide a smooth transition from the old system to the new system.
-
-  :good_enough_window:
-    **Not currently supported**
-    An array of two utilization values [low, high].
-    If utilization per container at the forecasted total load is within the window, instances will not scale.
-    Optional parameter (defaults to None).
-
-    This is not currently supported under Kubernetes (see PAASTA-17262), but Kubernetes has a `global 10% tolerance by default. <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
-    This is equivalent to a good_enough_window of ``[0.9*setpoint, 1.1*setpoint]``
   :moving_average_window_seconds:
     The number of seconds to load data points over in order to calculate the average.
     Defaults to 1800s (30m).
@@ -122,6 +118,40 @@ The currently available decicion policies are:
   This policy results in no HPA being configured.
   An external process should periodically decide how many replicas this service needs to run, and use the Paasta API to tell Paasta to scale.
   See the :ref:`How to create a custom (bespoke) autoscaling method` section for details.
+
+Using multiple metrics providers
+--------------------------------
+
+Paasta allows you to configure multiple metrics providers for your service, from the list above.  The service autoscaler
+will scale your service up if *any* of the configured metrics are exceeding their target value; conversely, it will
+scale down only when *all* of the configured metrics are below their target value.  You can configure multiple metrics
+providers using a list in the ``autoscaling.metrics_providers`` field, as follows:
+
+.. sourcecode:: yaml
+
+   ---
+   main:
+     cpus: 1
+     mem: 300
+     min_instances: 30
+     max_instances: 50
+     autoscaling:
+       metrics_providers:
+         - type: cpu
+           setpoint: 0.5
+         - type: active-requests
+           desired_active_requests_per_replica: 10
+
+There are a few restrictions on using multiple metrics for scaling your service, namely:
+
+1. You cannot specify the same metrics provider multiple times
+2. You cannot use bespoke autoscaling (see Decision Policies, above) with multiple metrics providers
+3. For Yelp-internal services, you cannot use the PaaSTA autotuner on cpu metrics combined with multiple metrics
+   providers, if one of the metrics providers is CPU scaling.  You must explicitly opt-out of autotuning by setting a
+   ``cpus`` value for this service instance.
+
+If you run ``paasta validate`` for your service, it will check these conditions for you.
+
 
 How to create a custom (bespoke) autoscaling method
 ---------------------------------------------------
@@ -152,3 +182,5 @@ The default value for ``max_instances_alert_threshold`` is whatever your ``setpo
 This means by default the alert will trigger when the autoscaler wants to scale up but is prevented from doing so by your ``max_instances`` setting.
 If this alert is noisy, you can try setting ``max_instances_alert_threshold`` to something a little higher than your ``setpoint``.
 Setting a very high value (a utilization value your metrics_provider would never measure) will effectively disable this alert.
+
+If this alert reports an UNKNOWN status, this indicates an error with your metrics provided by the ``metrics_provider`` you've specified.  Please review the metric_provider and service configuration to ensure metrics can be collected as expected.

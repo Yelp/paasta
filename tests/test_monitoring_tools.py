@@ -15,7 +15,7 @@ import mock
 import pysensu_yelp
 import pytest
 
-from paasta_tools import marathon_tools
+from paasta_tools import long_running_service_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import compose_job_id
 
@@ -31,7 +31,7 @@ class TestMonitoring_Tools:
         "page": general_page,
     }
 
-    empty_service_config = marathon_tools.MarathonServiceConfig(
+    empty_service_config = long_running_service_tools.LongRunningServiceConfig(
         service="myservicename",
         cluster="mycluster",
         instance="myinstance",
@@ -39,7 +39,7 @@ class TestMonitoring_Tools:
         branch_dict=None,
     )
     job_page = False
-    fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
+    fake_marathon_job_config = long_running_service_tools.LongRunningServiceConfig(
         service="myservicename",
         cluster="myclustername",
         instance="myinstance",

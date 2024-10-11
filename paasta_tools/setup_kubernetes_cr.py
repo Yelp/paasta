@@ -49,9 +49,13 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.vitesscluster_tools import load_vitess_service_instance_configs
 
 
 log = logging.getLogger(__name__)
+
+
+INSTANCE_TYPE_TO_CONFIG_LOADER = {"vitesscluster": load_vitess_service_instance_configs}
 
 
 class StdoutKubeClient:
@@ -162,7 +166,6 @@ def setup_all_custom_resources(
     # we need to try both possibilities
     for apiextension in [
         kube_client.apiextensions,
-        kube_client.apiextensions_v1_beta1,
     ]:
 
         try:
@@ -171,7 +174,7 @@ def setup_all_custom_resources(
             ).items
         except ApiException:
             log.debug(
-                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
+                "Listing CRDs with apiextensions/v1 not supported on this cluster"
             )
             crds_list = []
 
@@ -352,6 +355,13 @@ def reconcile_kubernetes_resource(
                 load_deployments=True,
                 soa_dir=DEFAULT_SOA_DIR,
             )
+            if crd.file_prefix in INSTANCE_TYPE_TO_CONFIG_LOADER:
+                config = INSTANCE_TYPE_TO_CONFIG_LOADER[crd.file_prefix](
+                    service=service,
+                    instance=inst,
+                    cluster=cluster,
+                    soa_dir=DEFAULT_SOA_DIR,
+                )
             git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
             formatted_resource = format_custom_resource(
                 instance_config=config,

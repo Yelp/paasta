@@ -305,6 +305,7 @@ class TestNativeServiceConfig:
                 "extra_volumes": [
                     {"containerPath": "/foo", "hostPath": "/bar", "mode": "RW"}
                 ],
+                "uses_bulkdata": False,
             },
             branch_dict={
                 "docker_image": "busybox",

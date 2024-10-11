@@ -105,6 +105,8 @@ specify the following options:
     volume on a sensitive part of the filesystem, as root. PaaSTA does not
     validate that the bind mounts are "safe".
 
+  * ``uses_bulkdata```: A boolean indicating whether the service should mount the directory /nail/bulkdata on the host into the container. Defaults to true.
+
 
 Placement Options
 -----------------
@@ -386,18 +388,33 @@ instance MAY have:
 
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for details
 
-    * ``metrics_provider``: Which method the autoscaler will use to determine a service's utilization.
-      Should be ``cpu``, ``uwsgi``, or ``gunicorn``.
+    * ``metrics_providers``: A list of data sources to use for autoscaling:
 
-    * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
-      Should be ``proportional`` or ``bespoke``.
+        * ``type``: Which method the autoscaler will use to determine a service's utilization.
+          Should be ``cpu``, ``uwsgi``, ``active-reqeusts``, ``piscina``, ``gunicorn``, or ``arbitrary_promql``.
 
-    * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
-    Default value is 0.8.
+        * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
+          Should be ``proportional`` or ``bespoke``.
 
-    * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
-    and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
-    The default is the same as your ``setpoint``.
+        * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
+          Default value is 0.8.
+
+        * ``desired_active_requests_per_replica``: Only valid for the ``active-requests`` metrics provider.  The
+          target number of requests per second each pod should be receiving.
+
+        * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
+          and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
+          The default is the same as your ``setpoint``.
+
+        * ``moving_average_window_seconds``: A smoothing function to apply to the data received from your metrics
+          provider.
+
+        * ``prometheus_adapter_config``: **(advanced users only)** Custom prometheus configuration for the
+          ``arbitrary_promql`` metrics provider.
+
+    * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
+      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`
+      for scaling policies.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value
@@ -839,7 +856,7 @@ See the `marathon-[clustername].yaml`_ section for details for each of these par
 ``smartstack.yaml``
 -------------------
 
-Configure service registration, discovery, and load balancing.
+Configure service registration, discovery, load balancing and error alerting.
 
 Here is an example smartstack.yaml::
 
@@ -1053,6 +1070,53 @@ internally at Yelp.
    - ``percent``: Percentage of requests (0-100) to be randomly affected by this
      delay. Note that due to Envoy's current definition of *percentage* as an
      integer, this cannot be specified as a floating-point number.
+
+Error Alerting
+^^^^^^^^^^^^^^^^^^^^
+
+These keys provide optional overrides for the default alerting behaviour.
+
+ * ``monitoring``: Override default alerting behaviour. For example: ::
+
+      main:
+        monitoring:
+          team: frontend
+          slack_channel: "notifications"
+          project: "FRONTEND"
+          ticket: true
+          page: false
+          page_nonprod: true
+          error_threshold_ratio: 0.02
+          minimum_error_rps: 10
+          default_endpoint_alerting: true
+          endpoints:
+            - name: GET /something
+            - name: GET /something/else
+              error_threshold_ratio: 0.05
+            - name: PUT /something
+              error_threshold_ratio: 0.01
+
+
+
+   - ``team``: Override the default team for alerting.
+   - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
+     Use this key if you prefer a different channel.
+   - ``project``: Override the default JIRA project for alerting.
+   - ``ticket``: Override the default ticketing behaviour. Error Alert ticketing defaults to **false** but also
+     respects the ticketing behaviour set in the monitoring.yaml file. Override that here if required.
+   - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
+     respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
+   - ``page_nonprod``: Override the default paging behaviour for non-production
+     environments. Defaults to **false**.
+   - ``error_threshold_ratio``: Error threshold ratio (0-1) for errors under this namespace. Defaults to **0.01**.
+   - ``minimum_error_rps``: Minimum error rate per second for errors under this namespace before an alert can be triggered, minimum is zero. Defaults to **5**.
+   - ``default_endpoint_alerting``: Turn on alerts for all endpoints in this namespace. Defaults to **false**.
+   - ``endpoint_error_threshold_ratio``: Error threshold ratio (0-1) for errors to any singular endpoint. Defaults to the namespace ``error_threshold_ratio`` if specified, or **0.01**.
+   - ``endpoint_minimum_error_rps``: Minimum error rate per second for errors to any singular endpoint before an alert can be triggered for errors to any singular endpoint. Defaults to the namespace ``minimum_error_rps`` if specified, or **5**.
+   - ``endpoints``: List of endpoints to create specific alerts for.
+      - ``name``: The name of the endpoint.
+      - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the ``endpoint_error_threshold_ratio``; if that is not specified then the namespace's ``error_threshold_ratio``; otherwise **0.01**.
+      - ``minimum_error_rps``: Minimum error rate per second for the endpoint. Minimum is zero. If not specified the threshold will be inherited from the ``endpoint_minimum_error_rps``; if that is not specified then the namespace's ``minimum_error_rps``; otherwise **5**.
 
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -101,7 +101,6 @@ def add_subparser(command, subparsers):
 
 PAASTA_SUBCOMMANDS = {
     "autoscale": "autoscale",
-    "boost": "boost",
     "check": "check",
     "cook-image": "cook_image",
     "get-docker-image": "get_docker_image",
@@ -116,7 +115,6 @@ PAASTA_SUBCOMMANDS = {
     "logs": "logs",
     "mark-for-deployment": "mark_for_deployment",
     "mesh-status": "mesh_status",
-    "metastatus": "metastatus",
     "pause_service_autoscaler": "pause_service_autoscaler",
     "push-to-registry": "push_to_registry",
     "remote-run": "remote_run",
@@ -128,7 +126,6 @@ PAASTA_SUBCOMMANDS = {
     "stop": "start_stop_restart",
     "restart": "start_stop_restart",
     "status": "status",
-    "sysdig": "sysdig",
     "validate": "validate",
     "wait-for-deployment": "wait_for_deployment",
 }

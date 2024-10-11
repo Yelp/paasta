@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from typing import Dict
 from urllib.parse import urljoin
 
 import requests
@@ -95,6 +96,38 @@ class TronClient:
                 "check": 0,
             },
         )
+
+    def update_namespaces(
+        self, new_configs: Dict[str, str], skip_if_unchanged: bool = True
+    ):
+        """Updates the configuration for a namespace.
+
+        :param namespace: str
+        :param new_config: str, should be valid YAML.
+        :param skip_if_unchanged: boolean. If False, will send the update
+            even if the current config matches the new config.
+        """
+        current_configs: Dict[str, Dict[str, str]] = self._get("/api/config")  # type: ignore  # we don't have a good way to share types between tron/paasta
+        responses: Dict[str, str] = {}
+        for namespace, new_config in new_configs.items():
+            current_config = current_configs.get(namespace, {})
+            if skip_if_unchanged:
+                if yaml.safe_load(new_config) == yaml.safe_load(
+                    current_config["config"]
+                ):
+                    log.debug("No change in config, skipping update.")
+                    continue
+
+            responses[namespace] = self._post(
+                "/api/config",
+                data={
+                    "name": namespace,
+                    "config": new_config,
+                    "hash": current_config["hash"],
+                    "check": 0,
+                },
+            )
+        return responses
 
     def list_namespaces(self):
         """Gets the namespaces that are currently configured."""

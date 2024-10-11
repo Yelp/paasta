@@ -1,0 +1,4 @@
+-r requirements-bootstrap.txt
+coveralls
+ephemeral-port-reserve
+tox==3.28.0

@@ -62,10 +62,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
-MARATHON_FRAMEWORK_NAME_PREFIX = "marathon"
-
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
-SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "batch_count", "slave"])
+SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "slave"])
 
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
 
@@ -153,14 +151,6 @@ def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
         return fqdn
     else:
         raise ValueError("Expected to receive a valid URL, got: %s" % url)
-
-
-def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
-    """Check if a hostname is the current mesos leader.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return get_mesos_leader() == hostname
 
 
 class MesosLeaderUnavailable(Exception):
@@ -861,7 +851,7 @@ async def get_mesos_task_count_by_slave(
     slaves_list: Sequence[Dict] = None,
     pool: Optional[str] = None,
 ) -> List[Dict]:
-    """Get counts of running tasks per mesos slave. Also include separate count of batch tasks
+    """Get counts of running tasks per mesos slave.
 
     :param mesos_state: mesos state dict
     :param slaves_list: a list of slave dicts to count running tasks for.
@@ -870,7 +860,7 @@ async def get_mesos_task_count_by_slave(
     """
     all_mesos_tasks = await get_all_running_tasks()  # empty string = all app ids
     slaves = {
-        slave["id"]: {"count": 0, "slave": slave, "batch_count": 0}
+        slave["id"]: {"count": 0, "slave": slave}
         for slave in mesos_state.get("slaves", [])
     }
     for task in all_mesos_tasks:
@@ -883,9 +873,6 @@ async def get_mesos_task_count_by_slave(
                 slaves[task_slave["id"]]["count"] += 1
                 task_framework = await task.framework()
                 log.debug(f"Task framework: {task_framework.name}")
-                # Marathon is only framework that runs service. Others are batch.
-                if not task_framework.name.startswith(MARATHON_FRAMEWORK_NAME_PREFIX):
-                    slaves[task_slave["id"]]["batch_count"] += 1
         except SlaveDoesNotExist:
             log.debug(
                 "Tried to get mesos slaves for task {}, but none existed.".format(
@@ -912,11 +899,9 @@ async def get_mesos_task_count_by_slave(
         ]
     for slave in slaves_with_counts:
         log.debug(
-            "Slave: {}, running {} tasks, "
-            "including {} batch tasks".format(
+            "Slave: {}, running {} tasks".format(
                 slave["task_counts"].slave["hostname"],
                 slave["task_counts"].count,
-                slave["task_counts"].batch_count,
             )
         )
     return slaves_with_counts

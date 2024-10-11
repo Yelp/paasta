@@ -21,7 +21,6 @@ log = logging.getLogger(__name__)
 
 # Must have a schema defined
 KNOWN_CONFIG_TYPES = (
-    "marathon",
     "kubernetes",
     "deploy",
     "smartstack",
@@ -71,7 +70,14 @@ def write_auto_config_data(
         if comment:
             content = (
                 yaml.round_trip_load(
-                    comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+                    comment.format(
+                        # this is a bit of a hack, but we've decided to not rename files back to kubernetes-*
+                        # files. while we still need to update things to reference the eks files directly, there's
+                        # still a couple of places where we still need kubernetes-* files (e.g., unmigrated operators)
+                        # so for now let's just assume that autotuned things will always actually have their human-managed
+                        # config in eks-* files
+                        regular_filename=f"{service}/{extra_info.replace('kubernetes-', 'eks-')}.yaml",
+                    )
                 )
                 if comment
                 else {}
@@ -356,6 +362,12 @@ class AutoConfigUpdater:
             }
 
             for instance_name, recommendation in recommendations_by_instance.items():
+                if instance_name not in existing_configs:
+                    log.debug(
+                        f"Skipping config merge for {instance_name} as it no longer exists in {instance_type_cluster}.yaml."
+                    )
+                    continue
+
                 log.debug(
                     f"Merging recommendations for {instance_name} in {service}/{AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
                 )

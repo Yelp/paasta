@@ -20,12 +20,16 @@ def test_main_kubernetes():
         "paasta_tools.check_services_replication_tools.yelp_meteorite",
         autospec=True,
     ) as mock_yelp_meteorite, mock.patch(
+        "paasta_tools.check_services_replication_tools.metrics_lib.system_timer",
+        autospec=True,
+    ) as mock_system_timer, mock.patch(
         "paasta_tools.check_services_replication_tools.sys.exit",
         autospec=True,
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
         mock_parse_args.return_value.dry_run = False
+
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -43,6 +47,9 @@ def test_main_kubernetes():
         mock_gauge = mock_yelp_meteorite.create_gauge.return_value
         mock_gauge.set.assert_called_once_with(6)
 
+        mock_timer = mock_system_timer.return_value
+        assert mock_timer.start.called
+        mock_timer.stop.assert_called_once_with(tmp_dimensions={"result": 2})
         mock_sys_exit.assert_called_once_with(2)
 
 
@@ -83,7 +90,7 @@ def test_check_services_replication():
             instance_type_class=None,
             check_service_replication=mock_check_service_replication,
             replication_checker=mock_replication_checker,
-            all_tasks_or_pods=mock_pods,
+            all_pods=mock_pods,
             dry_run=True,
         )
         mock_paasta_service_config_loader.assert_called_once_with(
@@ -92,7 +99,7 @@ def test_check_services_replication():
         instance_config.get_docker_image.assert_called_once_with()
         mock_check_service_replication.assert_called_once_with(
             instance_config=instance_config,
-            all_tasks_or_pods=mock_pods,
+            all_pods=mock_pods,
             replication_checker=mock_replication_checker,
             dry_run=True,
         )

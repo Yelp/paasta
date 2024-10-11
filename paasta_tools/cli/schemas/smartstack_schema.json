@@ -227,6 +227,91 @@
             "vip_upgrade": {
                 "type": "string",
                 "description": "The service namespace that this namespace will route to (via Envoy) if a request has the X-Ctx-Vip header."
+            },
+            "monitoring": {
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string"
+                    },
+                    "slack_channel": {
+                        "type": "string"
+                    },
+                    "project": {
+                        "type": "string"
+                    },
+                    "ticket": {
+                        "type": "boolean"
+                    },
+                    "page": {
+                        "type": "boolean"
+                    },
+                    "page_nonprod": {
+                        "type": "boolean"
+                    },
+                    "error_threshold_ratio": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "minimum_error_rps": {
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "default_endpoint_alerting": {
+                        "type": "boolean"
+                    },
+                    "endpoint_error_threshold_ratio": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "endpoint_minimum_error_rps": {
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "endpoints": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "error_threshold_ratio": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                },
+                                "minimum_error_rps": {
+                                    "type": "number",
+                                    "minimum": 0
+                                },
+                                "team": {
+                                    "type": "string"
+                                },
+                                "slack_channel": {
+                                    "type": "string"
+                                },
+                                "project": {
+                                    "type": "string"
+                                },
+                                "ticket": {
+                                    "type": "boolean"
+                                },
+                                "page": {
+                                    "type": "boolean"
+                                },
+                                "page_nonprod": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "name"
+                            ]
+                        }
+                    }
+                }
             }
         },
         "required": [

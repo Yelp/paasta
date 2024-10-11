@@ -76,7 +76,6 @@ Some but not all of the paasta command line tools should work. Try:
 
 ::
 
-    paasta metastatus
     paasta status -s hello-world
 
 Scribe is not included with this example cluster. If you are looking for

@@ -78,7 +78,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 def check_kubernetes_pod_replication(
     instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
-    all_tasks_or_pods: Sequence[V1Pod],
+    all_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
 ) -> Optional[bool]:
@@ -126,7 +126,7 @@ def check_kubernetes_pod_replication(
         check_healthy_kubernetes_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_pods=all_tasks_or_pods,
+            all_pods=all_pods,
             dry_run=dry_run,
         )
         return None
