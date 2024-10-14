@@ -239,9 +239,9 @@ def add_subparser(subparsers):
             "default_pool"
         )
     except PaastaNotConfiguredError:
-        default_spark_cluster = "pnw-devc"
+        default_spark_cluster = "pnw-devc-spark"
         default_spark_pool = "batch"
-        valid_clusters = ["spark-pnw-prod", "pnw-devc"]
+        valid_clusters = ["pnw-devc-spark", "pnw-prod-spark"]
 
     list_parser.add_argument(
         "-c",
