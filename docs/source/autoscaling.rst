@@ -2,7 +2,7 @@
 Autoscaling PaaSTA Instances
 ====================================
 
-PaaSTA allows programmatic control of the number of replicas (pods) a service has.
+PaaSTA allows programmatic control of the number of replicas (Pods) a service has.
 It uses Kubernetes' Horizontal Pod Autoscaler (HPA) to watch a service's load and scale up or down.
 
 How to use autoscaling
@@ -24,9 +24,9 @@ This behavior may mean that your service is scaled up unnecessarily when you fir
 Don't worry - the autoscaler will soon learn what the actual load on your service is, and will scale back down to the appropriate level.
 
 If you use autoscaling it is highly recommended that you make sure your service has a readiness probe.
-If your service is registered in Smartstack, each pod automatically gets a readiness probe that checks whether that pod is available in the service mesh.
+If your service is registered in Smartstack, each Pod automatically gets a readiness probe that checks whether that Pod is available in the service mesh.
 Non-smartstack services may want to configure a ``healthcheck_mode``, and either ``healthcheck_cmd`` or  ``healthcheck_uri`` to ensure they have a readiness probe.
-The HPA will ignore the load on your pods between when they first start up and when they are ready.
+The HPA will ignore the load on your Pods between when they first start up and when they are ready.
 This ensures that the HPA doesn't incorrectly scale up due to this warm-up CPU usage.
 
 Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary.
@@ -66,7 +66,7 @@ The currently available metrics providers are:
   Measures the CPU usage of your service's container.
 
 :uwsgi:
-  With the ``uwsgi`` metrics provider, Paasta will configure your pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
+  With the ``uwsgi`` metrics provider, Paasta will configure your Pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
   We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
 
   .. note::
@@ -75,7 +75,7 @@ The currently available metrics providers are:
 
 
 :gunicorn:
-  With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
+  With the ``gunicorn`` metrics provider, Paasta will configure your Pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
   This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
 
 :active-requests:
