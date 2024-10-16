@@ -1,3 +1,12 @@
+paasta-tools (1.7.1) xenial; urgency=medium
+
+  * 1.7.1 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v3 to stop mounting
+    /etc/pki/spark (#3982)  This is no longer needed since we"ve been
+    running Spark on just EKS for a while.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 16 Oct 2024 13:53:57 -0700
+
 paasta-tools (1.7.0) xenial; urgency=medium
 
   * 1.7.0 tagged with 'make release'
