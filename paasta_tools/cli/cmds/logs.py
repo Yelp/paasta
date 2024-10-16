@@ -330,7 +330,10 @@ def paasta_app_output_passes_filter(
     except ValueError:
         return True
     except AttributeError:
-        # timestamp might be missing at all
+        # Timestamp might be missing. We had an issue where OTel was splitting overly long log lines
+        # and not including timestamps in the resulting log records (OBSPLAT-2216).
+        # Although this was then fixed in OTel, we should not rely on timestamps being present,
+        # as the format cannot be guaranteed.
         return False
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
