@@ -481,9 +481,28 @@ instance MAY have:
     * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.  Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
 
   * ``namespace``:
-    **Currently in development, do not use.**
     The Kubernetes namespace where Paasta will create objects related to this service.
     Defaults to ``paastasvc-service--name`` (that is, the service name will have underscores replaced with ``--``.)
+
+  * ``autotune_limits``: Optionally set lower and upper-bounds for autotuned resources. Useful for services that have a known range of resource usage, but that have usage patterns that don't play well with our autotune system.
+    This is a dictionary with the following keys:
+
+    * ``cpu``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the CPU limit, respectively.
+    * ``memory``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the memory limit, respectively.
+    * ``disk``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the disk limit, respectively.
+
+    Example::
+
+      autotune_limits:
+        cpu:
+          min: 0.1
+        memory:
+          max: 1024
+        disk:
+          min: 1000
+          max: 10000
+
+    NOTE: it's possible to set only one of the bounds, if you only want to set a lower or upper bound (i.e., setting both min/max is not required).
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
