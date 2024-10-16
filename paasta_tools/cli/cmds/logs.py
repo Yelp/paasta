@@ -329,6 +329,9 @@ def paasta_app_output_passes_filter(
     # https://github.com/gweis/isodate/issues/53
     except ValueError:
         return True
+    except AttributeError:
+        # timestamp might be missing at all
+        return False
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
