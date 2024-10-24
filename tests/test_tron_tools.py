@@ -997,6 +997,17 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
@@ -1347,6 +1358,17 @@ class TestTronTools:
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
                 "AWS_DEFAULT_REGION": "us-west-2",
             },
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "stable",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "node_selectors": {"yelp.com/pool": "stable"},
             "cap_add": [],
             "cap_drop": [
@@ -1474,6 +1496,17 @@ class TestTronTools:
             },
             "node_selectors": {"yelp.com/pool": "default"},
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "default",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "secret_volumes": [],
@@ -1621,6 +1654,17 @@ class TestTronTools:
                 }
             ],
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {
                 "SOME_SECRET": {
                     "secret_name": "tron-secret-my--service-secret--name",
@@ -1719,6 +1763,17 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
