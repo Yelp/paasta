@@ -1,3 +1,14 @@
+paasta-tools (1.7.2) xenial; urgency=medium
+
+  * 1.7.2 tagged with 'make release'
+    Commit: Allowlist eks files in config_utils (#3984)
+    updater.write_configs() is not just used for managing autotune files
+    - SSR shard creation uses it to manage creating/updating the non-
+    autotuned_defaults config files (which are now always eks-
+    CLUSTER.yaml).
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 29 Oct 2024 13:52:41 -0700
+
 paasta-tools (1.7.1) xenial; urgency=medium
 
   * 1.7.1 tagged with 'make release'
