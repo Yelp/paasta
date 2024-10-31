@@ -1627,6 +1627,42 @@ paths:
       summary: Get mesos task of service_name.instance_name by task_id
       tags:
       - service
+  /services/{service}/{instance}/remote_run:
+    post:
+      operationId: remote_run
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Username
+        in: query
+        name: user
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The service is delayed for these possible reasons
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Failure
+      summary: Launch a remote-run pod
+      tags:
+      - service
   /version:
     get:
       operationId: showVersion

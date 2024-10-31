@@ -118,6 +118,7 @@ PAASTA_SUBCOMMANDS = {
     "pause_service_autoscaler": "pause_service_autoscaler",
     "push-to-registry": "push_to_registry",
     "remote-run": "remote_run",
+    "remote-run-2": "remote_run_2",
     "rollback": "rollback",
     "secret": "secret",
     "security-check": "security_check",

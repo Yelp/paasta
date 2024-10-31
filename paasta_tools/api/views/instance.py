@@ -31,6 +31,7 @@ from pyramid.view import view_config
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import paasta_remote_run
+from paasta_tools import paasta_remote_run_2
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -385,3 +386,18 @@ def instance_mesh_status(request):
         raise ApiFailure(error_message, 500)
 
     return instance_mesh
+
+
+@view_config(
+    route_name="service.instance.remote_run", request_method="POST", renderer="json"
+)
+def remote_run(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    user = request.swagger_data.get("user")
+
+    try:
+        paasta_remote_run_2.remote_run_start(service, instance, user, settings.cluster)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
