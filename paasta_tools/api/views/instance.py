@@ -395,9 +395,15 @@ def remote_run(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     user = request.swagger_data.get("user")
+    interactive = request.swagger_data.get("interactive", True)
+    recreate = request.swagger_data.get("recreate", True)
 
     try:
-        paasta_remote_run_2.remote_run_start(service, instance, user, settings.cluster)
+        response = paasta_remote_run_2.remote_run_start(
+            service, instance, user, settings.cluster, interactive, recreate
+        )
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
+
+    return response

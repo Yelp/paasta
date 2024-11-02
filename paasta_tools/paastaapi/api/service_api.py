@@ -27,6 +27,7 @@ from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOver
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
+from paasta_tools.paastaapi.model.inline_object1 import InlineObject1
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
@@ -1303,7 +1304,7 @@ class ServiceApi(object):
             self,
             service,
             instance,
-            user,
+            inline_object1,
             **kwargs
         ):
             """Launch a remote-run pod  # noqa: E501
@@ -1311,13 +1312,13 @@ class ServiceApi(object):
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.remote_run(service, instance, user, async_req=True)
+            >>> thread = api.remote_run(service, instance, inline_object1, async_req=True)
             >>> result = thread.get()
 
             Args:
                 service (str): Service name
                 instance (str): Instance name
-                user (str): Username
+                inline_object1 (InlineObject1):
 
             Keyword Args:
                 _return_http_data_only (bool): response data without head status
@@ -1368,8 +1369,8 @@ class ServiceApi(object):
                 service
             kwargs['instance'] = \
                 instance
-            kwargs['user'] = \
-                user
+            kwargs['inline_object1'] = \
+                inline_object1
             return self.call_with_http_info(**kwargs)
 
         self.remote_run = Endpoint(
@@ -1385,12 +1386,12 @@ class ServiceApi(object):
                 'all': [
                     'service',
                     'instance',
-                    'user',
+                    'inline_object1',
                 ],
                 'required': [
                     'service',
                     'instance',
-                    'user',
+                    'inline_object1',
                 ],
                 'nullable': [
                 ],
@@ -1409,18 +1410,17 @@ class ServiceApi(object):
                         (str,),
                     'instance':
                         (str,),
-                    'user':
-                        (str,),
+                    'inline_object1':
+                        (InlineObject1,),
                 },
                 'attribute_map': {
                     'service': 'service',
                     'instance': 'instance',
-                    'user': 'user',
                 },
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
-                    'user': 'query',
+                    'inline_object1': 'body',
                 },
                 'collection_format_map': {
                 }
@@ -1429,7 +1429,9 @@ class ServiceApi(object):
                 'accept': [
                     'application/json'
                 ],
-                'content_type': [],
+                'content_type': [
+                    'application/json'
+                ]
             },
             api_client=api_client,
             callable=__remote_run

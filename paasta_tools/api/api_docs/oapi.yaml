@@ -1630,6 +1630,22 @@ paths:
   /services/{service}/{instance}/remote_run:
     post:
       operationId: remote_run
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                interactive:
+                  type: bool
+                user:
+                  type: string
+                image:
+                  type: string
+              required:
+               - interactive
+               - user
+        required: true
       parameters:
       - description: Service name
         in: path
@@ -1640,12 +1656,6 @@ paths:
       - description: Instance name
         in: path
         name: instance
-        required: true
-        schema:
-          type: string
-      - description: Username
-        in: query
-        name: user
         required: true
         schema:
           type: string
