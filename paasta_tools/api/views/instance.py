@@ -388,10 +388,18 @@ def instance_mesh_status(request):
     return instance_mesh
 
 
-@view_config(
-    route_name="service.instance.remote_run", request_method="POST", renderer="json"
-)
-def remote_run(request):
+@view_config(route_name="remote_run.stop", request_method="POST", renderer="json")
+def remote_run_stop(request):
+    pass
+
+
+@view_config(route_name="remote_run.token", request_method="POST", renderer="json")
+def remote_run_token(request):
+    pass
+
+
+@view_config(route_name="remote_run.start", request_method="POST", renderer="json")
+def remote_run_start(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     user = request.swagger_data.get("user")

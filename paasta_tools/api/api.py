@@ -149,8 +149,8 @@ def make_app(global_config=None):
         "/v1/services/{service}/{instance}/tasks/{task_id}",
     )
     config.add_route(
-        "service.instance.remote_run",
-        "/v1/services/{service}/{instance}/remote_run",
+        "remote_run",
+        "/v1/remote_run/{service}/{instance}",
     )
     config.add_route("service.list", "/v1/services/{service}")
     config.add_route("services", "/v1/services")

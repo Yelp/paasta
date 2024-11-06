@@ -847,7 +847,7 @@
                 ]
             }
         },
-        "/services/{service}/{instance}/remote_run": {
+        "/remote_run/{service}/{instance}/start": {
             "post": {
                 "responses": {
                     "200": {
@@ -864,9 +864,101 @@
                     }
                 },
                 "summary": "Do a remote run",
-                "operationId": "remote_run",
+                "operationId": "remote_run_start",
+                "tags": [
+                    "remote_run"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Username",
+                        "name": "user",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/stop": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "It worked!",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Stop a remote run",
+                "operationId": "remote_run_stop",
                 "tags": [
                     "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Username",
+                        "name": "user",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/token": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "It worked!",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Get a remote run token",
+                "operationId": "remote_run_token",
+                "tags": [
+                    "remote_run"
                 ],
                 "parameters": [
                     {

@@ -48,6 +48,7 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import AuthenticationV1TokenRequest
 from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
@@ -71,6 +72,8 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1Job
+from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
@@ -113,6 +116,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -605,6 +609,7 @@ class KubeClient:
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+        self.batches = kube_client.BatchV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
@@ -2029,6 +2034,62 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""
         return self.config_dict.get("pod_management_policy", "OrderedReady")
 
+    def format_as_kubernetes_job(self) -> V1Job:
+        """Create the config for launching the deployment as a Job"""
+        try:
+            docker_url = self.get_docker_url()
+            git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
+            system_paasta_config = load_system_paasta_config()
+            complete_config = V1Job(
+                api_version="batch/v1",
+                kind="Job",
+                metadata=self.get_kubernetes_metadata(git_sha),
+                spec=V1JobSpec(
+                    active_deadline_seconds=3600,
+                    selector=V1LabelSelector(
+                        match_labels={
+                            "paasta.yelp.com/service": self.get_service(),
+                            "paasta.yelp.com/instance": self.get_instance(),
+                        }
+                    ),
+                    template=self.get_pod_template_spec(
+                        git_sha=git_sha, system_paasta_config=system_paasta_config
+                    ),
+                ),
+            )
+
+            prometheus_shard = self.get_prometheus_shard()
+            if prometheus_shard:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/prometheus_shard"
+                ] = prometheus_shard
+
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+
+            complete_config.metadata.labels["paasta.yelp.com/remote_run"] = "true"
+            # DO NOT ADD LABELS AFTER THIS LINE
+            config_hash = get_config_hash(
+                self.sanitize_for_config_hash(complete_config),
+                force_bounce=self.get_force_bounce(),
+            )
+            complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
+            complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
+
+            complete_config.spec.template.metadata.labels[
+                "yelp.com/paasta_config_sha"
+            ] = config_hash
+            complete_config.spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
+            ] = config_hash
+        except Exception as e:
+            raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
+        log.debug("Complete configuration for instance is: %s", complete_config)
+        return complete_config
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -2517,7 +2578,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # remove data we dont want used to hash configs
         # replica count
-        if ahash["spec"] is not None:
+        if ahash["spec"] is not None and "replicas" in ahash["spec"]:
             del ahash["spec"]["replicas"]
 
         if ahash["metadata"] is not None:
@@ -3631,6 +3692,16 @@ def create_stateful_set(
     )
 
 
+def create_job(
+    kube_client: KubeClient,
+    formatted_job: V1Job,
+    namespace: str,
+) -> None:
+    return kube_client.batches.create_namespaced_job(
+        namespace=namespace, body=formatted_job
+    )
+
+
 def update_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
@@ -4352,6 +4423,20 @@ def get_kubernetes_secret_env_variables(
                 )
             )
     return decrypted_secrets
+
+
+def create_temp_exec_token(kube_client: KubeClient, namespace: str, user: str):
+    """Create a short lived token for exec"""
+    audience = "remote-run-" + user
+    service_account = "default"
+    token_spec = V1TokenRequestSpec(
+        expiration_seconds=600, audiences=[audience]  # minimum allowed by k8s
+    )
+    request = AuthenticationV1TokenRequest(spec=token_spec)
+    response = kube_client.core.create_namespaced_service_account_token(
+        service_account, namespace, request
+    )
+    return response
 
 
 def get_kubernetes_secret_volumes(
