@@ -126,14 +126,13 @@ def paasta_remote_run(
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
-
+    response = client.remote_run.remote_run_start(
+        service,
+        instance,
+        {"user": get_username(), "interactive": True},
+    )
     try:
         # TODO add image argument if build
-        response = client.service.remote_run(
-            service=service,
-            instance=instance,
-            user=get_username(),
-        )
         print("Reponse was: ", response)
         response = json.loads(response)
     except client.api_error as exc:
@@ -167,6 +166,14 @@ def paasta_remote_run(
     print("Run the following command to enter your service pod")
     print(exec_command)
 
+    print("Getting token")
+    try:
+        token = client.remote_run.remote_run_token(
+            service=service, instance=instance, user="qlo"
+        )
+        print("Got token:", token)
+    except:
+        raise
     return ret_code
 
 

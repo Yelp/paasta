@@ -2047,7 +2047,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 spec=V1JobSpec(
                     active_deadline_seconds=3600,
                     template=self.get_pod_template_spec(
-                        git_sha=git_sha, system_paasta_config=system_paasta_config
+                        git_sha=git_sha,
+                        system_paasta_config=system_paasta_config,
+                        restart=False,
                     ),
                 ),
             )
@@ -2182,7 +2184,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return "false"
 
     def get_pod_template_spec(
-        self, git_sha: str, system_paasta_config: SystemPaastaConfig
+        self,
+        git_sha: str,
+        system_paasta_config: SystemPaastaConfig,
+        restart: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2221,7 +2226,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
-            restart_policy="Always",
+            restart_policy="Always" if restart else "Never",
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
@@ -4450,7 +4455,7 @@ def get_kubernetes_secret_env_variables(
 def create_temp_exec_token(kube_client: KubeClient, namespace: str, user: str):
     """Create a short lived token for exec"""
     audience = "remote-run-" + user
-    service_account = "default"
+    service_account = "paasta-remote-run"
     token_spec = V1TokenRequestSpec(
         expiration_seconds=600, audiences=[audience]  # minimum allowed by k8s
     )

@@ -1637,7 +1637,7 @@ paths:
               type: object
               properties:
                 interactive:
-                  type: bool
+                  type: boolean
                 user:
                   type: string
                 image:

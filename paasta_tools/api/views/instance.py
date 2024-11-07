@@ -16,6 +16,7 @@
 PaaSTA service instance status/start/stop etc.
 """
 import asyncio
+import json
 import logging
 import re
 import traceback
@@ -393,18 +394,28 @@ def remote_run_stop(request):
     pass
 
 
-@view_config(route_name="remote_run.token", request_method="POST", renderer="json")
+@view_config(route_name="remote_run.token", request_method="GET", renderer="json")
 def remote_run_token(request):
-    pass
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    user = request.swagger_data.get("user")
+    try:
+        token = paasta_remote_run_2.create_exec_token(
+            service, instance, user, settings.cluster
+        )
+    except:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+    return json.dumps({"token": token})
 
 
 @view_config(route_name="remote_run.start", request_method="POST", renderer="json")
 def remote_run_start(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
-    user = request.swagger_data.get("user")
-    interactive = request.swagger_data.get("interactive", True)
-    recreate = request.swagger_data.get("recreate", True)
+    user = request.swagger_data["json_body"].get("user")
+    interactive = request.swagger_data["json_body"].get("interactive", True)
+    recreate = request.swagger_data["json_body"].get("recreate", True)
 
     try:
         response = paasta_remote_run_2.remote_run_start(

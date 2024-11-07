@@ -884,11 +884,28 @@
                         "type": "string"
                     },
                     {
-                        "in": "query",
+                        "in": "body",
                         "description": "Username",
-                        "name": "user",
+                        "name": "json_body",
                         "required": true,
-                        "type": "string"
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "interactive": {
+                                    "type": "boolean"
+                                },
+                                "user": {
+                                    "type": "string"
+                                },
+                                "image": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "interactive",
+                                "user"
+                            ]
+                        }
                     }
                 ]
             }

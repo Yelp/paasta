@@ -12,14 +12,19 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-def create_exec_token(namespace):
+def create_exec_token(service, instance, user, cluster):
     """Creates a short lived token for execing into a pod"""
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    # Load the service deployment settings
+    deployment = load_kubernetes_service_config_no_cache(
+        service, instance, cluster, DEFAULT_SOA_DIR
+    )
+    namespace = deployment.get_namespace()
     try:
         token = create_temp_exec_token(kube_client, namespace, user)
     except ApiException as E:
         raise
-    return token["token"]
+    return token.status.token
 
 
 def remote_run_start(service, instance, user, cluster, interactive, recreate):
