@@ -1675,7 +1675,7 @@ paths:
       - remote_run
   /remote_run/{service}/{instance}/stop:
     post:
-      operationId: remote_run_sop
+      operationId: remote_run_stop
       requestBody:
         content:
           application/json:

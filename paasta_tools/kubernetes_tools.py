@@ -2046,12 +2046,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 metadata=self.get_kubernetes_metadata(git_sha),
                 spec=V1JobSpec(
                     active_deadline_seconds=3600,
-                    selector=V1LabelSelector(
-                        match_labels={
-                            "paasta.yelp.com/service": self.get_service(),
-                            "paasta.yelp.com/instance": self.get_instance(),
-                        }
-                    ),
                     template=self.get_pod_template_spec(
                         git_sha=git_sha, system_paasta_config=system_paasta_config
                     ),
@@ -2071,23 +2065,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ] = image_version
 
             complete_config.metadata.labels["paasta.yelp.com/remote_run"] = "true"
-            # DO NOT ADD LABELS AFTER THIS LINE
-            config_hash = get_config_hash(
-                self.sanitize_for_config_hash(complete_config),
-                force_bounce=self.get_force_bounce(),
-            )
-            complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
-            complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
-
-            complete_config.spec.template.metadata.labels[
-                "yelp.com/paasta_config_sha"
-            ] = config_hash
-            complete_config.spec.template.metadata.labels[
-                "paasta.yelp.com/config_sha"
-            ] = config_hash
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
-        log.debug("Complete configuration for instance is: %s", complete_config)
+        log.debug(
+            "Complete configuration for remote-run instance is: %s", complete_config
+        )
         return complete_config
 
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
@@ -2847,6 +2829,7 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
             else:
                 raise
 
+    ensure_paasta_remote_run_service_account(kube_client, namespace)
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
 
@@ -2874,6 +2857,45 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
                     name="yelp.com/paasta-api-server",
                 ),
             ],
+        )
+        kube_client.rbac.create_namespaced_role_binding(
+            namespace=namespace, body=role_binding
+        )
+
+
+def ensure_paasta_remote_run_service_account(
+    kube_client: KubeClient, namespace: str
+) -> None:
+    """Checks whether a ServiceAccount named paasta-remote-run exists in the namespace,
+    and if it doesn't, create it and bind paasta-remote-run-role to it."""
+    service_accounts = get_all_service_accounts(kube_client, namespace=namespace)
+    service_account_names = [item.metadata.name for item in service_accounts]
+    if "paasta-remote-run" not in service_account_names:
+        log.warning(
+            f"Creating service account paasta-remote-run in {namespace} namespace as it does not exist"
+        )
+        service_account = V1ServiceAccount(
+            metadata=V1ObjectMeta(name="paasta-remote-run", namespace=namespace)
+        )
+        role_binding = V1RoleBinding(
+            metadata=V1ObjectMeta(
+                name="paasta-remote-run-role",
+                namespace=namespace,
+            ),
+            role_ref=V1RoleRef(
+                api_group="rbac.authorization.k8s.io",
+                kind="ClusterRole",
+                name="paasta-remote-run-role",
+            ),
+            subjects=[
+                V1Subject(
+                    kind="ServiceAccount",
+                    name="paasta-remote-run",
+                ),
+            ],
+        )
+        kube_client.core.create_namespaced_service_account(
+            namespace=namespace, body=service_account
         )
         kube_client.rbac.create_namespaced_role_binding(
             namespace=namespace, body=role_binding

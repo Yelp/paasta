@@ -428,7 +428,7 @@ class JobWrapper(Application):
         """
         delete_options = V1DeleteOptions(propagation_policy="Foreground")
         try:
-            kube_client.batchess.delete_namespaced_job(
+            kube_client.batches.delete_namespaced_job(
                 self.item.metadata.name,
                 self.item.metadata.namespace,
                 body=delete_options,
@@ -457,10 +457,6 @@ class JobWrapper(Application):
             formatted_job=self.item,
             namespace=self.soa_config.get_namespace(),
         )
-
-    def update(self, kube_client: KubeClient):
-        # TODO: Is this needed?
-        pass
 
 
 def get_application_wrapper(
