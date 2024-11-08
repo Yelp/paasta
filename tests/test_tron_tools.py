@@ -24,6 +24,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
             "volumes": [],
             "dockercfg_location": "/mock/dockercfg",
             "spark_k8s_role": "spark",
+            "enable_tron_tsc": True,
         }
     ),
     "/mock/system/configs",
