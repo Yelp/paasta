@@ -25,6 +25,7 @@ KNOWN_CONFIG_TYPES = (
     "deploy",
     "smartstack",
     "cassandracluster",
+    "eks",
 )
 
 # this could use a better name - but basically, this is for pairs of instance types
