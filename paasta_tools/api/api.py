@@ -31,6 +31,7 @@ from wsgicors import CORS
 import paasta_tools.api
 from paasta_tools import kubernetes_tools
 from paasta_tools.api import settings
+from paasta_tools.api.tweens import auth
 from paasta_tools.api.tweens import profiling
 from paasta_tools.api.tweens import request_logger
 from paasta_tools.utils import load_system_paasta_config
@@ -79,6 +80,18 @@ def parse_paasta_api_args():
         default=4,
         help="Number of gunicorn workers to run",
     )
+    parser.add_argument(
+        "--auth-endpoint",
+        type=str,
+        default="",
+        help="External API authorization endpoint",
+    )
+    parser.add_argument(
+        "--auth-enforce",
+        action="store_true",
+        default=False,
+        help="Enforce API authorization",
+    )
     args = parser.parse_args()
     return args
 
@@ -105,6 +118,7 @@ def make_app(global_config=None):
 
     config.include("pyramid_swagger")
     config.include(request_logger)
+    config.include(auth)
 
     config.add_route(
         "flink.service.instance.jobs", "/v1/flink/{service}/{instance}/jobs"
@@ -268,6 +282,11 @@ def main(argv=None):
 
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
+
+    if args.auth_endpoint:
+        os.environ["PAASTA_API_AUTH_ENDPOINT"] = args.auth_endpoint
+        if args.auth_enforce:
+            os.environ["PAASTA_API_AUTH_ENFORCE"] = "1"
 
     gunicorn_args = [
         "gunicorn",
