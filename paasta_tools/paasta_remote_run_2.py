@@ -32,7 +32,7 @@ def remote_run_start(service, instance, user, cluster, interactive, recreate):
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
 
     # TODO hardcoded for now
-    is_eks = False
+    is_eks = True
 
     # Load the service deployment settings
     deployment = load_kubernetes_service_config_no_cache(

@@ -4454,10 +4454,9 @@ def get_kubernetes_secret_env_variables(
 
 def create_temp_exec_token(kube_client: KubeClient, namespace: str, user: str):
     """Create a short lived token for exec"""
-    audience = "remote-run-" + user
     service_account = "paasta-remote-run"
     token_spec = V1TokenRequestSpec(
-        expiration_seconds=600, audiences=[audience]  # minimum allowed by k8s
+        expiration_seconds=600, audiences=[]  # minimum allowed by k8s
     )
     request = AuthenticationV1TokenRequest(spec=token_spec)
     response = kube_client.core.create_namespaced_service_account_token(

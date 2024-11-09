@@ -154,26 +154,28 @@ def paasta_remote_run(
         return ret_code
 
     pod_name, namespace = response["pod_name"], response["namespace"]
-    exec_command_tmpl = "kubectl{eks}-{cluster} exec -it -n {namespace} {pod} /bin/bash"
-    exec_command = exec_command_tmpl.format(
-        eks="-eks" if is_eks else "", cluster=cluster, namespace=namespace, pod=pod_name
-    )
     print("Pod launched successfully:", pod_name)
 
-    # TODO figure out how to get this to work
-    # print('Attaching shell')
-    # cmd = subprocess.Popen(exec_command.split(' '))
-    print("Run the following command to enter your service pod")
-    print(exec_command)
-
-    print("Getting token")
     try:
         token = client.remote_run.remote_run_token(
             service=service, instance=instance, user="qlo"
         )
-        print("Got token:", token)
+        token = json.loads(token)["token"]
     except:
         raise
+
+    # TODO figure out how to get this to work
+    exec_command_tmpl = "kubectl{eks}-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+    exec_command = exec_command_tmpl.format(
+        eks="-eks" if is_eks else "",
+        cluster=cluster,
+        namespace=namespace,
+        pod=pod_name,
+        token=token,
+    )
+    print("Running command", exec_command)
+    # cmd = subprocess.Popen(exec_command.split(' '))
+
     return ret_code
 
 
@@ -183,5 +185,5 @@ def remote_run(args) -> int:
         "/nail/home/qlo/paasta_config/paasta/"
     )
     return paasta_remote_run(
-        args.cluster, args.service, args.instance, system_paasta_config, 1, False
+        args.cluster, args.service, args.instance, system_paasta_config, 1, True
     )
