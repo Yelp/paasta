@@ -3,6 +3,7 @@ from time import sleep
 
 from kubernetes.client.exceptions import ApiException
 
+from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
@@ -15,10 +16,16 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 def create_exec_token(service, instance, user, cluster):
     """Creates a short lived token for execing into a pod"""
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    is_eks = True
     # Load the service deployment settings
-    deployment = load_kubernetes_service_config_no_cache(
-        service, instance, cluster, DEFAULT_SOA_DIR
-    )
+    if is_eks:
+        deployment = load_eks_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
+    else:
+        deployment = load_kubernetes_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
     namespace = deployment.get_namespace()
     try:
         token = create_temp_exec_token(kube_client, namespace, user)
@@ -35,9 +42,14 @@ def remote_run_start(service, instance, user, cluster, interactive, recreate):
     is_eks = True
 
     # Load the service deployment settings
-    deployment = load_kubernetes_service_config_no_cache(
-        service, instance, cluster, DEFAULT_SOA_DIR
-    )
+    if is_eks:
+        deployment = load_eks_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
+    else:
+        deployment = load_kubernetes_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
     namespace = deployment.get_namespace()
 
     # Set to interactive mode
