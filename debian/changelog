@@ -1,3 +1,14 @@
+paasta-tools (1.8.0) xenial; urgency=medium
+
+  * 1.8.0 tagged with 'make release'
+    Commit: Add tron topology_spread_constraints support to PaaSTA
+    (#3983)  This adds support for configuring Tron-launched pods with a
+    default Topology Spread Constraint (and node affinities) that will
+    spread pods out across multiple AZs - otherwise, Karpenter will
+    overwhelmingly favor a single AZ due to our config
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 11 Nov 2024 12:36:11 -0800
+
 paasta-tools (1.7.2) xenial; urgency=medium
 
   * 1.7.2 tagged with 'make release'
