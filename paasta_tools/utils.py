@@ -2053,6 +2053,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vitess_throttling_config: Dict
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
+    enable_tron_tsc: bool
 
 
 def load_system_paasta_config(
@@ -2820,6 +2821,9 @@ class SystemPaastaConfig:
 
     def get_enable_automated_redeploys_default(self) -> bool:
         return self.config_dict.get("enable_automated_redeploys_default", False)
+
+    def get_enable_tron_tsc(self) -> bool:
+        return self.config_dict.get("enable_tron_tsc", False)
 
 
 def _run(
