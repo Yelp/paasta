@@ -391,7 +391,18 @@ def instance_mesh_status(request):
 
 @view_config(route_name="remote_run.stop", request_method="POST", renderer="json")
 def remote_run_stop(request):
-    pass
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    user = request.swagger_data["json_body"].get("user")
+
+    try:
+        response = paasta_remote_run_2.remote_run_stop(
+            service, instance, user, settings.cluster
+        )
+    except:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+    return response
 
 
 @view_config(route_name="remote_run.token", request_method="GET", renderer="json")

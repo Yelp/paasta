@@ -14,7 +14,7 @@
 # limitations under the License.
 import json
 import os
-import subprocess
+import pty
 import sys
 import time
 
@@ -66,21 +66,27 @@ def add_subparser(
         help="Run stuff remotely.",
         description=("'paasta remote-run' runs stuff remotely "),
     )
-    remote_run_parser.add_argument(
+    subparsers = remote_run_parser.add_subparsers(dest="remote_run_command")
+    start_parser = subparsers.add_parser(
+        "start",
+        help="Start or connect to a remote-run job",
+        description=("Starts or connects to a remote-run-job"),
+    )
+    start_parser.add_argument(
         "-b",
         "--build",
         dest="build",
         help="Build the image from current directory",
         action="store_true",
     )
-    remote_run_parser.add_argument(
+    start_parser.add_argument(
         "-y",
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
-    remote_run_parser.add_argument(
+    start_parser.add_argument(
         "-I",
         "--interactive",
         help=(
@@ -91,20 +97,27 @@ def add_subparser(
         required=False,
         default=False,
     )
-    add_common_args_to_parser(remote_run_parser)
+    stop_parser = subparsers.add_parser(
+        "stop",
+        help="Stop! In the name of Paasta",
+        description="Stop your remote-run job if it exists",
+    )
+    add_common_args_to_parser(start_parser)
+    add_common_args_to_parser(stop_parser)
     remote_run_parser.set_defaults(command=remote_run)
 
 
-def paasta_remote_run(
-    cluster: str,
-    service: str,
-    instance: str,
+def paasta_remote_run_start(
+    args,
     system_paasta_config: SystemPaastaConfig,
-    verbose: int,
-    is_eks: bool = False,
-    build: bool = False,
+    verbose: int = 0,
+    is_eks: bool = True,
 ) -> int:
 
+    cluster = args.cluster
+    service = args.service
+    instance = args.instance
+    build = args.build
     output = []
     ret_code = 0
 
@@ -126,14 +139,14 @@ def paasta_remote_run(
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
+
+    # TODO add image argument if build
     response = client.remote_run.remote_run_start(
         service,
         instance,
         {"user": get_username(), "interactive": True},
     )
     try:
-        # TODO add image argument if build
-        print("Reponse was: ", response)
         response = json.loads(response)
     except client.api_error as exc:
         print(exc, file=sys.stderr)
@@ -153,8 +166,15 @@ def paasta_remote_run(
         print("\n".join(output))
         return ret_code
 
+    if response["status"] == 409:
+        print(
+            "A remote-run container already exists. Run remote-run stop first if you'd like a new one."
+        )
+        attach = input("Would you like to attach to it? y/n ")
+        if attach == "n":
+            return 0
+    print(response)
     pod_name, namespace = response["pod_name"], response["namespace"]
-    print("Pod launched successfully:", pod_name)
 
     try:
         token = client.remote_run.remote_run_token(
@@ -164,7 +184,6 @@ def paasta_remote_run(
     except:
         raise
 
-    # TODO figure out how to get this to work
     exec_command_tmpl = "kubectl{eks}-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
     exec_command = exec_command_tmpl.format(
         eks="-eks" if is_eks else "",
@@ -173,9 +192,37 @@ def paasta_remote_run(
         pod=pod_name,
         token=token,
     )
-    print("Running command", exec_command)
-    # cmd = subprocess.Popen(exec_command.split(' '))
+    cmd = pty.spawn(exec_command.split(" "))
 
+    return ret_code
+
+
+def paasta_remote_run_stop(
+    args,
+    system_paasta_config: SystemPaastaConfig,
+    verbose: int = 0,
+    is_eks: bool = True,
+) -> int:
+
+    cluster = args.cluster
+    service = args.service
+    instance = args.instance
+
+    ret_code = 0
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        print("Cannot get a paasta-api client")
+        exit(1)
+    response = client.remote_run.remote_run_stop(
+        service,
+        instance,
+        {"user": get_username()},
+    )
+    print(response)
     return ret_code
 
 
@@ -184,6 +231,7 @@ def remote_run(args) -> int:
     system_paasta_config = load_system_paasta_config(
         "/nail/home/qlo/paasta_config/paasta/"
     )
-    return paasta_remote_run(
-        args.cluster, args.service, args.instance, system_paasta_config, 1, True
-    )
+    if args.remote_run_command == "start":
+        return paasta_remote_run_start(args, system_paasta_config)
+    elif args.remote_run_command == "stop":
+        return paasta_remote_run_stop(args, system_paasta_config)

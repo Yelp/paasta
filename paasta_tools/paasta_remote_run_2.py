@@ -64,18 +64,19 @@ def remote_run_start(service, instance, user, cluster, interactive, recreate):
     app_wrapper.load_local_config(DEFAULT_SOA_DIR, cluster, is_eks)
 
     # Launch pod
+    status = 200
     try:
         app_wrapper.create(kube_client)
     except ApiException as e:
         if e.status == 409:
             # Job already running
-            return json.dumps({"status": "409", "reason": "Job already running"})
+            status = 409
         raise
 
     pod = wait_until_pod_running(kube_client, namespace, job_name)
 
     return json.dumps(
-        {"status": "200", "pod_name": pod.metadata.name, "namespace": namespace}
+        {"status": status, "pod_name": pod.metadata.name, "namespace": namespace}
     )
 
 
@@ -117,9 +118,24 @@ def wait_until_pod_running(kube_client, namespace, job_name):
     return pod
 
 
-# def remote_run_stop():
-# TODO Should this happen here or should the client kill the deployment directly?
-# Load the service deployment settings
-# deployment = load_kubernetes_service_config_no_cache(
-#    service, instance, cluster, DEFAULT_SOA_DIR
-# )
+def remote_run_stop(service, instance, user, cluster):
+    # TODO Overriding the kube client config for now as the api has limited permissions
+    kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    is_eks = True
+    if is_eks:
+        deployment = load_eks_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
+    else:
+        deployment = load_kubernetes_service_config_no_cache(
+            service, instance, cluster, DEFAULT_SOA_DIR
+        )
+    namespace = deployment.get_namespace()
+    formatted_job = deployment.format_as_kubernetes_job()
+    job_name = f"remote-run-{user}-{formatted_job.metadata.name}"
+    formatted_job.metadata.name = job_name
+
+    app_wrapper = get_application_wrapper(formatted_job)
+    app_wrapper.load_local_config(DEFAULT_SOA_DIR, cluster, is_eks)
+    app_wrapper.deep_delete(kube_client)
+    return json.dumps({"status": 200, "message": "Job successfully removed"})
