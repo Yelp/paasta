@@ -13,10 +13,10 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-def create_exec_token(service, instance, user, cluster):
+def create_exec_token(service, instance, user, cluster, is_eks):
     """Creates a short lived token for execing into a pod"""
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
-    is_eks = True
+
     # Load the service deployment settings
     if is_eks:
         deployment = load_eks_service_config_no_cache(
@@ -34,12 +34,9 @@ def create_exec_token(service, instance, user, cluster):
     return token.status.token
 
 
-def remote_run_start(service, instance, user, cluster, interactive, recreate):
+def remote_run_start(service, instance, user, cluster, interactive, recreate, is_eks):
     # TODO Overriding the kube client config for now as the api has limited permissions
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
-
-    # TODO hardcoded for now
-    is_eks = True
 
     # Load the service deployment settings
     if is_eks:
@@ -118,10 +115,9 @@ def wait_until_pod_running(kube_client, namespace, job_name):
     return pod
 
 
-def remote_run_stop(service, instance, user, cluster):
+def remote_run_stop(service, instance, user, cluster, is_eks):
     # TODO Overriding the kube client config for now as the api has limited permissions
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
-    is_eks = True
     if is_eks:
         deployment = load_eks_service_config_no_cache(
             service, instance, cluster, DEFAULT_SOA_DIR

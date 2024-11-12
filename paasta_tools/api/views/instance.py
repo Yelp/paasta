@@ -394,10 +394,11 @@ def remote_run_stop(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     user = request.swagger_data["json_body"].get("user")
+    is_eks = is_instance_eks(service, instance)
 
     try:
         response = paasta_remote_run_2.remote_run_stop(
-            service, instance, user, settings.cluster
+            service, instance, user, settings.cluster, is_eks
         )
     except:
         error_message = traceback.format_exc()
@@ -410,14 +411,30 @@ def remote_run_token(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     user = request.swagger_data.get("user")
+    is_eks = is_instance_eks(service, instance)
     try:
         token = paasta_remote_run_2.create_exec_token(
-            service, instance, user, settings.cluster
+            service, instance, user, settings.cluster, is_eks
         )
     except:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
     return json.dumps({"token": token})
+
+
+def is_instance_eks(service, instance):
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = no_configuration_for_service_message(
+            settings.cluster,
+            service,
+            instance,
+        )
+        raise Exception(error_message, 404)
+    return instance_type == "eks"
 
 
 @view_config(route_name="remote_run.start", request_method="POST", renderer="json")
@@ -428,9 +445,10 @@ def remote_run_start(request):
     interactive = request.swagger_data["json_body"].get("interactive", True)
     recreate = request.swagger_data["json_body"].get("recreate", True)
 
+    is_eks = is_instance_eks(service, instance)
     try:
         response = paasta_remote_run_2.remote_run_start(
-            service, instance, user, settings.cluster, interactive, recreate
+            service, instance, user, settings.cluster, interactive, recreate, is_eks
         )
     except Exception:
         error_message = traceback.format_exc()
