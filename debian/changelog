@@ -1,3 +1,13 @@
+paasta-tools (1.8.1) xenial; urgency=medium
+
+  * 1.8.1 tagged with 'make release'
+    Commit: Enable topology spread constraints by default for tron
+    (#3987)  I debated getting rid of this toggle entirely, but I guess
+    it"s nice to keep around just in case?  I"ll also follow this up
+    with a Puppet PR to clean things up there
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Nov 2024 12:00:34 -0800
+
 paasta-tools (1.8.0) xenial; urgency=medium
 
   * 1.8.0 tagged with 'make release'
