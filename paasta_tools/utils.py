@@ -2823,7 +2823,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("enable_automated_redeploys_default", False)
 
     def get_enable_tron_tsc(self) -> bool:
-        return self.config_dict.get("enable_tron_tsc", False)
+        return self.config_dict.get("enable_tron_tsc", True)
 
 
 def _run(
