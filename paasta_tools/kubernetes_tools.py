@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import re
+import time
 from datetime import datetime
 from datetime import timezone
 from enum import Enum
@@ -98,11 +99,13 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1PolicyRule
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client import V1Role
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
@@ -2834,7 +2837,6 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
             else:
                 raise
 
-    ensure_paasta_remote_run_service_account(kube_client, namespace)
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
 
@@ -2862,45 +2864,6 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
                     name="yelp.com/paasta-api-server",
                 ),
             ],
-        )
-        kube_client.rbac.create_namespaced_role_binding(
-            namespace=namespace, body=role_binding
-        )
-
-
-def ensure_paasta_remote_run_service_account(
-    kube_client: KubeClient, namespace: str
-) -> None:
-    """Checks whether a ServiceAccount named paasta-remote-run exists in the namespace,
-    and if it doesn't, create it and bind paasta-remote-run-role to it."""
-    service_accounts = get_all_service_accounts(kube_client, namespace=namespace)
-    service_account_names = [item.metadata.name for item in service_accounts]
-    if "paasta-remote-run" not in service_account_names:
-        log.warning(
-            f"Creating service account paasta-remote-run in {namespace} namespace as it does not exist"
-        )
-        service_account = V1ServiceAccount(
-            metadata=V1ObjectMeta(name="paasta-remote-run", namespace=namespace)
-        )
-        role_binding = V1RoleBinding(
-            metadata=V1ObjectMeta(
-                name="paasta-remote-run-role",
-                namespace=namespace,
-            ),
-            role_ref=V1RoleRef(
-                api_group="rbac.authorization.k8s.io",
-                kind="ClusterRole",
-                name="paasta-remote-run-role",
-            ),
-            subjects=[
-                V1Subject(
-                    kind="ServiceAccount",
-                    name="paasta-remote-run",
-                ),
-            ],
-        )
-        kube_client.core.create_namespaced_service_account(
-            namespace=namespace, body=service_account
         )
         kube_client.rbac.create_namespaced_role_binding(
             namespace=namespace, body=role_binding
@@ -4452,9 +4415,10 @@ def get_kubernetes_secret_env_variables(
     return decrypted_secrets
 
 
-def create_temp_exec_token(kube_client: KubeClient, namespace: str, user: str):
+def create_temp_exec_token(
+    kube_client: KubeClient, namespace: str, service_account: str
+):
     """Create a short lived token for exec"""
-    service_account = "paasta-remote-run"
     token_spec = V1TokenRequestSpec(
         expiration_seconds=600, audiences=[]  # minimum allowed by k8s
     )
@@ -4560,3 +4524,66 @@ def add_volumes_for_authenticating_services(
     ):
         config_volumes = [token_config, *config_volumes]
     return config_volumes
+
+
+def create_pod_scoped_role(kube_client, namespace, user, pod_name):
+    pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
+    policy = V1PolicyRule(
+        verbs=["create", "get"],
+        resources=["pods", "pods/exec"],
+        resource_names=[pod_name],
+        api_groups=[""],
+    )
+    role_name = f"remote-run-role-{pod_name_hash}"
+    role = V1Role(
+        rules=[policy],
+        metadata=V1ObjectMeta(
+            name=role_name,
+            labels={"CreationTime": str(int(time.time())), "PodOwner": user},
+        ),
+    )
+
+    kube_client.core.create_namespaced_role(namespace=namespace, body=role)
+    return role_name
+
+
+def bind_role_to_service_account(kube_client, namespace, service_account, role):
+    role_binding = V1RoleBinding(
+        metadata=V1ObjectMeta(
+            name=f"binding-{role}",
+            namespace=namespace,
+        ),
+        role_ref=V1RoleRef(
+            api_group="rbac.authorization.k8s.io",
+            kind="Role",
+            name=role,
+        ),
+        subjects=[
+            V1Subject(
+                kind="ServiceAccount",
+                name=service_account,
+            ),
+        ],
+    )
+    kube_client.rbac.create_namespaced_role_binding(
+        namespace=namespace, body=role_binding
+    )
+
+
+def create_paasta_remote_run_service_account(
+    kube_client: KubeClient, namespace: str, username: str, pod_name: str
+) -> None:
+    pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
+    service_account_name = f"remote-run-{username}-{pod_name_hash}"
+    service_accounts = get_all_service_accounts(kube_client, namespace=namespace)
+    service_account_names = [item.metadata.name for item in service_accounts]
+    if service_account_name in service_account_names:
+        return service_account_name
+
+    service_account = V1ServiceAccount(
+        metadata=V1ObjectMeta(name=service_account_name, namespace=namespace)
+    )
+    kube_client.core.create_namespaced_service_account(
+        namespace=namespace, body=service_account
+    )
+    return service_account_name

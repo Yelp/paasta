@@ -27,8 +27,18 @@ def create_exec_token(service, instance, user, cluster, is_eks):
             service, instance, cluster, DEFAULT_SOA_DIR
         )
     namespace = deployment.get_namespace()
+    formatted_job = deployment.format_as_kubernetes_job()
+    job_name = f"remote-run-{user}-{formatted_job.metadata.name}"
+
     try:
-        token = create_temp_exec_token(kube_client, namespace, user)
+        pod = find_pod(kube_client, namespace, job_name)
+        pod_name = pod.metadata.name
+        service_account = create_paasta_remote_run_service_account(
+            kubeclient, namespace, user, pod_name
+        )
+        role = create_pod_scoped_role(kube_client, namespace, pod_name, user)
+        bind_role_service_account(kube_client, namespace, service_account, role)
+        token = create_temp_exec_token(kube_client, namespace, service_account)
     except ApiException as E:
         raise
     return token.status.token
