@@ -19,8 +19,8 @@ import logging
 import math
 import os
 import re
-import time
 from datetime import datetime
+from datetime import timedelta
 from datetime import timezone
 from enum import Enum
 from functools import lru_cache
@@ -2839,6 +2839,7 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
 
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
+    remove_remote_run_accounts_and_roles(kube_client, namespace)
 
 
 def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> None:
@@ -4539,7 +4540,7 @@ def create_pod_scoped_role(kube_client, namespace, user, pod_name):
         rules=[policy],
         metadata=V1ObjectMeta(
             name=role_name,
-            labels={"CreationTime": str(int(time.time())), "PodOwner": user},
+            labels={"PodOwner": user},
         ),
     )
 
@@ -4581,9 +4582,52 @@ def create_paasta_remote_run_service_account(
         return service_account_name
 
     service_account = V1ServiceAccount(
-        metadata=V1ObjectMeta(name=service_account_name, namespace=namespace)
+        metadata=V1ObjectMeta(
+            name=service_account_name,
+            namespace=namespace,
+            labels={"PodOwner": username},
+        )
     )
     kube_client.core.create_namespaced_service_account(
         namespace=namespace, body=service_account
     )
     return service_account_name
+
+
+def get_namespaced_roles(kube_client, namespace):
+    return kube_client.rbac.list_namespaced_role(namespace).items
+
+
+def remove_remote_run_accounts_and_roles(
+    kube_client: KubeClient,
+    namespace: str,
+) -> None:
+    service_accounts = get_all_service_accounts(kube_client, namespace)
+    roles = get_namespaced_roles(kube_client, namespace)
+
+    current_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+    age_limit = timedelta(seconds=60)
+
+    for delete_func, entity_list in (
+        (delete_namespaced_service_account, service_accounts),
+        (delete_namespaced_role, roles),
+    ):
+        for entity in entity_list:
+            if not entity.metadata.name.startswith("remote-run-"):
+                continue
+            entity_age = current_time - entity.metadata.creation_timestamp
+            if entity_age < age_limit:
+                continue
+            delete_func(kube_client, namespace, entity)
+
+
+def delete_namespaced_service_account(
+    kube_client: KubeClient, namespace: str, service_account: V1ServiceAccount
+):
+    kube_client.core.delete_namespaced_service_account(
+        service_account.metadata.name, namespace
+    )
+
+
+def delete_namespaced_role(kube_client: KubeClient, namespace: str, role: V1Role):
+    kube_client.rbac.delete_namespaced_role(role.metadata.name, namespace)
