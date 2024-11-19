@@ -20,6 +20,7 @@ import math
 import os
 import re
 from datetime import datetime
+from datetime import timedelta
 from datetime import timezone
 from enum import Enum
 from functools import lru_cache
@@ -48,6 +49,7 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import AuthenticationV1TokenRequest
 from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
@@ -71,6 +73,8 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1Job
+from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
@@ -95,11 +99,13 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1PolicyRule
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client import V1Role
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
@@ -113,6 +119,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -605,6 +612,7 @@ class KubeClient:
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+        self.batches = kube_client.BatchV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
@@ -2029,6 +2037,46 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""
         return self.config_dict.get("pod_management_policy", "OrderedReady")
 
+    def format_as_kubernetes_job(self) -> V1Job:
+        """Create the config for launching the deployment as a Job"""
+        try:
+            docker_url = self.get_docker_url()
+            git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
+            system_paasta_config = load_system_paasta_config()
+            complete_config = V1Job(
+                api_version="batch/v1",
+                kind="Job",
+                metadata=self.get_kubernetes_metadata(git_sha),
+                spec=V1JobSpec(
+                    active_deadline_seconds=3600,
+                    template=self.get_pod_template_spec(
+                        git_sha=git_sha,
+                        system_paasta_config=system_paasta_config,
+                        restart=False,
+                    ),
+                ),
+            )
+
+            prometheus_shard = self.get_prometheus_shard()
+            if prometheus_shard:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/prometheus_shard"
+                ] = prometheus_shard
+
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+
+            complete_config.metadata.labels["paasta.yelp.com/remote_run"] = "true"
+        except Exception as e:
+            raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
+        log.debug(
+            "Complete configuration for remote-run instance is: %s", complete_config
+        )
+        return complete_config
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -2139,7 +2187,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return "false"
 
     def get_pod_template_spec(
-        self, git_sha: str, system_paasta_config: SystemPaastaConfig
+        self,
+        git_sha: str,
+        system_paasta_config: SystemPaastaConfig,
+        restart: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2178,7 +2229,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
-            restart_policy="Always",
+            restart_policy="Always" if restart else "Never",
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
@@ -2517,7 +2568,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # remove data we dont want used to hash configs
         # replica count
-        if ahash["spec"] is not None:
+        if ahash["spec"] is not None and "replicas" in ahash["spec"]:
             del ahash["spec"]["replicas"]
 
         if ahash["metadata"] is not None:
@@ -2788,6 +2839,7 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
 
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
+    remove_remote_run_accounts_and_roles(kube_client, namespace)
 
 
 def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> None:
@@ -3631,6 +3683,16 @@ def create_stateful_set(
     )
 
 
+def create_job(
+    kube_client: KubeClient,
+    formatted_job: V1Job,
+    namespace: str,
+) -> None:
+    return kube_client.batches.create_namespaced_job(
+        namespace=namespace, body=formatted_job
+    )
+
+
 def update_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
@@ -4354,6 +4416,20 @@ def get_kubernetes_secret_env_variables(
     return decrypted_secrets
 
 
+def create_temp_exec_token(
+    kube_client: KubeClient, namespace: str, service_account: str
+):
+    """Create a short lived token for exec"""
+    token_spec = V1TokenRequestSpec(
+        expiration_seconds=600, audiences=[]  # minimum allowed by k8s
+    )
+    request = AuthenticationV1TokenRequest(spec=token_spec)
+    response = kube_client.core.create_namespaced_service_account_token(
+        service_account, namespace, request
+    )
+    return response
+
+
 def get_kubernetes_secret_volumes(
     kube_client: KubeClient,
     secret_volumes_config: Sequence[SecretVolume],
@@ -4449,3 +4525,109 @@ def add_volumes_for_authenticating_services(
     ):
         config_volumes = [token_config, *config_volumes]
     return config_volumes
+
+
+def create_pod_scoped_role(kube_client, namespace, user, pod_name):
+    pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
+    policy = V1PolicyRule(
+        verbs=["create", "get"],
+        resources=["pods", "pods/exec"],
+        resource_names=[pod_name],
+        api_groups=[""],
+    )
+    role_name = f"remote-run-role-{pod_name_hash}"
+    role = V1Role(
+        rules=[policy],
+        metadata=V1ObjectMeta(
+            name=role_name,
+            labels={"PodOwner": user},
+        ),
+    )
+
+    kube_client.core.create_namespaced_role(namespace=namespace, body=role)
+    return role_name
+
+
+def bind_role_to_service_account(kube_client, namespace, service_account, role):
+    role_binding = V1RoleBinding(
+        metadata=V1ObjectMeta(
+            name=f"binding-{role}",
+            namespace=namespace,
+        ),
+        role_ref=V1RoleRef(
+            api_group="rbac.authorization.k8s.io",
+            kind="Role",
+            name=role,
+        ),
+        subjects=[
+            V1Subject(
+                kind="ServiceAccount",
+                name=service_account,
+            ),
+        ],
+    )
+    kube_client.rbac.create_namespaced_role_binding(
+        namespace=namespace, body=role_binding
+    )
+
+
+def create_paasta_remote_run_service_account(
+    kube_client: KubeClient, namespace: str, username: str, pod_name: str
+) -> None:
+    pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
+    service_account_name = f"remote-run-{username}-{pod_name_hash}"
+    service_accounts = get_all_service_accounts(kube_client, namespace=namespace)
+    service_account_names = [item.metadata.name for item in service_accounts]
+    if service_account_name in service_account_names:
+        return service_account_name
+
+    service_account = V1ServiceAccount(
+        metadata=V1ObjectMeta(
+            name=service_account_name,
+            namespace=namespace,
+            labels={"PodOwner": username},
+        )
+    )
+    kube_client.core.create_namespaced_service_account(
+        namespace=namespace, body=service_account
+    )
+    return service_account_name
+
+
+def get_namespaced_roles(kube_client, namespace):
+    return kube_client.rbac.list_namespaced_role(namespace).items
+
+
+def remove_remote_run_accounts_and_roles(
+    kube_client: KubeClient,
+    namespace: str,
+) -> None:
+    service_accounts = get_all_service_accounts(kube_client, namespace)
+    roles = get_namespaced_roles(kube_client, namespace)
+
+    current_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+    age_limit = timedelta(seconds=60)
+
+    for delete_func, entity_list in (
+        (delete_namespaced_service_account, service_accounts),
+        (delete_namespaced_role, roles),
+    ):
+        for entity in entity_list:
+            if not entity.metadata.name.startswith("remote-run-"):
+                continue
+            entity_age = current_time - entity.metadata.creation_timestamp
+            if entity_age < age_limit:
+                continue
+            delete_func(kube_client, namespace, entity)
+
+
+def delete_namespaced_service_account(
+    kube_client: KubeClient, namespace: str, service_account: V1ServiceAccount
+):
+    kube_client.core.delete_namespaced_service_account(
+        service_account.metadata.name, namespace
+    )
+
+
+def delete_namespaced_role(kube_client: KubeClient, namespace: str, role: V1Role):
+    kube_client.rbac.delete_namespaced_role(role.metadata.name, namespace)

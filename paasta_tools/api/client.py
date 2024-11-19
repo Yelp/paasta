@@ -37,6 +37,7 @@ class PaastaOApiClient:
     default: paastaapis.DefaultApi
     resources: paastaapis.ResourcesApi
     service: paastaapis.ServiceApi
+    remote_run: paastaapis.RemoteRunApi
     api_error: Type[paastaapi.ApiException]
     connection_error: Type[paastaapi.ApiException]
     timeout_error: Type[paastaapi.ApiException]
@@ -48,6 +49,7 @@ def get_paasta_oapi_client_by_url(
     cert_file: Optional[str] = None,
     key_file: Optional[str] = None,
     ssl_ca_cert: Optional[str] = None,
+    auth_token: str = "",
 ) -> PaastaOApiClient:
     server_variables = dict(scheme=parsed_url.scheme, host=parsed_url.netloc)
     config = paastaapi.Configuration(
@@ -63,11 +65,15 @@ def get_paasta_oapi_client_by_url(
     client.rest_client.pool_manager.connection_pool_kw[
         "timeout"
     ] = load_system_paasta_config().get_api_client_timeout()
+    # SEC-19555: support auth in PaaSTA APIs
+    if auth_token:
+        client.set_default_header("Authorization", f"Bearer {auth_token}")
     return PaastaOApiClient(
         autoscaler=paastaapis.AutoscalerApi(client),
         default=paastaapis.DefaultApi(client),
         resources=paastaapis.ResourcesApi(client),
         service=paastaapis.ServiceApi(client),
+        remote_run=paastaapis.RemoteRunApi(client),
         api_error=paastaapi.ApiException,
         connection_error=paastaapi.ApiException,
         timeout_error=paastaapi.ApiException,
@@ -79,6 +85,7 @@ def get_paasta_oapi_client(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,
     http_res: bool = False,
+    auth_token: str = "",
 ) -> Optional[PaastaOApiClient]:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
@@ -94,4 +101,6 @@ def get_paasta_oapi_client(
     parsed = urlparse(api_endpoints[cluster])
     cert_file = key_file = ssl_ca_cert = None
 
-    return get_paasta_oapi_client_by_url(parsed, cert_file, key_file, ssl_ca_cert)
+    return get_paasta_oapi_client_by_url(
+        parsed, cert_file, key_file, ssl_ca_cert, auth_token
+    )
