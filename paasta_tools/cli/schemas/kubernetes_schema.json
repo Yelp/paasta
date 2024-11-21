@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml",
     "type": "object",
     "additionalProperties": false,
@@ -98,41 +98,34 @@
             "properties": {
                 "cpus": {
                     "type": "number",
-                    "minimum": 0,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": 0,
                     "default": 0.25
                 },
                 "mem": {
                     "type": "number",
                     "minimum": 32,
-                    "exclusiveMinimum": false,
                     "default": 1024
                 },
                 "disk": {
                     "type": "number",
-                    "minimum": 0,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": 0,
                     "default": 1024
                 },
                 "gpus": {
                     "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
+                    "minimum": 0
                 },
                 "instances": {
                     "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
+                    "minimum": 0
                 },
                 "min_instances": {
                     "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
+                    "minimum": 0
                 },
                 "max_instances": {
                     "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
+                    "minimum": 0
                 },
                 "backoff_factor": {
                     "type": "integer",
@@ -168,10 +161,8 @@
                         },
                         "haproxy_min_fraction_up": {
                             "type": "number",
-                            "minimum": 0.0,
-                            "maximum": 1.0,
-                            "exclusiveMinimum": true,
-                            "exclusiveMaximum": false
+                            "exclusiveMinimum": 0.0,
+                            "maximum": 1.0
                         }
                     }
                 },
@@ -179,9 +170,7 @@
                     "type": "number",
                     "default": 1,
                     "minimum": 0,
-                    "maximum": 1,
-                    "exclusiveMinimum": false,
-                    "exclusiveMaximum": false
+                    "maximum": 1
                 },
                 "bounce_priority": {
                     "type": "integer"
@@ -601,8 +590,7 @@
                 "cfs_period_us": {
                     "type": "integer",
                     "minimum": 1000,
-                    "maximum": 1000000,
-                    "exclusiveMinimum": false
+                    "maximum": 1000000
                 },
                 "container_port": {
                     "type": "number"
@@ -663,15 +651,13 @@
                 },
                 "cpu_burst_add": {
                     "type": "number",
-                    "minimum": 0.0,
-                    "exclusiveMinimum": false
+                    "minimum": 0.0
                 },
                 "host_port": {
                     "type": "integer",
                     "default": 0,
                     "minimum": 0,
-                    "maximum": 65535,
-                    "exclusiveMinimum": false
+                    "maximum": 65535
                 },
                 "dependencies_reference": {
                     "type": "string"
@@ -793,9 +779,7 @@
                                     "weight": {
                                         "type": "integer",
                                         "minimum": 1,
-                                        "maximum": 100,
-                                        "exclusiveMinimum": false,
-                                        "exclusiveMaximum": false
+                                        "maximum": 100
                                     }
                                 }
                             },
@@ -864,13 +848,11 @@
                             "properties": {
                                 "min": {
                                     "type": "number",
-                                    "minimum": 0,
-                                    "exclusiveMinimum": true
+                                    "exclusiveMinimum": 0
                                 },
                                 "max": {
                                     "type": "number",
-                                    "minimum": 0,
-                                    "exclusiveMinimum": true
+                                    "exclusiveMinimum": 0
                                 }
                             }
                         },
@@ -879,13 +861,11 @@
                             "properties": {
                                 "min": {
                                     "type": "integer",
-                                    "minimum": 32,
-                                    "exclusiveMinimum": false
+                                    "minimum": 32
                                 },
                                 "max": {
                                     "type": "integer",
-                                    "minimum": 32,
-                                    "exclusiveMinimum": false
+                                    "minimum": 32
                                 }
                             }
                         },
@@ -894,13 +874,11 @@
                             "properties": {
                                 "min": {
                                     "type": "integer",
-                                    "minimum": 128,
-                                    "exclusiveMinimum": false
+                                    "minimum": 128
                                 },
                                 "max": {
                                     "type": "integer",
-                                    "minimum": 128,
-                                    "exclusiveMinimum": false
+                                    "minimum": 128
                                 }
                             }
                         }
