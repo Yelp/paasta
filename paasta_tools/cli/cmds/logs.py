@@ -307,8 +307,7 @@ def paasta_log_line_passes_filter(
         timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
         if check_timestamp_in_range(timestamp, start_time, end_time):
             return True
-    else:
-        return False
+    return False
 
 
 def paasta_app_output_passes_filter(
@@ -344,8 +343,7 @@ def paasta_app_output_passes_filter(
             return False
         if check_timestamp_in_range(timestamp, start_time, end_time):
             return True
-    else:
-        return False
+    return False
 
 
 def extract_utc_timestamp_from_log_line(line: str) -> datetime.datetime:
