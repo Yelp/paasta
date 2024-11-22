@@ -37,7 +37,7 @@ hupper==1.0
 idna==2.6
 inotify==0.2.8
 ipaddress==1.0.22
-isodate==0.6.0
+isodate==0.7.2
 itsdangerous==2.0.1
 Jinja2==2.11.3
 jinja2-time==0.1.0
