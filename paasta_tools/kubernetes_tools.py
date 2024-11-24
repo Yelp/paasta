@@ -266,6 +266,10 @@ class KubeDeployment(NamedTuple):
     namespace: str
     replicas: Optional[int]
 
+    @property
+    def deployment_version(self) -> DeploymentVersion:
+        return DeploymentVersion(self.git_sha, self.image_version)
+
 
 class KubeCustomResource(NamedTuple):
     service: str
