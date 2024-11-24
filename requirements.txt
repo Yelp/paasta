@@ -39,7 +39,7 @@ inotify==0.2.8
 ipaddress==1.0.22
 isodate==0.6.0
 itsdangerous==2.0.1
-Jinja2==2.11.3
+Jinja2==3.1.4
 jinja2-time==0.1.0
 jmespath==0.9.3
 jsonref==0.1
