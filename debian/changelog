@@ -1,3 +1,12 @@
+paasta-tools (1.8.2) xenial; urgency=medium
+
+  * 1.8.2 tagged with 'make release'
+    Commit: Merge pull request #3989 from
+    Yelp/u/jfong/fix_paasta_status_bouncestatus  Fix backwards "Bouncing
+    to" status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Dec 2024 11:59:05 -0800
+
 paasta-tools (1.8.1) xenial; urgency=medium
 
   * 1.8.1 tagged with 'make release'
