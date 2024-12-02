@@ -1100,7 +1100,9 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
             else:
                 return PaastaColors.green("Running")
         else:
-            versions = sorted(status.versions, key=lambda x: x.create_timestamp)
+            versions = sorted(
+                status.versions, key=lambda x: x.create_timestamp, reverse=True
+            )
             git_shas = {r.git_sha for r in versions}
             config_shas = {r.config_sha for r in versions}
             bouncing_to = []

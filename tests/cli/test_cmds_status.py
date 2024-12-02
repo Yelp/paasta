@@ -1820,8 +1820,10 @@ class TestGetInstanceState:
         assert remove_ansi_escape_sequences(instance_state) == "Running"
 
     def test_bouncing(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is after current version
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha="config111",
             ready_replicas=0,
@@ -1832,9 +1834,29 @@ class TestGetInstanceState:
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111, config111"
 
-    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+    def test_bouncing_ordering(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is _before_ current version
+            create_timestamp=old_version.create_timestamp - 1000,
+            git_sha="bbb111",
+            config_sha="config111",
+            ready_replicas=0,
+        )
+        mock_kubernetes_status_v2.versions.append(new_version)
+
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        instance_state = remove_ansi_escape_sequences(instance_state)
+        assert instance_state != "Bouncing to bbb111, config111"
+        assert (
+            instance_state
+            == f"Bouncing to {old_version.git_sha[:8]}, {old_version.config_sha}"
+        )
+
+    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
+        new_version = paastamodels.KubernetesVersion(
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha=mock_kubernetes_status_v2.versions[0].config_sha,
             ready_replicas=0,
