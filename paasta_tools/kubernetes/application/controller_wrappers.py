@@ -4,9 +4,9 @@ from abc import abstractmethod
 from typing import Optional
 from typing import Union
 
-from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
+from kubernetes.client import V1PodDisruptionBudget
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
@@ -168,7 +168,7 @@ class Application(ABC):
 
     def ensure_pod_disruption_budget(
         self, kube_client: KubeClient, namespace: str
-    ) -> V1beta1PodDisruptionBudget:
+    ) -> V1PodDisruptionBudget:
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (

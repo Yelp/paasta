@@ -15,7 +15,6 @@ from hypothesis.strategies import integers
 from kubernetes import client as kube_client
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1Capabilities
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
@@ -41,6 +40,7 @@ from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
+from kubernetes.client import V1PodDisruptionBudget
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
@@ -3440,7 +3440,7 @@ def test_pod_disruption_budget_for_service_instance():
 
 def test_create_pod_disruption_budget():
     mock_client = mock.Mock()
-    mock_pdr = V1beta1PodDisruptionBudget()
+    mock_pdr = V1PodDisruptionBudget()
     mock_namespace = "paasta"
     create_pod_disruption_budget(mock_client, mock_pdr, mock_namespace)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(

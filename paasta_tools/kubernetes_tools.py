@@ -52,8 +52,6 @@ from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1beta1PodDisruptionBudget
-from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
@@ -92,6 +90,8 @@ from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
 from kubernetes.client import V1PodCondition
+from kubernetes.client import V1PodDisruptionBudget
+from kubernetes.client import V1PodDisruptionBudgetSpec
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
@@ -318,7 +318,7 @@ class DatastoreCredentialsConfig(TypedDict, total=False):
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
-    """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
+    """Private function used to patch the setter for V1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
     """
     self._disrupted_pods = disrupted_pods
@@ -582,8 +582,8 @@ class KubeClient:
             context=context,
         )
 
-        models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
-            fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
+        models.V1PodDisruptionBudgetStatus.disrupted_pods = property(
+            fget=lambda *args, **kwargs: models.V1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
             ),
             fset=_set_disrupted_pods,
@@ -603,7 +603,7 @@ class KubeClient:
 
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
-        self.policy = kube_client.PolicyV1beta1Api(self.api_client)
+        self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
@@ -3190,13 +3190,13 @@ def pod_disruption_budget_for_service_instance(
     instance: str,
     max_unavailable: Union[str, int],
     namespace: str,
-) -> V1beta1PodDisruptionBudget:
-    return V1beta1PodDisruptionBudget(
+) -> V1PodDisruptionBudget:
+    return V1PodDisruptionBudget(
         metadata=V1ObjectMeta(
             name=get_kubernetes_app_name(service, instance),
             namespace=namespace,
         ),
-        spec=V1beta1PodDisruptionBudgetSpec(
+        spec=V1PodDisruptionBudgetSpec(
             max_unavailable=max_unavailable,
             selector=V1LabelSelector(
                 match_labels={
@@ -3210,7 +3210,7 @@ def pod_disruption_budget_for_service_instance(
 
 def create_pod_disruption_budget(
     kube_client: KubeClient,
-    pod_disruption_budget: V1beta1PodDisruptionBudget,
+    pod_disruption_budget: V1PodDisruptionBudget,
     namespace: str,
 ) -> None:
     return kube_client.policy.create_namespaced_pod_disruption_budget(
