@@ -136,6 +136,7 @@ def instance_status(request):
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
     use_new = request.swagger_data.get("new") or False
+    all_namespaces = request.swagger_data.get("all_namespaces") or False
     include_envoy = request.swagger_data.get("include_envoy")
     if include_envoy is None:
         include_envoy = True
@@ -199,6 +200,7 @@ def instance_status(request):
                     use_new=use_new,
                     instance_type=instance_type,
                     settings=settings,
+                    all_namespaces=all_namespaces,
                 )
             )
         elif instance_type == "tron":

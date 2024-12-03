@@ -24,11 +24,6 @@ everything with ``docker-compose down && docker-compose run playground``.
 Getting Started
 ---------------
 
-Mesos
-~~~~~
-To launch a running Mesos cluster, then run ``docker-compose run playground``
-and you'll be dropped into a shell with the paasta\_tools package installed in development mode.
-
 Kubernetes
 ~~~~~~~~~~
 To instead launch a Kubernetes cluster, run
@@ -47,9 +42,7 @@ Try it out
 The cluster includes a git remote and docker registry. The git remote
 contains an example repo but you can add more if you want.
 
-The mesos and marathon webuis are exposed on your docker host
-on port 5050, 8080, 8081. So load them up if you want to watch. Then in
-the playground container:
+In the playground container:
 
 ::
 
@@ -63,9 +56,8 @@ the playground container:
 
 Scaling The Cluster
 -------------------
-If you want to add more capacity to the cluster, you can increase the number of Mesos agents/Kubernetes Nodes:
+If you want to add more capacity to the cluster, you can increase the number of Kubernetes Nodes:
 
-``docker-compose scale mesosslave=4`` or
 ``docker-compose scale kubernetes=4``
 
 
@@ -79,9 +71,8 @@ Some but not all of the paasta command line tools should work. Try:
     paasta status -s hello-world
 
 Scribe is not included with this example cluster. If you are looking for
-logs, check ``/var/logs/paasta_logs`` and syslog on the mesosmaster for
-the output from cron. Also note that all the slaves share the host's
-docker daemon.
+logs, check syslog on the Kubernetes node that the pod is running on for the output from cron.
+You can get the host the pod is running on by adding "-v" to the command above.
 
 Cleanup
 -------

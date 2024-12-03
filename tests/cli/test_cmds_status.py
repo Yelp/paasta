@@ -340,6 +340,7 @@ def test_status_calls_sergeants(
     args.registration = None
     args.service_instance = None
     args.new = False
+    args.all_namespaces = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -355,6 +356,7 @@ def test_status_calls_sergeants(
         lock=mock.ANY,
         verbose=False,
         new=False,
+        all_namespaces=False,
     )
 
 
@@ -390,6 +392,7 @@ class StatusArgs:
         service_instance=None,
         new=False,
         old=False,
+        all_namespaces=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -402,6 +405,7 @@ class StatusArgs:
         self.service_instance = service_instance
         self.new = new
         self.old = old
+        self.all_namespaces = all_namespaces
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -890,6 +894,7 @@ def test_status_with_registration(
         verbose=False,
         service_instance=None,
         new=False,
+        all_namespaces=True,  # Bonus all_namespaces test
     )
     return_value = paasta_status(args)
 
@@ -908,6 +913,7 @@ def test_status_with_registration(
         lock=mock.ANY,
         verbose=args.verbose,
         new=False,
+        all_namespaces=True,
     )
 
 
@@ -1814,8 +1820,10 @@ class TestGetInstanceState:
         assert remove_ansi_escape_sequences(instance_state) == "Running"
 
     def test_bouncing(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is after current version
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha="config111",
             ready_replicas=0,
@@ -1826,9 +1834,29 @@ class TestGetInstanceState:
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111, config111"
 
-    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+    def test_bouncing_ordering(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is _before_ current version
+            create_timestamp=old_version.create_timestamp - 1000,
+            git_sha="bbb111",
+            config_sha="config111",
+            ready_replicas=0,
+        )
+        mock_kubernetes_status_v2.versions.append(new_version)
+
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        instance_state = remove_ansi_escape_sequences(instance_state)
+        assert instance_state != "Bouncing to bbb111, config111"
+        assert (
+            instance_state
+            == f"Bouncing to {old_version.git_sha[:8]}, {old_version.config_sha}"
+        )
+
+    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
+        new_version = paastamodels.KubernetesVersion(
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha=mock_kubernetes_status_v2.versions[0].config_sha,
             ready_replicas=0,
@@ -2405,16 +2433,16 @@ class TestPrintKafkaStatus:
         expected_output = [
             f"    Kafka View Url: {status['kafka_view_url']}",
             f"    Zookeeper: {status['zookeeper']}",
-            f"    State: testing",
+            "    State: testing",
             f"    Ready: {str(status['cluster_ready']).lower()}",
             f"    Health: {PaastaColors.red('unhealthy')}",
             f"     Reason: {status['health']['message']}",
             f"     Offline Partitions: {status['health']['offline_partitions']}",
             f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
-            f"    Brokers:",
-            f"     Id  Phase    Started",
-            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
-            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+            "    Brokers:",
+            "     Id  Phase    Started",
+            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
+            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 

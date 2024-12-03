@@ -117,26 +117,21 @@ VITESS_CONFIG = {
                     "mysql_auth_vault_ttl": "60s",
                 },
                 "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
-                "lifecycle": {
-                    "postStart": {
-                        "exec": {
-                            "command": [
-                                "/bin/sh",
-                                "-c",
-                                "/cloudmap/scripts/register_to_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
-                            ]
-                        }
+                "extraVolumeMounts": [
+                    {"mountPath": "/nail/srv", "name": "srv-configs", "readOnly": True},
+                    {
+                        "mountPath": "/nail/etc/srv-configs",
+                        "name": "etc-srv-configs",
+                        "readOnly": True,
                     },
-                    "preStop": {
-                        "exec": {
-                            "command": [
-                                "/bin/sh",
-                                "-c",
-                                "/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
-                            ]
-                        }
+                ],
+                "extraVolumes": [
+                    {"hostPath": {"path": "/nail/srv"}, "name": "srv-configs"},
+                    {
+                        "hostPath": {"path": "/nail/etc/srv-configs"},
+                        "name": "etc-srv-configs",
                     },
-                },
+                ],
                 "replicas": 1,
                 "resources": {
                     "limits": {"cpu": "100m", "memory": "256Mi"},
@@ -334,6 +329,7 @@ VITESS_CONFIG = {
                                             "enforce-tableacl-config": "true",
                                             "grpc_max_message_size": "134217728",
                                             "init_tablet_type": "replica",
+                                            "init_shard": "0",
                                             "keep_logs": "72h",
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",
@@ -522,6 +518,7 @@ VITESS_CONFIG = {
                                             "enforce-tableacl-config": "true",
                                             "grpc_max_message_size": "134217728",
                                             "init_tablet_type": "replica",
+                                            "init_shard": "0",
                                             "keep_logs": "72h",
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",

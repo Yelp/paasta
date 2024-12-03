@@ -1,3 +1,184 @@
+paasta-tools (1.8.2) xenial; urgency=medium
+
+  * 1.8.2 tagged with 'make release'
+    Commit: Merge pull request #3989 from
+    Yelp/u/jfong/fix_paasta_status_bouncestatus  Fix backwards "Bouncing
+    to" status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Dec 2024 11:59:05 -0800
+
+paasta-tools (1.8.1) xenial; urgency=medium
+
+  * 1.8.1 tagged with 'make release'
+    Commit: Enable topology spread constraints by default for tron
+    (#3987)  I debated getting rid of this toggle entirely, but I guess
+    it"s nice to keep around just in case?  I"ll also follow this up
+    with a Puppet PR to clean things up there
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Nov 2024 12:00:34 -0800
+
+paasta-tools (1.8.0) xenial; urgency=medium
+
+  * 1.8.0 tagged with 'make release'
+    Commit: Add tron topology_spread_constraints support to PaaSTA
+    (#3983)  This adds support for configuring Tron-launched pods with a
+    default Topology Spread Constraint (and node affinities) that will
+    spread pods out across multiple AZs - otherwise, Karpenter will
+    overwhelmingly favor a single AZ due to our config
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 11 Nov 2024 12:36:11 -0800
+
+paasta-tools (1.7.2) xenial; urgency=medium
+
+  * 1.7.2 tagged with 'make release'
+    Commit: Allowlist eks files in config_utils (#3984)
+    updater.write_configs() is not just used for managing autotune files
+    - SSR shard creation uses it to manage creating/updating the non-
+    autotuned_defaults config files (which are now always eks-
+    CLUSTER.yaml).
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 29 Oct 2024 13:52:41 -0700
+
+paasta-tools (1.7.1) xenial; urgency=medium
+
+  * 1.7.1 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v3 to stop mounting
+    /etc/pki/spark (#3982)  This is no longer needed since we"ve been
+    running Spark on just EKS for a while.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 16 Oct 2024 13:53:57 -0700
+
+paasta-tools (1.7.0) xenial; urgency=medium
+
+  * 1.7.0 tagged with 'make release'
+    Commit: Cleaning up Mesos from paasta readthedocs - PAASTA-18313
+    (#3954)  * Cleaning up Mesos from paasta readthedocs  * Address
+    reviews  * Address more reviews  * Addressing yelpsoa files reviews
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 16 Oct 2024 11:32:36 -0700
+
+paasta-tools (1.6.4) xenial; urgency=medium
+
+  * 1.6.4 tagged with 'make release'
+    Commit: Merge pull request #3977 from
+    Yelp/u/calvinli/automated_redeploys_default_toggle  let
+    enable_automated_redeploys default value be configurable
+
+ -- Evan Krall <krall@yelp.com>  Wed, 09 Oct 2024 15:15:13 -0700
+
+paasta-tools (1.6.3) xenial; urgency=medium
+
+  * 1.6.3 tagged with 'make release'
+    Commit: Remove vtgate lifecycle hooks (#3966)  Remove vtgate
+    lifecycle hooks as we"re not proceeding with #3959 and would like to
+    have functional vtgate pods for testing
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 07 Oct 2024 12:24:40 -0700
+
+paasta-tools (1.6.2) xenial; urgency=medium
+
+  * 1.6.2 tagged with 'make release'
+    Commit: Sort dropped caps when caps are added (#3973)  As sets are
+    unordered, not sorting the resulting list built from set operations
+    means that we"re constantly changing the order of metadata in the
+    final podspec, leading to bounces almost every time the s_k_j runs
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 15:07:47 -0700
+
+paasta-tools (1.6.1) xenial; urgency=medium
+
+  * 1.6.1 tagged with 'make release'
+    Commit: Only drop capabilities that are not added (#3972)  It
+    appears that containerd has changed the behavior around
+    adding/dropping linux capabilities and added caps no longer take
+    precedence over dropped ones
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 09:39:23 -0700
+
+paasta-tools (1.6.0) xenial; urgency=medium
+
+  * 1.6.0 tagged with 'make release'
+    Commit: Add service and instance annotations to tron pods (#3967)
+    We can currently only figure out what service/instance a log belongs
+    to by looking at the k8s labels for the emitting pod, but label
+    values are quite limited in length and we"ve got some pretty large
+    job and/or action names, which means that the instance label for a
+    large chunk of tronjobs ends up getting truncated.  Solution:
+    annotations! these have a significantly higher limit (256kb) and
+    they can still be read by our otel collector - the only downside is
+    that annotations cannot be used for filtering, but that"s fine :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Sep 2024 07:59:52 -0700
+
+paasta-tools (1.5.5) xenial; urgency=medium
+
+  * 1.5.5 tagged with 'make release'
+    Commit: Fixing paasta clean up stale nodes (#3971)  * Fixing paasta
+    clean up stale nodes  * Fixing paasta clean up stale nodes
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 25 Sep 2024 04:45:30 -0700
+
+paasta-tools (1.5.4) xenial; urgency=medium
+
+  * 1.5.4 tagged with 'make release'
+    Commit: Document minimum_error_rps in smartstack.yaml (#3970)
+    Update the paasta docs with minimum_error_rps for default error
+    alerting endpoints
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 24 Sep 2024 12:09:45 -0700
+
+paasta-tools (1.5.3) xenial; urgency=medium
+
+  * 1.5.3 tagged with 'make release'
+    Commit: Merge pull request #3968 from Yelp/u/mpiano/SEC-19486  local-
+    run: add option to authenticate as the calling user
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 23 Sep 2024 12:41:04 -0700
+
+paasta-tools (1.5.2) xenial; urgency=medium
+
+  * 1.5.2 tagged with 'make release'
+    Commit: Upgrading k8s lib (#3965)  * Upgrading k8s lib  * Fixing
+    tests  * fixing setup crd  * fixing setup CR  * Removing dead code
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 20 Sep 2024 08:57:21 -0700
+
+paasta-tools (1.5.1) xenial; urgency=medium
+
+  * 1.5.1 tagged with 'make release'
+    Commit: Merge pull request #3960 from Yelp/yaro/update_vector-
+    logs_filer  Update vector-logs message filter FN usage
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Wed, 18 Sep 2024 00:46:54 -0700
+
+paasta-tools (1.5.0) xenial; urgency=medium
+
+  * 1.5.0 tagged with 'make release'
+    Commit: Attempt to batch config loading for tron deployments (#3956)
+    Right now we make at most 2N calls to the Tron API during config
+    deployments: N to get the current configs and at most N if all
+    services have changes.  To start, I"d like to reduce this to N by
+    allowing GET /api/config to return all the configs so that the only
+    requests needed are POSTs for changed configs. Since I"m a little
+    worried about how tron-pnw-prod will fare with returning all the
+    configs in a single request, using this new endpoint is behind a
+    feature toggle. Hopefully this works out and we don"t need to add
+    pagination to the endpoint :)  Depending on how this goes, we can
+    look into batching up the POSTs so that we can also do that in a
+    single request (or at least <N requests if we want to chunk things a
+    bit more).
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 17 Sep 2024 12:46:59 -0700
+
+paasta-tools (1.4.34) xenial; urgency=medium
+
+  * 1.4.34 tagged with 'make release'
+    Commit: Merge pull request #3958 from Yelp/jfong/PAASTA-18194-all-
+    namespaces-option  PAASTA-18194: Stop querying all managed
+    namespaces by default for paasta status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 16 Sep 2024 12:11:03 -0700
+
 paasta-tools (1.4.33) xenial; urgency=medium
 
   * 1.4.33 tagged with 'make release'

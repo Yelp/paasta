@@ -329,6 +329,12 @@ def paasta_app_output_passes_filter(
     # https://github.com/gweis/isodate/issues/53
     except ValueError:
         return True
+    except AttributeError:
+        # Timestamp might be missing. We had an issue where OTel was splitting overly long log lines
+        # and not including timestamps in the resulting log records (OBSPLAT-2216).
+        # Although this was then fixed in OTel, we should not rely on timestamps being present,
+        # as the format cannot be guaranteed.
+        return False
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
@@ -1209,7 +1215,7 @@ class VectorLogsReader(LogReader):
         for line in reader.get_log_reader(
             log_name=stream_name, start_datetime=start_time, end_datetime=end_time
         ):
-            if paasta_log_line_passes_filter(
+            if paasta_app_output_passes_filter(
                 line,
                 levels,
                 service,
@@ -1266,7 +1272,7 @@ class VectorLogsReader(LogReader):
                 msg = await sub.next_msg(timeout=None)
                 decoded_data = msg.data.decode("utf-8")
 
-                if paasta_log_line_passes_filter(
+                if paasta_app_output_passes_filter(
                     decoded_data,
                     levels,
                     service,

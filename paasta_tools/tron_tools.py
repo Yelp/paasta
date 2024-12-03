@@ -62,7 +62,9 @@ from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools import spark_tools
 
 from paasta_tools.kubernetes_tools import (
+    NodeSelectorConfig,
     allowlist_denylist_to_requirements,
+    contains_zone_label,
     get_service_account_name,
     limit_size_with_hash,
     raw_selectors_to_requirements,
@@ -248,6 +250,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # maneuvering to unify
     command: str
     service_account_name: str
+    node_selectors: Dict[str, NodeSelectorConfig]
 
     # the values for this dict can be anything since it's whatever
     # spark accepts
@@ -347,7 +350,7 @@ class TronActionConfig(InstanceConfig):
 
         docker_img_url = self.get_docker_url(system_paasta_config)
 
-        spark_conf_builder = SparkConfBuilder()
+        spark_conf_builder = SparkConfBuilder(is_driver_on_k8s_tron=True)
         spark_conf = spark_conf_builder.get_spark_conf(
             cluster_manager="kubernetes",
             spark_app_base_name=spark_app_name,
@@ -366,7 +369,7 @@ class TronActionConfig(InstanceConfig):
             force_spark_resource_configs=self.config_dict.get(
                 "force_spark_resource_configs", False
             ),
-            user=spark_tools.SPARK_JOB_USER,
+            user=spark_tools.SPARK_TRON_JOB_USER,
         )
         # delete the dynamically generated spark.app.id to prevent frequent config updates in Tron.
         # spark.app.id will be generated later by yelp spark-submit wrapper or Spark itself.
@@ -380,16 +383,17 @@ class TronActionConfig(InstanceConfig):
                 if "spark.app.name" not in stringified_spark_args
                 else stringified_spark_args["spark.app.name"]
             )
-        # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
+
+        # TODO(MLCOMPUTE-1220): Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
-            print(
+            log.info(
                 f"Replacing spark.kubernetes.executor.podTemplateFile="
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
                 f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
-            spark_conf[
-                "spark.kubernetes.executor.podTemplateFile"
-            ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf[
+            "spark.kubernetes.executor.podTemplateFile"
+        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
 
         spark_conf.update(
             {
@@ -593,18 +597,39 @@ class TronActionConfig(InstanceConfig):
     def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
-        note: At the time of writing, `kubectl describe` does not show affinities,
+        NOTE: At the time of writing, `kubectl describe` does not show affinities,
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
+
+        WARNING: At the time of writing, we only used requiredDuringSchedulingIgnoredDuringExecution node affinities in Tron as we currently have
+        no use case for preferredDuringSchedulingIgnoredDuringExecution node affinities.
         """
         requirements = allowlist_denylist_to_requirements(
             allowlist=self.get_deploy_whitelist(),
             denylist=self.get_deploy_blacklist(),
         )
+        node_selectors = self.config_dict.get("node_selectors", {})
         requirements.extend(
             raw_selectors_to_requirements(
-                raw_selectors=self.config_dict.get("node_selectors", {}),  # type: ignore
+                raw_selectors=node_selectors,
             )
         )
+
+        system_paasta_config = load_system_paasta_config()
+        if system_paasta_config.get_enable_tron_tsc():
+            # PAASTA-18198: To improve AZ balance with Karpenter, we temporarily allow specifying zone affinities per pool
+            pool_node_affinities = system_paasta_config.get_pool_node_affinities()
+            if pool_node_affinities and self.get_pool() in pool_node_affinities:
+                current_pool_node_affinities = pool_node_affinities[self.get_pool()]
+                # If the service already has a node selector for a zone, we don't want to override it
+                if current_pool_node_affinities and not contains_zone_label(
+                    node_selectors
+                ):
+                    requirements.extend(
+                        raw_selectors_to_requirements(
+                            raw_selectors=current_pool_node_affinities,
+                        )
+                    )
+
         if not requirements:
             return None
 
@@ -962,6 +987,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
         "service_account_name": action_config.get_service_account_name(),
     }
 
+    # we need this loaded in several branches, so we'll load it once at the start to simplify things
+    system_paasta_config = load_system_paasta_config()
+
     if executor in KUBERNETES_EXECUTOR_NAMES:
         # we'd like Tron to be able to distinguish between spark and normal actions
         # even though they both run on k8s
@@ -983,6 +1011,26 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["node_selectors"] = action_config.get_node_selectors()
         result["node_affinities"] = action_config.get_node_affinities()
 
+        if system_paasta_config.get_enable_tron_tsc():
+            # XXX: this is currently hardcoded since we should only really need TSC for zone-aware scheduling
+            result["topology_spread_constraints"] = [
+                {
+                    # try to evenly spread pods across specified topology
+                    "max_skew": 1,
+                    # narrow down what pods to consider when spreading
+                    "label_selector": {
+                        # only consider pods that are managed by tron
+                        "app.kubernetes.io/managed-by": "tron",
+                        # and in the same pool
+                        "paasta.yelp.com/pool": action_config.get_pool(),
+                    },
+                    # now, spread across AZs
+                    "topology_key": "topology.kubernetes.io/zone",
+                    # but if not possible, schedule even with a zonal imbalance
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ]
+
         # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
         result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
         result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
@@ -1000,10 +1048,15 @@ def format_tron_action_dict(action_config: TronActionConfig):
             "app.kubernetes.io/managed-by": "tron",
         }
 
-        # we can hardcode this for now as batches really shouldn't
-        # need routable IPs and we know that Spark probably does.
         result["annotations"] = {
+            # we can hardcode this for now as batches really shouldn't
+            # need routable IPs and we know that Spark  does.
             "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
+            # we have a large amount of tron pods whose instance names are too long for a k8s label
+            # ...so let's toss them into an annotation so that tooling can read them (since the length
+            # limit is much higher (256kb))
+            "paasta.yelp.com/service": action_config.get_service(),
+            "paasta.yelp.com/instance": action_config.get_instance(),
         }
 
         result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
@@ -1023,14 +1076,12 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         # XXX: now that we're actually passing through extra_volumes correctly (e.g., using get_volumes()),
         # we can get rid of the default_volumes from the Tron master config
-        system_paasta_config = load_system_paasta_config()
         extra_volumes = action_config.get_volumes(
             system_paasta_config.get_volumes(),
             uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
         )
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
-            system_paasta_config = load_system_paasta_config()
             # inject additional Spark configs in case of Spark commands
             result["command"] = spark_tools.build_spark_command(
                 result["command"],
@@ -1039,6 +1090,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 action_config.config_dict.get(
                     "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
                 ),
+                silent=True,
             )
             # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
@@ -1069,7 +1121,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 )
             )
             monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(
-                action_config.action_spark_config
+                action_config.action_spark_config,
+                user=spark_tools.SPARK_TRON_JOB_USER,
             )
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)

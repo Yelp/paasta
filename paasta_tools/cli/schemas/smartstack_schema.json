@@ -255,7 +255,19 @@
                         "maximum": 1
                     },
                     "minimum_error_rps": {
-                        "type": "integer",
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "default_endpoint_alerting": {
+                        "type": "boolean"
+                    },
+                    "endpoint_error_threshold_ratio": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "endpoint_minimum_error_rps": {
+                        "type": "number",
                         "minimum": 0
                     },
                     "endpoints": {
@@ -270,6 +282,10 @@
                                     "type": "number",
                                     "minimum": 0,
                                     "maximum": 1
+                                },
+                                "minimum_error_rps": {
+                                    "type": "number",
+                                    "minimum": 0
                                 },
                                 "team": {
                                     "type": "string"

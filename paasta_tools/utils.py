@@ -2044,6 +2044,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     use_multiple_log_readers: Optional[List[str]]
     service_auth_token_settings: ProjectedSAVolume
     service_auth_vault_role: str
+    service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     vitess_images: Dict
     superregion_to_region_mapping: Dict
@@ -2051,6 +2052,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vitess_tablet_pool_type_mapping: Dict
     vitess_throttling_config: Dict
     uses_bulkdata_default: bool
+    enable_automated_redeploys_default: bool
+    enable_tron_tsc: bool
 
 
 def load_system_paasta_config(
@@ -2764,6 +2767,9 @@ class SystemPaastaConfig:
     def get_service_auth_vault_role(self) -> str:
         return self.config_dict.get("service_auth_vault_role", "service_authz")
 
+    def get_service_auth_sso_oidc_client_id(self) -> str:
+        return self.config_dict.get("service_auth_sso_oidc_client_id", "")
+
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
 
@@ -2812,6 +2818,12 @@ class SystemPaastaConfig:
 
     def get_uses_bulkdata_default(self) -> bool:
         return self.config_dict.get("uses_bulkdata_default", True)
+
+    def get_enable_automated_redeploys_default(self) -> bool:
+        return self.config_dict.get("enable_automated_redeploys_default", False)
+
+    def get_enable_tron_tsc(self) -> bool:
+        return self.config_dict.get("enable_tron_tsc", True)
 
 
 def _run(

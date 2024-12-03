@@ -395,6 +395,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.assume_pod_identity = False
     args.use_okta_role = False
     args.use_service_auth_token = False
+    args.use_sso_service_auth_token = False
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -438,6 +439,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         assume_role_aws_account=None,
         use_okta_role=False,
         use_service_auth_token=False,
+        use_sso_service_auth_token=False,
     )
 
 
@@ -473,6 +475,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.assume_pod_identity = False
     args.use_okta_role = False
     args.use_service_auth_token = False
+    args.use_sso_service_auth_token = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -515,6 +518,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         assume_pod_identity=False,
         use_okta_role=False,
         use_service_auth_token=False,
+        use_sso_service_auth_token=False,
     )
 
 
@@ -556,6 +560,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.assume_pod_identity = False
     args.use_okta_role = False
     args.use_service_auth_token = False
+    args.use_sso_service_auth_token = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -600,6 +605,7 @@ def test_configure_and_run_pulls_image_when_asked(
         assume_role_aws_account="dev",
         use_okta_role=False,
         use_service_auth_token=False,
+        use_sso_service_auth_token=False,
     )
 
 
@@ -637,6 +643,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.assume_pod_identity = False
         args.use_okta_role = False
         args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -681,6 +688,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             assume_role_aws_account="dev",
             use_okta_role=False,
             use_service_auth_token=False,
+            use_sso_service_auth_token=False,
         )
 
 

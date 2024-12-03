@@ -606,6 +606,7 @@ async def kubernetes_status_v2(
     include_envoy: bool,
     instance_type: str,
     settings: Any,
+    all_namespaces: bool = False,
 ) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
     config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
@@ -620,9 +621,12 @@ async def kubernetes_status_v2(
     if kube_client is None:
         return status
 
-    relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
-        service, instance, kube_client, job_config
-    )
+    if all_namespaces:
+        relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
+            service, instance, kube_client, job_config
+        )
+    else:
+        relevant_namespaces = {job_config.get_kubernetes_namespace()}
 
     tasks: List["asyncio.Future[Dict[str, Any]]"] = []
 
@@ -1240,6 +1244,7 @@ def instance_status(
     use_new: bool,
     instance_type: str,
     settings: Any,
+    all_namespaces: bool,
 ) -> Mapping[str, Any]:
     status = {}
 
@@ -1267,6 +1272,7 @@ def instance_status(
                 verbose=verbose,
                 include_envoy=include_envoy,
                 settings=settings,
+                all_namespaces=all_namespaces,
             )
         else:
             status["kubernetes"] = kubernetes_status(

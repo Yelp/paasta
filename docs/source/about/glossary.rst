@@ -1,18 +1,33 @@
 Glossary
 ========
 
-**App**
-~~~~~~~~
-
-Marathon app. A unit of configuration in Marathon. During normal
-operation, one service "instance" maps to one Marathon app, but during
-deploys there may be more than one app. Apps contain Tasks.
-
 **Docker**
 ~~~~~~~~~~
 
 Container `technology <https://www.docker.com/whatisdocker/>`_ that
 PaaSTA uses.
+
+**Kubernetes**
+~~~~~~~~~~~~~~
+
+`Kubernetes <https://kubernetes.io/>`_ (a.k.a. k8s) is the open-source system on which Yelp runs many compute workloads.
+In Kubernetes, tasks are distributed to and run by servers called Kubelets (but a.k.a. kube nodes or Kubernetes agents) from the Kubernetes control plane.
+
+**Kubernetes Deployment**
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A Kubernetes resource that represents a collection of pods running the same application. A Deployment is responsible for creating and updating instances of your application.
+
+**Kubernetes Node**
+~~~~~~~~~~~~~~~~~~~
+
+A node is a worker machine in a Kubernetes cluster that runs Pods.
+In our case, it's usually a virtual machine provisioned via AWS EC2 Fleets or AutoScalingGroups
+
+**Kubernetes Horizontal Pod Autoscaler (HPA)**
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A Kubernetes feature that automatically scales the number of pods in a deployment based on observed CPU utilization (or, with custom metrics support, on some other application-provided metrics).
 
 **clustername**
 ~~~~~~~~~~~~~~~
@@ -20,18 +35,31 @@ PaaSTA uses.
 A shortname used to describe a PaaSTA cluster. Use \`paasta
 list-clusters\` to see them all.
 
+**Kubernetes Pod**
+~~~~~~~~~~~~~~~~~~~
+
+Atomic deployment unit for PaaSTA workloads at Yelp and all Kubernetes clusters. Can be thought of as a collection of 1 or more related containers.
+Pods can be seen as one or more containers that share a network namespace, at Yelp these are individual instances of one of our services, many can run on each server.
+
+**Kubernetes Namespace**
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+It provides a mechanism for isolating groups of resources within a single cluster. Each K8s Namespace can contain resources like
+Pods and Deployments, and it allows for management and access controls to be applied at the Namespace level.
+
 **instancename**
 ~~~~~~~~~~~~~~~~
 
-Logical collection of Mesos tasks that comprise a Marathon app. service
-name + instancename = Marathon app name. Examples: main, canary.
+Logical collection of Kubernetes pods that comprise an application (a Kubernetes Deployment) deployed on Kubernetes. service
+name + instancename = Kubernetes Deployment. Examples: main, canary. Each instance represents a running
+version of a service with its own configuration and resources.
 
 **namespace**
 ~~~~~~~~~~~~~
 
 An haproxy/SmartStack concept grouping backends that listen on a
-particular port. A namespace may route to many healthy Marathon
-instances. By default, the namespace in which a Marathon job appears is
+particular port. A namespace may route to many healthy PaaSTA
+instances. By default, the namespace in which a PaaSTA instance appears is
 its instancename.
 
 **Nerve**
@@ -39,32 +67,6 @@ its instancename.
 
 A service announcement `daemon <https://github.com/airbnb/nerve>`_
 that registers services in zookeeper to be discovered.
-
-**Marathon**
-~~~~~~~~~~~~
-
-A `Mesos Framework <https://mesosphere.github.io/marathon/>`_
-designed to deploy stateless services.
-
-**Mesos**
-~~~~~~~~~
-
-A `Cluster/Scheduler <http://mesos.apache.org/>`_ that interacts
-with other `Framework <https://docs.mesosphere.com/frameworks/>`_
-software to run things on nodes.
-
-**Mesos Master**
-~~~~~~~~~~~~~~~~
-
-A machine running a Mesos Master process, responsible for coordination
-but not responsible for actually running Marathon or Tron jobs. There
-are several Masters, coordinating as a quorum via Zookeeper.
-
-**Mesos Slave**
-~~~~~~~~~~~~~~~
-
-A machine running a Mesos Slave process, responsible for running
-Marathon or Tron jobs as assigned by the Mesos Master.
 
 **PaaSTA**
 ~~~~~~~~~~
@@ -87,12 +89,6 @@ The brand name for Airbnb’s Nerve + Synapse service discovery solution.
 
 A local haproxy daemon that runs on yocalhost
 
-**Task**
-~~~~~~~~
-
-Marathon task. A process (usually inside a Docker container) running on
-a machine (a Mesos Slave). One or more Tasks constitutes an App.
-
 **soa-configs**
 ~~~~~~~~~~~~~~~
 
@@ -107,5 +103,5 @@ services.
 **Zookeeper**
 ~~~~~~~~~~~~~
 
-A distributed key/value store used by Mesos for coordination and
+A distributed key/value store used by PaaSTA for coordination and
 persistence.

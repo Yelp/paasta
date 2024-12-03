@@ -104,6 +104,7 @@ VTTABLET_EXTRA_FLAGS = {
     "throttle_check_as_check_self": "true",
     "db_charset": "utf8mb4",
     "disable_active_reparents": "true",
+    "init_shard": "0",
 }
 
 
@@ -134,6 +135,8 @@ class GatewayConfigDict(TypedDict, total=False):
     extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
+    extraVolumeMounts: List[Dict[str, Any]]
+    extraVolumes: List[Dict[str, Any]]
     lifecycle: Dict[str, Dict[str, Dict[str, List[str]]]]
     replicas: int
     resources: Dict[str, Any]
@@ -258,26 +261,6 @@ def get_cell_config(
     config = CellConfigDict(
         name=cell,
         gateway=GatewayConfigDict(
-            lifecycle={
-                "preStop": {
-                    "exec": {
-                        "command": [
-                            "/bin/sh",
-                            "-c",
-                            f"/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-{cell} {aws_region}",
-                        ]
-                    }
-                },
-                "postStart": {
-                    "exec": {
-                        "command": [
-                            "/bin/sh",
-                            "-c",
-                            f"/cloudmap/scripts/register_to_cloudmap.sh vtgate-{cell} {aws_region}",
-                        ]
-                    }
-                },
-            },
             affinity={"nodeAffinity": node_affinity},
             extraEnv=updated_vtgate_extra_env,
             extraFlags={
@@ -287,6 +270,28 @@ def get_cell_config(
                 "mysql_auth_vault_tls_ca": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
                 "mysql_auth_vault_ttl": "60s",
             },
+            extraVolumeMounts=[
+                {
+                    "mountPath": "/nail/srv",
+                    "name": "srv-configs",
+                    "readOnly": True,
+                },
+                {
+                    "mountPath": "/nail/etc/srv-configs",
+                    "name": "etc-srv-configs",
+                    "readOnly": True,
+                },
+            ],
+            extraVolumes=[
+                {
+                    "name": "srv-configs",
+                    "hostPath": {"path": "/nail/srv"},
+                },
+                {
+                    "name": "etc-srv-configs",
+                    "hostPath": {"path": "/nail/etc/srv-configs"},
+                },
+            ],
             extraLabels=labels,
             replicas=replicas,
             resources={

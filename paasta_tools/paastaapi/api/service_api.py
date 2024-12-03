@@ -1322,6 +1322,7 @@ class ServiceApi(object):
                 include_envoy (bool): Include Envoy information. [optional]
                 include_mesos (bool): Include Mesos information. [optional]
                 new (bool): Use new version of paasta status for services. [optional]
+                all_namespaces (bool): Search all namespaces for running copies. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -1389,6 +1390,7 @@ class ServiceApi(object):
                     'include_envoy',
                     'include_mesos',
                     'new',
+                    'all_namespaces',
                 ],
                 'required': [
                     'service',
@@ -1419,6 +1421,8 @@ class ServiceApi(object):
                         (bool,),
                     'new':
                         (bool,),
+                    'all_namespaces':
+                        (bool,),
                 },
                 'attribute_map': {
                     'service': 'service',
@@ -1427,6 +1431,7 @@ class ServiceApi(object):
                     'include_envoy': 'include_envoy',
                     'include_mesos': 'include_mesos',
                     'new': 'new',
+                    'all_namespaces': 'all_namespaces',
                 },
                 'location_map': {
                     'service': 'path',
@@ -1435,6 +1440,7 @@ class ServiceApi(object):
                     'include_envoy': 'query',
                     'include_mesos': 'query',
                     'new': 'query',
+                    'all_namespaces': 'query',
                 },
                 'collection_format_map': {
                 }

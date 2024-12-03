@@ -24,6 +24,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
             "volumes": [],
             "dockercfg_location": "/mock/dockercfg",
             "spark_k8s_role": "spark",
+            "enable_tron_tsc": True,
         }
     ),
     "/mock/system/configs",
@@ -39,6 +40,7 @@ MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
             "tron_k8s_cluster_overrides": {
                 "paasta-dev-test": "paasta-dev",
             },
+            "enable_tron_tsc": True,
         }
     ),
     "/mock/system/configs",
@@ -111,7 +113,9 @@ class TestTronActionConfig:
             "paasta_tools.utils.get_service_docker_registry",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
             env = action_config.get_env()
             assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
@@ -287,20 +291,10 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
 
-        mock_paasta_system_config = utils.SystemPaastaConfig(
-            config=utils.SystemPaastaConfigDict(
-                {
-                    "tron_k8s_cluster_overrides": {
-                        "paasta-dev-test": "paasta-dev",
-                    }
-                }
-            ),
-            directory="/mock/system/configs",
-        )
         with mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
-            return_value=mock_paasta_system_config,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
         ):
             action_config = job_config._get_action_config(
                 "normal", action_dict=action_dict
@@ -341,7 +335,11 @@ class TestTronJobConfig:
             cluster=expected_cluster,
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
     def test_get_action_config_load_deployments_false(
         self, mock_load_deployments, mock_load_system_paasta_config
@@ -362,9 +360,6 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, load_deployments=False, soa_dir=soa_dir
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
-        mock_load_system_paasta_config.return_value.get_tron_k8s_cluster_overrides.return_value = (
-            {}
-        )
 
         action_config = job_config._get_action_config("normal", action_dict)
 
@@ -530,7 +525,11 @@ class TestTronJobConfig:
         }
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_all_actions(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -552,7 +551,11 @@ class TestTronJobConfig:
         assert len(errors) == 3
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -572,7 +575,11 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_valid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -592,7 +599,11 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_action_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -616,7 +627,11 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_action_valid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -641,7 +656,11 @@ class TestTronJobConfig:
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_cpus_in_executor_spark_action(
         self,
         mock_load_system_paasta_config,
@@ -673,7 +692,11 @@ class TestTronJobConfig:
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_mem_in_executor_spark_action(
         self,
         mock_load_system_paasta_config,
@@ -705,7 +728,11 @@ class TestTronJobConfig:
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_valid_executor_spark_action(
         self,
         mock_load_system_paasta_config,
@@ -733,7 +760,11 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -750,7 +781,11 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring_without_team(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -768,7 +803,11 @@ class TestTronJobConfig:
         assert job_config.get_monitoring()["team"] == "default_team"
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring_with_invalid_team(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -798,12 +837,15 @@ class TestTronJobConfig:
 
 
 class TestTronTools:
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
-    def test_load_tron_config(self, mock_system_paasta_config):
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_load_tron_config(self, mock_load_system_paasta_config):
         result = tron_tools.load_tron_config()
-        assert mock_system_paasta_config.return_value.get_tron_config.call_count == 1
         assert result == tron_tools.TronConfig(
-            mock_system_paasta_config.return_value.get_tron_config.return_value
+            mock_load_system_paasta_config().get_tron_config()
         )
 
     @mock.patch("paasta_tools.tron_tools.load_tron_config", autospec=True)
@@ -908,10 +950,13 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.load_system_paasta_config", autospec=True
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
             autospec=True,
@@ -977,6 +1022,7 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
             autospec=True,
@@ -997,6 +1043,17 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
@@ -1027,7 +1084,11 @@ class TestTronTools:
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
             },
-            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
+            },
             "cap_drop": CAPS_DROP,
             "cap_add": [],
             "secret_env": {},
@@ -1048,7 +1109,11 @@ class TestTronTools:
     @mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     )
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     @mock.patch("paasta_tools.tron_tools.get_k8s_url_for_cluster", autospec=True)
     @mock.patch(
         "service_configuration_lib.spark_config._get_k8s_docker_volumes_conf",
@@ -1271,7 +1336,6 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/owner=core_ml "
-            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/bulkdata "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/bulkdata "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=true "
@@ -1303,6 +1367,7 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.decommission.script=/opt/spark/kubernetes/dockerfiles/spark/decom.sh "
             "--conf spark.logConf=true "
+            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
             "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
@@ -1343,6 +1408,17 @@ class TestTronTools:
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
                 "AWS_DEFAULT_REGION": "us-west-2",
             },
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "stable",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "node_selectors": {"yelp.com/pool": "stable"},
             "cap_add": [],
             "cap_drop": [
@@ -1374,6 +1450,8 @@ class TestTronTools:
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
                 "prometheus.io/port": "39091",
                 "prometheus.io/path": "/metrics/prometheus",
             },
@@ -1437,6 +1515,7 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
             autospec=True,
@@ -1463,9 +1542,22 @@ class TestTronTools:
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "job_name.instance_name",
             },
             "node_selectors": {"yelp.com/pool": "default"},
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "default",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "secret_volumes": [],
@@ -1568,6 +1660,7 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
             autospec=True,
@@ -1601,6 +1694,8 @@ class TestTronTools:
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": instance_name,
             },
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
@@ -1611,6 +1706,17 @@ class TestTronTools:
                 }
             ],
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {
                 "SOME_SECRET": {
                     "secret_name": "tron-secret-my--service-secret--name",
@@ -1693,6 +1799,7 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
             autospec=True,
@@ -1709,6 +1816,17 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
@@ -1736,7 +1854,11 @@ class TestTronTools:
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
             },
-            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
+            },
             "cap_drop": CAPS_DROP,
             "cap_add": [],
             "secret_env": {},
@@ -1783,7 +1905,11 @@ class TestTronTools:
             service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     @mock.patch("paasta_tools.tron_tools.load_tron_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
@@ -1882,7 +2008,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "26dae1d70ae0b937706e3de597cc07e8"
+        assert hasher.hexdigest() == "31634ab048abe9b40b71851797d48e4d"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")

@@ -120,6 +120,7 @@ def instance_status_kwargs():
         include_envoy=False,
         settings=mock.Mock(),
         use_new=False,
+        all_namespaces=False,
     )
 
 
@@ -602,6 +603,78 @@ class TestKubernetesStatusV2:
         # Verify  we did not throw an exception
         assert status
         assert "Could not fetch instance data" in status["error_message"]
+
+    def test_all_namespaces(
+        self,
+        mock_replicasets_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_get_pod_event_messages,
+        mock_pod,
+        mock_find_all_relevant_namespaces,
+    ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[]),
+            get_kubernetes_namespace=mock.Mock(return_value="paastasvc-service"),
+        )
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_replicasets_for_service_instance.return_value = [
+            Struct(
+                spec=Struct(replicas=1),
+                metadata=Struct(
+                    name="replicaset_1",
+                    creation_timestamp=datetime.datetime(2021, 3, 5),
+                    deletion_timestamp=None,
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                    },
+                ),
+            ),
+        ]
+        mock_load_service_namespace_config.return_value = {}
+        mock_job_config.get_registrations.return_value = ["service.instance"]
+        mock_get_pod_event_messages.return_value = []
+
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.get_versions_for_replicasets",
+            autospec=True,
+        ) as mock_get_versions_for_replicasets:
+            pik.kubernetes_status_v2(
+                service="service",
+                instance="instance",
+                verbose=0,
+                include_envoy=False,
+                instance_type="kubernetes",
+                settings=mock.Mock(),
+            )
+
+        # We are only testing that we
+        assert not mock_find_all_relevant_namespaces.called
+        _, _, get_rs_kwargs = mock_get_versions_for_replicasets.mock_calls[0]
+        assert get_rs_kwargs["namespaces"] == {"paastasvc-service"}
+
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.get_versions_for_replicasets",
+            autospec=True,
+        ) as mock_get_versions_for_replicasets:
+            pik.kubernetes_status_v2(
+                service="service",
+                instance="instance",
+                verbose=0,
+                include_envoy=False,
+                instance_type="kubernetes",
+                settings=mock.Mock(),
+                all_namespaces=True,
+            )
+        assert mock_find_all_relevant_namespaces.called
+        _, _, get_rs_kwargs = mock_get_versions_for_replicasets.mock_calls[0]
+        assert get_rs_kwargs["namespaces"] == ["paasta"]
 
 
 @mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)

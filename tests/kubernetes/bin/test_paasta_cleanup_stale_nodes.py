@@ -16,7 +16,7 @@ def test_nodes_for_cleanup():
     ) as mock_terminated_nodes:
         m1, m2, m3 = mock.MagicMock(), mock.MagicMock(), mock.MagicMock()
         m4 = mock.MagicMock()
-        m4.metadata.labels = {"node-role.kubernetes.io/master": ""}
+        m4.metadata.labels = {"node-role.kubernetes.io/control-plane": ""}
         mock_ec2_client = mock.Mock()
         mock_terminated_nodes.return_value = [m2, m3]
         for_cleanup = nodes_for_cleanup(mock_ec2_client, [m1, m2, m3, m4])
@@ -133,7 +133,7 @@ def test_main():
             else:
                 m.metadata.labels = {
                     "failure-domain.beta.kubernetes.io/region": "us-west-1",
-                    "node-role.kubernetes.io/master": "",
+                    "node-role.kubernetes.io/control-plane": "",
                 }
 
         mock_get_all_nodes.return_value = [m1, m2, m3, m4]
