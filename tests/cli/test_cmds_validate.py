@@ -745,6 +745,40 @@ test_job:
 
 
 @pytest.mark.parametrize(
+    "iam_role, service_account_name, expected",
+    [
+        ("arn:aws:iam::12345678:role/some_role", None, True),
+        ("arn:aws:iam::12345678:role/some_role", "some_svc_account", False),
+        (None, "some_svc_account", True),
+    ],
+)
+def test_tron_validate_schema_sa_and_iam_role(
+    iam_role,
+    service_account_name,
+    expected,
+    capsys,
+):
+    tron_content = f"""
+test_job:
+  node: paasta
+  schedule: "daily 04:00:00"
+  actions:
+    first:
+      {"iam_role: "+iam_role if iam_role else ""}
+      {"service_account_name: "+service_account_name if service_account_name else ""}
+      command: echo hello world
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = tron_content
+        assert validate_schema("unused_service_path.yaml", "tron") == expected
+        output, _ = capsys.readouterr()
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        assert expected_output in output
+
+
+@pytest.mark.parametrize(
     "mock_content",
     (
         """\
