@@ -14,34 +14,38 @@
 import logging
 import os
 
-from slackclient import SlackClient
+from slack_bolt import App
 
 from paasta_tools.utils import optionally_load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
 
-class PaastaSlackClient(SlackClient):
-    def __init__(self, token):
-        super().__init__(self)
-        if token is None:
-            log.warning("No slack token available, will only log")
-            self.sc = None
+class PaastaSlackClient(App):
+    def __init__(self, bot_token, app_token):
+        if bot_token is None or app_token is None:
+            log.warning("No slack tokens available, will only log")
+            self.slack_app = None
+            super().__init__()
         else:
-            self.sc = SlackClient(token)
-        self.token = token
+            self.slack_app = App(token=bot_token)
+        self.bot_token = bot_token
+        # Will be used alongside SocketModeHandler from sticht
+        self.app_token = app_token
 
     def post(self, channels, message=None, blocks=None, thread_ts=None):
         responses = []
-        if self.token is not None:
+        if self.bot_token is not None:
             for channel in channels:
                 log.info(f"Slack notification [{channel}]: {message}")
-                response = self.sc.api_call(
-                    "chat.postMessage",
-                    channel=channel,
-                    text=message,
-                    blocks=blocks,
-                    thread_ts=thread_ts,
+                response = self.slack_app.client.api_call(
+                    api_method="chat.postMessage",
+                    params={
+                        "channel": channel,
+                        "text": message,
+                        "blocks": blocks,
+                        "thread_ts": thread_ts,
+                    },
                 )
                 if response["ok"] is not True:
                     log.error("Posting to slack failed: {}".format(response["error"]))
@@ -51,14 +55,16 @@ class PaastaSlackClient(SlackClient):
         return responses
 
     def post_single(self, channel, message=None, blocks=None, thread_ts=None):
-        if self.token is not None:
+        if self.bot_token is not None:
             log.info(f"Slack notification [{channel}]: {message}")
-            response = self.sc.api_call(
-                "chat.postMessage",
-                channel=channel,
-                text=message,
-                blocks=blocks,
-                thread_ts=thread_ts,
+            response = self.slack_app.client.api_call(
+                api_method="chat.postMessage",
+                params={
+                    "channel": channel,
+                    "text": message,
+                    "blocks": blocks,
+                    "thread_ts": thread_ts,
+                },
             )
             if response["ok"] is not True:
                 log.error("Posting to slack failed: {}".format(response["error"]))
@@ -69,7 +75,10 @@ class PaastaSlackClient(SlackClient):
 
 
 def get_slack_client():
-    token = os.environ.get("SLACK_API_TOKEN", None)
-    if token is None:
-        token = optionally_load_system_paasta_config().get_slack_token()
-    return PaastaSlackClient(token=token)
+    bot_token = os.environ.get("SLACK_API_TOKEN", None)
+    app_token = os.environ.get("SLACK_APP_TOKEN", None)
+    if bot_token is None:
+        bot_token = optionally_load_system_paasta_config().get_slack_token()
+    if app_token is None:
+        app_token = optionally_load_system_paasta_config().get_slack_token()
+    return PaastaSlackClient(bot_token=bot_token, app_token=app_token)

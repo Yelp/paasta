@@ -1,3 +1,6 @@
+# make sure you bump sticht in extra_requirements_yelp.txt as well
+#sticht==1.2.0
+./sticht-1.2.0-py2.py3-none-any.whl
 a-sync==0.5.0
 addict==2.1.0
 aiohttp==3.7.4.post0
@@ -96,11 +99,9 @@ setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
 six==1.15.0
-slackclient==1.2.1
+slack_bolt==1.21.3
 splunk-sdk==1.7.0
 sseclient-py==1.7
-# make sure you bump sticht in extra_requirements_yelp.txt as well
-sticht==1.2.0
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2

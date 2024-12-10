@@ -44,7 +44,6 @@ import a_sync
 import humanize
 import progressbar
 from service_configuration_lib import read_deploy
-from slackclient import SlackClient
 from sticht import state_machine
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
 from sticht.rollbacks.slo import SLOWatcher
@@ -77,6 +76,7 @@ from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.slack import get_slack_client
+from paasta_tools.slack import PaastaSlackClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -723,8 +723,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         else:
             self.update_slack_thread(self.get_authors())
 
-    def get_slack_client(self) -> SlackClient:
-        return get_slack_client().sc
+    def get_slack_client(self) -> PaastaSlackClient:
+        return get_slack_client()
 
     def get_slack_channel(self) -> str:
         """Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
