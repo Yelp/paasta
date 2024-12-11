@@ -37,7 +37,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
-from typing import TypedDict
 from typing import Union
 
 import a_sync
@@ -95,14 +94,12 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.vitesscluster_tools import VitessDeploymentConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
-    VitessDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -115,7 +112,6 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
-    VitessDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -137,7 +133,6 @@ InstanceStatusWriter = Callable[
 EKS_DEPLOYMENT_CONFIGS = [
     EksDeploymentConfig,
     FlinkEksDeploymentConfig,
-    VitessDeploymentConfig,
 ]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
@@ -1906,250 +1901,6 @@ def print_kafka_status(
     return 0
 
 
-class EtcdLockServerStatus(TypedDict, total=False):
-    observedGeneration: int
-    available: str
-    clientServiceName: str
-
-
-class LockServerStatus(TypedDict, total=False):
-    etcd: EtcdLockServerStatus
-
-
-class VitessClusterCellStatus(TypedDict, total=False):
-    pendingChanges: str
-    gatewayAvailable: str
-
-
-class VitessClusterKeyspaceStatus(TypedDict, total=False):
-    pendingChanges: str
-    cells: List[str]
-    desiredShards: int
-    shards: int
-    readyShards: int
-    updatedShards: int
-    desiredTablets: int
-    tablets: int
-    readyTablets: int
-    updatedTablets: int
-
-
-class VitessDashboardStatus(TypedDict, total=False):
-    available: str
-    serviceName: str
-
-
-class VTAdminStatus(TypedDict, total=False):
-    available: str
-    serviceName: str
-
-
-class OrphanStatus(TypedDict, total=False):
-    reason: str
-    message: str
-
-
-class VitessClusterStatus(TypedDict, total=False):
-    observedGeneration: int
-    globalLockserver: LockServerStatus
-    gatewayServiceName: str
-    vitessDashboard: VitessDashboardStatus
-    cells: Dict[str, VitessClusterCellStatus]
-    keyspaces: Dict[str, VitessClusterKeyspaceStatus]
-    vtadmin: VTAdminStatus
-    orphanedCells: Dict[str, OrphanStatus]
-    orphanedKeyspaces: Dict[str, OrphanStatus]
-
-
-def print_vitess_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    vitess_status: Mapping[str, Any],
-    verbose: int = 0,
-) -> int:
-    tab = "    "
-    indent = 1
-
-    status: VitessClusterStatus = vitess_status.get("status")
-    if status is None:
-        output.append(
-            PaastaColors.red("indent * tab + Vitess cluster is not available yet")
-        )
-        return 1
-
-    output.append(indent * tab + "Vitess Cluster:")
-    indent += 1
-
-    output.append(
-        indent * tab
-        + "Observed Generation: "
-        + str(status.get("observedGeneration", 0))
-    )
-    output.append(
-        indent * tab + "Gateway Service Name: " + status.get("gatewayServiceName", "")
-    )
-
-    output.append(indent * tab + "Cells:")
-    indent += 1
-    cells: Dict[str, VitessClusterCellStatus] = status.get("cells")
-    if not cells:
-        output.append(
-            indent * tab + "Cells: " + PaastaColors.red("No cell status available")
-        )
-        return 0
-    for cell, cell_status in cells.items():
-        gateway_available: str = cell_status.get("gatewayAvailable")
-        if gateway_available == "True":
-            output.append(
-                indent * tab
-                + f"Cell: {cell} - VTGate: {PaastaColors.green('available')}"
-            )
-        else:
-            output.append(
-                indent * tab
-                + f"Cell: {cell} - VTGate: {PaastaColors.red('unavailable')}"
-            )
-        cell_pending_changes: str = cell_status.get("pendingChanges", None)
-        if cell_pending_changes:
-            output.append(indent * tab + f"  Pending Changes: {cell_pending_changes}")
-    indent -= 1
-
-    output.append(indent * tab + "Vitess Dashboard:")
-    indent += 1
-    vitess_dashboard: VitessDashboardStatus = status.get("vitessDashboard")
-    if not vitess_dashboard:
-        output.append(
-            indent * tab
-            + "Vitess Dashboard: "
-            + PaastaColors.red("No dashboard status available")
-        )
-        return 0
-    vitess_dashboard_available: str = vitess_dashboard.get("available", "")
-    vitess_dashboard_service_name: str = vitess_dashboard.get("serviceName", "")
-    if vitess_dashboard_available == "True":
-        output.append(
-            indent * tab
-            + f"Vitess Dashboard: {vitess_dashboard_service_name} - {PaastaColors.green('available')}"
-        )
-    else:
-        output.append(
-            indent * tab
-            + f"Vitess Dashboard: {vitess_dashboard_service_name} - {PaastaColors.red('unavailable')}"
-        )
-    indent -= 1
-
-    output.append(indent * tab + "VTAdmin:")
-    indent += 1
-    vtadmin: VTAdminStatus = status.get("vtadmin")
-    if not vtadmin:
-        output.append(
-            indent * tab + "VTAdmin: " + PaastaColors.red("No VTAdmin status available")
-        )
-        return 0
-    vtadmin_available: str = vtadmin.get("available", "")
-    vtadmin_service_name: str = vtadmin.get("serviceName", "")
-    if vtadmin_available == "True":
-        output.append(
-            indent * tab
-            + f"VTAdmin: {vtadmin_service_name} - {PaastaColors.green('available')}"
-        )
-    else:
-        output.append(
-            indent * tab
-            + f"VTAdmin: {vtadmin_service_name} - {PaastaColors.red('unavailable')}"
-        )
-    indent -= 1
-
-    output.append(indent * tab + "Keyspaces:")
-    indent += 1
-    keyspaces: Dict[str, VitessClusterKeyspaceStatus] = status.get("keyspaces")
-    if not keyspaces:
-        output.append(
-            indent * tab
-            + "Keyspaces: "
-            + PaastaColors.red("No keyspace status available")
-        )
-        return 0
-    for keyspace, keyspace_status in keyspaces.items():
-        output.append(indent * tab + f"Keyspace: {keyspace}")
-        indent += 1
-        keyspace_pending_changes: str = keyspace_status.get("pendingChanges", None)
-        if keyspace_pending_changes:
-            output.append(
-                indent * tab
-                + f"Keyspace: {keyspace} - Pending Changes: {keyspace_pending_changes}"
-            )
-        keyspace_cells: List[str] = keyspace_status.get("cells", [])
-        output.append(indent * tab + f"  Cells: {', '.join(keyspace_cells)}")
-        desired_shards: int = keyspace_status.get("desiredShards", 0)
-        shards: int = keyspace_status.get("shards", 0)
-        ready_shards: int = keyspace_status.get("readyShards", 0)
-        updated_shards: int = keyspace_status.get("updatedShards", 0)
-        output.append(
-            indent * tab
-            + f"  Shards: {shards} observed, {ready_shards}/{desired_shards} ready, {updated_shards}/{desired_shards} updated"
-        )
-        desired_tablets: int = keyspace_status.get("desiredTablets", 0)
-        tablets: int = keyspace_status.get("tablets", 0)
-        ready_tablets: int = keyspace_status.get("readyTablets", 0)
-        updated_tablets: int = keyspace_status.get("updatedTablets", 0)
-        output.append(
-            indent * tab
-            + f"  Tablets: {tablets} observed, {ready_tablets}/{desired_tablets} ready, {updated_tablets}/{desired_tablets} updated"
-        )
-        indent -= 1
-    indent -= 1
-
-    # This is not needed when not using etcd. We use zk instead
-    global_lockserver: LockServerStatus = status.get("globalLockserver", {})
-    if global_lockserver:
-        output.append(indent * tab + "Global Lockserver:")
-        indent += 1
-        etcd: EtcdLockServerStatus = global_lockserver.get("etcd")
-        if etcd:
-            output.append(indent * tab + "Global Lockserver:")
-            indent += 1
-            observed_generation: int = etcd.get("observedGeneration", 0)
-            available: str = etcd.get("available", "")
-            client_service_name: str = etcd.get("clientServiceName", "")
-            output.append(
-                indent * tab
-                + f"Observed Generation: {observed_generation}, Available: {available}, Client Service Name: {client_service_name}"
-            )
-        indent -= 1
-
-    # Orphaned Cells are not mandatorily seen each time
-    orphaned_cells: Dict[str, OrphanStatus] = status.get("orphanedCells", {})
-    if orphaned_cells:
-        output.append(indent * tab + "Orphaned Cells:")
-        indent += 1
-        for cell, orphan_status in orphaned_cells.items():
-            orphaned_cell_reason: str = orphan_status.get("reason", "")
-            orphaned_cell_message: str = orphan_status.get("message", "")
-            output.append(
-                indent * tab
-                + f"Cell: {cell} - Reason: {orphaned_cell_reason}, Message: {orphaned_cell_message}"
-            )
-        indent -= 1
-
-    # Orphaned Keyspaces are not mandatorily seen each time
-    orphaned_keyspaces: Dict[str, OrphanStatus] = status.get("orphanedKeyspaces", {})
-    if orphaned_keyspaces:
-        output.append(indent * tab + "Orphaned Keyspaces:")
-        indent += 1
-        for keyspace, orphan_status in orphaned_keyspaces.items():
-            orphaned_keyspace_reason: str = orphan_status.get("reason", "")
-            orphaned_keyspace_message: str = orphan_status.get("message", "")
-            output.append(
-                indent * tab
-                + f"Keyspace: {keyspace} - Reason: {orphaned_keyspace_reason}, Message: {orphaned_keyspace_message}"
-            )
-        indent -= 1
-    return 0
-
-
 def report_status_for_cluster(
     service: str,
     cluster: str,
@@ -2548,5 +2299,4 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,
     cassandracluster=print_cassandra_status,
-    vitesscluster=print_vitess_status,
 )

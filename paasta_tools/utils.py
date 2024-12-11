@@ -136,7 +136,6 @@ INSTANCE_TYPES = (
     "flinkeks",
     "cassandracluster",
     "kafkacluster",
-    "vitesscluster",
     "monkrelays",
     "nrtsearchservice",
     "nrtsearchserviceeks",
@@ -155,7 +154,6 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flinkeks": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
-    "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
     "nrtsearchserviceeks": "paasta-nrtsearchservices",
 }
@@ -2046,11 +2044,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_vault_role: str
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
-    vitess_images: Dict
-    superregion_to_region_mapping: Dict
-    vitess_tablet_types: List[str]
-    vitess_tablet_pool_type_mapping: Dict
-    vitess_throttling_config: Dict
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
@@ -2772,49 +2765,6 @@ class SystemPaastaConfig:
 
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
-
-    def get_vitess_images(self) -> Dict:
-        return self.config_dict.get(
-            "vitess_images",
-            {
-                "vtctld_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
-                "vtgate_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
-                "vttablet_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
-                "vtadmin_image": "docker-paasta.yelpcorp.com:443/vtadmin:v16.0.3",
-            },
-        )
-
-    def get_superregion_to_region_mapping(self) -> Dict:
-        return self.config_dict.get("superregion_to_region_mapping", {})
-
-    def get_vitess_tablet_types(self) -> List:
-        return self.config_dict.get("vitess_tablet_types", ["primary", "migration"])
-
-    def get_vitess_tablet_pool_type_mapping(self) -> Dict:
-        return self.config_dict.get("vitess_tablet_pool_type_mapping", {})
-
-    def get_vitess_throttling_config(self) -> Dict:
-        return self.config_dict.get(
-            "vitess_throttling_config",
-            {
-                "migration": {
-                    "throttle_query_table": "migration_replication_delay",
-                    "throttle_metrics_threshold": "7200",
-                },
-                "read": {
-                    "throttle_query_table": "read_replication_delay",
-                    "throttle_metrics_threshold": "3",
-                },
-                "reporting": {
-                    "throttle_query_table": "reporting_replication_delay",
-                    "throttle_metrics_threshold": "7200",
-                },
-                "primary": {
-                    "throttle_query_table": "read_replication_delay",
-                    "throttle_metrics_threshold": "3",
-                },
-            },
-        )
 
     def get_uses_bulkdata_default(self) -> bool:
         return self.config_dict.get("uses_bulkdata_default", True)
