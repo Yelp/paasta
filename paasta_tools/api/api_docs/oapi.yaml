@@ -339,12 +339,6 @@ components:
     InstanceSpecCassandraCluster:
       description: Cassandra instance spec
       type: object
-    InstanceMetadataVitessCluster:
-      description: VitessCluster instance metadata
-      type: object
-    InstanceSpecVitessCluster:
-      description: VitessCluster instance spec
-      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -383,14 +377,6 @@ components:
             status:
               $ref: '#/components/schemas/InstanceStatusCassandraCluster'
           type: object
-        vitesscluster:
-          description: Nullable VitessCluster instance status and metadata
-          properties:
-            metadata:
-              $ref: '#/components/schemas/InstanceMetadataVitessCluster'
-            status:
-              $ref: '#/components/schemas/InstanceStatusVitessCluster'
-          type: object
         kafkacluster:
           description: Nullable KafkaCluster instance status and metadata
           properties:
@@ -425,9 +411,6 @@ components:
       type: object
     InstanceStatusCassandraCluster:
       description: Cassandra instance status
-      type: object
-    InstanceStatusVitessCluster:
-      description: VitessCluster instance status
       type: object
     InstanceStatusKafkaCluster:
       description: Kafka instance status

@@ -49,13 +49,9 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.vitesscluster_tools import load_vitess_service_instance_configs
 
 
 log = logging.getLogger(__name__)
-
-
-INSTANCE_TYPE_TO_CONFIG_LOADER = {"vitesscluster": load_vitess_service_instance_configs}
 
 
 class StdoutKubeClient:
@@ -355,13 +351,6 @@ def reconcile_kubernetes_resource(
                 load_deployments=True,
                 soa_dir=DEFAULT_SOA_DIR,
             )
-            if crd.file_prefix in INSTANCE_TYPE_TO_CONFIG_LOADER:
-                config = INSTANCE_TYPE_TO_CONFIG_LOADER[crd.file_prefix](
-                    service=service,
-                    instance=inst,
-                    cluster=cluster,
-                    soa_dir=DEFAULT_SOA_DIR,
-                )
             git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
             formatted_resource = format_custom_resource(
                 instance_config=config,

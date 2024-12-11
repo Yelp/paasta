@@ -38,7 +38,6 @@ def lazy_import():
     from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStatusKubernetes
     from paasta_tools.paastaapi.model.instance_status_kubernetes_v2 import InstanceStatusKubernetesV2
     from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
-    from paasta_tools.paastaapi.model.instance_status_vitesscluster import InstanceStatusVitesscluster
     globals()['InstanceStatusAdhoc'] = InstanceStatusAdhoc
     globals()['InstanceStatusCassandracluster'] = InstanceStatusCassandracluster
     globals()['InstanceStatusFlink'] = InstanceStatusFlink
@@ -46,7 +45,6 @@ def lazy_import():
     globals()['InstanceStatusKubernetes'] = InstanceStatusKubernetes
     globals()['InstanceStatusKubernetesV2'] = InstanceStatusKubernetesV2
     globals()['InstanceStatusTron'] = InstanceStatusTron
-    globals()['InstanceStatusVitesscluster'] = InstanceStatusVitesscluster
 
 
 class InstanceStatus(ModelNormal):
@@ -102,7 +100,6 @@ class InstanceStatus(ModelNormal):
             'version': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
             'cassandracluster': (InstanceStatusCassandracluster,),  # noqa: E501
-            'vitesscluster': (InstanceStatusVitesscluster,),  # noqa: E501
             'kafkacluster': (InstanceStatusKafkacluster,),  # noqa: E501
             'kubernetes': (InstanceStatusKubernetes,),  # noqa: E501
             'kubernetes_v2': (InstanceStatusKubernetesV2,),  # noqa: E501
@@ -123,7 +120,6 @@ class InstanceStatus(ModelNormal):
         'version': 'version',  # noqa: E501
         'instance': 'instance',  # noqa: E501
         'cassandracluster': 'cassandracluster',  # noqa: E501
-        'vitesscluster': 'vitesscluster',  # noqa: E501
         'kafkacluster': 'kafkacluster',  # noqa: E501
         'kubernetes': 'kubernetes',  # noqa: E501
         'kubernetes_v2': 'kubernetes_v2',  # noqa: E501
@@ -184,7 +180,6 @@ class InstanceStatus(ModelNormal):
             version (str): Deployment Version of a service. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
             cassandracluster (InstanceStatusCassandracluster): [optional]  # noqa: E501
-            vitesscluster (InstanceStatusVitesscluster): [optional]  # noqa: E501
             kafkacluster (InstanceStatusKafkacluster): [optional]  # noqa: E501
             kubernetes (InstanceStatusKubernetes): [optional]  # noqa: E501
             kubernetes_v2 (InstanceStatusKubernetesV2): [optional]  # noqa: E501

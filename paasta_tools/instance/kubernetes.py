@@ -33,7 +33,6 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
-from paasta_tools import vitesscluster_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
@@ -56,7 +55,6 @@ INSTANCE_TYPES_CR = {
     "flinkeks",
     "cassandracluster",
     "kafkacluster",
-    "vitesscluster",
 }
 INSTANCE_TYPES_K8S = {
     "cassandracluster",
@@ -71,7 +69,6 @@ INSTANCE_TYPE_CR_ID = dict(
     flinkeks=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
-    vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     nrtsearchserviceeks=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
