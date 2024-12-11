@@ -34,7 +34,6 @@ Submodules
    paasta_tools.paastaapi.model.instance_status_kubernetes_autoscaling_status
    paasta_tools.paastaapi.model.instance_status_kubernetes_v2
    paasta_tools.paastaapi.model.instance_status_tron
-   paasta_tools.paastaapi.model.instance_status_vitesscluster
    paasta_tools.paastaapi.model.instance_tasks
    paasta_tools.paastaapi.model.integer_and_error
    paasta_tools.paastaapi.model.kubernetes_container

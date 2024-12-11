@@ -1,3 +1,11 @@
+paasta-tools (1.10.0) xenial; urgency=medium
+
+  * 1.10.0 tagged with 'make release'
+    Commit: Merge pull request #3992 from Yelp/u/gonabavi/DREIMP-
+    11112_cleanup_vitess_from_paasta  Clean up Vitess from PaaSTA
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Dec 2024 13:01:00 -0800
+
 paasta-tools (1.9.0) xenial; urgency=medium
 
   * 1.9.0 tagged with 'make release'
