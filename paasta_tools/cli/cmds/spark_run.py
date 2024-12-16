@@ -350,6 +350,13 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--uses-bulkdata",
+        help="Mount /nail/bulkdata in the container",
+        action="store_true",
+        default=False,
+    )
+
     aws_group = list_parser.add_argument_group(
         title="AWS credentials options",
         description="If --aws-credentials-yaml is specified, it overrides all "
@@ -784,6 +791,9 @@ def configure_and_run_docker_container(
         volumes = get_volumes_from_spark_k8s_configs(spark_conf)
     else:
         raise UnsupportedClusterManagerException(cluster_manager)
+
+    if args.uses_bulkdata:
+        volumes.append("/nail/bulkdata:/nail/bulkdata:ro")
 
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
