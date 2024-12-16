@@ -164,6 +164,13 @@ def parse_args():
         type=int,
         dest="autotune_max_disk",
     )
+    parser.add_argument(
+        "--iam-role",
+        help="IAM role to use for the shard",
+        required=False,
+        type=str,
+        dest="iam_role",
+    )
     return parser.parse_args()
 
 
@@ -264,6 +271,8 @@ def main(args):
                             metrics_provider_config
                         )
 
+                    if args.iam_role is not None:
+                        instance_config["iam_role"] = args.iam_role
                     if args.cpus is not None:
                         instance_config["cpus"] = args.cpus
                     if args.mem is not None:
@@ -306,6 +315,7 @@ def main(args):
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in config_file.keys():
                         config_file[args.shard_name] = instance_config
+
                         updater.write_configs(
                             args.service, f"{config_prefix}{config_path}", config_file
                         )
