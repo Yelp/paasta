@@ -17,6 +17,16 @@
             "required": [
                 "command"
             ],
+            "allOf": [
+                {
+                    "not": {
+                        "required": [
+                            "service_account_name",
+                            "iam_role"
+                        ]
+                    }
+                }
+            ],
             "properties": {
                 "name": {
                     "$ref": "#definitions/name"
