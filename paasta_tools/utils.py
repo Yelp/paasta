@@ -2039,7 +2039,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
-    use_multiple_log_readers: Optional[List[str]]
     service_auth_token_settings: ProjectedSAVolume
     service_auth_vault_role: str
     service_auth_sso_oidc_client_id: str
@@ -2363,12 +2362,6 @@ class SystemPaastaConfig:
                 "Could not find log_readers in configuration directory: %s"
                 % self.directory
             )
-
-    def use_multiple_log_readers(self) -> Optional[List[str]]:
-        """
-        Get the list of clusters that are using multiple log readers
-        """
-        return self.config_dict.get("use_multiple_log_readers")
 
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config

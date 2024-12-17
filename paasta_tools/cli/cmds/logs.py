@@ -484,12 +484,6 @@ def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
-def get_default_log_reader() -> "LogReader":
-    log_reader_config = load_system_paasta_config().get_log_reader()
-    log_reader_class = get_log_reader_class(log_reader_config["driver"])
-    return log_reader_class(**log_reader_config.get("options", {}))
-
-
 def get_log_reader(components: Set[str]) -> "LogReader":
     log_readers_config = load_system_paasta_config().get_log_readers()
     # ideally we should use a single "driver" for all components, but in cases where more than one is used for different components,
@@ -1483,14 +1477,6 @@ def pick_default_log_mode(
     return 1
 
 
-def pick_log_reader(cluster: str, components: Set[str]) -> LogReader:
-    uses_log_readers = load_system_paasta_config().use_multiple_log_readers()
-    if uses_log_readers and cluster in uses_log_readers:
-        return get_log_reader(components)
-    else:
-        return get_default_log_reader()
-
-
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -1535,7 +1521,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     log.debug(f"Going to get logs for {service} on cluster {clusters}")
 
-    log_reader = pick_log_reader(clusters[0], components)
+    log_reader = get_log_reader(components)
 
     if not validate_filtering_args(args, log_reader):
         return 1
