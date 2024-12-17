@@ -429,6 +429,7 @@ class TestConfigureAndRunDockerContainer:
         "fake_dir",
     )
 
+    @pytest.mark.parametrize("uses_bulkdata", [True, False])
     @pytest.mark.parametrize(
         ["cluster_manager", "spark_args_volumes", "expected_volumes"],
         [
@@ -468,6 +469,7 @@ class TestConfigureAndRunDockerContainer:
         cluster_manager,
         spark_args_volumes,
         expected_volumes,
+        uses_bulkdata,
     ):
         mock_get_username.return_value = "fake_user"
         spark_conf = {
@@ -494,6 +496,7 @@ class TestConfigureAndRunDockerContainer:
         args.tronfig = None
         args.job_id = None
         args.use_service_auth_token = False
+        args.uses_bulkdata = uses_bulkdata
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -512,10 +515,15 @@ class TestConfigureAndRunDockerContainer:
             spark_config_dict=spark_conf,
             is_mrjob=args.mrjob,
         )
+        if uses_bulkdata:
+            bullkdata_volumes = ["/nail/bulkdata:/nail/bulkdata:ro"]
+        else:
+            bullkdata_volumes = []
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=(
                 expected_volumes
+                + bullkdata_volumes
                 + [
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
@@ -609,6 +617,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
         args.use_service_auth_token = False
+        args.uses_bulkdata = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -724,6 +733,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_service_auth_token = False
+        args.uses_bulkdata = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
