@@ -1322,7 +1322,7 @@ class TestTronTools:
             "--conf spark.executorEnv.PAASTA_INSTANCE_TYPE=spark "
             "--conf spark.executorEnv.SPARK_EXECUTOR_DIRS=/tmp "
             "--conf spark.kubernetes.pyspark.pythonVersion=3 "
-            "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
+            "--conf spark.kubernetes.container.image=$PAASTA_DOCKER_IMAGE "
             "--conf spark.kubernetes.namespace=paasta-spark "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_service=my_service "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_instance=my_job.do_something "
