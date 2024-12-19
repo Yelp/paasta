@@ -15,6 +15,7 @@
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.spark_tools import SPARK_EXECUTOR_NAMESPACE
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -69,8 +70,14 @@ def paasta_list_namespaces(args):
         # We skip non-k8s instance types
         if instance.get_instance_type() in ("paasta-native", "adhoc"):
             continue
-        else:
-            namespaces.add(instance.get_namespace())
+        namespaces.add(instance.get_namespace())
+        # Tron instances are TronActionConfigs
+        if (
+            instance.get_instance_type() == "tron"
+            and instance.get_executor() == "spark"
+        ):
+            # We also need paasta-spark for spark executors
+            namespaces.add(SPARK_EXECUTOR_NAMESPACE)
 
     # Print in list format to be used in iam_roles
     print(list(namespaces))
