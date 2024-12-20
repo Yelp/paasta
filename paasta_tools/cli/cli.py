@@ -110,6 +110,7 @@ PAASTA_SUBCOMMANDS = {
     "itest": "itest",
     "list-clusters": "list_clusters",
     "list-deploy-queue": "list_deploy_queue",
+    "list-namespaces": "list_namespaces",
     "list": "list",
     "local-run": "local_run",
     "logs": "logs",
