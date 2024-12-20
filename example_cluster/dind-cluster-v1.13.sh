@@ -1852,7 +1852,7 @@ function dind::up {
       dind::retry "${kubectl}" --context "$ctx" apply -f ${kube_router_config}
       rm "${kube_router_config}"
       dind::retry "${kubectl}" --context "$ctx" -n kube-system delete ds kube-proxy
-      docker run --privileged --net=host k8s.gcr.io/kube-proxy-amd64:v1.10.2 kube-proxy --cleanup
+      docker run --privileged --net=host registry.k8s.io/kube-proxy-amd64:v1.10.2 kube-proxy --cleanup
       ;;
     *)
       echo "Unsupported CNI plugin '${CNI_PLUGIN}'" >&2
