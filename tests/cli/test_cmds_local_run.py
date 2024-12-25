@@ -541,6 +541,7 @@ def test_configure_and_run_pulls_image_when_asked(
     fake_instance_config.get_docker_registry.return_value = "fake_registry"
     fake_instance_config.get_docker_image.return_value = "fake_image"
     fake_instance_config.get_docker_url.return_value = "fake_registry/fake_image"
+    fake_instance_config.config_dict = {}
     mock_get_instance_config.return_value = fake_instance_config
     fake_service = "fake_service"
     args = mock.MagicMock()
@@ -646,6 +647,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.use_sso_service_auth_token = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
+        mock_config.config_dict = {}
         mock_get_default_interactive_config.return_value = mock_config
         return_code = configure_and_run_docker_container(
             docker_client=mock_docker_client,

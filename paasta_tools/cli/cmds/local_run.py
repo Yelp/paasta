@@ -68,6 +68,7 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
@@ -388,6 +389,51 @@ def add_subparser(subparsers):
         required=False,
         default=None,
     )
+    list_parser.add_argument(
+        "--memory",
+        "--mem",
+        help=(
+            "Specify a memory limit (in megabytes) for the container."
+            " If not specified, the memory limit is pulled from yelpsoa-configs for your --instance/--cluster."
+        ),
+        required=False,
+        default=None,
+        type=float,
+    )
+    list_parser.add_argument(
+        "--cpus",
+        help=(
+            "Specify a CPU limit (in cores) for the container."
+            " If not specified, the cpu limit is pulled from yelpsoa-configs for your --instance/--cluster."
+            " cpu_burst_add/--cpu-burst-add is added to this limit, to match the behavior of real clusters."
+        ),
+        required=False,
+        default=None,
+        type=float,
+    )
+    list_parser.add_argument(
+        "--cpu-burst-add",
+        help=(
+            "Override cpu_burst_add for the container."
+            " If not specified, cpu_burst_add is pulled from yelpsoa-configs for your --instance/--cluster."
+            " This value is added to your cpus/--cpus limit to determine the CPU limit for the container."
+        ),
+        required=False,
+        default=None,
+        type=float,
+    )
+    list_parser.add_argument(
+        "--disk",
+        help=(
+            "Override disk limit for the container."
+            " If not specified, the disk limit is pulled from yelpsoa-configs for your --instance/--cluster."
+            f" (Disk limits are only enforced if enforce_disk_quota is set in {PATH_TO_SYSTEM_PAASTA_CONFIG_DIR})"
+        ),
+        required=False,
+        default=None,
+        type=float,
+    )
+
     list_parser.add_argument(
         "-i",
         "--instance",
@@ -1187,6 +1233,15 @@ def configure_and_run_docker_container(
             file=sys.stderr,
         )
         return 1
+
+    if args.memory:
+        instance_config.config_dict["mem"] = args.memory
+    if args.cpus:
+        instance_config.config_dict["cpus"] = args.cpus
+    if args.cpu_burst_add:
+        instance_config.config_dict["cpu_burst_add"] = args.cpu_burst_add
+    if args.disk:
+        instance_config.config_dict["disk"] = args.disk
 
     if docker_sha is not None:
         instance_config.branch_dict = {
