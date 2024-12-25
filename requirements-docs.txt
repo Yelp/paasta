@@ -11,7 +11,7 @@ freezegun==0.3.7
 identify==1.0.6
 imagesize==0.7.1
 isort==4.2.5
-jinja2==3.0.3
+jinja2==3.1.4
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
 mock==2.0.0
