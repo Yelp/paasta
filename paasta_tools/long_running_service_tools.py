@@ -149,10 +149,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_bounce_method(self) -> str:
         raise NotImplementedError
 
-    def get_namespace(self) -> str:
-        """Get namespace from config"""
-        raise NotImplementedError
-
     def get_kubernetes_namespace(self) -> str:
         """
         Only needed on kubernetes LongRunningServiceConfig

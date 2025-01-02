@@ -39,18 +39,20 @@ def add_subparser(subparsers):
     )
 
     autoscale_parser.add_argument(
-        "-s", "--service", help="Service that you want to stop. Like 'example_service'."
+        "-s",
+        "--service",
+        help="Service that you want to autoscale. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
     autoscale_parser.add_argument(
         "-i",
         "--instance",
-        help="Instance of the service that you want to stop. Like 'main' or 'canary'.",
+        help="Instance of the service that you want to autoscale. Like 'main' or 'canary'.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
     autoscale_parser.add_argument(
         "-c",
         "--cluster",
-        help="The PaaSTA cluster that has the service instance you want to stop. Like 'pnw-prod'.",
+        help="The PaaSTA cluster that has the service instance you want to autoscale. Like 'pnw-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     autoscale_parser.add_argument(
