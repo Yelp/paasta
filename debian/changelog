@@ -1,3 +1,11 @@
+paasta-tools (1.11.0) xenial; urgency=medium
+
+  * 1.11.0 tagged with 'make release'
+    Commit: Merge pull request #3997 from Yelp/jfong/PAASTA-18479-list-
+    namespaces  PAASTA-18479: Add list-namespaces tool
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 02 Jan 2025 15:13:23 -0800
+
 paasta-tools (1.10.0) xenial; urgency=medium
 
   * 1.10.0 tagged with 'make release'
