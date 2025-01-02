@@ -36,6 +36,9 @@ NO_EXTERNAL_LINK_MESSAGE = (
     "Please add one that points to a reference doc for your service"
 )
 
+# modes that depend on smartstack port cannot be tested via paasta proxies, so we exclude those
+TESTABLE_SERVICE_MODES = {"http", "https"}
+
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
@@ -94,7 +97,7 @@ def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
         )
         service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
-            if service_mode == "http" or service_mode == "https":
+            if service_mode in TESTABLE_SERVICE_MODES:
                 link = PaastaColors.cyan(
                     f"{service_mode}://{service}.proxy.{cluster}.paasta/"
                 )
