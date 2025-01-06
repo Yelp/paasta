@@ -858,6 +858,7 @@
                 },
                 "autotune_limits": {
                     "type": "object",
+                    "additionalProperties": false,
                     "properties": {
                         "cpus": {
                             "type": "object",
