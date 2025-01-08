@@ -294,18 +294,20 @@ def paasta_log_line_passes_filter(
     except ValueError:
         log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
         return False
-    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
-    if not check_timestamp_in_range(timestamp, start_time, end_time):
-        return False
-    return (
-        (parsed_line.get("level") is None or parsed_line.get("level") in levels)
+
+    if (
+        (instances is None or parsed_line.get("instance") in instances)
+        and (parsed_line.get("level") is None or parsed_line.get("level") in levels)
         and parsed_line.get("component") in components
         and (
             parsed_line.get("cluster") in clusters
             or parsed_line.get("cluster") == ANY_CLUSTER
         )
-        and (instances is None or parsed_line.get("instance") in instances)
-    )
+    ):
+        timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
+        if check_timestamp_in_range(timestamp, start_time, end_time):
+            return True
+    return False
 
 
 def paasta_app_output_passes_filter(
@@ -324,28 +326,24 @@ def paasta_app_output_passes_filter(
     except ValueError:
         log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
         return False
-    try:
-        timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
-    # https://github.com/gweis/isodate/issues/53
-    except ValueError:
-        return True
-    except AttributeError:
-        # Timestamp might be missing. We had an issue where OTel was splitting overly long log lines
-        # and not including timestamps in the resulting log records (OBSPLAT-2216).
-        # Although this was then fixed in OTel, we should not rely on timestamps being present,
-        # as the format cannot be guaranteed.
-        return False
-    if not check_timestamp_in_range(timestamp, start_time, end_time):
-        return False
-    return (
-        parsed_line.get("component") in components
-        and (
-            parsed_line.get("cluster") in clusters
-            or parsed_line.get("cluster") == ANY_CLUSTER
-        )
-        and (instances is None or parsed_line.get("instance") in instances)
+
+    if (
+        (instances is None or parsed_line.get("instance") in instances)
+        and parsed_line.get("cluster") in clusters
+        and parsed_line.get("component") in components
         and (pods is None or parsed_line.get("pod_name") in pods)
-    )
+    ):
+        try:
+            timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
+        except AttributeError:
+            # Timestamp might be missing. We had an issue where OTel was splitting overly long log lines
+            # and not including timestamps in the resulting log records (OBSPLAT-2216).
+            # Although this was then fixed in OTel, we should not rely on timestamps being present,
+            # as the format cannot be guaranteed.
+            return False
+        if check_timestamp_in_range(timestamp, start_time, end_time):
+            return True
+    return False
 
 
 def extract_utc_timestamp_from_log_line(line: str) -> datetime.datetime:
