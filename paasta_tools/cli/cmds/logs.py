@@ -53,7 +53,7 @@ except ImportError:
     scribereader = None
 
 try:
-    from clog.readers import S3LogsReader
+    from logreader.readers import S3LogsReader
 except ImportError:
     S3LogsReader = None
 
