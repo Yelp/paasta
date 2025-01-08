@@ -36,6 +36,9 @@ NO_EXTERNAL_LINK_MESSAGE = (
     "Please add one that points to a reference doc for your service"
 )
 
+# modes that depend on smartstack port cannot be tested via paasta proxies, so we exclude those
+TESTABLE_SERVICE_MODES = {"http", "https"}
+
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
@@ -94,14 +97,9 @@ def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
         )
         service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
-            if service_mode == "tcp":
-                service_port = service_config.get("proxy_port")
+            if service_mode in TESTABLE_SERVICE_MODES:
                 link = PaastaColors.cyan(
-                    "%s://paasta-%s.yelp:%d/" % (service_mode, cluster, service_port)
-                )
-            elif service_mode == "http" or service_mode == "https":
-                link = PaastaColors.cyan(
-                    f"{service_mode}://{service}.paasta-{cluster}.yelp/"
+                    f"{service_mode}://{service}.proxy.{cluster}.paasta/"
                 )
             else:
                 link = "N/A"
@@ -111,8 +109,7 @@ def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
 
 def get_dashboard_urls(service):
     output = [
-        " - %s (Sensu Alerts)"
-        % (PaastaColors.cyan("https://uchiwa.yelpcorp.com/#/events?q=%s" % service))
+        " - %s (service load y/sl2)" % (PaastaColors.cyan(f"http://y/{service}_load"))
     ]
     return output
 
@@ -137,7 +134,9 @@ def get_service_info(service, soa_dir):
         % PaastaColors.cyan(get_runbook(service=service, overrides={}, soa_dir=soa_dir))
     )
     output.append("Git Repo: %s" % git_url)
-    output.append("Deployed to the following clusters:")
+    output.append(
+        "Deployed to the following clusters (with test URLs, where available):"
+    )
     output.extend(get_deployments_strings(service, soa_dir))
     if smartstack_endpoints:
         output.append("Smartstack endpoint(s):")

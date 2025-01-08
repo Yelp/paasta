@@ -2424,11 +2424,11 @@ class SystemPaastaConfig:
 
     def get_cluster_fqdn_format(self) -> str:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
-        string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
+        string gets one parameter: cluster. Defaults to '{cluster:s}.paasta'.
 
         :returns: A format string for constructing the FQDN of the masters in a given cluster.
         """
-        return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
+        return self.config_dict.get("cluster_fqdn_format", "{cluster:s}.paasta")
 
     def get_paasta_status_version(self) -> str:
         """Get paasta status version string (new | old). Defaults to 'old'.
