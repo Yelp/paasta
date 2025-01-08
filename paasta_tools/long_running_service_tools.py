@@ -110,7 +110,7 @@ class ServiceNamespaceConfig(dict):
                 return None
             else:
                 return "http"
-        elif mode in ["http", "tcp", "https"]:
+        elif mode in ["http", "http2", "tcp", "https"]:
             return mode
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)

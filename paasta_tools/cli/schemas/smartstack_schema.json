@@ -116,6 +116,7 @@
             "mode": {
                 "enum": [
                     "http",
+                    "http2",
                     "https",
                     "tcp"
                 ]
