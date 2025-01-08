@@ -1,3 +1,11 @@
+paasta-tools (1.11.2) xenial; urgency=medium
+
+  * 1.11.2 tagged with 'make release'
+    Commit: Merge pull request #3999 from Yelp/u/jfong/fix_paasta_info
+    Minor fixes for `paasta info`
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 08 Jan 2025 13:31:38 -0800
+
 paasta-tools (1.11.1) xenial; urgency=medium
 
   * 1.11.1 tagged with 'make release'
