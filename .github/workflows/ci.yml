@@ -60,7 +60,7 @@ jobs:
       - run: sudo apt-get update
       - run: sudo apt-get install -yq devscripts
       - run: make itest_${{ matrix.dist }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: deb-${{ matrix.dist }}
           path: dist/paasta-tools_*.deb
@@ -70,11 +70,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: mkdir -p dist/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: deb-bionic
           path: dist/
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: deb-jammy
           path: dist/
