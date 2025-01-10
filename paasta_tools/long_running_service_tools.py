@@ -112,7 +112,7 @@ class ServiceNamespaceConfig(dict):
                 return None
             else:
                 return "http"
-        elif mode in ["http", "tcp", "https"]:
+        elif mode in ["http", "http2", "tcp", "https"]:
             return mode
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
@@ -436,7 +436,7 @@ def get_healthcheck_for_instance(
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
-    if mode == "http" or mode == "https":
+    if mode in ["http", "https", "http2"]:
         path = service_manifest.get_healthcheck_uri(smartstack_config)
         healthcheck_command = "%s://%s:%d%s" % (mode, hostname, random_port, path)
     elif mode == "tcp":

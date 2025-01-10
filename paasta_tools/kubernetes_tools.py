@@ -1402,7 +1402,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             timeout_seconds=timeout_seconds,
         )
 
-        if mode == "http" or mode == "https":
+        if mode in ["http", "https", "http2"]:
             path = self.get_healthcheck_uri(service_namespace_config)
             probe.http_get = V1HTTPGetAction(
                 path=path, port=self.get_container_port(), scheme=mode.upper()
