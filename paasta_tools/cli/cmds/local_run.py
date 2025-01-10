@@ -168,7 +168,7 @@ def run_healthcheck_on_container(
         healthcheck_result = perform_cmd_healthcheck(
             docker_client, container_id, healthcheck_data, timeout
         )
-    elif healthcheck_mode == "http" or healthcheck_mode == "https":
+    elif healthcheck_mode in ["http", "https", "http2"]:
         healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
     elif healthcheck_mode == "tcp":
         healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
