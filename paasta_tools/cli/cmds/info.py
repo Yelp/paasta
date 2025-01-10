@@ -37,7 +37,7 @@ NO_EXTERNAL_LINK_MESSAGE = (
 )
 
 # modes that depend on smartstack port cannot be tested via paasta proxies, so we exclude those
-TESTABLE_SERVICE_MODES = {"http", "https"}
+TESTABLE_SERVICE_MODES = {"http", "https", "http2"}
 
 
 def add_subparser(subparsers):
