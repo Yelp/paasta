@@ -78,7 +78,7 @@ def get_smartstack_endpoints(service, soa_dir):
         service, full_name=False, soa_dir=soa_dir
     ):
         mode = config.get("mode", "http")
-        url_scheme = "http" if mode in ["http", "http2"] else mode
+        url_scheme = "http" if mode == "http2" else mode
         port = config.get("proxy_port")
         endpoints.append(f"{url_scheme}://169.254.255.254:{port} ({name})")
     return endpoints
