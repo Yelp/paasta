@@ -95,9 +95,12 @@ class ServiceNamespaceConfig(dict):
         """
         healthcheck_mode = self.get("healthcheck_mode", None)
         if not healthcheck_mode:
-            return self.get_mode()
-        else:
-            return healthcheck_mode
+            mode = self.get_mode()
+            if mode == "http2":
+                healthcheck_mode = "http"
+            else:
+                healthcheck_mode = mode
+        return healthcheck_mode
 
     def get_mode(self) -> str:
         """Get the mode that the service runs in and check that we support it.
@@ -436,7 +439,7 @@ def get_healthcheck_for_instance(
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
-    if mode in ["http", "https", "http2"]:
+    if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
         healthcheck_command = "%s://%s:%d%s" % (mode, hostname, random_port, path)
     elif mode == "tcp":
