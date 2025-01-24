@@ -65,15 +65,15 @@ from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V1VolumeProjection
-from kubernetes.client import V2beta2CrossVersionObjectReference
-from kubernetes.client import V2beta2HorizontalPodAutoscaler
-from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta2MetricIdentifier
-from kubernetes.client import V2beta2MetricSpec
-from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2ResourceMetricSource
-from kubernetes.client.models.v2beta2_object_metric_source import (
-    V2beta2ObjectMetricSource,
+from kubernetes.client import V2CrossVersionObjectReference
+from kubernetes.client import V2HorizontalPodAutoscaler
+from kubernetes.client import V2HorizontalPodAutoscalerSpec
+from kubernetes.client import V2MetricIdentifier
+from kubernetes.client import V2MetricSpec
+from kubernetes.client import V2MetricTarget
+from kubernetes.client import V2ResourceMetricSource
+from kubernetes.client.models.v2_object_metric_source import (
+    V2ObjectMetricSource,
 )
 from kubernetes.client.rest import ApiException
 from requests.exceptions import ConnectionError
@@ -2348,7 +2348,7 @@ class TestKubernetesDeploymentConfig:
             "paasta",
         )
         annotations: Dict[Any, Any] = {}
-        expected_res = V2beta2HorizontalPodAutoscaler(
+        expected_res = V2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name",
@@ -2356,7 +2356,7 @@ class TestKubernetesDeploymentConfig:
                 annotations=annotations,
                 labels=mock.ANY,
             ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
+            spec=V2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
                     autoscaling_params={},
                     max_replicas=3,
@@ -2364,18 +2364,18 @@ class TestKubernetesDeploymentConfig:
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta2MetricSpec(
+                    V2MetricSpec(
                         type="Resource",
-                        resource=V2beta2ResourceMetricSource(
+                        resource=V2ResourceMetricSource(
                             name="cpu",
-                            target=V2beta2MetricTarget(
+                            target=V2MetricTarget(
                                 type="Utilization",
                                 average_utilization=50.0,
                             ),
                         ),
                     )
                 ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
+                scale_target_ref=V2CrossVersionObjectReference(
                     api_version="apps/v1",
                     kind="Deployment",
                     name="fake_name",
@@ -2424,7 +2424,7 @@ class TestKubernetesDeploymentConfig:
             KubeClient(),
             "paasta",
         )
-        expected_res = V2beta2HorizontalPodAutoscaler(
+        expected_res = V2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name",
@@ -2432,7 +2432,7 @@ class TestKubernetesDeploymentConfig:
                 annotations={},
                 labels=mock.ANY,
             ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
+            spec=V2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
                     autoscaling_params={},
                     max_replicas=3,
@@ -2440,17 +2440,17 @@ class TestKubernetesDeploymentConfig:
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta2MetricSpec(
+                    V2MetricSpec(
                         type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
+                        object=V2ObjectMetricSource(
+                            metric=V2MetricIdentifier(
                                 name="service-instance-uwsgi-prom",
                             ),
-                            target=V2beta2MetricTarget(
+                            target=V2MetricTarget(
                                 type="Value",
                                 value=1,
                             ),
-                            described_object=V2beta2CrossVersionObjectReference(
+                            described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
                                 kind="Deployment",
                                 name="fake_name",
@@ -2458,7 +2458,7 @@ class TestKubernetesDeploymentConfig:
                         ),
                     ),
                 ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
+                scale_target_ref=V2CrossVersionObjectReference(
                     api_version="apps/v1",
                     kind="Deployment",
                     name="fake_name",
@@ -2508,7 +2508,7 @@ class TestKubernetesDeploymentConfig:
             KubeClient(),
             "paasta",
         )
-        expected_res = V2beta2HorizontalPodAutoscaler(
+        expected_res = V2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name",
@@ -2516,7 +2516,7 @@ class TestKubernetesDeploymentConfig:
                 annotations={},
                 labels=mock.ANY,
             ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
+            spec=V2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
                     autoscaling_params={},
                     max_replicas=3,
@@ -2524,17 +2524,17 @@ class TestKubernetesDeploymentConfig:
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta2MetricSpec(
+                    V2MetricSpec(
                         type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
+                        object=V2ObjectMetricSource(
+                            metric=V2MetricIdentifier(
                                 name="service-instance-gunicorn-prom",
                             ),
-                            target=V2beta2MetricTarget(
+                            target=V2MetricTarget(
                                 type="Value",
                                 value=1,
                             ),
-                            described_object=V2beta2CrossVersionObjectReference(
+                            described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
                                 kind="Deployment",
                                 name="fake_name",
@@ -2542,7 +2542,7 @@ class TestKubernetesDeploymentConfig:
                         ),
                     ),
                 ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
+                scale_target_ref=V2CrossVersionObjectReference(
                     api_version="apps/v1",
                     kind="Deployment",
                     name="fake_name",
