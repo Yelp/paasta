@@ -350,6 +350,13 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--uses-bulkdata",
+        help="Mount /nail/bulkdata in the container",
+        action="store_true",
+        default=False,
+    )
+
     aws_group = list_parser.add_argument_group(
         title="AWS credentials options",
         description="If --aws-credentials-yaml is specified, it overrides all "
@@ -1170,6 +1177,10 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
             load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
+        # If the spark job has uses_bulkdata set then propagate it to the instance_config
+        # If not, then whatever the instance_config has will be used
+        if args.uses_bulkdata:
+            instance_config.config_dict["uses_bulkdata"] = args.uses_bulkdata
     except NoConfigurationForServiceError as e:
         print(str(e), file=sys.stderr)
         return 1
