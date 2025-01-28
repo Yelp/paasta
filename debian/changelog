@@ -1,3 +1,11 @@
+paasta-tools (1.11.3) xenial; urgency=medium
+
+  * 1.11.3 tagged with 'make release'
+    Commit: Merge pull request #4007 from Yelp/jfong/PAASTA-18383-hpa-
+    1.26  PAASTA-18383: Update V2Beta2 HPA api references to V2 for 1.26
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 28 Jan 2025 13:12:11 -0800
+
 paasta-tools (1.11.2) xenial; urgency=medium
 
   * 1.11.2 tagged with 'make release'
