@@ -118,16 +118,16 @@ from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V1VolumeProjection
 from kubernetes.client import V1WeightedPodAffinityTerm
-from kubernetes.client import V2beta2CrossVersionObjectReference
-from kubernetes.client import V2beta2HorizontalPodAutoscaler
-from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
-from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta2MetricIdentifier
-from kubernetes.client import V2beta2MetricSpec
-from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2ObjectMetricSource
-from kubernetes.client import V2beta2ResourceMetricSource
-from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
+from kubernetes.client import V2CrossVersionObjectReference
+from kubernetes.client import V2HorizontalPodAutoscaler
+from kubernetes.client import V2HorizontalPodAutoscalerCondition
+from kubernetes.client import V2HorizontalPodAutoscalerSpec
+from kubernetes.client import V2MetricIdentifier
+from kubernetes.client import V2MetricSpec
+from kubernetes.client import V2MetricTarget
+from kubernetes.client import V2ObjectMetricSource
+from kubernetes.client import V2ResourceMetricSource
+from kubernetes.client.models import V2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_soa_metadata
@@ -237,19 +237,19 @@ PROJECTED_SA_TOKEN_PATH = "token"
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
 # This is no better way to work around rn.
-class MonkeyPatchAutoScalingConditions(V2beta2HorizontalPodAutoscalerStatus):
+class MonkeyPatchAutoScalingConditions(V2HorizontalPodAutoscalerStatus):
     @property
-    def conditions(self) -> Sequence[V2beta2HorizontalPodAutoscalerCondition]:
+    def conditions(self) -> Sequence[V2HorizontalPodAutoscalerCondition]:
         return super().conditions()
 
     @conditions.setter
     def conditions(
-        self, conditions: Optional[Sequence[V2beta2HorizontalPodAutoscalerCondition]]
+        self, conditions: Optional[Sequence[V2HorizontalPodAutoscalerCondition]]
     ) -> None:
         self._conditions = list() if conditions is None else conditions
 
 
-models.V2beta2HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
+models.V2HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):
@@ -607,7 +607,7 @@ class KubeClient:
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
-        self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
+        self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
 
         self.request = self.api_client.request
@@ -801,18 +801,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
-    ) -> Optional[V2beta2MetricSpec]:
+    ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = (
             f"{self.namespace_external_metric_name(provider['type'])}-prom"
         )
 
         if provider["type"] == METRICS_PROVIDER_CPU:
-            return V2beta2MetricSpec(
+            return V2MetricSpec(
                 type="Resource",
-                resource=V2beta2ResourceMetricSource(
+                resource=V2ResourceMetricSource(
                     name="cpu",
-                    target=V2beta2MetricTarget(
+                    target=V2MetricTarget(
                         type="Utilization",
                         average_utilization=int(target * 100),
                     ),
@@ -824,14 +824,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             METRICS_PROVIDER_GUNICORN,
             METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
-            return V2beta2MetricSpec(
+            return V2MetricSpec(
                 type="Object",
-                object=V2beta2ObjectMetricSource(
-                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2beta2CrossVersionObjectReference(
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
-                    target=V2beta2MetricTarget(
+                    target=V2MetricTarget(
                         type="Value",
                         # we average the number of instances needed to handle the current (or
                         # averaged) load instead of the load itself as this leads to more
@@ -843,14 +843,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             )
         elif provider["type"] == METRICS_PROVIDER_PROMQL:
-            return V2beta2MetricSpec(
+            return V2MetricSpec(
                 type="Object",
-                object=V2beta2ObjectMetricSource(
-                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2beta2CrossVersionObjectReference(
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
-                    target=V2beta2MetricTarget(
+                    target=V2MetricTarget(
                         # Use the setpoint specified by the user.
                         type="Value",
                         value=target,
@@ -870,7 +870,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         cluster: str,
         kube_client: KubeClient,
         namespace: str,
-    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
+    ) -> Optional[V2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
 
@@ -909,17 +909,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             paasta_prefixed("managed"): "true",
         }
 
-        hpa = V2beta2HorizontalPodAutoscaler(
+        hpa = V2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name=name, namespace=namespace, annotations=dict(), labels=labels
             ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
+            spec=V2HorizontalPodAutoscalerSpec(
                 behavior=scaling_policy,
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2beta2CrossVersionObjectReference(
+                scale_target_ref=V2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
@@ -3690,7 +3690,7 @@ async def get_hpa(
     kube_client: KubeClient,
     name: str,
     namespace: str,
-) -> V2beta2HorizontalPodAutoscaler:
+) -> V2HorizontalPodAutoscaler:
     async_get_hpa = a_sync.to_async(
         kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
     )
