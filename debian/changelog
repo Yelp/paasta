@@ -1,3 +1,12 @@
+paasta-tools (1.11.4) xenial; urgency=medium
+
+  * 1.11.4 tagged with 'make release'
+    Commit: Merge pull request #4005 from Yelp/u/mames/PERES-5194-uses-
+    bulkdata-spark-run  Add uses_bulkdata argument to paasta spark run
+    instance_config
+
+ -- Dave Cuza <dcuza@yelp.com>  Mon, 03 Feb 2025 09:05:51 -0800
+
 paasta-tools (1.11.3) xenial; urgency=medium
 
   * 1.11.3 tagged with 'make release'
