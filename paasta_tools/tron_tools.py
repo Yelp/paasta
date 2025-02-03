@@ -348,8 +348,6 @@ class TronActionConfig(InstanceConfig):
             f"tron_spark_{self.get_service()}_{self.get_instance()}",
         )
 
-        docker_img_url = self.get_docker_url(system_paasta_config)
-
         spark_conf_builder = SparkConfBuilder(is_driver_on_k8s_tron=True)
         spark_conf = spark_conf_builder.get_spark_conf(
             cluster_manager="kubernetes",
@@ -359,7 +357,7 @@ class TronActionConfig(InstanceConfig):
             paasta_pool=self.get_spark_executor_pool(),
             paasta_service=self.get_service(),
             paasta_instance=self.get_instance(),
-            docker_img=docker_img_url,
+            docker_img=f"{self.get_docker_registry()}/$PAASTA_DOCKER_IMAGE",
             extra_volumes=self.get_volumes(
                 system_paasta_config.get_volumes(),
                 uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
