@@ -82,7 +82,7 @@ pytimeparse==1.1.5
 pytz==2016.10
 pyyaml==6.0.1
 repoze.lru==0.6
-requests==2.25.0
+requests==2.32.2
 requests-cache==0.6.3
 requests-oauthlib==1.2.0
 retry==0.9.2
