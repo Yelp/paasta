@@ -1,3 +1,12 @@
+paasta-tools (1.11.5) xenial; urgency=medium
+
+  * 1.11.5 tagged with 'make release'
+    Commit: Fix inconsistent spark driver and executor image (#3996)  *
+    Fix inconsistent spark driver and executor image  * Add docker
+    registry url
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 11 Feb 2025 10:56:27 -0800
+
 paasta-tools (1.11.4) xenial; urgency=medium
 
   * 1.11.4 tagged with 'make release'
