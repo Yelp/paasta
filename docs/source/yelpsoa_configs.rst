@@ -352,6 +352,9 @@ instance MAY have:
 
   * ``cmd``: The command that is executed. If a string, will be wrapped in ``/bin/sh -c``.
     If a list, will be executed directly as is with no shell parsing.
+    WARNING: if the command registers any signal handlers (e.g., you want to gracefully shutdown upon SIGTERM), you'll
+    need to pass the command in as a list to ensure that Kubernetes sends signals to a process that can handle them.
+    For internal users, COMPINFRA-4755 has some information around ways that we'll make this automatic/unnecessary in the future.
 
   * ``args``: An array of docker args if you use the `"entrypoint"
     <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality.
