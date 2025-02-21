@@ -14,12 +14,16 @@
 import argparse
 import logging
 import sys
+from multiprocessing import Pool
+from os import cpu_count
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Container
 from typing import List
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 
@@ -29,6 +33,7 @@ from mypy_extensions import NamedArg
 from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import group_pods_by_service_instance
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
@@ -132,6 +137,7 @@ def check_services_replication(
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
     all_pods: Sequence[V1Pod],
+    grouped_pods,
     dry_run: bool = False,
 ) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
@@ -152,6 +158,7 @@ def check_services_replication(
                 is_well_replicated = check_service_replication(
                     instance_config=instance_config,
                     all_pods=all_pods,
+                    grouped_pods=grouped_pods,
                     replication_checker=replication_checker,
                     dry_run=dry_run,
                 )
@@ -219,6 +226,8 @@ def main(
             system_paasta_config=system_paasta_config,
         )
 
+    grouped_pods = group_pods_by_service_instance(pods)
+
     count_under_replicated, total = check_services_replication(
         soa_dir=args.soa_dir,
         cluster=cluster,
@@ -227,6 +236,7 @@ def main(
         check_service_replication=check_service_replication,
         replication_checker=replication_checker,
         all_pods=pods,
+        grouped_pods=grouped_pods,
         dry_run=args.dry_run,
     )
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
@@ -256,21 +266,71 @@ def main(
     sys.exit(exit_code)
 
 
+def set_local_vars_configuration_to_none(obj, visited=None):
+    if visited is None:
+        visited = set()
+
+    # Avoid infinite recursion for objects that have already been visited
+    obj_id = id(obj)
+    if obj_id in visited:
+        return
+    visited.add(obj_id)
+
+    # Check if the object has the attribute and set it to None
+    if hasattr(obj, "local_vars_configuration"):
+        setattr(obj, "local_vars_configuration", None)
+
+    # Recursively check attributes of the object
+    if hasattr(obj, "__dict__"):
+        for attr_name, attr_value in obj.__dict__.items():
+            set_local_vars_configuration_to_none(attr_value, visited)
+
+    # If the object is iterable/a collection, iterate over its elements
+    elif isinstance(obj, (list, tuple, set)):
+        for item in obj:
+            set_local_vars_configuration_to_none(item, visited)
+    elif isinstance(obj, dict):
+        for value in obj.values():
+            set_local_vars_configuration_to_none(value, visited)
+
+
+def __fetch_pods(namespace: str) -> List[V1Pod]:
+    kube_client = KubeClient()
+    pods = get_all_pods(kube_client, namespace)
+    for pod in pods:
+        # this is pretty silly, but V1Pod cannot be pickled otherwise since the local_vars_configuration member
+        # is not picklable - and pretty much every k8s model has this member ;_;
+        set_local_vars_configuration_to_none(pod)
+    return pods
+
+
+def __get_all_pods_parallel(from_namespaces: Set[str]) -> List[V1Pod]:
+    all_pods: List[V1Pod] = []
+    # XXX: this is currently using a dummy pool which is thread-backed as using a process-backed pool errors with:
+    # `AttributeError("Can't pickle local object 'KubeConfigLoader._set_config.<locals>._refresh_api_key'")'`
+    # ... and I was unable to figure out where the KubeConfigLoader it's unhappy with is coming from (it's not in
+    # V1Pod afaict since I can pickle those without issue - so it's )
+    with Pool() as pool:
+        for pod_list in pool.imap_unordered(
+            __fetch_pods,
+            from_namespaces,
+            chunksize=len(from_namespaces) // cast(int, cpu_count()),
+        ):
+            all_pods.extend(pod_list)
+    return all_pods
+
+
 def get_kubernetes_pods_and_nodes(
     namespace: Optional[str] = None,
     additional_namespaces: Optional[Container[str]] = None,
 ) -> Tuple[List[V1Pod], List[V1Node]]:
     kube_client = KubeClient()
 
-    all_pods: List[V1Pod] = []
     if namespace:
         all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     else:
-        all_managed_namespaces = get_all_managed_namespaces(kube_client)
-        for managed_namespace in all_managed_namespaces:
-            all_pods.extend(
-                get_all_pods(kube_client=kube_client, namespace=managed_namespace)
-            )
+        all_managed_namespaces = set(get_all_managed_namespaces(kube_client))
+        all_pods = __get_all_pods_parallel(all_managed_namespaces)
 
     all_nodes = get_all_nodes(kube_client)
 

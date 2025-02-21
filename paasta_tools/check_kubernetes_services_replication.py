@@ -33,6 +33,7 @@ instance then it will be used instead.
 import logging
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import Union
 
 from paasta_tools import eks_tools
@@ -41,7 +42,6 @@ from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.check_services_replication_tools import parse_args
 from paasta_tools.eks_tools import EksDeploymentConfig
-from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
@@ -57,13 +57,13 @@ def check_healthy_kubernetes_tasks_for_service_instance(
     instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     expected_count: int,
     all_pods: Sequence[V1Pod],
+    grouped_pods,
     dry_run: bool = False,
 ) -> None:
-    si_pods = filter_pods_by_service_instance(
-        pod_list=all_pods,
-        service=instance_config.service,
-        instance=instance_config.instance,
+    si_pods = grouped_pods.get(instance_config.service, {}).get(
+        instance_config.instance, []
     )
+
     num_healthy_tasks = len([pod for pod in si_pods if is_pod_ready(pod)])
     log.info(
         f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack"
@@ -78,7 +78,8 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 def check_kubernetes_pod_replication(
     instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
-    all_pods: Sequence[V1Pod],
+    all_pods: Tuple[V1Pod, ...],
+    grouped_pods,
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
 ) -> Optional[bool]:
@@ -127,6 +128,7 @@ def check_kubernetes_pod_replication(
             instance_config=instance_config,
             expected_count=expected_count,
             all_pods=all_pods,
+            grouped_pods=grouped_pods,
             dry_run=dry_run,
         )
         return None

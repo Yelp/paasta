@@ -204,6 +204,7 @@ def get_multiple_backends(
     envoy_host: str,
     envoy_admin_port: int,
     envoy_admin_endpoint_format: str,
+    resolve_hostnames: bool = True,
 ) -> Dict[str, List[Tuple[EnvoyBackend, bool]]]:
     """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of backends.
 
@@ -247,11 +248,15 @@ def get_multiple_backends(
                                 casper_endpoint_found = True
                                 continue
 
-                        try:
-                            hostname = socket.gethostbyaddr(address)[0].split(".")[0]
-                        except socket.herror:
-                            # Default to the raw IP address if we can't lookup the hostname
-                            hostname = address
+                        hostname = address
+                        if resolve_hostnames:
+                            try:
+                                hostname = socket.gethostbyaddr(address)[0].split(".")[
+                                    0
+                                ]
+                            except socket.herror:
+                                # Default to the raw IP address if we can't lookup the hostname
+                                pass
 
                         cluster_backends.append(
                             (
@@ -352,6 +357,7 @@ def get_replication_for_all_services(
         envoy_host=envoy_host,
         envoy_admin_port=envoy_admin_port,
         envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+        resolve_hostnames=False,  # we're not really going to use the hostnames, so skip fetching them to save time
     )
     return collections.Counter(
         [
