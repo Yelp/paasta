@@ -40,6 +40,7 @@ from kubernetes.client import V1NodeSelectorTerm
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
+from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
 from kubernetes.client import V1PodDisruptionBudget
@@ -120,6 +121,7 @@ from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_secret_signature
 from paasta_tools.kubernetes_tools import get_service_account_name
+from paasta_tools.kubernetes_tools import group_pods_by_service_instance
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
@@ -5147,3 +5149,82 @@ def test_add_volumes_for_authenticating_services(
     mock_get_auth_services.assert_called_once_with("/mock/soa/dir")
     # verifying that the method does not do in-place updates
     assert existing_config == existing_config_copy
+
+
+def create_pod(name: str, labels: Dict[str, str]) -> V1Pod:
+    """Helper function to create a mock V1Pod with given labels."""
+    metadata = V1ObjectMeta(name=name, labels=labels)
+    return V1Pod(metadata=metadata)
+
+
+def test_group_pods_by_service_instance():
+    pod1 = create_pod(
+        "pod1",
+        {
+            "paasta.yelp.com/service": "serviceA",
+            "paasta.yelp.com/instance": "instance1",
+        },
+    )
+    pod2 = create_pod(
+        "pod2",
+        {
+            "paasta.yelp.com/service": "serviceA",
+            "paasta.yelp.com/instance": "instance1",
+        },
+    )
+    pod3 = create_pod(
+        "pod3",
+        {
+            "paasta.yelp.com/service": "serviceA",
+            "paasta.yelp.com/instance": "instance2",
+        },
+    )
+    pod4 = create_pod(
+        "pod4",
+        {
+            "paasta.yelp.com/service": "serviceB",
+            "paasta.yelp.com/instance": "instance1",
+        },
+    )
+
+    pods: List[V1Pod] = [pod1, pod2, pod3, pod4]
+
+    expected_output = {
+        "serviceA": {
+            "instance1": [pod1, pod2],
+            "instance2": [pod3],
+        },
+        "serviceB": {
+            "instance1": [pod4],
+        },
+    }
+
+    assert group_pods_by_service_instance(pods) == expected_output
+
+
+def test_group_pods_by_service_instance_with_missing_labels():
+    # Create pods with missing labels
+    pod1 = create_pod(
+        "pod1", {"paasta.yelp.com/service": "serviceA"}
+    )  # Missing instance
+    pod2 = create_pod(
+        "pod2", {"paasta.yelp.com/instance": "instance1"}
+    )  # Missing service
+    pod3 = create_pod("pod3", {})  # No labels at all
+
+    pods: List[V1Pod] = [pod1, pod2, pod3]
+
+    # Since none of the pods have both required labels, the result should be an empty dictionary
+    assert group_pods_by_service_instance(pods) == {}
+
+
+def test_group_pods_by_service_instance_with_no_pods():
+    # Empty list of pods
+    assert group_pods_by_service_instance([]) == {}
+
+
+def test_group_pods_by_service_instance_with_none_labels():
+    # Pod with metadata.labels set to None
+    pod1 = V1Pod(metadata=V1ObjectMeta(name="pod1", labels=None))
+
+    assert group_pods_by_service_instance([pod1]) == {}

@@ -79,6 +79,11 @@ def test_check_services_replication():
         mock_replication_checker = mock.Mock()
         mock_pods = [mock.Mock(), mock.Mock()]
         mock_check_service_replication.return_value = True
+        grouped_pods = {
+            instance_config.service: {
+                instance_config.instance: mock_pods,
+            }
+        }
 
         (
             count_under_replicated,
@@ -90,7 +95,7 @@ def test_check_services_replication():
             instance_type_class=None,
             check_service_replication=mock_check_service_replication,
             replication_checker=mock_replication_checker,
-            all_pods=mock_pods,
+            grouped_pods=grouped_pods,
             dry_run=True,
         )
         mock_paasta_service_config_loader.assert_called_once_with(
@@ -99,7 +104,7 @@ def test_check_services_replication():
         instance_config.get_docker_image.assert_called_once_with()
         mock_check_service_replication.assert_called_once_with(
             instance_config=instance_config,
-            all_pods=mock_pods,
+            grouped_pods=grouped_pods,
             replication_checker=mock_replication_checker,
             dry_run=True,
         )

@@ -109,7 +109,6 @@ def test_check_under_registered_taskmanagers_error(mock_overview, instance_confi
 
 
 def test_check_flink_service_health_healthy(instance_config):
-    all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
@@ -128,7 +127,7 @@ def test_check_flink_service_health_healthy(instance_config):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            grouped_pods={},
             replication_checker=None,
             dry_run=True,
         )
@@ -174,7 +173,6 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         if kwargs["sub_component"] == "taskmanager":
             return True, "NOPE", "check_rep"
 
-    all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
@@ -193,7 +191,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            grouped_pods={},
             replication_checker=None,
             dry_run=True,
         )
@@ -231,7 +229,6 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
 
 
 def test_check_flink_service_health_under_registered_taskamanagers(instance_config):
-    all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
@@ -250,7 +247,7 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            grouped_pods={},
             replication_checker=None,
             dry_run=True,
         )
