@@ -881,7 +881,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         autoscaling_params = self.get_autoscaling_params()
-        if autoscaling_params["metrics_providers"][0]["decision_policy"] == "bespoke":
+        if (
+            autoscaling_params["metrics_providers"][0].get("decision_policy", "")
+            == "bespoke"
+        ):
             return None
 
         min_replicas = self.get_min_instances()
