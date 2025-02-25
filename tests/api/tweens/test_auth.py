@@ -39,11 +39,14 @@ def test_call(mock_auth_tween):
         path="/something",
         method="post",
         headers={"Authorization": "Bearer aaa.bbb.ccc"},
+        swagger_data={"service": "foobar"},
     )
     with patch.object(mock_auth_tween, "is_request_authorized") as mock_is_authorized:
         mock_is_authorized.return_value = auth.AuthorizationOutcome(True, "Ok")
         mock_auth_tween(mock_request)
-        mock_is_authorized.assert_called_once_with("/something", "aaa.bbb.ccc", "post")
+        mock_is_authorized.assert_called_once_with(
+            "/something", "aaa.bbb.ccc", "post", "foobar"
+        )
         mock_auth_tween.handler.assert_called_once_with(mock_request)
 
 
@@ -52,6 +55,7 @@ def test_call_deny(mock_auth_tween):
         path="/something",
         method="post",
         headers={"Authorization": "Bearer aaa.bbb.ccc"},
+        swagger_data={},
     )
     with patch.object(mock_auth_tween, "is_request_authorized") as mock_is_authorized:
         mock_is_authorized.return_value = auth.AuthorizationOutcome(False, "Denied")
@@ -65,7 +69,7 @@ def test_is_request_authorized(mock_auth_tween):
         "result": {"allowed": True, "reason": "User allowed"}
     }
     assert mock_auth_tween.is_request_authorized(
-        "/allowed", "aaa.bbb.ccc", "get"
+        "/allowed", "aaa.bbb.ccc", "get", "foobar"
     ) == auth.AuthorizationOutcome(True, "User allowed")
     mock_auth_tween.session.post.assert_called_once_with(
         url="http://localhost:31337",
@@ -75,6 +79,7 @@ def test_is_request_authorized(mock_auth_tween):
                 "backend": "paasta",
                 "token": "aaa.bbb.ccc",
                 "method": "get",
+                "service": "foobar",
             }
         },
         timeout=2,
@@ -84,12 +89,18 @@ def test_is_request_authorized(mock_auth_tween):
 def test_is_request_authorized_fail(mock_auth_tween):
     mock_auth_tween.session.post.side_effect = Exception
     assert mock_auth_tween.is_request_authorized(
-        "/allowed", "eee.ddd.fff", "get"
+        "/allowed",
+        "eee.ddd.fff",
+        "get",
+        "foobar",
     ) == auth.AuthorizationOutcome(False, "Auth backend error")
 
 
 def test_is_request_authorized_malformed(mock_auth_tween):
     mock_auth_tween.session.post.return_value.json.return_value = {"foo": "bar"}
     assert mock_auth_tween.is_request_authorized(
-        "/allowed", "eee.ddd.fff", "post"
+        "/allowed",
+        "eee.ddd.fff",
+        "post",
+        "foobar",
     ) == auth.AuthorizationOutcome(False, "Malformed auth response")

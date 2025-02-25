@@ -16,6 +16,7 @@ import json
 import logging
 import os
 from typing import NamedTuple
+from typing import Optional
 
 import cachetools.func
 import pyramid
@@ -53,7 +54,12 @@ class AuthTweenFactory:
         """
         token = request.headers.get("Authorization", "").strip()
         token = token.split()[-1] if token else ""  # removes "Bearer" prefix
-        auth_outcome = self.is_request_authorized(request.path, token, request.method)
+        auth_outcome = self.is_request_authorized(
+            request.path,
+            token,
+            request.method,
+            request.swagger_data.get("service", None),
+        )
         if self.enforce and not auth_outcome.authorized:
             return HTTPForbidden(
                 body=json.dumps({"reason": auth_outcome.reason}),
@@ -65,7 +71,11 @@ class AuthTweenFactory:
 
     @cachetools.func.ttl_cache(maxsize=AUTH_CACHE_SIZE, ttl=AUTH_CACHE_TTL)
     def is_request_authorized(
-        self, path: str, token: str, method: str
+        self,
+        path: str,
+        token: str,
+        method: str,
+        service: Optional[str],
     ) -> AuthorizationOutcome:
         """Check if API request is authorized
 
@@ -83,6 +93,7 @@ class AuthTweenFactory:
                         "backend": "paasta",
                         "token": token,
                         "method": method,
+                        "service": service,
                     },
                 },
                 timeout=2,
