@@ -999,7 +999,9 @@ class InstanceConfig:
         return self.config_dict.get("net", "bridge")
 
     def get_volumes(
-        self, system_volumes: Sequence[DockerVolume], uses_bulkdata_default: bool = True
+        self,
+        system_volumes: Sequence[DockerVolume],
+        uses_bulkdata_default: bool = False,
     ) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
         # we used to add bulkdata as a default mount - but as part of the
@@ -2760,7 +2762,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("always_authenticating_services", [])
 
     def get_uses_bulkdata_default(self) -> bool:
-        return self.config_dict.get("uses_bulkdata_default", True)
+        return self.config_dict.get("uses_bulkdata_default", False)
 
     def get_enable_automated_redeploys_default(self) -> bool:
         return self.config_dict.get("enable_automated_redeploys_default", False)
