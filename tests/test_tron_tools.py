@@ -1330,6 +1330,8 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/service=my_service "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
+            "--conf spark.kubernetes.executor.annotation.paasta.yelp.com/service=my_service "
+            "--conf spark.kubernetes.executor.annotation.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/user=TRON "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=39091 "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
