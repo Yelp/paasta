@@ -1561,13 +1561,7 @@ class TestTronTools:
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "secret_volumes": [],
-            "extra_volumes": [
-                {
-                    "container_path": "/nail/bulkdata",
-                    "host_path": "/nail/bulkdata",
-                    "mode": "RO",
-                }
-            ],
+            "extra_volumes": [],
             "service_account_name": "a-magic-sa",
         }
         expected_docker = "{}/{}".format(
