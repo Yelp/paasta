@@ -235,9 +235,18 @@ def get_spark_driver_monitoring_annotations(
     Returns Spark driver pod annotations - currently used for Prometheus metadata.
     """
     ui_port_str = str(spark_config.get("spark.ui.port", ""))
+    paasta_service_non_truncated = spark_config.get(
+        "spark.kubernetes.executor.annotation.paasta.yelp.com/service", ""
+    )
+    paasta_instance_non_truncated = spark_config.get(
+        "spark.kubernetes.executor.annotation.paasta.yelp.com/instance", ""
+    )
+
     annotations = {
         "prometheus.io/port": ui_port_str,
         "prometheus.io/path": "/metrics/prometheus",
+        "paasta.yelp.com/service": paasta_service_non_truncated,
+        "paasta.yelp.com/instance": paasta_instance_non_truncated,
     }
     return annotations
 
