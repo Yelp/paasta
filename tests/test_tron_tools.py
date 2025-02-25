@@ -2002,7 +2002,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "31634ab048abe9b40b71851797d48e4d"
+        assert hasher.hexdigest() == "7ba92b71a5cdf536665260ac3fca76b3"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
