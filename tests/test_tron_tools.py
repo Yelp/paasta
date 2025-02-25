@@ -1454,6 +1454,8 @@ class TestTronTools:
                 "paasta.yelp.com/instance": "my_job.do_something",
                 "prometheus.io/port": "39091",
                 "prometheus.io/path": "/metrics/prometheus",
+                "paasta.yelp.com/paasta_service": "my_service",
+                "paasta.yelp.com/paasta_instance": "my_job.do_something",
             },
             "extra_volumes": [
                 {
