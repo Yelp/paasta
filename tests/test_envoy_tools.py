@@ -319,7 +319,7 @@ class TestServicesUpInPod:
 
     @mock.patch("paasta_tools.envoy_tools.open", autospec=False)
     @mock.patch("paasta_tools.envoy_tools.os.access", autospec=True)
-    @mock.patch("paasta_tools.envoy_tools.yaml.safe_load", autospec=True)
+    @mock.patch("paasta_tools.envoy_tools.safe_load_yaml", autospec=True)
     def test_get_backends_from_eds(self, mock_yaml, mock_os_access, mock_open):
 
         mock_yaml.return_value = {"resources": [{"endpoints": None}]}
