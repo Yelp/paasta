@@ -102,10 +102,11 @@ class AuthTweenFactory:
             logger.exception(f"Issue communicating with auth endpoint: {e}")
             return AuthorizationOutcome(False, "Auth backend error")
 
-        if "result" not in response or "allowed" not in response["result"]:
+        auth_result_allowed = response.get("result", {}).get("allowed")
+        if auth_result_allowed is None:
             return AuthorizationOutcome(False, "Malformed auth response")
 
-        if not response["result"]["allowed"]:
+        if not auth_result_allowed:
             reason = response["result"].get("reason", "Denied")
             return AuthorizationOutcome(False, reason)
 

@@ -17,8 +17,10 @@ from unittest.mock import patch
 
 import pytest
 from pyramid.httpexceptions import HTTPForbidden
+from pyramid.registry import Registry
 
 from paasta_tools.api.tweens import auth
+from paasta_tools.api.tweens import Handler
 
 
 @pytest.fixture
@@ -31,7 +33,10 @@ def mock_auth_tween():
         },
     ):
         with patch("paasta_tools.api.tweens.auth.requests"):
-            yield auth.AuthTweenFactory(MagicMock(), MagicMock())
+            yield auth.AuthTweenFactory(
+                MagicMock(spec=Handler),
+                MagicMock(spec=Registry),
+            )
 
 
 def test_call(mock_auth_tween):
