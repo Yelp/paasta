@@ -1,3 +1,12 @@
+paasta-tools (1.11.6) xenial; urgency=medium
+
+  * 1.11.6 tagged with 'make release'
+    Commit: Merge pull request #4009 from Yelp/u/mames/PERES-5136-
+    uses_bulkdata_default-false  Set value for uses_bulkdata_default to
+    False
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 26 Feb 2025 07:28:29 -0800
+
 paasta-tools (1.11.5) xenial; urgency=medium
 
   * 1.11.5 tagged with 'make release'
