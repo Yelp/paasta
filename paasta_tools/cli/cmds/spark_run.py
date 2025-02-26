@@ -34,6 +34,7 @@ from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
+from paasta_tools.spark_tools import docker_volumes_to_mappings
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
@@ -1253,7 +1254,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         paasta_pool=args.pool,
         paasta_service=args.service,
         paasta_instance=paasta_instance,
-        extra_volumes=volumes,
+        extra_volumes=docker_volumes_to_mappings(volumes),
         aws_creds=aws_creds,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,

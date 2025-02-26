@@ -265,3 +265,9 @@ def get_spark_driver_monitoring_labels(
         "spark.yelp.com/driver_ui_port": ui_port_str,
     }
     return labels
+
+
+def docker_volumes_to_mappings(
+    docker_volumes: List[DockerVolume],
+) -> List[Mapping[str, str]]:
+    return [{k: str(v) for k, v in volume.items()} for volume in docker_volumes]

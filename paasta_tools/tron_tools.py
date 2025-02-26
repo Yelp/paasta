@@ -358,9 +358,11 @@ class TronActionConfig(InstanceConfig):
             paasta_service=self.get_service(),
             paasta_instance=self.get_instance(),
             docker_img=f"{self.get_docker_registry()}/$PAASTA_DOCKER_IMAGE",
-            extra_volumes=self.get_volumes(
-                system_paasta_config.get_volumes(),
-                uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
+            extra_volumes=spark_tools.docker_volumes_to_mappings(
+                self.get_volumes(
+                    system_paasta_config.get_volumes(),
+                    uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
+                ),
             ),
             use_eks=True,
             k8s_server_address=get_k8s_url_for_cluster(self.get_cluster()),
