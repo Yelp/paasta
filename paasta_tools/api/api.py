@@ -24,7 +24,6 @@ import sys
 import manhole
 import requests_cache
 import service_configuration_lib
-import yaml
 from pyramid.config import Configurator
 from wsgicors import CORS
 
@@ -33,6 +32,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import profiling
 from paasta_tools.api.tweens import request_logger
+from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.utils import load_system_paasta_config
 
 try:
@@ -233,7 +233,7 @@ def setup_clog(config_file="/nail/srv/configs/clog.yaml"):
     if clog:
         if os.path.exists(config_file):
             with open(config_file) as fp:
-                clog_config = yaml.safe_load(fp)
+                clog_config = safe_load_yaml(fp)
         else:
             # these are barebones basic configs from /nail/srv/configs/clog.yaml
             clog_config = {

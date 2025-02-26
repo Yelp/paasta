@@ -33,7 +33,6 @@ from typing import Tuple
 from typing import Union
 
 import pytz
-import yaml
 from croniter import croniter
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
@@ -63,6 +62,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
+from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -341,7 +341,7 @@ def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, 
                 )
                 return ruamel_loader.load(config_file)
             else:
-                return yaml.safe_load(config_file)
+                return safe_load_yaml(config_file)
         elif extension == ".json":
             return json.loads(config_file)
         else:

@@ -26,12 +26,11 @@ import sys
 from typing import Dict
 from typing import List
 
-import ruamel.yaml as yaml
-
 from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
 from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import MASTER_NAMESPACE
@@ -168,7 +167,7 @@ def main():
             log.exception(f"Error while updating {MASTER_NAMESPACE}:")
 
     k8s_enabled_for_cluster = (
-        yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
+        safe_load_yaml(master_config).get("k8s_options", {}).get("enabled", False)
     )
     new_configs: Dict[str, str] = {}  # service -> new_config
     for service in sorted(services):

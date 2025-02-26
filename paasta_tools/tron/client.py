@@ -15,8 +15,8 @@ from typing import Dict
 from urllib.parse import urljoin
 
 import requests
-import yaml
 
+from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.utils import get_user_agent
 
 
@@ -83,7 +83,7 @@ class TronClient:
         current_config = self._get("/api/config", {"name": namespace, "no_header": 1})
 
         if skip_if_unchanged:
-            if yaml.safe_load(new_config) == yaml.safe_load(current_config["config"]):
+            if safe_load_yaml(new_config) == safe_load_yaml(current_config["config"]):
                 log.debug("No change in config, skipping update.")
                 return
 
@@ -112,7 +112,7 @@ class TronClient:
         for namespace, new_config in new_configs.items():
             current_config = current_configs.get(namespace, {})
             if skip_if_unchanged:
-                if yaml.safe_load(new_config) == yaml.safe_load(
+                if safe_load_yaml(new_config) == safe_load_yaml(
                     current_config["config"]
                 ):
                     log.debug("No change in config, skipping update.")

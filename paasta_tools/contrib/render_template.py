@@ -3,7 +3,7 @@ import argparse
 import os
 import re
 
-import yaml
+from paasta_tools.paasta_yaml import safe_load_yaml
 
 
 def replace(s, values):
@@ -103,7 +103,7 @@ def render_values(src: str, dst: str, values: str, overwrite=True) -> None:
     config_dict = {}
     if values is not None:
         with open(values) as f:
-            config_dict = yaml.safe_load(f)
+            config_dict = safe_load_yaml(f)
     # Replace environment variables in values.yaml with environment variables
     for k, v in config_dict.items():
         config_dict[k] = re.sub(
