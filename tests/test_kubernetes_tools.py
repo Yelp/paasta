@@ -152,6 +152,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
@@ -2449,6 +2450,90 @@ class TestKubernetesDeploymentConfig:
                             target=V2MetricTarget(
                                 type="Value",
                                 value=1,
+                            ),
+                            described_object=V2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                        ),
+                    ),
+                ],
+                scale_target_ref=V2CrossVersionObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
+                ),
+            ),
+        )
+
+        assert expected_res == return_value
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+        ),
+    )
+    def test_get_autoscaling_metric_spec_uwsgi_v2_prometheus(
+        self, fake_system_paasta_config
+    ):
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_UWSGI_V2,
+                            "setpoint": 0.4,
+                            "forecast_policy": "moving_average",
+                            "moving_average_window_seconds": 300,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+            "paasta",
+        )
+        expected_res = V2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={},
+                labels=mock.ANY,
+            ),
+            spec=V2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2MetricSpec(
+                        type="Object",
+                        object=V2ObjectMetricSource(
+                            metric=V2MetricIdentifier(
+                                name="service-instance-uwsgi-v2-prom",
+                            ),
+                            target=V2MetricTarget(
+                                type="AverageValue",
+                                average_value=0.4,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",

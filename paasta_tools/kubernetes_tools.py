@@ -148,6 +148,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -854,6 +855,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         # Use the setpoint specified by the user.
                         type="Value",
                         value=target,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+            return V2MetricSpec(
+                type="Object",
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    described_object=V2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2MetricTarget(
+                        type="AverageValue",
+                        average_value=target,
                     ),
                 ),
             )

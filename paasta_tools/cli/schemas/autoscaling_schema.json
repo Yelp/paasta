@@ -6,6 +6,7 @@
             "type": {
                 "enum": [
                     "uwsgi",
+                    "uwsgi-v2",
                     "cpu",
                     "piscina",
                     "gunicorn",

@@ -1,3 +1,17 @@
+paasta-tools (1.12.1) xenial; urgency=medium
+
+  * 1.12.1 tagged with 'make release'
+    Commit: Merge branch "u/krall/hpa_averageutilization"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 26 Feb 2025 18:16:13 -0800
+
+paasta-tools (1.12.0) xenial; urgency=medium
+
+  * 1.12.0 tagged with 'make release'
+    Commit: Released 1.11.6 via make release
+
+ -- Evan Krall <krall@yelp.com>  Wed, 26 Feb 2025 17:59:51 -0800
+
 paasta-tools (1.11.6) xenial; urgency=medium
 
   * 1.11.6 tagged with 'make release'
