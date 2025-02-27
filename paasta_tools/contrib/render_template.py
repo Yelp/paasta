@@ -3,7 +3,7 @@ import argparse
 import os
 import re
 
-import yaml
+from paasta_tools import yaml
 
 
 def replace(s, values):

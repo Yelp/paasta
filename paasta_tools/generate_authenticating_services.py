@@ -24,8 +24,7 @@ from typing import Dict
 from typing import List
 from typing import Set
 
-import yaml
-
+from paasta_tools import yaml
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import write_json_configuration_file

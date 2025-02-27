@@ -32,8 +32,8 @@ from typing import Mapping
 from typing import Set
 
 import kubernetes.client as k8s
-import yaml
 
+from paasta_tools import yaml
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash

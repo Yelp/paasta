@@ -15,10 +15,10 @@ import subprocess
 
 import mock
 import pytest
-import yaml
 
 from paasta_tools import firewall
 from paasta_tools import firewall_update
+from paasta_tools import yaml
 from paasta_tools.utils import TimeoutError
 
 
