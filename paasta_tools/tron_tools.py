@@ -31,7 +31,7 @@ from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import get_total_driver_memory_mb
 from service_configuration_lib.spark_config import SparkConfBuilder
 
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.mesos_tools import mesos_services_running_here
 
 try:

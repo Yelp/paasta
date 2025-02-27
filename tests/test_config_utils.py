@@ -4,7 +4,7 @@ import mock
 import pytest
 
 import paasta_tools.config_utils as config_utils
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 

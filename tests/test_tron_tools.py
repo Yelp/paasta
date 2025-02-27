@@ -8,7 +8,7 @@ import pytest
 
 from paasta_tools import tron_tools
 from paasta_tools import utils
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES

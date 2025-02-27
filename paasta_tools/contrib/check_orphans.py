@@ -22,7 +22,7 @@ from typing import Tuple
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 
 logger = logging.getLogger("check_orphans")
 

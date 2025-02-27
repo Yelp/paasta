@@ -21,7 +21,7 @@ from prometheus_client import Gauge
 from prometheus_client import write_to_textfile
 from prometheus_client.metrics import MetricWrapperBase
 
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 PROM_OUTPUT_FILE = f"{DEFAULT_SOA_DIR}/.autotune_timeouts.prom"

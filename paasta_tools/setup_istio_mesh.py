@@ -33,7 +33,7 @@ from typing import Set
 
 import kubernetes.client as k8s
 
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
@@ -99,7 +99,7 @@ def load_smartstack_namespaces(soa_dir: str = DEFAULT_SOA_DIR) -> Mapping:
             continue
         try:
             with open(file_path) as f:
-                svc_namespaces = yaml.load(f, Loader=yaml.CSafeLoader)
+                svc_namespaces = yaml.safe_load(f)
                 for (ns, details) in svc_namespaces.items():
                     namespaces[f"{dir}.{ns}"] = details
         except Exception as err:

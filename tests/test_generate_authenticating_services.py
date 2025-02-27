@@ -16,7 +16,7 @@ from unittest.mock import patch
 import pytest
 
 from paasta_tools import generate_authenticating_services
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 
 
 @pytest.fixture

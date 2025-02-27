@@ -14,7 +14,7 @@
 import os
 import random
 
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 
 
 def _get_smartstack_proxy_ports_from_file(root, file):

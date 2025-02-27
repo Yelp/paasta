@@ -29,7 +29,7 @@ from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import kubernetes_tools
-from paasta_tools import yaml
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import profiling
 from paasta_tools.api.tweens import request_logger
