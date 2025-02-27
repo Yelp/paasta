@@ -22,7 +22,7 @@ def dump(*args, **kwargs):
     return yaml.dump(*args, **kwargs)
 
 
-def safe_dump_all(*args, **kwargs):
+def dump_all(*args, **kwargs):
     kwargs["Dumper"] = Dumper
     return yaml.dump_all(*args, **kwargs)
 
@@ -38,5 +38,6 @@ def load_all(*args, **kwargs):
 
 
 safe_dump = dump
+safe_dump_all = dump_all
 safe_load = load
 safe_load_all = load_all
