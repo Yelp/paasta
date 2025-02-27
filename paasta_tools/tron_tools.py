@@ -33,11 +33,10 @@ from service_configuration_lib.spark_config import get_total_driver_memory_mb
 from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools.mesos_tools import mesos_services_running_here
-from paasta_tools.paasta_yaml import safe_load_yaml
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
-except ImportError:  # noqa: F401
+except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
 from paasta_tools.clusterman import get_clusterman_metrics
@@ -1339,7 +1338,7 @@ def validate_complete_config(
     # given that the kill-switch will affect PaaSTA's setup_tron_namespace script (we're
     # not reading the kill-switch in Tron since it's not easily accessible at the point
     # at which we'd like to fallback to Mesos if toggled)
-    master_config = safe_load_yaml(
+    master_config = yaml.safe_load(
         create_complete_master_config(cluster=cluster, soa_dir=soa_dir)
     )
     k8s_enabled_for_cluster = master_config.get("k8s_options", {}).get("enabled", False)

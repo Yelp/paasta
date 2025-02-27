@@ -30,10 +30,10 @@ from typing import Set
 from typing import Tuple
 
 import requests
+import yaml
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
-from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.utils import get_user_agent
 
 
@@ -154,7 +154,7 @@ def get_backends_from_eds(namespace: str, envoy_eds_path: str) -> List[Tuple[str
 
     if os.access(eds_file_for_namespace, os.R_OK):
         with open(eds_file_for_namespace) as f:
-            eds_yaml = safe_load_yaml(f)
+            eds_yaml = yaml.safe_load(f)
             for resource in eds_yaml.get("resources", []):
                 endpoints = resource.get("endpoints")
                 # endpoints could be None if there are no backends listed

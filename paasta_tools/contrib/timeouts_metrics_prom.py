@@ -16,12 +16,12 @@ yelpsoaconfig_endpoint_timeouts_ms{path="/",upstream="mysql_read_security.main.e
 """
 import os
 
+import yaml
 from prometheus_client import CollectorRegistry
 from prometheus_client import Gauge
 from prometheus_client import write_to_textfile
 from prometheus_client.metrics import MetricWrapperBase
 
-from paasta_tools.paasta_yaml import safe_load_yaml
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 PROM_OUTPUT_FILE = f"{DEFAULT_SOA_DIR}/.autotune_timeouts.prom"
@@ -32,7 +32,7 @@ def read_and_write_timeouts_metrics(
     root: str, service: str, prom_metric: MetricWrapperBase
 ) -> None:
     with open(os.path.join(root, "smartstack.yaml")) as smartstack_file:
-        smartstack_yaml = safe_load_yaml(smartstack_file)
+        smartstack_yaml = yaml.safe_load(smartstack_file)
     for instance_name, info in smartstack_yaml.items():
         upstream = f"{service}.{instance_name}.egress_cluster"
         if "endpoint_timeouts" in info:

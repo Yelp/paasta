@@ -14,7 +14,7 @@
 import os
 import random
 
-from paasta_tools.paasta_yaml import safe_load_yaml
+import yaml
 
 
 def _get_smartstack_proxy_ports_from_file(root, file):
@@ -24,7 +24,7 @@ def _get_smartstack_proxy_ports_from_file(root, file):
     """
     ports = set()
     with open(os.path.join(root, file)) as f:
-        data = safe_load_yaml(f)
+        data = yaml.safe_load(f)
 
     if file.endswith("service.yaml") and "smartstack" in data:
         # Specifying this in service.yaml is old and deprecated and doesn't

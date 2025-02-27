@@ -19,10 +19,9 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import yaml
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
-
-from paasta_tools.paasta_yaml import safe_load_yaml
 
 logger = logging.getLogger("check_orphans")
 
@@ -41,7 +40,7 @@ class ExitCode(Enum):
 
 def get_zk_hosts(path: str) -> List[str]:
     with open(path) as f:
-        x = safe_load_yaml(f)
+        x = yaml.safe_load(f)
     return [f"{host}:{port}" for host, port in x]
 
 

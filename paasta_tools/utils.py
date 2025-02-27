@@ -83,7 +83,6 @@ from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
-from paasta_tools.paasta_yaml import safe_load_yaml
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -4253,7 +4252,7 @@ def write_yaml_configuration_file(
     :param bool check_existing: if existing file already matches config, do not overwrite
     """
     if check_existing:
-        previous_config = maybe_load_previous_config(filename, safe_load_yaml)
+        previous_config = maybe_load_previous_config(filename, yaml.safe_load)
         if previous_config and previous_config == configuration:
             return
 

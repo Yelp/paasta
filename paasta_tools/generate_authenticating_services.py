@@ -24,7 +24,8 @@ from typing import Dict
 from typing import List
 from typing import Set
 
-from paasta_tools.paasta_yaml import safe_load_yaml
+import yaml
+
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import write_json_configuration_file
@@ -38,7 +39,7 @@ def list_services_in_authz_config(config_path: str) -> Set[str]:
     auth_config: dict = {}
     try:
         with open(config_path) as f:
-            auth_config = safe_load_yaml(f)
+            auth_config = yaml.safe_load(f)
     except Exception as e:
         logging.warning(f"Issue loading {config_path}: {e}")
     return {
