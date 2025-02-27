@@ -1,3 +1,21 @@
+paasta-tools (1.13.0) xenial; urgency=medium
+
+  * 1.13.0 tagged with 'make release'
+    Commit: auth support for paasta APIs (#3985)  Support for an authn/z
+    tween in the PaaSTA API (mostly inspired by previous work).  There"s
+    nothing too surprising here. Maybe the only unusual aspect is that I
+    picked to make "dry-run" the default rather than the other way
+    around. It makes things easier to roll out.  For how the codebase is
+    structured loading the token transparently could be a bit of a pain,
+    especially if we want to maintain a bunch of un-auth endpoints, so I
+    just added the option to set the token header in the API client.
+    From there in the CLI implementations that need auth we can do
+    ```python from paasta_tools.cli.utils import
+    get_sso_service_auth_token ... get_paasta_oapi_client(...,
+    get_sso_service_auth_token()) ```
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 27 Feb 2025 13:37:46 -0800
+
 paasta-tools (1.12.1) xenial; urgency=medium
 
   * 1.12.1 tagged with 'make release'
