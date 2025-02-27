@@ -1,3 +1,11 @@
+paasta-tools (1.13.2) xenial; urgency=medium
+
+  * 1.13.2 tagged with 'make release'
+    Commit: Support uwsgi-v2 metrics provider in paasta validate. PAASTA-
+    18551
+
+ -- Evan Krall <krall@yelp.com>  Thu, 27 Feb 2025 14:41:09 -0800
+
 paasta-tools (1.13.1) xenial; urgency=medium
 
   * 1.13.1 tagged with 'make release'
