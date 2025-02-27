@@ -1,3 +1,18 @@
+paasta-tools (1.13.1) xenial; urgency=medium
+
+  * 1.13.1 tagged with 'make release'
+    Commit: Use C-accelerated safe_load for YAML (#4011)  PaaSTA is
+    really just YAML all the way down, so using the pure Python
+    functions here leads to a considerable slowdown - this change alone
+    shaves ~20s off of setup_tron_namespace in one of our non-prod
+    clusters  e.g., the below are from a "noop" (i.e., no tron config
+    changes to deploy) run of setup_tron_namespace: status quo:
+    https://fluffy.yelpcorp.com/i/2tSjKC6btSV1RR8t3Z9FdBJrQrhRBPTR.svg
+    this change:
+    https://fluffy.yelpcorp.com/i/lMfLdcX1ZldCG8X1SNGQTB2Sg51fvldP.svg
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 27 Feb 2025 14:14:18 -0800
+
 paasta-tools (1.13.0) xenial; urgency=medium
 
   * 1.13.0 tagged with 'make release'
