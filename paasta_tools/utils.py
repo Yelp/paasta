@@ -74,7 +74,6 @@ import dateutil.tz
 import ldap3
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import APIClient
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -83,6 +82,7 @@ from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
+from paasta_tools import yaml_tools as yaml
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES

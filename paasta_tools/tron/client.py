@@ -15,8 +15,8 @@ from typing import Dict
 from urllib.parse import urljoin
 
 import requests
-import yaml
 
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import get_user_agent
 
 

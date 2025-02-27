@@ -33,7 +33,6 @@ from typing import Tuple
 from typing import Union
 
 import pytz
-import yaml
 from croniter import croniter
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
@@ -45,6 +44,7 @@ from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents

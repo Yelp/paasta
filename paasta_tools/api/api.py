@@ -24,12 +24,12 @@ import sys
 import manhole
 import requests_cache
 import service_configuration_lib
-import yaml
 from pyramid.config import Configurator
 from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import kubernetes_tools
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import auth
 from paasta_tools.api.tweens import profiling

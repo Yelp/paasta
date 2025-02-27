@@ -16,12 +16,12 @@ yelpsoaconfig_endpoint_timeouts_ms{path="/",upstream="mysql_read_security.main.e
 """
 import os
 
-import yaml
 from prometheus_client import CollectorRegistry
 from prometheus_client import Gauge
 from prometheus_client import write_to_textfile
 from prometheus_client.metrics import MetricWrapperBase
 
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 PROM_OUTPUT_FILE = f"{DEFAULT_SOA_DIR}/.autotune_timeouts.prom"

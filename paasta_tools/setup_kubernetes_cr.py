@@ -28,9 +28,9 @@ from typing import Mapping
 from typing import Optional
 from typing import Sequence
 
-import yaml
 from kubernetes.client.exceptions import ApiException
 
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
 from paasta_tools.kubernetes_tools import create_custom_resource

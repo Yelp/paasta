@@ -30,10 +30,10 @@ from typing import Set
 from typing import Tuple
 
 import requests
-import yaml
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import get_user_agent
 
 
