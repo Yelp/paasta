@@ -24,9 +24,9 @@ class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self, mock_read_etc_services):
         with mock.patch("builtins.open", autospec=True):
             with mock.patch(
-                "paasta_tools.cli.fsm.autosuggest.safe_load_yaml", autospec=True
+                "paasta_tools.cli.fsm.autosuggest.yaml", autospec=True
             ) as mock_yaml:
-                mock_yaml.return_value = {
+                mock_yaml.safe_load.return_value = {
                     "main": {"proxy_port": 1},
                     "foo": {"proxy_port": 2},
                 }
