@@ -22,6 +22,11 @@ def dump(*args, **kwargs):
     return yaml.dump(*args, **kwargs)
 
 
+def safe_dump_all(*args, **kwargs):
+    kwargs["Dumper"] = Dumper
+    return yaml.dump_all(*args, **kwargs)
+
+
 def load(*args, **kwargs):
     kwargs["Loader"] = Loader
     return yaml.load(*args, **kwargs)
