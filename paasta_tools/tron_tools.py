@@ -37,7 +37,7 @@ from paasta_tools.paasta_yaml import safe_load_yaml
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
-except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
+except ImportError:  # noqa: F401
     Dumper = yaml.SafeDumper  # type: ignore
 
 from paasta_tools.clusterman import get_clusterman_metrics
