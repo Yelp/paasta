@@ -12,6 +12,7 @@ if "paasta" in sys.prefix:
 else:
     try:
         from yaml import CSafeLoader as Loader
+        from yaml import CSafeDumper as Dumper
     except ImportError:  # pragma: no cover
         from yaml import SafeLoader as Loader  # type: ignore
         from yaml import SafeDumper as Dumper  # type: ignore
