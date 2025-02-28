@@ -70,6 +70,73 @@ def test_get_volumes_from_spark_k8s_configs(mock_sys, spark_conf, expected):
 
 
 @pytest.mark.parametrize(
+    "spark_config,expected",
+    [
+        # Empty config
+        ({}, {}),
+        # Only UI port specified
+        (
+            {"spark.ui.port": "4040"},
+            {
+                "prometheus.io/port": "4040",
+                "prometheus.io/path": "/metrics/prometheus",
+            },
+        ),
+        # Only service and instance specified
+        (
+            {
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/service": "my-service",
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/instance": "my-instance",
+            },
+            {
+                "paasta.yelp.com/service": "my-service",
+                "paasta.yelp.com/instance": "my-instance",
+            },
+        ),
+        # All annotations specified
+        (
+            {
+                "spark.ui.port": "4040",
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/service": "my-service",
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/instance": "my-instance",
+            },
+            {
+                "prometheus.io/port": "4040",
+                "prometheus.io/path": "/metrics/prometheus",
+                "paasta.yelp.com/service": "my-service",
+                "paasta.yelp.com/instance": "my-instance",
+            },
+        ),
+        # Missing service
+        (
+            {
+                "spark.ui.port": "4040",
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/instance": "my-instance",
+            },
+            {
+                "prometheus.io/port": "4040",
+                "prometheus.io/path": "/metrics/prometheus",
+            },
+        ),
+        # Missing instance
+        (
+            {
+                "spark.ui.port": "4040",
+                "spark.kubernetes.executor.annotation.paasta.yelp.com/service": "my-service",
+            },
+            {
+                "prometheus.io/port": "4040",
+                "prometheus.io/path": "/metrics/prometheus",
+            },
+        ),
+    ],
+)
+def test_get_spark_driver_monitoring_annotations(spark_config, expected):
+    result = spark_tools.get_spark_driver_monitoring_annotations(spark_config)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
     "docker_volumes,expected",
     [
         # Empty list
