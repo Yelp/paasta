@@ -4,7 +4,6 @@ from unittest import mock
 import pytest
 
 from paasta_tools import spark_tools
-from paasta_tools.utils import DockerVolume
 
 
 def test_get_webui_url():
@@ -133,70 +132,4 @@ def test_get_volumes_from_spark_k8s_configs(mock_sys, spark_conf, expected):
 )
 def test_get_spark_driver_monitoring_annotations(spark_config, expected):
     result = spark_tools.get_spark_driver_monitoring_annotations(spark_config)
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    "docker_volumes,expected",
-    [
-        # Empty list
-        ([], []),
-        # Single volume
-        (
-            [
-                DockerVolume(
-                    hostPath="/host/path",
-                    containerPath="/container/path",
-                    mode="RW",
-                )
-            ],
-            [
-                {
-                    "hostPath": "/host/path",
-                    "containerPath": "/container/path",
-                    "mode": "RW",
-                },
-            ],
-        ),
-        # Multiple volumes with different modes
-        (
-            [
-                DockerVolume(
-                    hostPath="/etc/passwd",
-                    containerPath="/etc/passwd",
-                    mode="RO",
-                ),
-                DockerVolume(
-                    hostPath="/etc/group",
-                    containerPath="/etc/group",
-                    mode="RO",
-                ),
-                DockerVolume(
-                    hostPath="/etc/hello",
-                    containerPath="/etc/hello2",
-                    mode="RW",
-                ),
-            ],
-            [
-                {
-                    "hostPath": "/etc/passwd",
-                    "containerPath": "/etc/passwd",
-                    "mode": "RO",
-                },
-                {
-                    "hostPath": "/etc/group",
-                    "containerPath": "/etc/group",
-                    "mode": "RO",
-                },
-                {
-                    "hostPath": "/etc/hello",
-                    "containerPath": "/etc/hello2",
-                    "mode": "RW",
-                },
-            ],
-        ),
-    ],
-)
-def test_docker_volumes_to_mappings(docker_volumes, expected):
-    result = spark_tools.docker_volumes_to_mappings(docker_volumes)
     assert result == expected

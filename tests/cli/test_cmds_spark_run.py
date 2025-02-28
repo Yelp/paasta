@@ -981,7 +981,6 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
 @mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
-@mock.patch.object(spark_run, "docker_volumes_to_mappings", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
@@ -1001,7 +1000,6 @@ def test_paasta_spark_run_bash(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_docker_volumes_to_mappings,
     mock_load_system_paasta_config_spark_run,
     mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
@@ -1060,9 +1058,6 @@ def test_paasta_spark_run_bash(
         load_deployments=False,
         soa_dir="/path/to/soa",
     )
-    mock_docker_volumes_to_mappings.assert_called_once_with(
-        mock_get_instance_config.return_value.get_volumes.return_value
-    )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
         aws_credentials_yaml="/path/to/creds",
@@ -1087,7 +1082,7 @@ def test_paasta_spark_run_bash(
         paasta_pool="test-pool",
         paasta_service="test-service",
         paasta_instance=mock_get_smart_paasta_instance_name.return_value,
-        extra_volumes=mock_docker_volumes_to_mappings.return_value,
+        extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
@@ -1111,7 +1106,6 @@ def test_paasta_spark_run_bash(
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
 @mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
-@mock.patch.object(spark_run, "docker_volumes_to_mappings", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
@@ -1133,7 +1127,6 @@ def test_paasta_spark_run(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_docker_volumes_to_mappings,
     mock_load_system_paasta_config_spark_run,
     mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
@@ -1195,9 +1188,6 @@ def test_paasta_spark_run(
         load_deployments=False,
         soa_dir="/path/to/soa",
     )
-    mock_docker_volumes_to_mappings.assert_called_once_with(
-        mock_get_instance_config.return_value.get_volumes.return_value
-    )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
         aws_credentials_yaml="/path/to/creds",
@@ -1222,7 +1212,7 @@ def test_paasta_spark_run(
         paasta_pool="test-pool",
         paasta_service="test-service",
         paasta_instance=mock_get_smart_paasta_instance_name.return_value,
-        extra_volumes=mock_docker_volumes_to_mappings.return_value,
+        extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
@@ -1245,7 +1235,6 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
 @mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
-@mock.patch.object(spark_run, "docker_volumes_to_mappings", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
@@ -1265,7 +1254,6 @@ def test_paasta_spark_run_pyspark(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_docker_volumes_to_mappings,
     mock_load_system_paasta_config_spark_run,
     mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
@@ -1329,9 +1317,6 @@ def test_paasta_spark_run_pyspark(
         load_deployments=False,
         soa_dir="/path/to/soa",
     )
-    mock_docker_volumes_to_mappings.assert_called_once_with(
-        mock_get_instance_config.return_value.get_volumes.return_value
-    )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
         aws_credentials_yaml="/path/to/creds",
@@ -1356,7 +1341,7 @@ def test_paasta_spark_run_pyspark(
         paasta_pool="test-pool",
         paasta_service="test-service",
         paasta_instance=mock_get_smart_paasta_instance_name.return_value,
-        extra_volumes=mock_docker_volumes_to_mappings.return_value,
+        extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
@@ -1379,7 +1364,6 @@ def test_paasta_spark_run_pyspark(
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
 @mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
-@mock.patch.object(spark_run, "docker_volumes_to_mappings", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
@@ -1410,7 +1394,6 @@ def test_paasta_spark_run_uses_bulkdata(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_docker_volumes_to_mappings,
     mock_load_system_paasta_config_spark_run,
     mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
