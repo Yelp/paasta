@@ -234,22 +234,30 @@ def get_spark_driver_monitoring_annotations(
     """
     Returns Spark driver pod annotations - currently used for Prometheus metadata.
     """
-    annotations: Dict[str, str] = dict()
+    annotations: Dict[str, str] = {}
 
-    ui_port_str = spark_config.get("spark.ui.port", "")
-    if ui_port_str != "":
-        annotations["prometheus.io/port"] = ui_port_str
-        annotations["prometheus.io/path"] = "/metrics/prometheus"
+    ui_port_str = spark_config.get("spark.ui.port")
+    if ui_port_str:
+        annotations.update(
+            {
+                "prometheus.io/port": ui_port_str,
+                "prometheus.io/path": "/metrics/prometheus",
+            }
+        )
 
     paasta_service_non_truncated = spark_config.get(
-        "spark.kubernetes.executor.annotation.paasta.yelp.com/service", ""
+        "spark.kubernetes.executor.annotation.paasta.yelp.com/service"
     )
     paasta_instance_non_truncated = spark_config.get(
-        "spark.kubernetes.executor.annotation.paasta.yelp.com/instance", ""
+        "spark.kubernetes.executor.annotation.paasta.yelp.com/instance"
     )
-    if paasta_service_non_truncated != "" and paasta_instance_non_truncated != "":
-        annotations["paasta.yelp.com/service"] = paasta_service_non_truncated
-        annotations["paasta.yelp.com/instance"] = paasta_instance_non_truncated
+    if paasta_service_non_truncated and paasta_instance_non_truncated:
+        annotations.update(
+            {
+                "paasta.yelp.com/service": paasta_service_non_truncated,
+                "paasta.yelp.com/instance": paasta_instance_non_truncated,
+            }
+        )
 
     return annotations
 
