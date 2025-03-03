@@ -120,6 +120,6 @@ def includeme(config: Configurator):
             "paasta_tools.api.tweens.auth.AuthTweenFactory",
             under=(
                 pyramid.tweens.INGRESS,
-                "paasta_tools.api.tweens.request_logger.request_logger_tween_factory",
+                "pyramid_swagger.tween.validation_tween_factory",
             ),
         )
