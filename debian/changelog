@@ -1,3 +1,18 @@
+paasta-tools (1.13.3) xenial; urgency=medium
+
+  * 1.13.3 tagged with 'make release'
+    Commit: move auth tween below pyramid_swagger (#4014)  The tween
+    tries to access swagger_data, which won"t be available before the
+    swagger tween validated and loaded the request body, so it"s
+    currently failing.  I was undecided on whether to go this route, or
+    trying to extract the "service" field from get/post data manually,
+    but at the end I settled on moving the tween down the stack. This
+    implementation does not include that many tweens, so I don"t think
+    not having auth right on top is going to be that impactful /
+    dangerous.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 03 Mar 2025 09:23:01 -0800
+
 paasta-tools (1.13.2) xenial; urgency=medium
 
   * 1.13.2 tagged with 'make release'
