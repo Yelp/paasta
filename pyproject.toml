@@ -1,21 +1,76 @@
-[tool.black]
+[tool.ruff]
+target-version = "py38"
 line-length = 88
-target_version = ['py38']
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | |.paasta
-    | _build
-    | buck-out
-    | build
-    | dist
-    | paasta_tools/paastaapi
-  )/
-)
-'''
+indent-width = 4
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+  "docs/source/conf.py",
+  "paasta_tools/paastaapi",
+]
+show-fixes = true
+
+[tool.ruff.lint]
+select = [
+  "I",   # isort - import order
+  "UP",  # pyupgrade
+  "T10", # debugger
+  "E",   # pycodestyle
+  "W",   # pycodestyle
+  "F",   # pyflakes
+  "PT",  # flake8-pytest-style
+]
+
+ignore = [
+  # pycodestyle errors
+  "E501", # line too long
+  "E203", # whitespace before '{symbol}'
+  "E741", # ambiguous variable name
+  # pyupgrade
+  "UP006", # Use `builtins.type` instead of `typing.Type` for type annotation
+  "UP026", # Deprecated mock imports
+  "UP031", # Use format specifiers instead of percent format
+  "UP035", # `typing.Type` is deprecated, use `builtins.type` instead
+  # flake8-pytest-style
+  "PT008", # Use return_value= instead of patching with lambda
+  "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
+  "PT012", # pytest.raises() block should contain a single simple statement
+  "PT015", # assertion always fails, replace with pytest.fail()
+  "PT013", # incorrect import of pytest; use import pytest instead
+  "PT019", # fixture {name} without value is injected as parameter, use @pytest.mark.usefixtures instead
+  "PT020", # @pytest.fixture is deprecated, use @pytest.fixture
+]
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+case-sensitive = false
+lines-after-imports = 2
+order-by-type = false
+no-lines-before = ["future", "standard-library"]
