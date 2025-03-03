@@ -7,6 +7,7 @@ import shlex
 import socket
 import sys
 from typing import Any
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -1253,7 +1254,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         paasta_pool=args.pool,
         paasta_service=args.service,
         paasta_instance=paasta_instance,
-        extra_volumes=volumes,
+        extra_volumes=cast(List[Mapping[str, str]], volumes),
         aws_creds=aws_creds,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
