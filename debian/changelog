@@ -1,3 +1,13 @@
+paasta-tools (1.13.4) xenial; urgency=medium
+
+  * 1.13.4 tagged with 'make release'
+    Commit: MLCOMPUTE-2733 | Add paasta names to spark driver pod
+    annotations (#4010)  * Add paasta names to spark driver pod
+    annotations  * Fix typing  * Fix tests  * Skip a part if the config
+    is missing  * Commit suggested changes  * Cast DockerVolume
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Tue, 04 Mar 2025 04:23:19 -0800
+
 paasta-tools (1.13.3) xenial; urgency=medium
 
   * 1.13.3 tagged with 'make release'
