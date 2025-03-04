@@ -204,7 +204,7 @@ def load_all_instance_configs_for_service(
 
 def invalid_tron_namespace(cluster, output, filename):
     return failure(
-        "%s is invalid:\n  %s\n  " "More info:" % (filename, output),
+        "%s is invalid:\n  %s\n  More info:" % (filename, output),
         "http://tron.readthedocs.io/en/latest/jobs.html",
     )
 

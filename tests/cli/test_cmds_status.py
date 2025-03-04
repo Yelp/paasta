@@ -787,7 +787,6 @@ def test_status_with_owner(
     mock_get_instance_configs_for_service,
     system_paasta_config,
 ):
-
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_list_services.return_value = ["fakeservice", "otherservice"]
     cluster = "fake_cluster"

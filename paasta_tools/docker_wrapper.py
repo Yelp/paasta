@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # flake8: noqa: E402
-""" Meant to be used by mesos-slave instead of the /usr/bin/docker executable
+"""Meant to be used by mesos-slave instead of the /usr/bin/docker executable
 directly This will parse the CLI arguments intended for docker, extract
 environment variable settings related to the actual node hostname and mesos
 task ID, and use those as an additional --hostname argument when calling the
@@ -10,7 +10,7 @@ If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
 """
-import logging
+
 import os
 import re
 import socket
@@ -82,7 +82,6 @@ def can_add_hostname(args):
         return False
 
     for index, arg in enumerate(args):
-
         # Check for --hostname and variants
         if arg == "-h":
             return False
@@ -172,11 +171,11 @@ def arg_collision(new_args, current_args):
 
 def add_firewall(argv, service, instance):
     # Delayed import to improve performance when add_firewall is not used
+    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
     from paasta_tools.docker_wrapper_imports import DEFAULT_SYNAPSE_SERVICE_DIR
     from paasta_tools.docker_wrapper_imports import firewall_flock
     from paasta_tools.docker_wrapper_imports import prepare_new_container
     from paasta_tools.docker_wrapper_imports import reserve_unique_mac_address
-    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
 
     output = ""
     try:
@@ -186,7 +185,6 @@ def add_firewall(argv, service, instance):
     else:
         argv = add_argument(argv, f"--mac-address={mac_address}")
         try:
-
             with firewall_flock():
                 prepare_new_container(
                     DEFAULT_SOA_DIR,
@@ -217,7 +215,7 @@ def main(argv=None):
     if mesos_task_id and can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         hostname_task_id = generate_hostname_task_id(hostname, mesos_task_id)
-        argv = add_argument(argv, f"--hostname={hostname_task_id }")
+        argv = add_argument(argv, f"--hostname={hostname_task_id}")
     elif can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         argv = add_argument(argv, f"--hostname={hostname}")

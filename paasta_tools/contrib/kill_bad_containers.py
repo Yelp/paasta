@@ -1,6 +1,7 @@
 #!/opt/venvs/paasta-tools/bin/python3
 import sys
 
+
 try:
     import iptc
 except TypeError:

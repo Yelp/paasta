@@ -463,7 +463,6 @@ def test_main(
     docker_inspect,
     log_line,
 ):
-
     mock_sys_stdin.readline.side_effect = sys_stdin
     mock_parse_args.return_value.containerd = False
     docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
@@ -503,7 +502,6 @@ def test_main_containerd(
     log_line_containerd,
     containerd_inspect,
 ):
-
     mock_sys_stdin.readline.side_effect = (
         sys_stdin_kubernetes_containerd_systemd_cgroup_structured
     )

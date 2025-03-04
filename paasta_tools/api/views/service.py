@@ -15,6 +15,7 @@
 """
 PaaSTA service list (instances) etc.
 """
+
 from pyramid.view import view_config
 
 from paasta_tools.api import settings

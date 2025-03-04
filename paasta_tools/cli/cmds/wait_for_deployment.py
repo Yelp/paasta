@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to wait for deployment
 of a docker image to a cluster.instance.
 """
+
 import asyncio
 import logging
 from typing import Optional
@@ -39,6 +40,7 @@ from paasta_tools.utils import get_latest_deployment_tag
 from paasta_tools.utils import list_services
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
+
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 
@@ -70,9 +72,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-u",
         "--git-url",
-        help=(
-            "Git url for service. Defaults to the normal git URL for " "the service."
-        ),
+        help=("Git url for service. Defaults to the normal git URL for the service."),
         default=None,
     )
     list_parser.add_argument(
@@ -190,13 +190,15 @@ def validate_version_is_latest(
         return
     if marked_version is None:
         raise VersionError(
-            "ERROR: Nothing is marked for deployment "
-            "in {} for {}".format(deploy_group, service)
+            "ERROR: Nothing is marked for deployment in {} for {}".format(
+                deploy_group, service
+            )
         )
     if version != marked_version:
         raise VersionError(
-            "ERROR: The latest version marked for "
-            "deployment in {} is {}".format(deploy_group, marked_version)
+            "ERROR: The latest version marked for deployment in {} is {}".format(
+                deploy_group, marked_version
+            )
         )
 
 

@@ -21,6 +21,7 @@ Command line options:
 - -c <cluster>, --cluster <cluster>: Specify a kubernetes cluster name
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys
@@ -34,6 +35,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger(__name__)
 

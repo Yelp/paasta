@@ -15,6 +15,7 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+
 import asyncio
 import logging
 import re
@@ -42,6 +43,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
 
 log = logging.getLogger(__name__)
 

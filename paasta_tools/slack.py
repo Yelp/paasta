@@ -18,6 +18,7 @@ from slackclient import SlackClient
 
 from paasta_tools.utils import optionally_load_system_paasta_config
 
+
 log = logging.getLogger(__name__)
 
 

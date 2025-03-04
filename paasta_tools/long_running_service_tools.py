@@ -29,6 +29,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
+
 log = logging.getLogger(__name__)
 logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)
 
@@ -210,8 +211,9 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_registrations(self) -> List[str]:
         for registration in self.get_invalid_registrations():
             log.error(
-                "Provided registration {} for service "
-                "{} is invalid".format(registration, self.service)
+                "Provided registration {} for service {} is invalid".format(
+                    registration, self.service
+                )
             )
 
         registrations = self.config_dict.get("registrations", [])

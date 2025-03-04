@@ -103,9 +103,7 @@ def test_log_event():
         "paasta_tools.utils.get_hostname", autospec=True, return_value="fake_fqdn"
     ), mock.patch(
         "socket.getfqdn", autospec=True, return_value="fake_fqdn"
-    ), mock.patch(
-        "paasta_tools.utils._log", autospec=True
-    ) as mock_log, mock.patch(
+    ), mock.patch("paasta_tools.utils._log", autospec=True) as mock_log, mock.patch(
         "paasta_tools.utils._log_audit", autospec=True
     ) as mock_log_audit:
         service_config = KubernetesDeploymentConfig(

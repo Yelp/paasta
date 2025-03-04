@@ -14,6 +14,7 @@ from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetW
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 
+
 log = logging.getLogger(__name__)
 
 

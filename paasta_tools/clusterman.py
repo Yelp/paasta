@@ -1,5 +1,6 @@
 import staticconf
 
+
 CLUSTERMAN_YAML_FILE_PATH = "/nail/srv/configs/clusterman.yaml"
 CLUSTERMAN_METRICS_YAML_FILE_PATH = "/nail/srv/configs/clusterman_metrics.yaml"
 

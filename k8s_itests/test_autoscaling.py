@@ -3,6 +3,7 @@ import os
 from k8s_itests.utils import cmd
 from k8s_itests.utils import init_all
 
+
 terminate_on_exit = []
 
 

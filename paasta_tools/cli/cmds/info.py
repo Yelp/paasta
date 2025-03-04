@@ -30,6 +30,7 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
 
+
 NO_DESCRIPTION_MESSAGE = "No 'description' entry in service.yaml. Please add a one line sentence that describes this service"
 NO_EXTERNAL_LINK_MESSAGE = (
     "No 'external_link' entry in service.yaml. "

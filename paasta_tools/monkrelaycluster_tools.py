@@ -44,7 +44,6 @@ class MonkRelayClusterDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,
             instance=instance,

@@ -177,9 +177,7 @@ def test_wait_for_deployment(
         "cluster2": "some_url_2",
     }
 
-    mock_load_system_paasta_config.return_value.get_mark_for_deployment_max_polling_threads.return_value = (
-        4
-    )
+    mock_load_system_paasta_config.return_value.get_mark_for_deployment_max_polling_threads.return_value = 4
 
     with raises(TimeoutError):
         with patch(

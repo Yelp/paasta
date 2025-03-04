@@ -2,6 +2,7 @@
 have variables that need to be rendered.
 This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/command_context.py.
 """
+
 import functools
 import operator
 

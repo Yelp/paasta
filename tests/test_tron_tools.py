@@ -17,6 +17,7 @@ from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
+
 MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
     utils.SystemPaastaConfigDict(
         {
@@ -194,7 +195,6 @@ class TestTronActionConfig:
     def test_get_secret_volume_name(
         self, action_config, is_shared, secret_name, expected_secret_volume_name
     ):
-
         with tempfile.TemporaryDirectory() as dir_path:
             service = action_config.service if not is_shared else SHARED_SECRET_SERVICE
             secret_path = os.path.join(
@@ -1575,7 +1575,7 @@ class TestTronTools:
         (
             ("my_job.do_something", "my_job.do_something"),
             (
-                f"my_job.{'a'* 100}",
+                f"my_job.{'a' * 100}",
                 "my_job.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-6xhe",
             ),
         ),
@@ -2169,7 +2169,6 @@ fake_job:
         with mock.patch(
             "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
         ) as mock_filter_templates_from_config:
-
             mock_filter_templates_from_config.return_value = {
                 "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
             }

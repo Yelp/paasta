@@ -9,12 +9,13 @@ from typing import Optional
 
 from paasta_tools.secret_providers import CryptoKey
 
+
 try:
+    import hvac
     from vault_tools.client.jsonsecret import get_plaintext
-    from vault_tools.paasta_secret import get_vault_client
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
-    import hvac
+    from vault_tools.paasta_secret import get_vault_client
 except ImportError:
 
     def get_plaintext(*args: Any, **kwargs: Any) -> bytes:

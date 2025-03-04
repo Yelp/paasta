@@ -24,6 +24,7 @@ from typing import Union
 from paasta_tools.secret_providers import SecretProvider
 from paasta_tools.utils import SecretVolume
 
+
 SECRET_REGEX = r"^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
 SHARED_SECRET_SERVICE = "_shared"
 
@@ -108,7 +109,6 @@ def get_secret_hashes(
     service: str,
     soa_dir: str,
 ) -> Dict[str, str]:
-
     secret_hashes = {}
     for env_var_val in environment_variables.values():
         if is_secret_ref(env_var_val):

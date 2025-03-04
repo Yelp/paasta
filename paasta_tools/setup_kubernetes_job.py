@@ -20,6 +20,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys
@@ -50,6 +51,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
+
 
 log = logging.getLogger(__name__)
 
@@ -250,7 +252,6 @@ def setup_kube_deployments(
     metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
     eks: bool = False,
 ) -> bool:
-
     if not service_instance_configs_list:
         return True
 

@@ -14,6 +14,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import TimeoutError
 
+
 log = logging.getLogger(__name__)
 
 DEFAULT_UPDATE_SECS = 5

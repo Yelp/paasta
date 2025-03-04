@@ -265,13 +265,10 @@ def paasta_secrets_patches():
         autospec=True,
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
-    ), mock.patch(
-        "os.path.isdir", autospec=True, return_value=True
-    ), mock.patch(
+    ), mock.patch("os.path.isdir", autospec=True, return_value=True), mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
         autospec=True,
     ):
-
         yield (
             mock_get_secret_provider,
             mock_scandir,

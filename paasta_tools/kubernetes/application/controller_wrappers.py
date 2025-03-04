@@ -412,7 +412,7 @@ class StatefulSetWrapper(Application):
 
 
 def get_application_wrapper(
-    formatted_application: Union[V1Deployment, V1StatefulSet]
+    formatted_application: Union[V1Deployment, V1StatefulSet],
 ) -> Application:
     app: Application
     if isinstance(formatted_application, V1Deployment):

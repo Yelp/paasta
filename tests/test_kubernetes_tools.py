@@ -72,9 +72,7 @@ from kubernetes.client import V2MetricIdentifier
 from kubernetes.client import V2MetricSpec
 from kubernetes.client import V2MetricTarget
 from kubernetes.client import V2ResourceMetricSource
-from kubernetes.client.models.v2_object_metric_source import (
-    V2ObjectMetricSource,
-)
+from kubernetes.client.models.v2_object_metric_source import V2ObjectMetricSource
 from kubernetes.client.rest import ApiException
 from requests.exceptions import ConnectionError
 
@@ -609,7 +607,7 @@ class TestKubernetesDeploymentConfig:
                                 command=[
                                     "/bin/sh",
                                     "-c",
-                                    "/usr/bin/hadown " "universal.credit; sleep " "31",
+                                    "/usr/bin/hadown universal.credit; sleep 31",
                                 ]
                             )
                         )
@@ -655,7 +653,7 @@ class TestKubernetesDeploymentConfig:
                                 command=[
                                     "/bin/sh",
                                     "-c",
-                                    "/usr/bin/hadown " "universal.credit; sleep " "31",
+                                    "/usr/bin/hadown universal.credit; sleep 31",
                                 ]
                             )
                         )
@@ -1724,9 +1722,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_pod_anti_affinity.return_value = anti_affinity
         mock_create_pod_topology_spread_constraints.return_value = pod_topology
         mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            True
-        )
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = True
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
@@ -4368,7 +4364,9 @@ def test_warning_big_bounce_default_config():
                 "paasta.yelp.com/config_sha"
             ]
             == "config1c7deb78"
-        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+        ), (
+            "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+        )
 
 
 def test_warning_big_bounce_routable_pod():
@@ -4414,7 +4412,9 @@ def test_warning_big_bounce_routable_pod():
                 "paasta.yelp.com/config_sha"
             ]
             == "config45672f04"
-        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
+        ), (
+            "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
+        )
 
 
 def test_warning_big_bounce_common_config():
@@ -4461,7 +4461,9 @@ def test_warning_big_bounce_common_config():
                 "paasta.yelp.com/config_sha"
             ]
             == "configa4afe5c4"
-        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+        ), (
+            "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+        )
 
 
 @pytest.mark.parametrize(

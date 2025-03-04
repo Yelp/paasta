@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+
 import argparse
 import asyncio
 import concurrent
@@ -92,6 +93,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
+
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
@@ -652,10 +654,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
-        self.instance_configs_per_cluster: Dict[
-            str, List[LongRunningServiceConfig]
-        ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, soa_dir
+        self.instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]] = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, soa_dir
+            )
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
@@ -778,7 +780,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def schedule_paasta_status_reminder(self) -> None:
         def waiting_on_to_status(
-            waiting_on: Mapping[str, Collection[str]]
+            waiting_on: Mapping[str, Collection[str]],
         ) -> List[str]:
             if waiting_on is None:
                 return [
@@ -1839,9 +1841,7 @@ async def wait_for_deployment(
             system_paasta_config.get_mark_for_deployment_default_diagnosis_interval()
         )
     if time_before_first_diagnosis is None:
-        time_before_first_diagnosis = (
-            system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
-        )
+        time_before_first_diagnosis = system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
 
     with progressbar.ProgressBar(maxval=total_instances) as bar:
         instance_done_futures = []

@@ -38,6 +38,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import SystemPaastaConfig
 
+
 log = logging.getLogger(__name__)
 
 MESOS_TASK_SPACER = "."

@@ -48,10 +48,14 @@ def deployment_json():
                 },
             },
             "controls": {
-                "example_happyhour:%s.sample_batch"
-                % TEST_CLUSTER_NAME: {"desired_state": "start", "force_bounce": None},
-                "example_happyhour:%s.interactive"
-                % TEST_CLUSTER_NAME: {"desired_state": "start", "force_bounce": None},
+                "example_happyhour:%s.sample_batch" % TEST_CLUSTER_NAME: {
+                    "desired_state": "start",
+                    "force_bounce": None,
+                },
+                "example_happyhour:%s.interactive" % TEST_CLUSTER_NAME: {
+                    "desired_state": "start",
+                    "force_bounce": None,
+                },
                 f"{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.main": {
                     "desired_state": "start",
                     "force_bounce": None,

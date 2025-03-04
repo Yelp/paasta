@@ -30,6 +30,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
+
 KUBERNETES_NAMESPACE = "paasta-cassandraclusters"
 
 log = logging.getLogger(__name__)
@@ -54,7 +55,6 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,
             instance=instance,
@@ -89,8 +89,9 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
                 decompose_job_id(registration)
             except InvalidJobNameError:
                 log.error(
-                    "Provided registration {} for service "
-                    "{} is invalid".format(registration, self.service)
+                    "Provided registration {} for service {} is invalid".format(
+                        registration, self.service
+                    )
                 )
 
         return registrations or [

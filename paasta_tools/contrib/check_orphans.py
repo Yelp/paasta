@@ -24,6 +24,7 @@ from kazoo.exceptions import NoNodeError
 
 from paasta_tools import yaml_tools as yaml
 
+
 logger = logging.getLogger("check_orphans")
 
 PREFIX = "/smartstack/global/"
@@ -173,7 +174,7 @@ def read_one_nerve_file(nerve_config: str) -> Set[InstanceTuple]:
 
 
 def read_nerve_files(
-    nerve_configs: Dict[str, Optional[str]]
+    nerve_configs: Dict[str, Optional[str]],
 ) -> Tuple[Set[InstanceTuple], Set[str]]:
     instance_set: Set[InstanceTuple] = set()
     not_found_hosts: Set[str] = set()
@@ -219,7 +220,6 @@ def check_orphans(
     check_orphans: bool,
     check_collisions: bool,
 ) -> ExitCode:
-
     if check_collisions:
         # collisions
         instance_by_addr: DefaultDict[Tuple[str, int], Set[str]] = defaultdict(set)

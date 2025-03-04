@@ -6,6 +6,7 @@ from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
 
+
 log = logging.getLogger(__name__)
 
 

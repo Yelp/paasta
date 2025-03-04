@@ -11,6 +11,7 @@ from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools import utils
 
+
 log = logging.getLogger(__name__)
 
 LOG_COMPONENT = "task_lifecycle"

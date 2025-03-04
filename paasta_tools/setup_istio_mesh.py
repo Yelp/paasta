@@ -20,6 +20,7 @@ Command line options:
 - -c, --cluster: PAASTA cluster
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import os
@@ -100,7 +101,7 @@ def load_smartstack_namespaces(soa_dir: str = DEFAULT_SOA_DIR) -> Mapping:
         try:
             with open(file_path) as f:
                 svc_namespaces = yaml.safe_load(f)
-                for (ns, details) in svc_namespaces.items():
+                for ns, details in svc_namespaces.items():
                     namespaces[f"{dir}.{ns}"] = details
         except Exception as err:
             log.warn(f"Failed to load namespaces for {dir}: {err}")
@@ -285,7 +286,6 @@ def cleanup_paasta_namespace_services(
 def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
-
     existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
     existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
 

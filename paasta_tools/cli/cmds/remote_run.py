@@ -105,16 +105,18 @@ def add_common_args_to_parser(parser):
 def add_start_parser(subparser):
     parser = subparser.add_parser("start", help="Start task subcommand")
     add_common_args_to_parser(parser)
-    parser.add_argument(
-        "-C",
-        "--cmd",
-        help=(
-            "Run Docker container with particular command, for example: "
-            '"bash". By default will use the command or args specified by the '
-            "soa-configs or what was specified in the Dockerfile"
+    (
+        parser.add_argument(
+            "-C",
+            "--cmd",
+            help=(
+                "Run Docker container with particular command, for example: "
+                '"bash". By default will use the command or args specified by the '
+                "soa-configs or what was specified in the Dockerfile"
+            ),
+            default=ARG_DEFAULTS["start"]["cmd"],
         ),
-        default=ARG_DEFAULTS["start"]["cmd"],
-    ),
+    )
     parser.add_argument(
         "-D",
         "--detach",
@@ -143,8 +145,7 @@ def add_start_parser(subparser):
     parser.add_argument(
         "--docker-image",
         help=(
-            "URL of docker image to use. "
-            "Defaults to using the deployed docker image."
+            "URL of docker image to use. Defaults to using the deployed docker image."
         ),
         default=ARG_DEFAULTS["start"]["docker_image"],
     )
@@ -158,8 +159,7 @@ def add_start_parser(subparser):
         "-d",
         "--dry-run",
         help=(
-            "Don't launch the task. "
-            "Instead output task that would have been launched"
+            "Don't launch the task. Instead output task that would have been launched"
         ),
         action="store_true",
         default=ARG_DEFAULTS["start"]["dry_run"],
@@ -240,8 +240,7 @@ def add_subparser(subparsers):
             "execution is finished."
         ),
         epilog=(
-            "Note: `paasta remote-run` uses Mesos API that may require "
-            "authentication."
+            "Note: `paasta remote-run` uses Mesos API that may require authentication."
         ),
     )
     main_subs = main_parser.add_subparsers(

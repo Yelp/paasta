@@ -33,6 +33,7 @@ log {
   destination(paasta_oom_logger);
 };
 """
+
 import argparse
 import json
 import re
@@ -294,7 +295,7 @@ def main():
             # we're using docker to inspect containers
             try:
                 container_inspect = client.inspect_container(resource_id=container_id)
-            except (APIError):
+            except APIError:
                 continue
         env_vars = get_container_env_as_dict(args.containerd, container_inspect)
         service = env_vars.get("PAASTA_SERVICE", "unknown")

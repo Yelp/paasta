@@ -3,6 +3,7 @@ import fcntl
 import os.path
 import random
 
+
 MAC_ADDRESS_PREFIX = ("02", "52")
 
 

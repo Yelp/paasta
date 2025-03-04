@@ -19,6 +19,7 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.utils import get_user_agent
 
+
 HACHECK_TIMEOUT = aiohttp.ClientTimeout(total=45, connect=30, sock_read=10)
 
 SpoolInfo = TypedDict(

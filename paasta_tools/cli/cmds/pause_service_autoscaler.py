@@ -23,6 +23,7 @@ from paasta_tools.autoscaling.pause_service_autoscaler import (
 )
 from paasta_tools.utils import _log_audit
 
+
 MAX_PAUSE_DURATION = 320
 
 

@@ -497,7 +497,6 @@ def test_scribereader_run_code_over_scribe_envs():
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
     ):
-
         envs = ["env1", "env2"]
         determine_scribereader_envs_patch.return_value = envs
         logs.ScribeLogReader(cluster_map={}).run_code_over_scribe_envs(
@@ -521,18 +520,14 @@ def test_scribereader_print_last_n_logs():
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
     ) as determine_scribereader_envs_patch:
-
         determine_scribereader_envs_patch.return_value = ["env1", "env2"]
         mock_scribereader.get_tail_host_and_port.return_value = "fake_host", "fake_port"
         fake_iter = mock.MagicMock()
-        fake_iter.__iter__.return_value = (
-            [
-                """{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+        fake_iter.__iter__.return_value = [
+            """{"cluster":"fake_cluster1","component":"stderr","instance":"main",
                                            "level":"debug","message":"testing",
                                            "timestamp":"2016-06-08T06:31:52.706609135Z"}"""
-            ]
-            * 100
-        )
+        ] * 100
         mock_scribereader.get_stream_tailer.return_value = fake_iter
         logs.ScribeLogReader(cluster_map={}).print_last_n_logs(
             service,
@@ -569,18 +564,14 @@ def test_scribereader_print_logs_by_time():
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
     ) as determine_scribereader_envs_patch:
-
         determine_scribereader_envs_patch.return_value = ["env1", "env2"]
         mock_scribereader.get_tail_host_and_port.return_value = "fake_host", "fake_port"
         fake_iter = mock.MagicMock()
-        fake_iter.__iter__.return_value = (
-            [
-                b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+        fake_iter.__iter__.return_value = [
+            b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
                                            "level":"debug","message":"testing",
                                            "timestamp":"2016-06-08T06:31:52.706609135Z"}"""
-            ]
-            * 100
-        )
+        ] * 100
         mock_scribereader.get_stream_tailer.return_value = fake_iter
         mock_scribereader.get_stream_reader.return_value = fake_iter
 
@@ -631,17 +622,13 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         autospec=True,
     ), mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ), mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
     ) as queue_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.Process", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ):
+    ), mock.patch("paasta_tools.cli.cmds.logs.scribereader", autospec=True):
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = FakeKeyboardInterrupt
         queue_patch.return_value = fake_queue
@@ -665,9 +652,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         autospec=True,
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ), mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
@@ -706,9 +691,7 @@ def test_tail_paasta_logs_aliveness_check():
         autospec=True,
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ), mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
@@ -764,9 +747,7 @@ def test_tail_paasta_logs_empty_clusters():
         autospec=True,
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ) as print_log_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
@@ -798,9 +779,7 @@ def test_tail_paasta_logs_empty_instances():
         autospec=True,
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ) as print_log_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
@@ -832,9 +811,7 @@ def test_tail_paasta_logs_empty_pods():
         autospec=True,
     ) as determine_scribereader_envs_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ) as print_log_patch, mock.patch(
         "paasta_tools.cli.cmds.logs.Queue", autospec=True
@@ -985,9 +962,7 @@ def test_get_log_reader():
         "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
-    ):
+    ), mock.patch("paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None):
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
         actual = logs.get_log_reader(components)
@@ -1017,9 +992,7 @@ def test_get_log_reader_invalid():
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
     ), mock.patch(
         "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
-    ), pytest.raises(
-        SystemExit
-    ) as wrapped_e:
+    ), pytest.raises(SystemExit) as wrapped_e:
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
         logs.get_log_reader(components)
 

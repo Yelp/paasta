@@ -24,7 +24,6 @@ def test_nodes_for_cleanup():
 
 
 def test_terminate_nodes():
-
     mock_client = mock.MagicMock()
     mock_client.core.delete_node.side_effect = [None, ApiException(404), None]
 
@@ -59,7 +58,6 @@ def test_terminate_nodes():
 
 
 def test_does_instance_exist():
-
     # if the node doesn't exist at all, then the client will raise an exception
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.ClientError",
@@ -111,9 +109,7 @@ def test_main():
     ) as mock_terminate_nodes, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
         autospec=True,
-    ) as mock_parse_args, mock.patch(
-        "boto3.client", autospec=True
-    ):
+    ) as mock_parse_args, mock.patch("boto3.client", autospec=True):
         mock_args = mock.MagicMock()
         mock_args.dry_run = False
 
@@ -125,7 +121,7 @@ def test_main():
         m4 = mock.Mock(metadata=mock.Mock())
 
         for i, m in enumerate([m1, m2, m3, m4]):
-            m.metadata.name = f"m{i+1}"
+            m.metadata.name = f"m{i + 1}"
             if i < 3:
                 m.metadata.labels = {
                     "failure-domain.beta.kubernetes.io/region": "us-west-1"
@@ -168,9 +164,7 @@ def test_main_dry_run():
     ) as mock_terminate_nodes, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
         autospec=True,
-    ) as mock_parse_args, mock.patch(
-        "boto3.client", autospec=True
-    ):
+    ) as mock_parse_args, mock.patch("boto3.client", autospec=True):
         mock_args = mock.MagicMock()
         mock_args.dry_run = True
 

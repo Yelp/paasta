@@ -14,6 +14,7 @@ Example output:
 yelpsoaconfig_endpoint_timeouts_ms{path="/consumer_app/devices/braze/info",upstream="push_notifications.main.egress_cluster"} 10000.0
 yelpsoaconfig_endpoint_timeouts_ms{path="/",upstream="mysql_read_security.main.egress_cluster"} 100.0
 """
+
 import os
 
 from prometheus_client import CollectorRegistry
@@ -23,6 +24,7 @@ from prometheus_client.metrics import MetricWrapperBase
 
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import DEFAULT_SOA_DIR
+
 
 PROM_OUTPUT_FILE = f"{DEFAULT_SOA_DIR}/.autotune_timeouts.prom"
 DEFAULT_TIMEOUT = 1000

@@ -15,6 +15,7 @@
 """
 Usage: ./check_flink_services_health.py [options]
 """
+
 import datetime
 import logging
 from typing import Sequence

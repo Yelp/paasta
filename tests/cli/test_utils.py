@@ -502,9 +502,7 @@ def test_get_service_auth_token(
         "data": {"token": "sometoken"},
     }
     assert get_service_auth_token() == "sometoken"
-    mock_instance_creds = (
-        mock_metadata_provider.return_value.load.return_value.get_frozen_credentials.return_value
-    )
+    mock_instance_creds = mock_metadata_provider.return_value.load.return_value.get_frozen_credentials.return_value
     mock_metadata_provider.assert_called_once_with(
         iam_role_fetcher=mock_metadata_fetcher.return_value
     )

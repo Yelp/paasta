@@ -4,11 +4,13 @@ Unlike the `firewall` module, these functions know nothing about PaaSTA and
 could effectively be a third-party library. They just make working with
 iptables a little bit easier.
 """
+
 import collections
 import contextlib
 import logging
 
 import iptc
+
 
 log = logging.getLogger(__name__)
 
@@ -45,28 +47,28 @@ class Rule(_RuleBase):
 
     def validate(self):
         if self.target == "REJECT":
-            assert any(
-                name == "reject-with" for name, _ in self.target_parameters
-            ), "REJECT rules must specify reject-with"
+            assert any(name == "reject-with" for name, _ in self.target_parameters), (
+                "REJECT rules must specify reject-with"
+            )
         assert tuple(sorted(self.matches)) == self.matches, "matches should be sorted"
         for match_name, params in self.matches:
             for param_name, param_value in params:
-                assert (
-                    "_" not in param_name
-                ), f"use dashes instead of underscores in {param_name}"
-                assert isinstance(
-                    param_value, tuple
-                ), f"value of {param_name} should be tuple"
-        assert (
-            tuple(sorted(self.target_parameters)) == self.target_parameters
-        ), "target_parameters should be sorted"
+                assert "_" not in param_name, (
+                    f"use dashes instead of underscores in {param_name}"
+                )
+                assert isinstance(param_value, tuple), (
+                    f"value of {param_name} should be tuple"
+                )
+        assert tuple(sorted(self.target_parameters)) == self.target_parameters, (
+            "target_parameters should be sorted"
+        )
         for param_name, param_value in self.target_parameters:
-            assert (
-                "_" not in param_name
-            ), f"use dashes instead of underscores in {param_name}"
-            assert isinstance(
-                param_value, tuple
-            ), f"value of {param_name} should be tuple"
+            assert "_" not in param_name, (
+                f"use dashes instead of underscores in {param_name}"
+            )
+            assert isinstance(param_value, tuple), (
+                f"value of {param_name} should be tuple"
+            )
 
     @classmethod
     def from_iptc(cls, rule):

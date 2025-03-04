@@ -118,7 +118,6 @@ def mock_service_config():
     ) as mock_system_paasta_config, mock.patch.object(
         firewall, "_synapse_backends", autospec=True
     ) as mock_synapse_backends:
-
         mock_system_paasta_config.return_value.get_cluster.return_value = "mycluster"
 
         mock_instance_config.return_value = mock.Mock()
@@ -566,7 +565,7 @@ def test_prepare_new_container(
             ("8.8.4.4",),
         ),
         (
-            "domain yelpcorp.com\n" "nameserver 8.8.4.4\n" "search a b c d\n",
+            "domain yelpcorp.com\nnameserver 8.8.4.4\nsearch a b c d\n",
             ("8.8.4.4",),
         ),
     ),
@@ -580,7 +579,7 @@ def test_dns_servers(tmpdir, resolv_conf, expected):
 
 def test_ensure_dns_chain(tmpdir):
     path = tmpdir.join("resolv.conf")
-    path.write("nameserver 8.8.8.8\n" "nameserver 8.8.4.4\n")
+    path.write("nameserver 8.8.8.8\nnameserver 8.8.4.4\n")
     with mock.patch.object(
         iptables, "ensure_chain", autospec=True
     ) as m, mock.patch.object(firewall, "RESOLV_CONF", path.strpath):

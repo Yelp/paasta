@@ -183,7 +183,6 @@ def test_get_kubernetes_deployment_config():
         "paasta_tools.setup_kubernetes_job.load_kubernetes_service_config_no_cache",
         autospec=True,
     ) as mock_load_kubernetes_service_config_no_cache:
-
         mock_get_service_instances_with_valid_names = [
             ("kurupt", "instance", None, None)
         ]
@@ -248,7 +247,6 @@ def test_get_eks_deployment_config():
         "paasta_tools.setup_kubernetes_job.load_eks_service_config_no_cache",
         autospec=True,
     ) as mock_load_eks_service_config_no_cache:
-
         mock_get_service_instances_with_valid_names = [
             ("kurupt", "instance", None, None)
         ]

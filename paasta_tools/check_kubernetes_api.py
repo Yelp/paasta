@@ -17,6 +17,7 @@ Usage: ./check_kubernetes_api.py [options]
 
 This is a script that checks connectivity and credentials for Kubernetes API.
 """
+
 import argparse
 import logging
 import sys

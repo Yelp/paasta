@@ -14,10 +14,12 @@
 """
 Creates a tween that cprofiles requests
 """
+
 import pyramid
 import pytz
 
 from paasta_tools.api import settings as api_settings
+
 
 try:
     # hackily patch pytz, since yelp_lib (used by yelp_profiling) type checks

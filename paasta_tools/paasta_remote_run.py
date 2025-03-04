@@ -26,6 +26,7 @@ import sys
 import traceback
 from datetime import datetime
 from email.message import EmailMessage
+from typing import Tuple
 
 from boto3.session import Session
 from pyrsistent import InvariantException
@@ -37,7 +38,6 @@ from task_processing.plugins.persistence.dynamodb_persistence import (
 )  # noreorder
 from task_processing.runners.sync import Sync  # noreorder
 from task_processing.task_processor import TaskProcessor  # noreorder
-from typing import Tuple
 
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_list_parser
@@ -57,6 +57,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
+
 
 MESOS_TASK_SPACER = "."
 TASKPROC_OFFER_TIMEOUT_RAW = "Failed due to offer timeout"
