@@ -42,27 +42,33 @@ select = [
   "E",   # pycodestyle
   "W",   # pycodestyle
   "F",   # pyflakes
-  "PT",  # flake8-pytest-style
 ]
 
 ignore = [
   # pycodestyle errors
   "E501", # line too long
   "E203", # whitespace before '{symbol}'
+  "E713", # Test for membership should be not in
+  "E721", # Use is and is not for type comparisons, or isinstance() for isinstance checks
   "E741", # ambiguous variable name
   # pyupgrade
   "UP006", # Use `builtins.type` instead of `typing.Type` for type annotation
+  "UP011", # Unnecessary parentheses to functools.lru_cache
+  "UP012", # Unnecessary call to encode as UTF-8
+  "UP015", # Unnecessary mode argument
+  "UP018", # Unnecessary {literal_type} call (rewrite as a literal)
+  "UP020", # Use builtin open
+  "UP022", # Prefer capture_output over sending stdout and stderr to PIPE
+  "UP024", # Replace aliased errors with OSError
   "UP026", # Deprecated mock imports
+  "UP028", # Replace yield over for loop with yield from
   "UP031", # Use format specifiers instead of percent format
+  "UP032", # Use f-string instead of format call
+  "UP034", # Avoid extraneous parentheses
   "UP035", # `typing.Type` is deprecated, use `builtins.type` instead
-  # flake8-pytest-style
-  "PT008", # Use return_value= instead of patching with lambda
-  "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
-  "PT012", # pytest.raises() block should contain a single simple statement
-  "PT015", # assertion always fails, replace with pytest.fail()
-  "PT013", # incorrect import of pytest; use import pytest instead
-  "PT019", # fixture {name} without value is injected as parameter, use @pytest.mark.usefixtures instead
-  "PT020", # @pytest.fixture is deprecated, use @pytest.fixture
+  "UP037", # Remove quotes from type annotation
+  # pyflakes
+  "F541", # f-string without any placeholders
 ]
 
 [tool.ruff.format]

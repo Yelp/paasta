@@ -21,31 +21,6 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
-# -   repo: https://github.com/asottile/reorder_python_imports
-#     rev: v1.4.0
-#     hooks:
-#     -   id: reorder-python-imports
-#         args: [--py3-plus]
-#         additional_dependencies: [aspy.refactor_imports==0.5.3]
-#         exclude: ^paasta_tools/paastaapi
-# -   repo: https://github.com/asottile/pyupgrade
-#     rev: v1.12.0
-#     hooks:
-#     -   id: pyupgrade
-#         args: [--py36-plus]
-#         exclude: ^paasta_tools/paastaapi
-# -   repo: https://github.com/psf/black
-#     rev: 22.3.0
-#     hooks:
-#     -   id: black
-#         args: ['--target-version', 'py38']
-#         exclude: ^paasta_tools/paastaapi
-# -   repo: https://github.com/PyCQA/flake8
-#     rev: 3.7.7
-#     hooks:
-#     -   id: flake8
-#         args: ['--ignore', 'E231']
-#         exclude: ^docs/source/conf.py|paasta_tools/paastaapi.*$
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.9.9
@@ -63,6 +38,8 @@ repos:
         exclude: .*tests/.*|.*yelp/testing/.*|\.pre-commit-config\.yaml
 -   repo: local
     hooks:
+        # Could be replaced by ruff when they implement TMS020, TMS021 and TMS022
+        # https://github.com/astral-sh/ruff/issues/5734
     -   id: patch-enforce-autospec
         name: mock.patch enforce autospec
         description: This hook ensures all mock.patch invocations specify an autospec
