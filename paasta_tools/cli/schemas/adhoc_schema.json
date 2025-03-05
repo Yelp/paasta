@@ -136,6 +136,9 @@
                     },
                     "uniqueItems": true
                 },
+                "uses_bulkdata": {
+                    "type": "boolean"
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
