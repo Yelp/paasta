@@ -1,3 +1,12 @@
+paasta-tools (1.13.5) xenial; urgency=medium
+
+  * 1.13.5 tagged with 'make release'
+    Commit: Merge pull request #4006 from Yelp/u/tmower/add-uses-
+    bulkdata-to-adhoc-schema-PERES-5307  Add uses_bulkdata to adhoc
+    schema
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Thu, 06 Mar 2025 02:38:53 -0800
+
 paasta-tools (1.13.4) xenial; urgency=medium
 
   * 1.13.4 tagged with 'make release'
