@@ -168,9 +168,9 @@ def test_get_spark_driver_monitoring_annotations(spark_config, expected):
             id="Timeout with multiple options",
         ),
         pytest.param(
-            "timeout --signal SIGKILL 2h spark-submit abc.py",
+            "timeout -k 10m --signal=SIGKILL 2h spark-submit abc.py",
             "12h",
-            "timeout --signal SIGKILL 2h spark-submit abc.py",
+            "timeout -k 10m --signal=SIGKILL 2h spark-submit abc.py",
             id="Timeout with double dash option",
         ),
     ],

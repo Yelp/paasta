@@ -184,13 +184,13 @@ def auto_add_timeout_for_spark_job(
     if "spark-submit" not in cmd:
         return cmd
     try:
-        # Not supporting `=` for now, to support `=` we need to do lot of error checking,
-        # regex becomes a bit complex, use cases are very less, same command can be
-        # achieved without `=` also
-        options_regex = "((-[a-zA-Z]+|\\-\\-[a-zA-Z\\-]+)(\\s+[a-zA-Z0-9\\-]+)?\\s*)*"
-        duration_regex = r"[\d]+[\.]?[\d]*[m|h]"
+        # This is not an exhaustive regex, matches the invalid ones also, where as the invalid
+        # timeout command will fail during execution
+        options_regex = r"(--?[a-z][a-z-]*((\s+|=)[\w\d-]+)?\s+)*"
+        duration_regex = r"\d+\.?\d*[smhd]?"
+
         timeout_present = re.match(
-            rf"^.*timeout[\s]+{options_regex}{duration_regex}[\s]+spark-submit .*$", cmd
+            rf"^.*timeout\s+{options_regex}{duration_regex}\s+spark-submit .*$", cmd
         )
         if not timeout_present:
             split_cmd = cmd.split("spark-submit")
