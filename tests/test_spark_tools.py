@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 
 from paasta_tools import spark_tools
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 
 
 def test_get_webui_url():
@@ -132,4 +133,49 @@ def test_get_volumes_from_spark_k8s_configs(mock_sys, spark_conf, expected):
 )
 def test_get_spark_driver_monitoring_annotations(spark_config, expected):
     result = spark_tools.get_spark_driver_monitoring_annotations(spark_config)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    argnames=[
+        "cmd",
+        "timeout_duration",
+        "expected",
+    ],
+    argvalues=[
+        pytest.param(
+            "spark-submit abc.py",
+            "4h",
+            "timeout 4h spark-submit abc.py",
+            id="No timeout",
+        ),
+        pytest.param(
+            "timeout 2h spark-submit abc.py",
+            "12h",
+            "timeout 2h spark-submit abc.py",
+            id="Timeout without options",
+        ),
+        pytest.param(
+            "timeout -v 2h spark-submit abc.py",
+            "12h",
+            "timeout -v 2h spark-submit abc.py",
+            id="Timeout with options",
+        ),
+        pytest.param(
+            "timeout -v -s 1 2h spark-submit abc.py",
+            "12h",
+            "timeout -v -s 1 2h spark-submit abc.py",
+            id="Timeout with multiple options",
+        ),
+        pytest.param(
+            "timeout -k 10m --signal=SIGKILL 2h spark-submit abc.py",
+            "12h",
+            "timeout -k 10m --signal=SIGKILL 2h spark-submit abc.py",
+            id="Timeout with double dash option",
+        ),
+    ],
+)
+def test_auto_add_timeout_for_spark_job(cmd, timeout_duration, expected):
+    result = auto_add_timeout_for_spark_job(cmd, timeout_duration)
+
     assert result == expected
