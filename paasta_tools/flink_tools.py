@@ -41,6 +41,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
+
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
 CONFIG_KEYS = {"flink-version", "flink-revision"}
@@ -78,7 +79,6 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,
             instance=instance,

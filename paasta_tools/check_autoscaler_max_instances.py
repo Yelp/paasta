@@ -19,6 +19,7 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
+
 log = logging.getLogger(__name__)
 
 
@@ -99,7 +100,6 @@ async def check_max_instances(
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
             ):
-
                 metrics_provider_configs = job_config.get_autoscaling_params()[
                     "metrics_providers"
                 ]
@@ -116,7 +116,6 @@ async def check_max_instances(
                 for metric, metrics_provider_config in zip(
                     autoscaling_status["metrics"], metrics_provider_configs
                 ):
-
                     setpoint = metrics_provider_config["setpoint"]
                     threshold = metrics_provider_config.get(
                         "max_instances_alert_threshold",

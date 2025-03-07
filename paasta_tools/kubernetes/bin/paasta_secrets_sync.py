@@ -61,6 +61,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import SHARED_SECRETS_K8S_NAMESPACES
 
+
 log = logging.getLogger(__name__)
 
 
@@ -129,7 +130,7 @@ def parse_args() -> argparse.Namespace:
 
 @contextlib.contextmanager
 def set_temporary_environment_variables(
-    environ: Mapping[str, str]
+    environ: Mapping[str, str],
 ) -> Generator[None, None, None]:
     """
     *Note the return value means "yields None, takes None, and when finished, returns None"*

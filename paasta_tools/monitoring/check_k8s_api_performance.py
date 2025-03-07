@@ -69,7 +69,6 @@ def parse_k8s_api_performance_options() -> argparse.Namespace:
 def get_pods_from_namespace(
     kube_client: KubeClient, namespace: str
 ) -> client.models.v1_pod_list.V1PodList:
-
     # list all the running pods
     ret = kube_client.core.list_namespaced_pod(namespace, watch=False)
     return ret
@@ -78,7 +77,6 @@ def get_pods_from_namespace(
 def get_pods_from_namespace_selector(
     kube_client: KubeClient, namespace: str, label_selector: str
 ) -> client.models.v1_pod_list.V1PodList:
-
     # list all the running pods
     ret = kube_client.core.list_namespaced_pod(
         namespace, watch=False, label_selector=label_selector
@@ -87,7 +85,6 @@ def get_pods_from_namespace_selector(
 
 
 if __name__ == "__main__":
-
     options = parse_k8s_api_performance_options()
     kube_client = KubeClient(
         config_file=options.kube_config_path, context=options.context

@@ -20,6 +20,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys
@@ -153,7 +154,6 @@ def setup_all_custom_resources(
     service: str = None,
     instance: str = None,
 ) -> bool:
-
     got_results = False
     succeeded = False
     # We support two versions due to our upgrade to 1.22
@@ -163,7 +163,6 @@ def setup_all_custom_resources(
     for apiextension in [
         kube_client.apiextensions,
     ]:
-
         try:
             crds_list = apiextension.list_custom_resource_definition(
                 label_selector=paasta_prefixed("service")
@@ -181,7 +180,7 @@ def setup_all_custom_resources(
             if crd.kube_kind.singular not in cluster_crds:
                 # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
                 # and not `crd.names.singular`
-                log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
+                log.warning(f"CRD {crd.kube_kind.singular} not found in {cluster}")
                 continue
 
             # by convention, entries where key begins with _ are used as templates

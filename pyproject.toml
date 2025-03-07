@@ -1,21 +1,82 @@
-[tool.black]
+[tool.ruff]
+target-version = "py38"
 line-length = 88
-target_version = ['py38']
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | |.paasta
-    | _build
-    | buck-out
-    | build
-    | dist
-    | paasta_tools/paastaapi
-  )/
-)
-'''
+indent-width = 4
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".ipynb_checkpoints",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pyenv",
+  ".pytest_cache",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  ".vscode",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "site-packages",
+  "venv",
+  "docs/source/conf.py",
+  "paasta_tools/paastaapi",
+]
+show-fixes = true
+
+[tool.ruff.lint]
+select = [
+  "I",   # isort - import order
+  "UP",  # pyupgrade
+  "T10", # debugger
+  "E",   # pycodestyle
+  "W",   # pycodestyle
+  "F",   # pyflakes
+]
+
+ignore = [
+  # pycodestyle errors
+  "E501", # line too long
+  "E203", # whitespace before '{symbol}'
+  "E713", # Test for membership should be not in
+  "E721", # Use is and is not for type comparisons, or isinstance() for isinstance checks
+  "E741", # ambiguous variable name
+  # pyupgrade
+  "UP006", # Use `builtins.type` instead of `typing.Type` for type annotation
+  "UP011", # Unnecessary parentheses to functools.lru_cache
+  "UP012", # Unnecessary call to encode as UTF-8
+  "UP015", # Unnecessary mode argument
+  "UP018", # Unnecessary {literal_type} call (rewrite as a literal)
+  "UP020", # Use builtin open
+  "UP022", # Prefer capture_output over sending stdout and stderr to PIPE
+  "UP024", # Replace aliased errors with OSError
+  "UP026", # Deprecated mock imports
+  "UP028", # Replace yield over for loop with yield from
+  "UP031", # Use format specifiers instead of percent format
+  "UP032", # Use f-string instead of format call
+  "UP034", # Avoid extraneous parentheses
+  "UP035", # `typing.Type` is deprecated, use `builtins.type` instead
+  "UP037", # Remove quotes from type annotation
+  # pyflakes
+  "F541", # f-string without any placeholders
+]
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+case-sensitive = false
+lines-after-imports = 2
+order-by-type = false
+no-lines-before = ["future", "standard-library"]

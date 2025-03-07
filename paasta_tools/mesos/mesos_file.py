@@ -15,12 +15,12 @@
 # limitations under the License.
 import os
 
-from . import exceptions
 from paasta_tools.async_utils import async_ttl_cache
+
+from . import exceptions
 
 
 class File:
-
     chunk_size = 1024
 
     def __init__(self, host, task=None, path=None):
@@ -149,7 +149,6 @@ class File:
     async def _readlines(self, size=None):
         last = ""
         async for blob in self._read(size):
-
             # This is not streaming and assumes small chunk sizes
             blob_lines = (last + blob).split("\n")
             for line in blob_lines[: len(blob_lines) - 1]:
@@ -160,7 +159,6 @@ class File:
     async def _readlines_reverse(self, size=None):
         buf = ""
         async for blob in self._read_reverse(size):
-
             blob_lines = (blob + buf).split("\n")
             for line in reversed(blob_lines[1:]):
                 yield line

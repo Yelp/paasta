@@ -20,6 +20,7 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
+
 import abc
 import json
 import logging
@@ -45,8 +46,7 @@ class ReplicationChecker(abc.ABC):
     @abc.abstractmethod
     def get_replication_for_instance(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Dict[str, Dict[str, int]]]:
-        ...
+    ) -> Dict[str, Dict[str, Dict[str, int]]]: ...
 
 
 try:
@@ -552,8 +552,7 @@ def check_replication_for_instance(
         status = pysensu_yelp.Status.CRITICAL
     else:
         description = (
-            "{} is well-replicated because it has over {}% of its "
-            "expected replicas up."
+            "{} is well-replicated because it has over {}% of its expected replicas up."
         ).format(instance_config.job_id, crit_threshold)
         status = pysensu_yelp.Status.OK
 
@@ -621,8 +620,7 @@ def check_under_replication(
         )
     else:
         description = (
-            "{} is well-replicated because it has over {}% of its "
-            "expected replicas up."
+            "{} is well-replicated because it has over {}% of its expected replicas up."
         ).format(instance_config.job_id, crit_threshold)
     return under_replicated, output, description
 

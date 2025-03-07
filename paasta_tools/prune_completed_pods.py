@@ -12,6 +12,7 @@ from paasta_tools.kubernetes_tools import get_pod_condition
 from paasta_tools.kubernetes_tools import is_pod_completed
 from paasta_tools.kubernetes_tools import KubeClient
 
+
 log = logging.getLogger(__name__)
 
 
@@ -150,8 +151,7 @@ def main():
                 )
         elif (
             # this is currently optional
-            allowed_pending_minues is not None
-            and pod.status.phase == "Pending"
+            allowed_pending_minues is not None and pod.status.phase == "Pending"
         ):
             try:
                 if _scheduled_longer_than_threshold(pod, allowed_pending_minues):

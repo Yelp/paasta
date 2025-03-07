@@ -14,6 +14,7 @@ from mypy_extensions import TypedDict
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PaastaColors
 
+
 KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
 DEFAULT_SPARK_RUNTIME_TIMEOUT = "12h"
@@ -139,15 +140,15 @@ def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
 
         # the names here don't matter too much, so we just use the index in the volume
         # list as an arbitrary name
-        conf[
-            f"spark.kubernetes.executor.volumes.hostPath.{index}.mount.path"
-        ] = container_path
-        conf[
-            f"spark.kubernetes.executor.volumes.hostPath.{index}.options.path"
-        ] = host_path
-        conf[
-            f"spark.kubernetes.executor.volumes.hostPath.{index}.mount.readOnly"
-        ] = str(mode.lower() == "ro").lower()
+        conf[f"spark.kubernetes.executor.volumes.hostPath.{index}.mount.path"] = (
+            container_path
+        )
+        conf[f"spark.kubernetes.executor.volumes.hostPath.{index}.options.path"] = (
+            host_path
+        )
+        conf[f"spark.kubernetes.executor.volumes.hostPath.{index}.mount.readOnly"] = (
+            str(mode.lower() == "ro").lower()
+        )
 
     return conf
 

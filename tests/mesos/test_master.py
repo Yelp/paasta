@@ -104,7 +104,6 @@ async def test_tasks():
     with patch.object(
         master.MesosMaster, "_task_list", autospec=True
     ) as mock__task_list, patch.object(task, "Task", autospec=True) as mock_task:
-
         mock_task_1 = {"id": "aaa"}
         mock_task_2 = {"id": "bbb"}
         mock__task_list.return_value = [mock_task_1, mock_task_2]

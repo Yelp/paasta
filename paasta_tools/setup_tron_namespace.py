@@ -20,6 +20,7 @@ Reads from the soa_dir /nail/etc/services by default.
 The script will load the service configuration file, generate a Tron configuration
 file for it, and send the updated file to Tron.
 """
+
 import argparse
 import logging
 import sys
@@ -37,6 +38,7 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger(__name__)
 

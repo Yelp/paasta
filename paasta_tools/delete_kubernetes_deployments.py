@@ -19,6 +19,7 @@ The following script is a setup on a cron job in k8s masters. This is responsibl
 paasta-contract-monitor deployments and its services. By deleting the deployment itself,
 setup_kubernetes_job.py will be able to reschedule the deployment and its pods on different nodes.
 """
+
 import argparse
 import logging
 import sys
@@ -30,6 +31,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import SPACER
+
 
 log = logging.getLogger(__name__)
 

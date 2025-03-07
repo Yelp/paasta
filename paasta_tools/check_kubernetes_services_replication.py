@@ -30,6 +30,7 @@ After retrieving that information, a fraction of available instances is calculat
 CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
 instance then it will be used instead.
 """
+
 import logging
 from typing import Optional
 from typing import Sequence
@@ -106,10 +107,10 @@ def check_kubernetes_pod_replication(
         default_alert_after = "20m"
     if "monitoring" not in instance_config.config_dict:
         instance_config.config_dict["monitoring"] = {}
-    instance_config.config_dict["monitoring"][
-        "alert_after"
-    ] = instance_config.config_dict["monitoring"].get(
-        "alert_after", default_alert_after
+    instance_config.config_dict["monitoring"]["alert_after"] = (
+        instance_config.config_dict["monitoring"].get(
+            "alert_after", default_alert_after
+        )
     )
 
     # if the primary registration does not match the service_instance name then

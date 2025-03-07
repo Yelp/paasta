@@ -407,7 +407,6 @@ def test_run_docker_container(
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_docker_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
 class TestConfigureAndRunDockerContainer:
-
     instance_config = InstanceConfig(
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1032,12 +1031,8 @@ def test_paasta_spark_run_bash(
         use_web_identity=False,
         uses_bulkdata=True,
     )
-    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
-        {}
-    )
-    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
-        {}
-    )
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = {}
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
@@ -1159,12 +1154,8 @@ def test_paasta_spark_run(
         use_web_identity=False,
         uses_bulkdata=True,
     )
-    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
-        {}
-    )
-    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
-        {}
-    )
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = {}
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
@@ -1286,15 +1277,9 @@ def test_paasta_spark_run_pyspark(
         use_web_identity=False,
         uses_bulkdata=True,
     )
-    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
-        {}
-    )
-    mock_load_system_paasta_config_spark_run.return_value.get_spark_use_eks_default.return_value = (
-        False
-    )
-    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
-        {}
-    )
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = {}
+    mock_load_system_paasta_config_spark_run.return_value.get_spark_use_eks_default.return_value = False
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]

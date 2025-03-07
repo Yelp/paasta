@@ -122,7 +122,7 @@ def retrieve_envoy_clusters(
 
 
 def get_casper_endpoints(
-    clusters_info: Mapping[str, Any]
+    clusters_info: Mapping[str, Any],
 ) -> FrozenSet[Tuple[str, int]]:
     """Filters out and returns casper endpoints from Envoy clusters."""
     casper_endpoints: Set[Tuple[str, int]] = set()
@@ -223,9 +223,9 @@ def get_multiple_backends(
 
     casper_endpoints = get_casper_endpoints(clusters_info)
 
-    backends: DefaultDict[
-        str, List[Tuple[EnvoyBackend, bool]]
-    ] = collections.defaultdict(list)
+    backends: DefaultDict[str, List[Tuple[EnvoyBackend, bool]]] = (
+        collections.defaultdict(list)
+    )
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):

@@ -21,6 +21,7 @@ from kazoo.exceptions import NoNodeError
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.utils import ZookeeperPool
 
+
 ServiceAutoscalingInfo = namedtuple(
     "ServiceAutoscalingInfo",
     [

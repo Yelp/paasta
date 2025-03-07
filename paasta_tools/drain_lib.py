@@ -31,6 +31,7 @@ from paasta_tools.hacheck import get_spool
 from paasta_tools.hacheck import post_spool
 from paasta_tools.utils import get_user_agent
 
+
 _drain_methods: Dict[str, Type["DrainMethod"]] = {}
 
 

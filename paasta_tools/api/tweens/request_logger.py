@@ -14,6 +14,7 @@
 """
 Creates a tween that logs information about requests.
 """
+
 import json
 import traceback
 from datetime import datetime
@@ -22,6 +23,7 @@ import pyramid
 import pytz
 
 from paasta_tools.api import settings
+
 
 try:
     import clog

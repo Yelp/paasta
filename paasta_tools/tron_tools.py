@@ -35,55 +35,54 @@ from service_configuration_lib.spark_config import SparkConfBuilder
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.mesos_tools import mesos_services_running_here
 
+
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
-from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.tron.client import TronClient
-from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import time_cache
-from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import TronSecretVolume
-from paasta_tools.utils import get_k8s_url_for_cluster
-from paasta_tools.utils import validate_pool
-from paasta_tools.utils import PoolsNotConfiguredError
-from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import ProjectedSAVolume
+from typing import Any
+from typing import Dict
+from typing import Optional
 
+from paasta_tools import monitoring_tools
 from paasta_tools import spark_tools
-
-from paasta_tools.kubernetes_tools import (
-    NodeSelectorConfig,
-    allowlist_denylist_to_requirements,
-    contains_zone_label,
-    get_service_account_name,
-    limit_size_with_hash,
-    raw_selectors_to_requirements,
-    to_node_label,
-)
+from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
+from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
+from paasta_tools.kubernetes_tools import contains_zone_label
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_service_account_name
+from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.kubernetes_tools import NodeSelectorConfig
+from paasta_tools.kubernetes_tools import raw_selectors_to_requirements
+from paasta_tools.kubernetes_tools import to_node_label
+from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import is_shared_secret_from_secret_name
-from paasta_tools.secret_tools import get_secret_name_from_ref
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
-from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.tron import tron_command_context
+from paasta_tools.tron.client import TronClient
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DockerVolume
+from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.utils import ProjectedSAVolume
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import time_cache
+from paasta_tools.utils import TronSecretVolume
+from paasta_tools.utils import validate_pool
 
-from paasta_tools import monitoring_tools
-from paasta_tools.monitoring_tools import list_teams
-from typing import Optional
-from typing import Dict
-from typing import Any
 
 log = logging.getLogger(__name__)
 logging.getLogger("tron").setLevel(logging.WARNING)
@@ -393,9 +392,9 @@ class TronActionConfig(InstanceConfig):
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
                 f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
-        spark_conf[
-            "spark.kubernetes.executor.podTemplateFile"
-        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf["spark.kubernetes.executor.podTemplateFile"] = (
+            spark_tools.SPARK_DNS_POD_TEMPLATE
+        )
 
         spark_conf.update(
             {
@@ -408,10 +407,10 @@ class TronActionConfig(InstanceConfig):
         )
 
         # We are using the Service Account created using the provided or default IAM role.
-        spark_conf[
-            "spark.kubernetes.authenticate.executor.serviceAccountName"
-        ] = get_service_account_name(
-            iam_role=self.get_spark_executor_iam_role(),
+        spark_conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = (
+            get_service_account_name(
+                iam_role=self.get_spark_executor_iam_role(),
+            )
         )
 
         return spark_conf

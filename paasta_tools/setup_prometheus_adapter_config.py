@@ -14,6 +14,7 @@
 """
 Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
+
 import argparse
 import logging
 import sys
@@ -63,6 +64,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+
 
 log = logging.getLogger(__name__)
 

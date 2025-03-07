@@ -13,7 +13,6 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import Constraint  # noqa, imported for typing.
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl

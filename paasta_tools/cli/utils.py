@@ -77,11 +77,12 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
+
 try:
-    from vault_tools.paasta_secret import get_client as get_vault_client
-    from vault_tools.paasta_secret import get_vault_url
-    from vault_tools.paasta_secret import get_vault_ca
     from okta_auth import get_and_cache_jwt_default
+    from vault_tools.paasta_secret import get_client as get_vault_client
+    from vault_tools.paasta_secret import get_vault_ca
+    from vault_tools.paasta_secret import get_vault_url
 except ImportError:
 
     def get_vault_client(url: str, capath: str) -> None:
@@ -168,7 +169,6 @@ def info_message(msg: str) -> str:
 
 
 class PaastaCheckMessages:
-
     """Collection of message printed out by 'paasta check'.
     Helpful as it avoids cumbersome maintenance of the unit tests.
     """
@@ -196,7 +196,7 @@ class PaastaCheckMessages:
     DOCKERFILE_FOUND = success("Found Dockerfile")
 
     DOCKERFILE_MISSING = failure(
-        "Dockerfile not found. Create a Dockerfile and try again.\n  " "More info:",
+        "Dockerfile not found. Create a Dockerfile and try again.\n  More info:",
         "http://y/paasta-runbook-dockerfile",
     )
 
@@ -321,7 +321,6 @@ class PaastaCheckMessages:
 
 
 class NoSuchService(Exception):
-
     """Exception to be raised in the event that the service
     name can not be guessed.
     """
@@ -693,37 +692,37 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     ),
 )
 
-LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
-    str, LongRunningInstanceTypeHandler
-] = defaultdict(
-    lambda: LongRunningInstanceTypeHandler(None, None),
-    kubernetes=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_kubernetes_service_config
-    ),
-    flink=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_flink_instance_config
-    ),
-    flinkeks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_flinkeks_instance_config
-    ),
-    cassandracluster=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_cassandracluster_instance_config
-    ),
-    kafkacluster=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_kafkacluster_instance_config
-    ),
-    nrtsearchservice=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_nrtsearchservice_instance_config
-    ),
-    nrtsearchserviceeks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_nrtsearchserviceeks_instance_config
-    ),
-    monkrelays=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_monkrelaycluster_instance_config
-    ),
-    eks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_eks_service_config
-    ),
+LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[str, LongRunningInstanceTypeHandler] = (
+    defaultdict(
+        lambda: LongRunningInstanceTypeHandler(None, None),
+        kubernetes=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_kubernetes_service_config
+        ),
+        flink=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_flink_instance_config
+        ),
+        flinkeks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_flinkeks_instance_config
+        ),
+        cassandracluster=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_cassandracluster_instance_config
+        ),
+        kafkacluster=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_kafkacluster_instance_config
+        ),
+        nrtsearchservice=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_nrtsearchservice_instance_config
+        ),
+        nrtsearchserviceeks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_nrtsearchserviceeks_instance_config
+        ),
+        monkrelays=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_monkrelaycluster_instance_config
+        ),
+        eks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_eks_service_config
+        ),
+    )
 )
 
 
@@ -916,14 +915,13 @@ def get_subparser(subparsers, function, command, help_text, description):
     new_parser.add_argument(
         "-c",
         "--cluster",
-        help="Cluster on which the service is running"
-        "For example: --cluster pnw-prod",
+        help="Cluster on which the service is runningFor example: --cluster pnw-prod",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     new_parser.add_argument(
         "-i",
         "--instance",
-        help="The instance that you wish to inspect" "For example: --instance main",
+        help="The instance that you wish to inspectFor example: --instance main",
         required=True,
         default="main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened

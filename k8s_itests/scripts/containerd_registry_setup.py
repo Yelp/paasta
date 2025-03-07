@@ -3,6 +3,7 @@ import sys
 
 import toml
 
+
 containerdcfg_file_path = sys.argv[1]
 containerdcfg = toml.load(containerdcfg_file_path)
 dockercfg = json.load(open("/nail/etc/docker-registry-ro"))

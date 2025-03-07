@@ -37,6 +37,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import concurrent.futures
 import json
@@ -57,6 +58,7 @@ from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_latest_deployment_tag
+
 
 log = logging.getLogger(__name__)
 TARGET_FILE = "deployments.json"
@@ -197,7 +199,7 @@ def build_docker_image_name(
 
 
 def get_desired_state_by_branch_and_sha(
-    remote_refs: Dict[str, str]
+    remote_refs: Dict[str, str],
 ) -> Dict[Tuple[str, str], Tuple[str, Any]]:
     tag_pattern = r"^refs/tags/(?:paasta-){0,2}(?P<branch>[a-zA-Z0-9-_.]+)-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$"
 

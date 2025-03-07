@@ -421,8 +421,7 @@ class InstanceConfig:
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
             if (
-                key in self.config_dict
-                and self.config_dict[key] is not None  # type: ignore
+                key in self.config_dict and self.config_dict[key] is not None  # type: ignore
             ):
                 self.config_dict[key] = self.config_dict[key].format(  # type: ignore
                     **interpolation_facts
@@ -4033,7 +4032,7 @@ def timeout(
     if use_signals:
 
         def decorate(
-            func: Callable[..., _TimeoutFuncRetType]
+            func: Callable[..., _TimeoutFuncRetType],
         ) -> Callable[..., _TimeoutFuncRetType]:
             def _handle_timeout(signum: int, frame: FrameType) -> None:
                 raise TimeoutError(error_message)
@@ -4052,7 +4051,7 @@ def timeout(
     else:
 
         def decorate(
-            func: Callable[..., _TimeoutFuncRetType]
+            func: Callable[..., _TimeoutFuncRetType],
         ) -> Callable[..., _TimeoutFuncRetType]:
             # https://github.com/python/mypy/issues/797
             return _Timeout(func, seconds, error_message)  # type: ignore
@@ -4068,9 +4067,9 @@ class _Timeout:
         error_message: str,
     ) -> None:
         self.seconds = seconds
-        self.control: queue.Queue[
-            Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]
-        ] = queue.Queue()
+        self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = (
+            queue.Queue()
+        )
         self.function = function
         self.error_message = error_message
 

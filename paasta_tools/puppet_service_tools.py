@@ -10,6 +10,7 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import compose_job_id
 
+
 PUPPET_SERVICE_DIR = "/etc/nerve/puppet_services.d"
 
 

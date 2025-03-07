@@ -17,11 +17,12 @@ from urllib.parse import urljoin
 
 import aiohttp
 
+from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.utils import get_user_agent
+
 from . import exceptions
 from . import mesos_file
 from . import util
-from paasta_tools.async_utils import async_ttl_cache
-from paasta_tools.utils import get_user_agent
 
 
 class MesosSlave:

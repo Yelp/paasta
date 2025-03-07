@@ -481,9 +481,7 @@ def get_docker_run_cmd(
 
     container_user = (
         # root inside container == current user outside
-        (0, 0)
-        if is_using_unprivileged_containers()
-        else (os.geteuid(), os.getegid())
+        (0, 0) if is_using_unprivileged_containers() else (os.geteuid(), os.getegid())
     )
     cmd.append("--user=%d:%d" % container_user)
     cmd.append("--name=%s" % sanitize_container_name(container_name))
@@ -617,7 +615,7 @@ def get_spark_env(
             )
             sys.exit(1)
         spark_env["SPARK_HISTORY_OPTS"] = (
-            f"-D{args.spark_args} " f"-Dspark.history.ui.port={ui_port}"
+            f"-D{args.spark_args} -Dspark.history.ui.port={ui_port}"
         )
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
@@ -630,7 +628,6 @@ def get_spark_env(
 def _parse_user_spark_args(
     spark_args: str,
 ) -> Dict[str, str]:
-
     user_spark_opts = {}
     if spark_args:
         for spark_arg in spark_args.split():
@@ -660,7 +657,6 @@ def run_docker_container(
     docker_shm_size,
     docker_cpu_limit,
 ) -> int:
-
     docker_run_args = dict(
         container_name=container_name,
         volumes=volumes,

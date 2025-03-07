@@ -22,6 +22,7 @@ Command line options:
 - -v, --verbose: Verbose output
 - -n, --dry-run: Only report what would have been deleted
 """
+
 import argparse
 import logging
 import sys
@@ -38,6 +39,7 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import KubeClient
+
 
 log = logging.getLogger(__name__)
 

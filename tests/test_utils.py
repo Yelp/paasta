@@ -352,9 +352,7 @@ def test_load_system_paasta_config_file_dne():
         "os.access", return_value=True, autospec=True
     ), mock.patch(
         "builtins.open", side_effect=IOError(2, "a", "b"), autospec=None
-    ), mock.patch(
-        "paasta_tools.utils.os.stat", autospec=True
-    ), mock.patch(
+    ), mock.patch("paasta_tools.utils.os.stat", autospec=True), mock.patch(
         "paasta_tools.utils.get_readable_files_in_glob",
         autospec=True,
         return_value=[fake_path],
@@ -1149,9 +1147,7 @@ def test_load_service_instance_auto_configs_no_aliases(
     mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
         "kubernetes": instance_type_enabled,
     }
-    mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
-        {}
-    )
+    mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = {}
     result = utils.load_service_instance_auto_configs(
         service="fake_service",
         instance_type="kubernetes",
@@ -1187,9 +1183,7 @@ def test_load_service_instance_auto_configs_with_autotune_aliases(
         mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
             expected_instance_type: True,
         }
-        mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
-            instance_type_aliases
-        )
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = instance_type_aliases
         result = utils.load_service_instance_auto_configs(
             service="fake_service",
             instance_type=instance_type,
@@ -1295,7 +1289,6 @@ def test_DeploymentsJson_read():
 
 
 def test_get_running_mesos_docker_containers():
-
     fake_container_data = [
         {
             "Status": "Up 2 hours",

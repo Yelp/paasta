@@ -62,6 +62,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
+
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
 SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "slave"])
 

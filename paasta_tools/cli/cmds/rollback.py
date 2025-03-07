@@ -86,7 +86,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         required=False,
         default=None,
     )
-    arg_version.completer = lazy_choices_completer(list_previously_deployed_image_versions)  # type: ignore
+    arg_version.completer = lazy_choices_completer(  # type: ignore
+        list_previously_deployed_image_versions
+    )
     arg_deploy_group = list_parser.add_argument(
         "-l",
         "--deploy-groups",

@@ -115,7 +115,6 @@ def test_validate_paasta_objects(
     mock_load_all_instance_configs_for_service,
     capsys,
 ):
-
     fake_service = "fake-service"
     fake_instance = "fake-instance"
     fake_cluster = "penguin"
@@ -625,8 +624,8 @@ def test_instance_validate_schema_sa_and_iam_role(
 ):
     instance_content = f"""
 test_instance:
-  {"iam_role: "+iam_role if iam_role else ""}
-  {"service_account_name: "+service_account_name if service_account_name else ""}
+  {"iam_role: " + iam_role if iam_role else ""}
+  {"service_account_name: " + service_account_name if service_account_name else ""}
 """
     with patch(
         "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
@@ -765,8 +764,8 @@ test_job:
   schedule: "daily 04:00:00"
   actions:
     first:
-      {"iam_role: "+iam_role if iam_role else ""}
-      {"service_account_name: "+service_account_name if service_account_name else ""}
+      {"iam_role: " + iam_role if iam_role else ""}
+      {"service_account_name: " + service_account_name if service_account_name else ""}
       command: echo hello world
 """
     with patch(

@@ -14,6 +14,7 @@
 """
 Settings of the paasta-api server.
 """
+
 import os
 from typing import Optional
 
@@ -21,6 +22,7 @@ from paasta_tools import utils
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import SystemPaastaConfig
+
 
 soa_dir: str = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
 

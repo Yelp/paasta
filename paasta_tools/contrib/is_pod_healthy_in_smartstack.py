@@ -18,6 +18,7 @@ import sys
 from paasta_tools.smartstack_tools import are_services_up_on_ip_port
 from paasta_tools.utils import load_system_paasta_config
 
+
 system_paasta_config = load_system_paasta_config()
 synapse_port = system_paasta_config.get_synapse_port()
 synapse_host = "169.254.255.254"

@@ -21,7 +21,6 @@ from paasta_tools.utils import compose_job_id
 
 
 class TestMonitoring_Tools:
-
     general_page = True
     fake_general_service_config = {
         "team": "general_test_team",

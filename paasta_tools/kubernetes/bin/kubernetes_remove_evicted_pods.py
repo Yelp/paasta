@@ -17,6 +17,7 @@ Usage: ./kubernetes_remove_evicted_pods.py [options]
 
 Removes Evicted pods and notifies service owners
 """
+
 import argparse
 import logging
 from collections import defaultdict

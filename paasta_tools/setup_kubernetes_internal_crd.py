@@ -19,6 +19,7 @@ Command line options:
 
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys
@@ -28,6 +29,7 @@ from kubernetes.client import V1CustomResourceDefinition
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
+
 
 log = logging.getLogger(__name__)
 

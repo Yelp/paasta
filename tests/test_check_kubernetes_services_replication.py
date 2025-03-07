@@ -18,6 +18,7 @@ from paasta_tools import check_kubernetes_services_replication
 from paasta_tools import check_services_replication_tools
 from paasta_tools.utils import compose_job_id
 
+
 check_kubernetes_services_replication.log = mock.Mock()
 check_services_replication_tools.log = mock.Mock()
 

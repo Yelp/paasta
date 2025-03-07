@@ -67,7 +67,6 @@ def test_status_mesos_tasks_verbose(test_case):
     ) as format_non_running_mesos_task_row_patch, asynctest.patch(
         "paasta_tools.mesos_tools.format_stdstreams_tail_for_task", autospec=True
     ) as format_stdstreams_tail_for_task_patch:
-
         template_task_return = {
             "id": filter_string,
             "statuses": [{"timestamp": "##########"}],

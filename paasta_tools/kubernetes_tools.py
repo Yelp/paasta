@@ -532,7 +532,7 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
     if len(name) > limit:
         digest = hashlib.md5(name.encode()).digest()
         hashed = base64.b32encode(digest).decode().replace("=", "").lower()
-        return f"{name[:(limit-suffix-1)]}-{hashed[:suffix]}"
+        return f"{name[: (limit - suffix - 1)]}-{hashed[:suffix]}"
     else:
         return name
 
@@ -584,7 +584,8 @@ class KubeClient:
         )
 
         models.V1PodDisruptionBudgetStatus.disrupted_pods = property(
-            fget=lambda *args, **kwargs: models.V1PodDisruptionBudgetStatus.disrupted_pods(
+            fget=lambda *args,
+            **kwargs: models.V1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
             ),
             fset=_set_disrupted_pods,
@@ -641,7 +642,7 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, NodeSelectorConfig]
+    raw_selectors: Mapping[str, NodeSelectorConfig],
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.
@@ -1152,7 +1153,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         system_paasta_config: SystemPaastaConfig,
     ) -> Optional[V1Container]:
-
         if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             return V1Container(
                 image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
@@ -2098,15 +2098,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
             prometheus_shard = self.get_prometheus_shard()
             if prometheus_shard:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_shard"
-                ] = prometheus_shard
+                complete_config.metadata.labels["paasta.yelp.com/prometheus_shard"] = (
+                    prometheus_shard
+                )
 
             image_version = self.get_image_version()
             if image_version is not None:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/image_version"
-                ] = image_version
+                complete_config.metadata.labels["paasta.yelp.com/image_version"] = (
+                    image_version
+                )
 
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
@@ -2230,9 +2230,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
-            pod_spec_kwargs[
-                "termination_grace_period_seconds"
-            ] = termination_grace_period
+            pod_spec_kwargs["termination_grace_period_seconds"] = (
+                termination_grace_period
+            )
 
         fs_group = self.get_fs_group()
 
@@ -2909,7 +2909,6 @@ def list_deployments(
     namespace: str,
     label_selector: str = "",
 ) -> Sequence[KubeDeployment]:
-
     deployments = kube_client.deployments.list_namespaced_deployment(
         namespace=namespace, label_selector=label_selector
     )
@@ -3674,7 +3673,6 @@ async def get_events_for_object(
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
     max_age_in_seconds: Optional[int] = None,
 ) -> List[CoreV1Event]:
-
     try:
         # this is a blocking call since it does network I/O and can end up significantly blocking the
         # asyncio event loop when doing things like getting events for all the Pods for a service with
@@ -3932,7 +3930,8 @@ def load_custom_resource_definitions(
         kube_kind = KubeKind(**custom_resource_dict.pop("kube_kind"))  # type: ignore
         custom_resources.append(
             CustomResourceDefinition(  # type: ignore
-                kube_kind=kube_kind, **custom_resource_dict  # type: ignore
+                kube_kind=kube_kind,
+                **custom_resource_dict,  # type: ignore
             )
         )
     return custom_resources
@@ -4184,13 +4183,12 @@ def update_crds(
                 existing_crd = crd
                 break
         try:
-
             apiextensions = kube_client.apiextensions
 
             if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
+                desired_crd.metadata["resourceVersion"] = (
+                    existing_crd.metadata.resource_version
+                )
 
                 apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd

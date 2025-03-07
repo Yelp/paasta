@@ -7,6 +7,7 @@ from subprocess import CalledProcessError
 from subprocess import run
 from traceback import print_exc
 
+
 APPLIED_DIRECTORY = ".applied"
 
 

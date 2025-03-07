@@ -21,7 +21,6 @@ from paasta_tools import drain_lib
 
 
 def test_register_drain_method():
-
     with mock.patch.dict(drain_lib._drain_methods):
 
         @drain_lib.register_drain_method("FAKEDRAINMETHOD")
@@ -39,8 +38,7 @@ def mock_ClientSession(**fake_session_kwargs):
     fake_session = asynctest.MagicMock(name="session", **fake_session_kwargs)
 
     class FakeClientSession:
-        def __init__(self, *args, **kwargs):
-            ...
+        def __init__(self, *args, **kwargs): ...
 
         async def __aenter__(*args):
             return fake_session

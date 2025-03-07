@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
+
 import argparse
 import base64
 import binascii
@@ -240,7 +241,9 @@ def read_docker_registry_creds(
     return (None, None)
 
 
-def is_docker_image_already_in_registry(service: str, soa_dir: str, sha: str, image_version: Optional[str] = None) -> bool:  # type: ignore
+def is_docker_image_already_in_registry(  # type: ignore
+    service: str, soa_dir: str, sha: str, image_version: Optional[str] = None
+) -> bool:
     """Verifies that docker image exists in the paasta registry.
 
     :param service: name of the service

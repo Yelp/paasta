@@ -119,7 +119,7 @@ def test_push_to_registry_force(
     assert paasta_push_to_registry(args) == 0
     assert not mock_is_docker_image_already_in_registry.called
     mock_run.assert_called_once_with(
-        "docker push fake_registry/services-foo:" "paasta-abcd",
+        "docker push fake_registry/services-foo:paasta-abcd",
         component="build",
         log=True,
         loglevel="debug",

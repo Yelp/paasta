@@ -16,6 +16,7 @@
 A simple script to enumerate all smartstack namespaces and output
 a /etc/services compatible file
 """
+
 import argparse
 import os
 
@@ -72,7 +73,7 @@ def get_service_lines_for_service(service):
 def generate_configuration():
     service_data = get_all_namespaces()
     config = {}
-    for (name, data) in service_data:
+    for name, data in service_data:
         proxy_port = data.get("proxy_port")
         if proxy_port is None:
             continue

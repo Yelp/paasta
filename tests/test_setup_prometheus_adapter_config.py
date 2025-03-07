@@ -27,6 +27,7 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 from paasta_tools.utils import SystemPaastaConfig
 
+
 MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
     {},
     "/mock/system/configs",
@@ -354,14 +355,17 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
         paasta_cluster="cluster",
     )
 
-    assert rule == {
-        "name": {"as": "service-instance-arbitrary-promql"},
-        "resources": {
-            "overrides": {
-                "namespace": {"resource": "namespace"},
-                "deployment": {"group": "apps", "resource": "deployments"},
+    assert (
+        rule
+        == {
+            "name": {"as": "service-instance-arbitrary-promql"},
+            "resources": {
+                "overrides": {
+                    "namespace": {"resource": "namespace"},
+                    "deployment": {"group": "apps", "resource": "deployments"},
+                },
             },
-        },
-        "metricsQuery": "foo",  # if seriesQuery is specified, the user's metricsQuery should be unaltered.
-        "seriesQuery": "bar",
-    }
+            "metricsQuery": "foo",  # if seriesQuery is specified, the user's metricsQuery should be unaltered.
+            "seriesQuery": "bar",
+        }
+    )
