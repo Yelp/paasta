@@ -1,3 +1,12 @@
+paasta-tools (1.13.6) xenial; urgency=medium
+
+  * 1.13.6 tagged with 'make release'
+    Commit: Merge pull request #4017 from Yelp/timma/MLCOMPUTE-
+    3674_fix_timeout_regex_for_spark_submit_command  Fix timeout regex
+    for spark submit command
+
+ -- Dave Cuza <dcuza@yelp.com>  Fri, 07 Mar 2025 04:43:08 -0800
+
 paasta-tools (1.13.5) xenial; urgency=medium
 
   * 1.13.5 tagged with 'make release'
