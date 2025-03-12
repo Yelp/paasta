@@ -68,7 +68,6 @@ Submodules
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_tron_namespaces
-   paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
    paasta_tools.marathon_dashboard
@@ -81,7 +80,6 @@ Submodules
    paasta_tools.oom_logger
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_native_serviceinit
-   paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
    paasta_tools.prune_completed_pods
    paasta_tools.puppet_service_tools
