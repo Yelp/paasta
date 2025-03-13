@@ -2071,7 +2071,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     template=self.get_pod_template_spec(
                         git_sha=git_sha,
                         system_paasta_config=system_paasta_config,
-                        restart=False,
+                        restart_on_failure=False,
                     ),
                 ),
             )
@@ -2201,7 +2201,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         git_sha: str,
         system_paasta_config: SystemPaastaConfig,
-        restart: bool = True,
+        restart_on_failure: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2240,7 +2240,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
-            restart_policy="Always" if restart else "Never",
+            restart_policy="Always" if restart_on_failure else "Never",
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),

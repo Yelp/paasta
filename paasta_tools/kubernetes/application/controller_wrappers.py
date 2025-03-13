@@ -419,7 +419,7 @@ class JobWrapper(Application):
         item: V1Job,
         logging=logging.getLogger(__name__),
     ):
-        item.spec.replicas = None
+        item.spec.replicas = None  # avoid causing errors in parent class
         super().__init__(item, logging)
 
     def deep_delete(self, kube_client: KubeClient) -> None:
@@ -452,7 +452,7 @@ class JobWrapper(Application):
             )
 
     def create(self, kube_client: KubeClient):
-        """Create and start Kubenetes Job"""
+        """Create and start Kubernetes Job"""
         create_job(
             kube_client=kube_client,
             formatted_job=self.item,
