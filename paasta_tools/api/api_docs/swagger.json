@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "title": "Paasta API",
-        "version": "1.0.0"
+        "version": "1.1.0"
     },
     "basePath": "/v1",
     "schemes": [
@@ -843,6 +843,194 @@
                         "schema": {
                             "$ref": "#/definitions/AutoscalerCountMsg"
                         }
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/start": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "Successfully started remote-run sandbox",
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunOutcome"
+                        }
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Launch a remote-run pod",
+                "operationId": "remote_run_start",
+                "tags": [
+                    "remote_run"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "description": "Username",
+                        "name": "json_body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunStart"
+                        }
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/stop": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "Remote run pod stopped",
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunOutcome"
+                        }
+                    },
+                    "404": {
+                        "description": "Service instance not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Stop a remote run",
+                "operationId": "remote_run_stop",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "description": "Username",
+                        "name": "json_body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunStop"
+                        }
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/poll": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Pod status information",
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunOutcome"
+                        }
+                    },
+                    "404": {
+                        "description": "Service instance not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Check if remote run pod is ready",
+                "operationId": "remote_run_poll",
+                "tags": [
+                    "remote_run"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Job name",
+                        "name": "job_name",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/remote_run/{service}/{instance}/token": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Token generated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/RemoteRunToken"
+                        }
+                    },
+                    "404": {
+                        "description": "Service instance not found"
+                    },
+                    "500": {
+                        "description": "Failure"
+                    }
+                },
+                "summary": "Get a remote run token",
+                "operationId": "remote_run_token",
+                "tags": [
+                    "remote_run"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Username",
+                        "name": "user",
+                        "required": true,
+                        "type": "string"
                     }
                 ]
             }
@@ -1969,6 +2157,72 @@
                     "description": "Number of times any deployment action has been taken on this service instance"
                 }
             }
+        },
+        "RemoteRunStart": {
+            "type": "object",
+            "properties": {
+                "interactive": {
+                    "type": "boolean"
+                },
+                "recreate": {
+                    "type": "boolean"
+                },
+                "user": {
+                    "type": "string"
+                },
+                "max_duration": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "RemoteRunStop": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "user"
+            ]
+        },
+        "RemoteRunOutcome": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "pod_name": {
+                    "type": "string"
+                },
+                "job_name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status",
+                "message"
+            ]
+        },
+        "RemoteRunToken": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "token"
+            ]
         },
         "Resource": {
             "type": "array",

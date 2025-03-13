@@ -37,6 +37,7 @@ class PaastaOApiClient:
     default: paastaapis.DefaultApi
     resources: paastaapis.ResourcesApi
     service: paastaapis.ServiceApi
+    remote_run: paastaapis.RemoteRunApi
     api_error: Type[paastaapi.ApiException]
     connection_error: Type[paastaapi.ApiException]
     timeout_error: Type[paastaapi.ApiException]
@@ -72,6 +73,7 @@ def get_paasta_oapi_client_by_url(
         default=paastaapis.DefaultApi(client),
         resources=paastaapis.ResourcesApi(client),
         service=paastaapis.ServiceApi(client),
+        remote_run=paastaapis.RemoteRunApi(client),
         api_error=paastaapi.ApiException,
         connection_error=paastaapi.ApiException,
         timeout_error=paastaapi.ApiException,
