@@ -69,6 +69,8 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1Job
+from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
@@ -606,6 +608,7 @@ class KubeClient:
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+        self.batches = kube_client.BatchV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
@@ -2044,6 +2047,47 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""
         return self.config_dict.get("pod_management_policy", "OrderedReady")
 
+    def format_kubernetes_job(
+        self,
+        job_label: str,
+        deadline_seconds: int = 3600,
+    ) -> V1Job:
+        """Create the config for launching the deployment as a Job
+
+        :param str job_label: value to set for the "job type" label
+        :param int deadline_seconds: maximum allowed duration for the job
+        :return: job object
+        """
+        try:
+            docker_url = self.get_docker_url()
+            git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
+            system_paasta_config = load_system_paasta_config()
+            complete_config = V1Job(
+                api_version="batch/v1",
+                kind="Job",
+                metadata=self.get_kubernetes_metadata(git_sha),
+                spec=V1JobSpec(
+                    active_deadline_seconds=deadline_seconds,
+                    template=self.get_pod_template_spec(
+                        git_sha=git_sha,
+                        system_paasta_config=system_paasta_config,
+                        restart=False,
+                    ),
+                ),
+            )
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+            complete_config.metadata.labels["paasta.yelp.com/job_type"] = job_label
+        except Exception as e:
+            raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
+        log.debug(
+            f"Complete configuration for job instance is: {complete_config}",
+        )
+        return complete_config
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -2154,7 +2198,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return "false"
 
     def get_pod_template_spec(
-        self, git_sha: str, system_paasta_config: SystemPaastaConfig
+        self,
+        git_sha: str,
+        system_paasta_config: SystemPaastaConfig,
+        restart: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2193,7 +2240,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
-            restart_policy="Always",
+            restart_policy="Always" if restart else "Never",
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
@@ -2533,7 +2580,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # remove data we dont want used to hash configs
         # replica count
         if ahash["spec"] is not None:
-            del ahash["spec"]["replicas"]
+            ahash["spec"].pop("replicas", None)
 
         if ahash["metadata"] is not None:
             ahash["metadata"]["namespace"] = None
@@ -3655,6 +3702,17 @@ def update_stateful_set(
         name=formatted_stateful_set.metadata.name,
         namespace=namespace,
         body=formatted_stateful_set,
+    )
+
+
+def create_job(
+    kube_client: KubeClient,
+    formatted_job: V1Job,
+    namespace: str,
+) -> None:
+    return kube_client.batches.create_namespaced_job(
+        namespace=namespace,
+        body=formatted_job,
     )
 
 
