@@ -29,7 +29,6 @@ opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
 opt/venvs/paasta-tools/bin/paasta_list_kubernetes_service_instances usr/bin/paasta_list_kubernetes_service_instances
 opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/paasta_list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_oom_logger usr/bin/paasta_oom_logger
-opt/venvs/paasta-tools/bin/paasta_remote_run.py usr/bin/paasta_remote_run
 opt/venvs/paasta-tools/bin/paasta_secrets_sync.py usr/bin/paasta_secrets_sync
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
