@@ -27,6 +27,8 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1Job
+from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
@@ -1466,6 +1468,67 @@ class TestKubernetesDeploymentConfig:
             mock_get_aws_ebs_volumes.return_value = ["some-ebs-vol"]
             with pytest.raises(Exception):
                 self.deployment.get_desired_instances()
+
+    def test_format_kubernetes_job(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl",
+            autospec=True,
+        ) as mock_get_git_sha, mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_config, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
+            autospec=True,
+        ) as mock_get_docker_url, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
+            autospec=True,
+            return_value="kurupt",
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
+            autospec=True,
+            return_value="fm",
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_image_version",
+            autospec=True,
+        ) as mock_get_image_version, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec",
+            autospec=True,
+        ) as mock_get_pod_template_spec, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata",
+            autospec=True,
+        ) as mock_get_kubernetes_metadata:
+            mock_get_kubernetes_metadata.return_value.labels = {
+                "paasta.yelp.com/owner": "whatever"
+            }
+            job = self.deployment.format_kubernetes_job("foobar", 100)
+            assert job == V1Job(
+                api_version="batch/v1",
+                kind="Job",
+                metadata=mock_get_kubernetes_metadata.return_value,
+                spec=V1JobSpec(
+                    active_deadline_seconds=100,
+                    template=mock_get_pod_template_spec.return_value,
+                ),
+            )
+            mock_get_git_sha.assert_called_once_with(
+                mock_get_docker_url.return_value,
+                long=True,
+            )
+            mock_get_kubernetes_metadata.assert_called_once_with(
+                self.deployment,
+                mock_get_git_sha.return_value,
+            )
+            mock_get_pod_template_spec.assert_called_once_with(
+                self.deployment,
+                git_sha=mock_get_git_sha.return_value,
+                system_paasta_config=mock_load_system_config.return_value,
+                restart_on_failure=False,
+            )
+            assert job.metadata.labels == {
+                "paasta.yelp.com/owner": "whatever",
+                "paasta.yelp.com/image_version": mock_get_image_version.return_value,
+                "paasta.yelp.com/job_type": "foobar",
+            }
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl", autospec=True

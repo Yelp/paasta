@@ -6,6 +6,7 @@ from typing import Union
 
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
+from kubernetes.client import V1Job
 from kubernetes.client import V1PodDisruptionBudget
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
@@ -13,6 +14,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_service_account
@@ -411,14 +413,63 @@ class StatefulSetWrapper(Application):
         )
 
 
+class JobWrapper(Application):
+    def __init__(
+        self,
+        item: V1Job,
+        logging=logging.getLogger(__name__),
+    ):
+        item.spec.replicas = None  # avoid causing errors in parent class
+        super().__init__(item, logging)
+
+    def deep_delete(self, kube_client: KubeClient) -> None:
+        """Remove resources related to the job"""
+        delete_options = V1DeleteOptions(propagation_policy="Foreground")
+        try:
+            kube_client.batches.delete_namespaced_job(
+                self.item.metadata.name,
+                self.item.metadata.namespace,
+                body=delete_options,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                # Job does not exist, nothing to delete but
+                # we can consider this a success.
+                self.logging.debug(
+                    "not deleting nonexistent job/{} from namespace/{}".format(
+                        self.item.metadata.name,
+                        self.item.metadata.namespace,
+                    )
+                )
+            else:
+                raise
+        else:
+            self.logging.info(
+                "deleted job/{} from namespace/{}".format(
+                    self.item.metadata.name,
+                    self.item.metadata.namespace,
+                )
+            )
+
+    def create(self, kube_client: KubeClient):
+        """Create and start Kubernetes Job"""
+        create_job(
+            kube_client=kube_client,
+            formatted_job=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+
+
 def get_application_wrapper(
-    formatted_application: Union[V1Deployment, V1StatefulSet]
+    formatted_application: Union[V1Deployment, V1StatefulSet, V1Job]
 ) -> Application:
     app: Application
     if isinstance(formatted_application, V1Deployment):
         app = DeploymentWrapper(formatted_application)
     elif isinstance(formatted_application, V1StatefulSet):
         app = StatefulSetWrapper(formatted_application)
+    elif isinstance(formatted_application, V1Job):
+        app = JobWrapper(formatted_application)
     else:
         raise Exception("Unknown kubernetes object to update")
 
