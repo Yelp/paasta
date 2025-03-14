@@ -2750,9 +2750,6 @@ class SystemPaastaConfig:
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
 
-    def get_uses_bulkdata_default(self) -> bool:
-        return self.config_dict.get("uses_bulkdata_default", False)
-
     def get_enable_automated_redeploys_default(self) -> bool:
         return self.config_dict.get("enable_automated_redeploys_default", False)
 

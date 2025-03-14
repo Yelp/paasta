@@ -363,7 +363,6 @@ class TronActionConfig(InstanceConfig):
                 List[Mapping[str, str]],
                 self.get_volumes(
                     system_paasta_config.get_volumes(),
-                    uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
                 ),
             ),
             use_eks=True,
@@ -1080,7 +1079,6 @@ def format_tron_action_dict(action_config: TronActionConfig):
         # we can get rid of the default_volumes from the Tron master config
         extra_volumes = action_config.get_volumes(
             system_paasta_config.get_volumes(),
-            uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
         )
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
