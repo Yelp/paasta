@@ -37,6 +37,7 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
 from paasta_tools.kubernetes_tools import get_all_service_accounts
 from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import PAASTA_ATTRIBUTE_PREFIX
 
 
@@ -67,7 +68,7 @@ def _format_remote_run_job_name(
     :param str user: the user requesting the remote-run
     :return: job name
     """
-    return f"remote-run-{user}-{job.metadata.name}"
+    return limit_size_with_hash(f"remote-run-{user}-{job.metadata.name}")
 
 
 def remote_run_start(
@@ -306,7 +307,7 @@ def create_remote_run_service_account(
     :param str user: user requiring credentials
     """
     pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
-    service_account_name = f"remote-run-{user}-{pod_name_hash}"
+    service_account_name = limit_size_with_hash(f"remote-run-{user}-{pod_name_hash}")
     service_accounts = get_all_service_accounts(
         kube_client,
         namespace=namespace,
@@ -375,7 +376,7 @@ def bind_role_to_service_account(
     """
     role_binding = V1RoleBinding(
         metadata=V1ObjectMeta(
-            name=f"binding-{role}",
+            name=limit_size_with_hash(f"binding-{role}"),
             namespace=namespace,
         ),
         role_ref=V1RoleRef(
