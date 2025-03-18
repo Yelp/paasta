@@ -2467,7 +2467,6 @@ class TestKubernetesDeploymentConfig:
                         {
                             "type": METRICS_PROVIDER_UWSGI,
                             "setpoint": 0.4,
-                            "forecast_policy": "moving_average",
                             "moving_average_window_seconds": 300,
                         }
                     ]
@@ -2635,7 +2634,6 @@ class TestKubernetesDeploymentConfig:
                         {
                             "type": METRICS_PROVIDER_GUNICORN,
                             "setpoint": 0.5,
-                            "forecast_policy": "moving_average",
                             "moving_average_window_seconds": 300,
                         }
                     ]
