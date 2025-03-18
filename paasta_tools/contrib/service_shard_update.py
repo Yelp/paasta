@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import sys
 
@@ -165,11 +166,11 @@ def parse_args():
         dest="autotune_max_disk",
     )
     parser.add_argument(
-        "--iam-role",
-        help="IAM role to use for the shard",
+        "--iam-role-mapping",
+        help="JSON string of deploy_prefix to IAM role mapping to use for the shard",
         required=False,
         type=str,
-        dest="iam_role",
+        dest="iam_role_mapping",
     )
     return parser.parse_args()
 
@@ -208,6 +209,9 @@ def main(args):
             f"{prefix}.{args.shard_name}" for prefix in DEPLOY_MAPPINGS.keys()
         }
         pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}
+        iam_role_mapping = {}
+        if args.iam_role_mapping:
+            iam_role_mapping = json.loads(args.iam_role_mapping)
 
         if not shard_deploy_groups.issubset(pipeline_steps):
             changes_made = True
@@ -271,8 +275,8 @@ def main(args):
                             metrics_provider_config
                         )
 
-                    if args.iam_role is not None:
-                        instance_config["iam_role"] = args.iam_role
+                    if deploy_prefix in iam_role_mapping:
+                        instance_config["iam_role"] = iam_role_mapping[deploy_prefix]
                     if args.cpus is not None:
                         instance_config["cpus"] = args.cpus
                     if args.mem is not None:
