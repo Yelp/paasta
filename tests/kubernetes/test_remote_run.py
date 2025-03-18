@@ -31,7 +31,7 @@ from paasta_tools.kubernetes.remote_run import bind_role_to_service_account
 from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
 from paasta_tools.kubernetes.remote_run import create_temp_exec_token
-from paasta_tools.kubernetes.remote_run import find_pod
+from paasta_tools.kubernetes.remote_run import find_job_pod
 from paasta_tools.kubernetes.remote_run import remote_run_ready
 from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
@@ -106,15 +106,15 @@ def test_remote_run_start_recreate(
     mock_stop.assert_called_once_with("foo", "bar", "dev", "someuser")
 
 
-@patch("paasta_tools.kubernetes.remote_run.find_pod", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.find_job_pod", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_ready(mock_client, mock_load_config, mock_find_pod):
+def test_remote_run_ready(mock_client, mock_load_config, mock_find_job_pod):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
-    mock_find_pod.return_value.metadata.name = "somepod"
+    mock_find_job_pod.return_value.metadata.name = "somepod"
     # job found and ready
-    mock_find_pod.return_value.status.phase = "Running"
+    mock_find_job_pod.return_value.status.phase = "Running"
     assert remote_run_ready("foo", "bar", "dev", "somejob") == {
         "status": 200,
         "message": "Pod ready",
@@ -122,13 +122,13 @@ def test_remote_run_ready(mock_client, mock_load_config, mock_find_pod):
         "namespace": "namespace",
     }
     # job not ready
-    mock_find_pod.return_value.status.phase = "Pending"
+    mock_find_job_pod.return_value.status.phase = "Pending"
     assert remote_run_ready("foo", "bar", "dev", "somejob") == {
         "status": 204,
         "message": "Pod not ready",
     }
     # job not found
-    mock_find_pod.return_value = None
+    mock_find_job_pod.return_value = None
     assert remote_run_ready("foo", "bar", "dev", "somejob") == {
         "status": 404,
         "message": "No pod found",
@@ -159,13 +159,13 @@ def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
     "paasta_tools.kubernetes.remote_run.create_remote_run_service_account",
     autospec=True,
 )
-@patch("paasta_tools.kubernetes.remote_run.find_pod", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.find_job_pod", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_token(
     mock_client,
     mock_load_config,
-    mock_find_pod,
+    mock_find_job_pod,
     mock_create_sa,
     mock_create_role,
     mock_bind_role,
@@ -175,7 +175,7 @@ def test_remote_run_token(
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_job = mock_load_config.return_value.format_kubernetes_job.return_value
     mock_job.metadata.name = "somejob"
-    mock_find_pod.return_value.metadata.name = "remote-run-someuser-somejob-112233"
+    mock_find_job_pod.return_value.metadata.name = "remote-run-someuser-somejob-112233"
     mock_create_sa.return_value = "somesa"
     mock_create_role.return_value = "somerole"
     assert (
@@ -183,7 +183,7 @@ def test_remote_run_token(
         == mock_create_token.return_value
     )
     mock_load_config.assert_called_once_with("foo", "bar", "dev")
-    mock_find_pod.assert_called_once_with(
+    mock_find_job_pod.assert_called_once_with(
         mock_client, "namespace", "remote-run-someuser-somejob"
     )
     mock_create_sa.assert_called_once_with(
@@ -197,13 +197,13 @@ def test_remote_run_token(
     )
     mock_create_token.assert_called_once_with(mock_client, "namespace", "somesa")
     # job not found
-    mock_find_pod.return_value = None
+    mock_find_job_pod.return_value = None
     with pytest.raises(RemoteRunError):
         remote_run_token("foo", "bar", "dev", "someuser")
 
 
 @patch("paasta_tools.kubernetes.remote_run.sleep", autospec=True)
-def test_find_pod(mock_sleep):
+def test_find_job_pod(mock_sleep):
     def _create_mock_pod_item(name: str):
         mock_pod = MagicMock()
         mock_pod.metadata.name = name
@@ -215,11 +215,19 @@ def test_find_pod(mock_sleep):
         MagicMock(items=[_create_mock_pod_item("somejob-aaabbbccc")]),
     ]
     assert (
-        find_pod(mock_client, "namespace", "somejob").metadata.name
+        find_job_pod(mock_client, "namespace", "somejob").metadata.name
         == "somejob-aaabbbccc"
     )
     assert mock_sleep.call_count == 1
-    mock_client.core.list_namespaced_pod.assert_has_calls([call("namespace")] * 2)
+    mock_client.core.list_namespaced_pod.assert_has_calls(
+        [
+            call(
+                "namespace",
+                label_selector="paasta.yelp.com/job_type=remote-run,batch.kubernetes.io/job-name=somejob",
+            )
+        ]
+        * 2
+    )
 
 
 def test_create_temp_exec_token():
@@ -265,6 +273,11 @@ def test_create_remote_run_service_account(mock_get_all_sa):
                 labels={"paasta.yelp.com/pod_owner": "someuser"},
             ),
         ),
+    )
+    mock_get_all_sa.assert_called_once_with(
+        mock_client,
+        namespace="namespace",
+        label_selector="paasta.yelp.com/pod_owner=someuser",
     )
     # pick existing
     mock_client.reset_mock()

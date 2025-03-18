@@ -35,10 +35,14 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
 from paasta_tools.kubernetes_tools import get_all_service_accounts
+from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import PAASTA_ATTRIBUTE_PREFIX
 
 
 logger = logging.getLogger(__name__)
+REMOTE_RUN_JOB_LABEL = "remote-run"
+POD_OWNER_LABEL = f"{PAASTA_ATTRIBUTE_PREFIX}pod_owner"
 
 
 class RemoteRunError(Exception):
@@ -97,7 +101,8 @@ def remote_run_start(
 
     # Create the app with a new name
     formatted_job = deployment_config.format_kubernetes_job(
-        job_label="remote-run", deadline_seconds=max_duration
+        job_label=REMOTE_RUN_JOB_LABEL,
+        deadline_seconds=max_duration,
     )
     job_name = _format_remote_run_job_name(formatted_job, user)
     formatted_job.metadata.name = job_name
@@ -147,7 +152,7 @@ def remote_run_ready(
     deployment_config = load_eks_service_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
-    pod = find_pod(kube_client, namespace, job_name)
+    pod = find_job_pod(kube_client, namespace, job_name)
     if not pod:
         return {"status": 404, "message": "No pod found"}
     if pod.status.phase == "Running":
@@ -180,7 +185,9 @@ def remote_run_stop(
     deployment_config = load_eks_service_config(service, instance, cluster)
 
     # Rebuild the job metadata
-    formatted_job = deployment_config.format_kubernetes_job(job_label="remote-run")
+    formatted_job = deployment_config.format_kubernetes_job(
+        job_label=REMOTE_RUN_JOB_LABEL
+    )
     job_name = _format_remote_run_job_name(formatted_job, user)
     formatted_job.metadata.name = job_name
 
@@ -213,11 +220,13 @@ def remote_run_token(
     namespace = deployment_config.get_namespace()
 
     # Rebuild the job metadata
-    formatted_job = deployment_config.format_kubernetes_job(job_label="remote-run")
+    formatted_job = deployment_config.format_kubernetes_job(
+        job_label=REMOTE_RUN_JOB_LABEL
+    )
     job_name = _format_remote_run_job_name(formatted_job, user)
 
     # Find pod and create exec token for it
-    pod = find_pod(kube_client, namespace, job_name)
+    pod = find_job_pod(kube_client, namespace, job_name)
     if not pod:
         raise RemoteRunError(f"Pod for {job_name} not found")
     pod_name = pod.metadata.name
@@ -230,8 +239,12 @@ def remote_run_token(
     return create_temp_exec_token(kube_client, namespace, service_account)
 
 
-def find_pod(
-    kube_client: KubeClient, namespace: str, job_name: str, retries: int = 3
+def find_job_pod(
+    kube_client: KubeClient,
+    namespace: str,
+    job_name: str,
+    job_label: str = REMOTE_RUN_JOB_LABEL,
+    retries: int = 3,
 ) -> Optional[V1Pod]:
     """Locate pod for remote-run job
 
@@ -241,11 +254,17 @@ def find_pod(
     :param int retries: maximum number of attemps
     :return: pod object if found
     """
+    selectors = (
+        f"{JOB_TYPE_LABEL}={job_label}",
+        f"batch.kubernetes.io/job-name={job_name}",
+    )
     for _ in range(retries):
-        pod_list = kube_client.core.list_namespaced_pod(namespace)
-        for pod in pod_list.items:
-            if pod.metadata.name.startswith(job_name):
-                return pod
+        pod_list = kube_client.core.list_namespaced_pod(
+            namespace,
+            label_selector=",".join(selectors),
+        )
+        if pod_list.items:
+            return pod_list.items[0]
         sleep(0.5)
     return None
 
@@ -288,14 +307,18 @@ def create_remote_run_service_account(
     """
     pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
     service_account_name = f"remote-run-{user}-{pod_name_hash}"
-    service_accounts = get_all_service_accounts(kube_client, namespace=namespace)
+    service_accounts = get_all_service_accounts(
+        kube_client,
+        namespace=namespace,
+        label_selector=f"{POD_OWNER_LABEL}={user}",
+    )
     if any(item.metadata.name == service_account_name for item in service_accounts):
         return service_account_name
     service_account = V1ServiceAccount(
         metadata=V1ObjectMeta(
             name=service_account_name,
             namespace=namespace,
-            labels={"paasta.yelp.com/pod_owner": user},
+            labels={POD_OWNER_LABEL: user},
         )
     )
     kube_client.core.create_namespaced_service_account(
@@ -330,7 +353,7 @@ def create_pod_scoped_role(
         rules=[policy],
         metadata=V1ObjectMeta(
             name=role_name,
-            labels={"paasta.yelp.com/pod_owner": user},
+            labels={POD_OWNER_LABEL: user},
         ),
     )
     kube_client.core.create_namespaced_role(namespace=namespace, body=role)
