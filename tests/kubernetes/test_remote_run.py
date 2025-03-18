@@ -40,7 +40,7 @@ from paasta_tools.kubernetes.remote_run import RemoteRunError
 
 
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
-@patch("paasta_tools.kubernetes.remote_run.agnostic_load_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
     mock_client = mock_client.return_value
@@ -71,7 +71,7 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
 
 @patch("paasta_tools.kubernetes.remote_run.remote_run_stop", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
-@patch("paasta_tools.kubernetes.remote_run.agnostic_load_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_start_recreate(
     mock_client, mock_load_config, mock_wrapper, mock_stop
@@ -107,7 +107,7 @@ def test_remote_run_start_recreate(
 
 
 @patch("paasta_tools.kubernetes.remote_run.find_pod", autospec=True)
-@patch("paasta_tools.kubernetes.remote_run.agnostic_load_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_ready(mock_client, mock_load_config, mock_find_pod):
     mock_client = mock_client.return_value
@@ -136,7 +136,7 @@ def test_remote_run_ready(mock_client, mock_load_config, mock_find_pod):
 
 
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
-@patch("paasta_tools.kubernetes.remote_run.agnostic_load_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
     mock_client = mock_client.return_value
@@ -160,7 +160,7 @@ def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
     autospec=True,
 )
 @patch("paasta_tools.kubernetes.remote_run.find_pod", autospec=True)
-@patch("paasta_tools.kubernetes.remote_run.agnostic_load_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_token(
     mock_client,

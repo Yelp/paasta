@@ -30,7 +30,7 @@ from kubernetes.client import V1Subject
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
-from paasta_tools.eks_tools import agnostic_load_service_config
+from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
@@ -89,7 +89,7 @@ def remote_run_start(
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
 
     # Load the service deployment settings
-    deployment_config = agnostic_load_service_config(service, instance, cluster)
+    deployment_config = load_eks_service_config(service, instance, cluster)
 
     # Set to interactive mode
     if interactive:
@@ -144,7 +144,7 @@ def remote_run_ready(
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
 
     # Load the service deployment settings
-    deployment_config = agnostic_load_service_config(service, instance, cluster)
+    deployment_config = load_eks_service_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
     pod = find_pod(kube_client, namespace, job_name)
@@ -177,7 +177,7 @@ def remote_run_stop(
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
 
     # Load the service deployment settings
-    deployment_config = agnostic_load_service_config(service, instance, cluster)
+    deployment_config = load_eks_service_config(service, instance, cluster)
 
     # Rebuild the job metadata
     formatted_job = deployment_config.format_kubernetes_job(job_label="remote-run")
@@ -209,7 +209,7 @@ def remote_run_token(
     kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
 
     # Load the service deployment settings
-    deployment_config = agnostic_load_service_config(service, instance, cluster)
+    deployment_config = load_eks_service_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
     # Rebuild the job metadata

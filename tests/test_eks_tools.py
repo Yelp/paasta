@@ -1,9 +1,7 @@
-from unittest import mock
+import mock
 
-from paasta_tools.eks_tools import agnostic_load_service_config
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
-from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def test_load_eks_service_config_no_cache():
@@ -79,26 +77,3 @@ def test_load_eks_service_config():
             soa_dir="/nail/blah",
         )
         assert ret == mock_load_kubernetes_service_config_no_cache.return_value
-
-
-@mock.patch("paasta_tools.eks_tools.load_eks_service_config_no_cache", autospec=True)
-@mock.patch(
-    "paasta_tools.eks_tools.load_kubernetes_service_config_no_cache", autospec=True
-)
-@mock.patch("paasta_tools.eks_tools.validate_service_instance", autospec=True)
-def test_agnostic_load_service_config(mock_validate, mock_load_kube, mock_load_eks):
-    # kube config
-    mock_validate.return_value = "kube"
-    assert (
-        agnostic_load_service_config("foo", "bar", "dev") == mock_load_kube.return_value
-    )
-    mock_load_eks.assert_not_called()
-    mock_load_kube.assert_called_once_with("foo", "bar", "dev", True, DEFAULT_SOA_DIR)
-    # eks config
-    mock_load_kube.reset_mock()
-    mock_validate.return_value = "eks"
-    assert (
-        agnostic_load_service_config("biz", "buz", "dev") == mock_load_eks.return_value
-    )
-    mock_load_kube.assert_not_called()
-    mock_load_eks.assert_called_once_with("biz", "buz", "dev", True, DEFAULT_SOA_DIR)
