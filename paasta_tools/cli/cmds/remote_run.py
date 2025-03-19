@@ -13,21 +13,183 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import pty
+import shlex
+import time
 
-from paasta_tools.utils import PaastaColors
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
+from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
+from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
+from paasta_tools.utils import get_username
+from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(subparsers: argparse._SubParsersAction):
-    subparsers.add_parser(
-        "remote-run",
-        help="Schedule adhoc service sandbox on PaaSTA cluster",
-        description=(
-            "`paasta remote-run` is useful for running adhoc commands in "
-            "context of a service's Docker image."
+MAX_POLLING_ATTEMPTS = 20
+KUBECTL_CMD_TEMPLATE = (
+    "kubectl-eks-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+)
+
+
+def paasta_remote_run_start(
+    args: argparse.Namespace,
+    system_paasta_config: SystemPaastaConfig,
+) -> int:
+    client = get_paasta_oapi_client_with_auth(
+        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        print("Cannot get a paasta-api client")
+        return 1
+
+    user = get_username()
+    start_response = client.remote_run.remote_run_start(
+        args.service,
+        args.instance,
+        RemoteRunStart(
+            user=user,
+            interactive=args.interactive,
+            recreate=args.recreate,
+            max_duration=args.max_duration,
         ),
     )
+    if start_response.status >= 300:
+        print(f"Error from PaaSTA APIs while starting job: {start_response.message}")
+        return 1
+
+    for _ in range(MAX_POLLING_ATTEMPTS):
+        poll_response = client.remote_run.remote_run_poll(
+            args.service,
+            args.instance,
+            start_response.job_name,
+        )
+        if poll_response.status == 200:
+            break
+        time.sleep(3)
+    else:
+        print("Timed out while waiting for job to start")
+        return 1
+
+    if not args.interactive:
+        print("Successfully started remote-run job")
+        return 0
+
+    token_response = client.remote_run.remote_run_token(
+        args.service, args.instance, user
+    )
+
+    exec_command = KUBECTL_CMD_TEMPLATE.format(
+        cluster=args.cluster,
+        namespace=poll_response.namespace,
+        pod=poll_response.pod_name,
+        token=token_response.token,
+    )
+    pty.spawn(shlex.split(exec_command))
+    return 0
 
 
-def paasta_remote_run(args: argparse.Namespace):
-    print(PaastaColors.red("Error: functionality under construction"))
-    return 1
+def paasta_remote_run_stop(
+    args: argparse.Namespace,
+    system_paasta_config: SystemPaastaConfig,
+) -> int:
+    client = get_paasta_oapi_client_with_auth(
+        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        print("Cannot get a paasta-api client")
+        return 1
+    response = client.remote_run.remote_run_stop(
+        args.service, args.instance, RemoteRunStop(user=get_username())
+    )
+    print(response.message)
+    return 0 if response.status < 300 else 1
+
+
+def add_common_args_to_parser(parser: argparse.ArgumentParser):
+    service_arg = parser.add_argument(
+        "-s",
+        "--service",
+        help="The name of the service you wish to inspect. Required.",
+        required=True,
+    )
+    service_arg.completer = lazy_choices_completer(list_services)  # type: ignore
+    parser.add_argument(
+        "-i",
+        "--instance",
+        help=(
+            "Simulate a docker run for a particular instance of the "
+            "service, like 'main' or 'canary'. Required."
+        ),
+        required=True,
+    )
+    cluster_arg = parser.add_argument(
+        "-c",
+        "--cluster",
+        help="The name of the cluster you wish to run your task on.",
+        required=True,
+    )
+    cluster_arg.completer = lazy_choices_completer(list_clusters)  # type: ignore
+
+
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
+    remote_run_parser = subparsers.add_parser(
+        "remote-run",
+        help="Run stuff remotely.",
+        description=("'paasta remote-run' runs stuff remotely "),
+    )
+    subparsers = remote_run_parser.add_subparsers(dest="remote_run_command")
+    start_parser = subparsers.add_parser(
+        "start",
+        help="Start or connect to a remote-run job",
+        description=("Starts or connects to a remote-run-job"),
+    )
+    start_parser.add_argument(
+        "-I",
+        "--interactive",
+        help=(
+            'Run container in interactive mode. If interactive is set the default command will be "bash" '
+            'unless otherwise set by the "--cmd" flag'
+        ),
+        action="store_true",
+        default=False,
+    )
+    start_parser.add_argument(
+        "-m",
+        "--max-duration",
+        help=(
+            "Amount of time in seconds after which the job is "
+            "automatically stopped (capped by the API backend)"
+        ),
+        type=int,
+        default=1800,
+    )
+    start_parser.add_argument(
+        "-r",
+        "--recreate",
+        help="Recreate remote-run job if already existing",
+        action="store_true",
+        default=False,
+    )
+    stop_parser = subparsers.add_parser(
+        "stop",
+        help="Stop! In the name of Paasta",
+        description="Stop your remote-run job if it exists",
+    )
+    add_common_args_to_parser(start_parser)
+    add_common_args_to_parser(stop_parser)
+    remote_run_parser.set_defaults(command=paasta_remote_run)
+
+
+def paasta_remote_run(args: argparse.Namespace) -> int:
+    system_paasta_config = load_system_paasta_config()
+    if args.remote_run_command == "start":
+        return paasta_remote_run_start(args, system_paasta_config)
+    elif args.remote_run_command == "stop":
+        return paasta_remote_run_stop(args, system_paasta_config)
+    raise ValueError(f"Unsupported subcommand: {args.remote_run_command}")
