@@ -219,7 +219,7 @@ ZONE_LABELS = (
     "karpenter.sh/nodepool",
     "topology.ebs.csi.aws.com/zone",
 )
-JOB_TYPE_LABEL = f"{PAASTA_ATTRIBUTE_PREFIX}job_type"
+JOB_TYPE_LABEL_NAME = "job_type"
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
@@ -2081,7 +2081,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 complete_config.metadata.labels[
                     "paasta.yelp.com/image_version"
                 ] = image_version
-            complete_config.metadata.labels[JOB_TYPE_LABEL] = job_label
+            complete_config.metadata.labels[
+                paasta_prefixed(JOB_TYPE_LABEL_NAME)
+            ] = job_label
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug(

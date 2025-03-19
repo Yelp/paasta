@@ -35,15 +35,15 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
 from paasta_tools.kubernetes_tools import get_all_service_accounts
-from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL
+from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL_NAME
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
-from paasta_tools.kubernetes_tools import PAASTA_ATTRIBUTE_PREFIX
+from paasta_tools.kubernetes_tools import paasta_prefixed
 
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
-POD_OWNER_LABEL = f"{PAASTA_ATTRIBUTE_PREFIX}pod_owner"
+POD_OWNER_LABEL = paasta_prefixed("pod_owner")
 
 
 class RemoteRunError(Exception):
@@ -256,7 +256,7 @@ def find_job_pod(
     :return: pod object if found
     """
     selectors = (
-        f"{JOB_TYPE_LABEL}={job_label}",
+        f"{paasta_prefixed(JOB_TYPE_LABEL_NAME)}={job_label}",
         f"batch.kubernetes.io/job-name={job_name}",
     )
     for _ in range(retries):
