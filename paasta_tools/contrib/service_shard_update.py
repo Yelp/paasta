@@ -208,11 +208,7 @@ def main(args):
         working_dir=args.local_dir or "/nail/tmp",
         do_clone=args.local_dir is None,
     )
-    deploy_environments = DEPLOY_MAPPINGS
-    if args.environment is not None:
-        deploy_environments = {
-            k: v for k, v in DEPLOY_MAPPINGS.items() if k == args.environment
-        }
+    deploy_environments = {args.environment: DEPLOY_MAPPINGS[args.environment]} if args.environment else DEPLOY_MAPPINGS
 
     with updater:
         deploy_file = updater.get_existing_configs(args.service, "deploy")
