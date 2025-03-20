@@ -43,6 +43,8 @@ from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
+from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
@@ -1135,3 +1137,16 @@ def get_sso_service_auth_token() -> str:
     """Generate an authentication token for the calling user from the Single Sign On provider"""
     client_id = load_system_paasta_config().get_service_auth_sso_oidc_client_id()
     return get_and_cache_jwt_default(client_id)
+
+
+def get_paasta_oapi_client_with_auth(
+    cluster: str = None,
+    system_paasta_config: SystemPaastaConfig = None,
+    http_res: bool = False,
+) -> Optional[PaastaOApiClient]:
+    return get_paasta_oapi_client(
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+        http_res=http_res,
+        auth_token=get_sso_service_auth_token(),
+    )
