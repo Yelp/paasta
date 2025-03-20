@@ -210,7 +210,9 @@ def main(args):
     )
     deploy_environments = DEPLOY_MAPPINGS
     if args.environment is not None:
-        deploy_environments = {k: v for k, v in DEPLOY_MAPPINGS.items() if k == args.environment}
+        deploy_environments = {
+            k: v for k, v in DEPLOY_MAPPINGS.items() if k == args.environment
+        }
 
     with updater:
         deploy_file = updater.get_existing_configs(args.service, "deploy")
