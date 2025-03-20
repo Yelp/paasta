@@ -29,7 +29,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 
-MAX_POLLING_ATTEMPTS = 20
 KUBECTL_CMD_TEMPLATE = (
     "kubectl-eks-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
@@ -62,7 +61,8 @@ def paasta_remote_run_start(
         print(f"Error from PaaSTA APIs while starting job: {start_response.message}")
         return 1
 
-    for _ in range(MAX_POLLING_ATTEMPTS):
+    start_time = time.time()
+    while time.time() - start_time < args.timeout:
         poll_response = client.remote_run.remote_run_poll(
             args.service,
             args.instance,
@@ -70,7 +70,7 @@ def paasta_remote_run_start(
         )
         if poll_response.status == 200:
             break
-        time.sleep(3)
+        time.sleep(10)
     else:
         print("Timed out while waiting for job to start")
         return 1
@@ -177,6 +177,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Recreate remote-run job if already existing",
         action="store_true",
         default=False,
+    )
+    start_parser.add_argument(
+        "-t",
+        "--timeout",
+        help="Maximum time to wait for a job to start, in seconds",
+        type=int,
+        default=600,
     )
     stop_parser = subparsers.add_parser(
         "stop",
