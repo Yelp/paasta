@@ -2,7 +2,7 @@
 openapi: 3.0.0
 info:
   title: Paasta API
-  version: 1.0.0
+  version: 1.1.0
 servers:
 - url: "{scheme}://{host}/{basePath}"
   variables:
@@ -893,6 +893,49 @@ components:
           description: Kubernetes namespace this version is in
           type: string
       type: object
+    RemoteRunStart:
+      type: object
+      properties:
+        interactive:
+          type: boolean
+        recreate:
+          type: boolean
+        user:
+          type: string
+        max_duration:
+          type: integer
+      required:
+        - user
+    RemoteRunStop:
+      type: object
+      properties:
+        user:
+          type: string
+      required:
+        - user
+    RemoteRunOutcome:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        pod_name:
+          type: string
+        job_name:
+          type: string
+        namespace:
+          type: string
+      required:
+        - status
+        - message
+    RemoteRunToken:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
     Resource:
       items:
         $ref: '#/components/schemas/ResourceItem'
@@ -1141,6 +1184,150 @@ paths:
       summary: Get overview of a flink cluster
       tags:
       - service
+  /remote_run/{service}/{instance}/start:
+    post:
+      operationId: remote_run_start
+      summary: Launch a remote-run pod
+      tags:
+      - remote_run
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteRunStart'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteRunOutcome'
+          description: Successfully started remote-run sandbox
+        "404":
+          description: Service instance not found
+        "500":
+          description: Failure
+  /remote_run/{service}/{instance}/stop:
+    post:
+      operationId: remote_run_stop
+      summary: Stop a remote-run pod
+      tags:
+      - remote_run
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteRunStop'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteRunOutcome'
+          description: Remote run pod stopped
+        "404":
+          description: Service instance not found
+        "500":
+          description: Failure
+  /remote_run/{service}/{instance}/poll:
+    get:
+      operationId: remote_run_poll
+      summary: Check if remote run pod is ready
+      tags:
+      - remote_run
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Job name
+        in: query
+        name: job_name
+        schema:
+          type: string
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteRunOutcome'
+          description: Pod status information
+        "404":
+          description: Service instance not found
+        "500":
+          description: Failure
+  /remote_run/{service}/{instance}/token:
+    get:
+      operationId: remote_run_token
+      summary: Get a short lived token for exec into remote-run pod
+      tags:
+      - remote_run
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: User name
+        in: query
+        name: user
+        schema:
+          type: string
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteRunToken'
+          description: Token generated successfully
+        "404":
+          description: Service instance not found
+        "500":
+          description: Failure
   /resources/utilization:
     get:
       operationId: resources

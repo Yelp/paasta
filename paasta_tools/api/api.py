@@ -189,6 +189,26 @@ def make_app(global_config=None):
         "/v1/service_autoscaler/pause",
         request_method="GET",
     )
+    config.add_route(
+        "remote_run.start",
+        "/v1/remote_run/{service}/{instance}/start",
+        request_method="POST",
+    )
+    config.add_route(
+        "remote_run.stop",
+        "/v1/remote_run/{service}/{instance}/stop",
+        request_method="POST",
+    )
+    config.add_route(
+        "remote_run.poll",
+        "/v1/remote_run/{service}/{instance}/poll",
+        request_method="GET",
+    )
+    config.add_route(
+        "remote_run.token",
+        "/v1/remote_run/{service}/{instance}/token",
+        request_method="GET",
+    )
     config.add_route("version", "/v1/version")
     config.add_route("deploy_queue.list", "/v1/deploy_queue")
     config.scan()

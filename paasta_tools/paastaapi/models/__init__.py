@@ -49,6 +49,10 @@ from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
 from paasta_tools.paastaapi.model.kubernetes_pod_v2 import KubernetesPodV2
 from paasta_tools.paastaapi.model.kubernetes_replica_set import KubernetesReplicaSet
 from paasta_tools.paastaapi.model.kubernetes_version import KubernetesVersion
+from paasta_tools.paastaapi.model.remote_run_outcome import RemoteRunOutcome
+from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
+from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
+from paasta_tools.paastaapi.model.remote_run_token import RemoteRunToken
 from paasta_tools.paastaapi.model.resource import Resource
 from paasta_tools.paastaapi.model.resource_item import ResourceItem
 from paasta_tools.paastaapi.model.resource_value import ResourceValue
