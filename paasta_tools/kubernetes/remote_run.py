@@ -14,7 +14,9 @@
 import hashlib
 import logging
 from time import sleep
+from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import TypedDict
 
 from kubernetes.client import AuthenticationV1TokenRequest
@@ -236,7 +238,7 @@ def remote_run_token(
         kube_client, namespace, pod_name, user
     )
     role = create_pod_scoped_role(kube_client, namespace, pod_name, user)
-    bind_role_to_service_account(kube_client, namespace, service_account, role)
+    bind_role_to_service_account(kube_client, namespace, service_account, role, user)
     return create_temp_exec_token(kube_client, namespace, service_account)
 
 
@@ -293,6 +295,23 @@ def create_temp_exec_token(
     return response.status.token
 
 
+def get_remote_run_service_accounts(
+    kube_client: KubeClient, namespace: str, user: str = ""
+) -> Sequence[V1ServiceAccount]:
+    """List all temporary service account related to remote-run
+
+    :param KubeClient kube_client: Kubernetes client
+    :param str namespace: pod namespace
+    :param str user: optionally filter by owning user
+    :return: list of service accounts
+    """
+    return get_all_service_accounts(
+        kube_client,
+        namespace=namespace,
+        label_selector=(f"{POD_OWNER_LABEL}={user}" if user else POD_OWNER_LABEL),
+    )
+
+
 def create_remote_run_service_account(
     kube_client: KubeClient,
     namespace: str,
@@ -308,11 +327,7 @@ def create_remote_run_service_account(
     """
     pod_name_hash = hashlib.sha1(pod_name.encode("utf-8")).hexdigest()[:12]
     service_account_name = limit_size_with_hash(f"remote-run-{user}-{pod_name_hash}")
-    service_accounts = get_all_service_accounts(
-        kube_client,
-        namespace=namespace,
-        label_selector=f"{POD_OWNER_LABEL}={user}",
-    )
+    service_accounts = get_remote_run_service_accounts(kube_client, namespace, user)
     if any(item.metadata.name == service_account_name for item in service_accounts):
         return service_account_name
     service_account = V1ServiceAccount(
@@ -366,6 +381,7 @@ def bind_role_to_service_account(
     namespace: str,
     service_account: str,
     role: str,
+    user: str,
 ) -> None:
     """Bind service account to role
 
@@ -373,11 +389,13 @@ def bind_role_to_service_account(
     :param str namespace: service account namespace
     :param str service_account: service account name
     :param str role: role name
+    :param str user: user requiring the role
     """
     role_binding = V1RoleBinding(
         metadata=V1ObjectMeta(
-            name=limit_size_with_hash(f"binding-{role}"),
+            name=limit_size_with_hash(f"remote-run-binding-{role}"),
             namespace=namespace,
+            labels={POD_OWNER_LABEL: user},
         ),
         role_ref=V1RoleRef(
             api_group="rbac.authorization.k8s.io",
@@ -395,3 +413,29 @@ def bind_role_to_service_account(
         namespace=namespace,
         body=role_binding,
     )
+
+
+def get_remote_run_roles(kube_client: KubeClient, namespace: str) -> List[V1Role]:
+    """List all temporary roles related to remote-run
+
+    :param KubeClient kube_client: Kubernetes client
+    :param str namespace: pod namespace
+    :return: list of roles
+    """
+    return kube_client.rbac.list_namespaced_role(
+        namespace, label_selector=POD_OWNER_LABEL
+    ).items
+
+
+def get_remote_run_role_bindings(
+    kube_client: KubeClient, namespace: str
+) -> List[V1RoleBinding]:
+    """List all temporary role bindings related to remote-run
+
+    :param KubeClient kube_client: Kubernetes client
+    :param str namespace: pod namespace
+    :return: list of roles
+    """
+    return kube_client.rbac.list_namespaced_role_binding(
+        namespace, label_selector=POD_OWNER_LABEL
+    ).items
