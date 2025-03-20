@@ -885,7 +885,7 @@
                     },
                     {
                         "in": "body",
-                        "description": "Username",
+                        "description": "Job bootstrap settings",
                         "name": "json_body",
                         "required": true,
                         "schema": {
@@ -933,7 +933,7 @@
                     },
                     {
                         "in": "body",
-                        "description": "Username",
+                        "description": "Details about the job to be stopped",
                         "name": "json_body",
                         "required": true,
                         "schema": {
@@ -981,7 +981,7 @@
                     },
                     {
                         "in": "query",
-                        "description": "Job name",
+                        "description": "Kubernetes job name (returned from the /start endpoint)",
                         "name": "job_name",
                         "required": true,
                         "type": "string"
@@ -1027,7 +1027,7 @@
                     },
                     {
                         "in": "query",
-                        "description": "Username",
+                        "description": "User requesting the token",
                         "name": "user",
                         "required": true,
                         "type": "string"
