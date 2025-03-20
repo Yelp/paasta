@@ -131,7 +131,7 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
     cluster_arg = parser.add_argument(
         "-c",
         "--cluster",
-        help="The name of the cluster you wish to run your task on.",
+        help="The name of the cluster you wish to run your task on. Required.",
         required=True,
     )
     cluster_arg.completer = lazy_choices_completer(list_clusters)  # type: ignore
@@ -140,21 +140,23 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     remote_run_parser = subparsers.add_parser(
         "remote-run",
-        help="Run stuff remotely.",
-        description=("'paasta remote-run' runs stuff remotely "),
+        help="Run services / jobs remotely",
+        description="'paasta remote-run' runs services / jobs remotely",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     subparsers = remote_run_parser.add_subparsers(dest="remote_run_command")
     start_parser = subparsers.add_parser(
         "start",
         help="Start or connect to a remote-run job",
-        description=("Starts or connects to a remote-run-job"),
+        description="Starts or connects to a remote-run-job",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     start_parser.add_argument(
         "-I",
         "--interactive",
         help=(
-            'Run container in interactive mode. If interactive is set the default command will be "bash" '
-            'unless otherwise set by the "--cmd" flag'
+            "Run container in interactive mode. If interactive is set the "
+            'default command will be "bash" unless otherwise set by the "--cmd" flag'
         ),
         action="store_true",
         default=False,
@@ -178,8 +180,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     stop_parser = subparsers.add_parser(
         "stop",
-        help="Stop! In the name of Paasta",
+        help="Stop your remote-run job if it exists",
         description="Stop your remote-run job if it exists",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     add_common_args_to_parser(start_parser)
     add_common_args_to_parser(stop_parser)
