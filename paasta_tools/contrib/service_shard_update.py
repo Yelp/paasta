@@ -171,6 +171,13 @@ def parse_args():
         type=str,
         dest="iam_role",
     )
+    parser.add_argument(
+        "--environment",
+        help="Environment to deploy in, defaults to all environments if not specified",
+        required=False,
+        choices=DEPLOY_MAPPINGS.keys(),
+        dest="environment",
+    )
     return parser.parse_args()
 
 
@@ -201,11 +208,15 @@ def main(args):
         working_dir=args.local_dir or "/nail/tmp",
         do_clone=args.local_dir is None,
     )
+    deploy_environments = DEPLOY_MAPPINGS
+    if args.environment is not None:
+        deploy_environments = {k: v for k, v in DEPLOY_MAPPINGS.items() if k == args.environment}
+
     with updater:
         deploy_file = updater.get_existing_configs(args.service, "deploy")
         smartstack_file = updater.get_existing_configs(args.service, "smartstack")
         shard_deploy_groups = {
-            f"{prefix}.{args.shard_name}" for prefix in DEPLOY_MAPPINGS.keys()
+            f"{prefix}.{args.shard_name}" for prefix in deploy_environments.keys()
         }
         pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}
 
@@ -226,7 +237,7 @@ def main(args):
                 log.info(f"{step} added to deploy config")
             updater.write_configs(args.service, "deploy", deploy_file)
 
-            for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
+            for deploy_prefix, config_paths in deploy_environments.items():
                 for config_path in config_paths:
                     # Determine configuration suffix (PAASTA-18216)
                     eks_config = updater.get_existing_configs(
