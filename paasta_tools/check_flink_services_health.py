@@ -17,6 +17,8 @@ Usage: ./check_flink_services_health.py [options]
 """
 import datetime
 import logging
+from typing import Dict
+from typing import List
 from typing import Sequence
 from typing import Tuple
 
@@ -27,7 +29,6 @@ from paasta_tools import flinkeks_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.check_services_replication_tools import parse_args
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.monitoring_tools import check_under_replication
@@ -132,14 +133,12 @@ def get_cr_name(si_pods: Sequence[V1Pod]) -> str:
 
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
-    all_pods: Sequence[V1Pod],
+    grouped_pods: Dict[str, Dict[str, List[V1Pod]]],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
 ) -> None:
-    si_pods = filter_pods_by_service_instance(
-        pod_list=all_pods,
-        service=instance_config.service,
-        instance=instance_config.instance,
+    si_pods = grouped_pods.get(instance_config.service, {}).get(
+        instance_config.instance, []
     )
     taskmanagers_expected_cnt = instance_config.config_dict.get(
         "taskmanager", {"instances": 10}
