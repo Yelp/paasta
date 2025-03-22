@@ -29,7 +29,7 @@ future==0.16.0
 google-auth==1.2.0
 graphviz==0.8.2
 grpcio==1.62.2
-gunicorn==19.8.1
+gunicorn==23.0.0
 http-parser==0.9.0
 humanfriendly==4.18
 humanize==0.5.1
