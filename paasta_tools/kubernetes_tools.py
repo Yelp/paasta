@@ -219,6 +219,7 @@ ZONE_LABELS = (
     "karpenter.sh/nodepool",
     "topology.ebs.csi.aws.com/zone",
 )
+JOB_TYPE_LABEL_NAME = "job_type"
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
@@ -2080,7 +2081,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 complete_config.metadata.labels[
                     "paasta.yelp.com/image_version"
                 ] = image_version
-            complete_config.metadata.labels["paasta.yelp.com/job_type"] = job_label
+            complete_config.metadata.labels[
+                paasta_prefixed(JOB_TYPE_LABEL_NAME)
+            ] = job_label
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug(
@@ -4111,8 +4114,11 @@ def to_node_label(label: str) -> str:
 def get_all_service_accounts(
     kube_client: KubeClient,
     namespace: str,
+    label_selector: Optional[str] = None,
 ) -> Sequence[V1ServiceAccount]:
-    return kube_client.core.list_namespaced_service_account(namespace=namespace).items
+    return kube_client.core.list_namespaced_service_account(
+        namespace=namespace, label_selector=label_selector
+    ).items
 
 
 def get_all_role_bindings(
