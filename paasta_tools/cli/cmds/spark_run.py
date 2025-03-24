@@ -431,6 +431,7 @@ def add_subparser(subparsers):
             " However, it must already be set for a different instance of "
             "the service."
         ),
+        default=None,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -1237,7 +1238,6 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
     if iam_role or args.force_pod_identity:
         if args.force_pod_identity:
             if args.yelpsoa_config_root != DEFAULT_SOA_DIR:
-                # TODO
                 print(
                     "--force-pod-identity cannot be used with --yelpsoa-config-root",
                     file=sys.stderr,
