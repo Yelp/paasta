@@ -1243,7 +1243,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-                
+
             allowed_iam_roles = get_all_iam_roles_for_service(
                 args.service, args.cluster
             )
@@ -1254,7 +1254,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-                
+
             service_account_name = get_service_account_name(args.force_pod_identity)
         else:
             service_account_name = get_service_account_name(iam_role)
@@ -1264,7 +1264,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
             and not args.assume_aws_role
         ):
             args.aws_credentials_yaml = (
-                "/etc/boto_cfg/mrjob.yaml"  # Temporary until we get a better user
+                system_paasta_config.get_default_spark_iam_user()
             )
         log.info(f"Running executor with service account {service_account_name}")
 
