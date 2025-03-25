@@ -1243,6 +1243,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
+                
             allowed_iam_roles = get_all_iam_roles_for_service(
                 args.service, args.cluster
             )
@@ -1253,6 +1254,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
+                
             service_account_name = get_service_account_name(args.force_pod_identity)
         else:
             service_account_name = get_service_account_name(iam_role)
