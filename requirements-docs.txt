@@ -32,5 +32,5 @@ snowballstemmer==1.2.0
 Sphinx==2.3.1
 sphinx-rtd-theme
 toml==0.9.4
-virtualenv==15.1.0
+virtualenv==20.26.6
 wrapt==1.12.1
