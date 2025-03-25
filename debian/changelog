@@ -1,3 +1,17 @@
+paasta-tools (1.14.1) xenial; urgency=medium
+
+  * 1.14.1 tagged with 'make release'
+    Commit: the remote-run missing bits (#4028)  This was meant to be
+    included in the last release but I (luisp) don"t know how to read
+    and merged things in the "wrong" order.   This correctly merges in
+    the following PRs:  * cleanup for remote-run resources (#4024)
+    Clean up logic for the (meant to be) ephemeral resources which are
+    created in remote-run invocations (#4022).  * new remote-run cli
+    (#4025)  Last portion of #3986, with the updated logic to reflect
+    the updated API conventions introduced in #4022.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Mar 2025 11:07:43 -0700
+
 paasta-tools (1.14.0) xenial; urgency=medium
 
   * 1.14.0 tagged with 'make release'
