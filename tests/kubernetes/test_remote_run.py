@@ -32,6 +32,8 @@ from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
 from paasta_tools.kubernetes.remote_run import create_temp_exec_token
 from paasta_tools.kubernetes.remote_run import find_job_pod
+from paasta_tools.kubernetes.remote_run import get_remote_run_role_bindings
+from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import remote_run_ready
 from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
@@ -193,7 +195,11 @@ def test_remote_run_token(
         mock_client, "namespace", "remote-run-someuser-somejob-112233", "someuser"
     )
     mock_bind_role.assert_called_once_with(
-        mock_client, "namespace", "somesa", "somerole"
+        mock_client,
+        "namespace",
+        "somesa",
+        "somerole",
+        "someuser",
     )
     mock_create_token.assert_called_once_with(mock_client, "namespace", "somesa")
     # job not found
@@ -320,13 +326,16 @@ def test_create_pod_scoped_role():
 
 def test_bind_role_to_service_account():
     mock_client = MagicMock()
-    bind_role_to_service_account(mock_client, "namespace", "somesa", "somerole")
+    bind_role_to_service_account(
+        mock_client, "namespace", "somesa", "somerole", "someuser"
+    )
     mock_client.rbac.create_namespaced_role_binding.assert_called_once_with(
         namespace="namespace",
         body=V1RoleBinding(
             metadata=V1ObjectMeta(
-                name=f"binding-somerole",
+                name=f"remote-run-binding-somerole",
                 namespace="namespace",
+                labels={"paasta.yelp.com/pod_owner": "someuser"},
             ),
             role_ref=V1RoleRef(
                 api_group="rbac.authorization.k8s.io",
@@ -340,4 +349,20 @@ def test_bind_role_to_service_account():
                 ),
             ],
         ),
+    )
+
+
+def test_get_remote_run_roles():
+    mock_client = MagicMock()
+    get_remote_run_roles(mock_client, "namespace")
+    mock_client.rbac.list_namespaced_role.assert_called_once_with(
+        "namespace", label_selector="paasta.yelp.com/pod_owner"
+    )
+
+
+def test_get_remote_run_role_bindings():
+    mock_client = MagicMock()
+    get_remote_run_role_bindings(mock_client, "namespace")
+    mock_client.rbac.list_namespaced_role_binding.assert_called_once_with(
+        "namespace", label_selector="paasta.yelp.com/pod_owner"
     )

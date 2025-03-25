@@ -59,6 +59,7 @@ setup(
         "paasta_tools/generate_services_yaml.py",
         "paasta_tools/generate_authenticating_services.py",
         "paasta_tools/kubernetes/bin/kubernetes_remove_evicted_pods.py",
+        "paasta_tools/kubernetes/bin/paasta_cleanup_remote_run_resources.py",
         "paasta_tools/kubernetes/bin/paasta_cleanup_stale_nodes.py",
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/paasta_deploy_tron_jobs",
