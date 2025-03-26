@@ -1436,6 +1436,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         secret_volumes: Sequence[SecretVolume],
         service_namespace_config: ServiceNamespaceConfig,
+        include_sidecars: bool = True,
     ) -> Sequence[V1Container]:
         ports = [self.get_container_port()]
         # MONK-1130
@@ -1471,11 +1472,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
-        containers = [service_container] + self.get_sidecar_containers(  # type: ignore
-            system_paasta_config=system_paasta_config,
-            service_namespace_config=service_namespace_config,
-            hacheck_sidecar_volumes=hacheck_sidecar_volumes,
-        )
+        containers = [service_container]
+        if include_sidecars:
+            containers += self.get_sidecar_containers(  # type: ignore
+                system_paasta_config=system_paasta_config,
+                service_namespace_config=service_namespace_config,
+                hacheck_sidecar_volumes=hacheck_sidecar_volumes,
+            )
         return containers
 
     def get_readiness_probe(
@@ -2052,11 +2055,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         job_label: str,
         deadline_seconds: int = 3600,
+        keep_routable_ip: bool = False,
+        include_sidecars: bool = False,
     ) -> V1Job:
         """Create the config for launching the deployment as a Job
 
         :param str job_label: value to set for the "job type" label
         :param int deadline_seconds: maximum allowed duration for the job
+        :param bool keep_routable_ip: maintain routable IP annotation in pod template
+        :param bool include_sidecars: do not discard sidecar containers when building pod spec
         :return: job object
         """
         try:
@@ -2073,6 +2080,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         git_sha=git_sha,
                         system_paasta_config=system_paasta_config,
                         restart_on_failure=False,
+                        include_sidecars=include_sidecars,
+                        force_no_routable_ip=not keep_routable_ip,
                     ),
                 ),
             )
@@ -2205,6 +2214,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         git_sha: str,
         system_paasta_config: SystemPaastaConfig,
         restart_on_failure: bool = True,
+        include_sidecars: bool = True,
+        force_no_routable_ip: bool = False,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2214,8 +2225,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
-        has_routable_ip = self.has_routable_ip(
-            service_namespace_config, system_paasta_config
+        has_routable_ip = (
+            "false"
+            if force_no_routable_ip
+            else self.has_routable_ip(service_namespace_config, system_paasta_config)
         )
         annotations: KubePodAnnotations = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
@@ -2239,6 +2252,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 secret_volumes=self.get_secret_volumes(),
                 system_paasta_config=system_paasta_config,
                 service_namespace_config=service_namespace_config,
+                include_sidecars=include_sidecars,
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),

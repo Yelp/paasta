@@ -1523,6 +1523,8 @@ class TestKubernetesDeploymentConfig:
                 git_sha=mock_get_git_sha.return_value,
                 system_paasta_config=mock_load_system_config.return_value,
                 restart_on_failure=False,
+                include_sidecars=False,
+                force_no_routable_ip=True,
             )
             assert job.metadata.labels == {
                 "paasta.yelp.com/owner": "whatever",
