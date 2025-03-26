@@ -44,6 +44,10 @@ Submodules
    paasta_tools.paastaapi.model.kubernetes_pod_v2
    paasta_tools.paastaapi.model.kubernetes_replica_set
    paasta_tools.paastaapi.model.kubernetes_version
+   paasta_tools.paastaapi.model.remote_run_outcome
+   paasta_tools.paastaapi.model.remote_run_start
+   paasta_tools.paastaapi.model.remote_run_stop
+   paasta_tools.paastaapi.model.remote_run_token
    paasta_tools.paastaapi.model.resource
    paasta_tools.paastaapi.model.resource_item
    paasta_tools.paastaapi.model.resource_value

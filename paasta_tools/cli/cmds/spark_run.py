@@ -1219,7 +1219,6 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
 
     volumes = instance_config.get_volumes(
         system_paasta_config.get_volumes(),
-        system_paasta_config.get_uses_bulkdata_default(),
     )
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 

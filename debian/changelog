@@ -1,3 +1,44 @@
+paasta-tools (1.14.1) xenial; urgency=medium
+
+  * 1.14.1 tagged with 'make release'
+    Commit: the remote-run missing bits (#4028)  This was meant to be
+    included in the last release but I (luisp) don"t know how to read
+    and merged things in the "wrong" order.   This correctly merges in
+    the following PRs:  * cleanup for remote-run resources (#4024)
+    Clean up logic for the (meant to be) ephemeral resources which are
+    created in remote-run invocations (#4022).  * new remote-run cli
+    (#4025)  Last portion of #3986, with the updated logic to reflect
+    the updated API conventions introduced in #4022.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Mar 2025 11:07:43 -0700
+
+paasta-tools (1.14.0) xenial; urgency=medium
+
+  * 1.14.0 tagged with 'make release'
+    Commit: remote-run api implementation (#4022)  This is the largest
+    portion of https://github.com/Yelp/paasta/pull/3986, implementing
+    the new API for remote-run (look at the second commit, the first is
+    mostly codegen stuff).  I deviated a bit from the original design
+    poc code, as I saw that was waiting for the remote-run pods to
+    become available as part of the `remote_run/.../start` endpoint, and
+    that"s not a great idea as it would just keep one API worker busy
+    doing nothing. So I modified that endpoint to return as soon as the
+    job resource is created, and then added another one to allow the CLI
+    client to poll for updates until the pod becomes available.  So in
+    summary the logic is the following: * remote-run/start   * load all
+    the necessary config for a service instance, create a job resource,
+    and launch it   * return name of the job * remote-run/poll   * look
+    if a pod for a remote-run job is ready * remote-run/token   * get
+    temporary credentials to exec into the remote-run pod * remote-
+    run/stop   * explicitly end the remote-run job (which will
+    eventually be anyway since we set a deadline)  I also refused to add
+    more stuff to the `kubernetes_tools` module as that already has
+    **4500+ lines in it**, which is too much for me not to get triggered
+    about, so I grouped all the new methods needed in a new module under
+    `paasta_tools.kubernetes`
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 24 Mar 2025 07:57:14 -0700
+
 paasta-tools (1.13.6) xenial; urgency=medium
 
   * 1.13.6 tagged with 'make release'

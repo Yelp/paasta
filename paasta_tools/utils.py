@@ -2001,6 +2001,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
     register_native_services: bool
+    remote_run_duration_limit: int
     resource_pool_settings: PoolToResourcePoolSettingsDict
     secret_provider: str
     security_check_command: str
@@ -2750,14 +2751,14 @@ class SystemPaastaConfig:
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
 
-    def get_uses_bulkdata_default(self) -> bool:
-        return self.config_dict.get("uses_bulkdata_default", False)
-
     def get_enable_automated_redeploys_default(self) -> bool:
         return self.config_dict.get("enable_automated_redeploys_default", False)
 
     def get_enable_tron_tsc(self) -> bool:
         return self.config_dict.get("enable_tron_tsc", True)
+
+    def get_remote_run_duration_limit(self, default: int) -> int:
+        return self.config_dict.get("remote_run_duration_limit", default)
 
 
 def _run(

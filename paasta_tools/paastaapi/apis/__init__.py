@@ -17,5 +17,6 @@
 # Import APIs into API package:
 from paasta_tools.paastaapi.api.autoscaler_api import AutoscalerApi
 from paasta_tools.paastaapi.api.default_api import DefaultApi
+from paasta_tools.paastaapi.api.remote_run_api import RemoteRunApi
 from paasta_tools.paastaapi.api.resources_api import ResourcesApi
 from paasta_tools.paastaapi.api.service_api import ServiceApi
