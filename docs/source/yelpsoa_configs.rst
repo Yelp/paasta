@@ -66,7 +66,7 @@ specify the following options:
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
     * ``PAASTA_GIT_SHA``: The short git sha of the code the container has
     * ``PAASTA_HOST``: The hostname of the actual server the container is running on
-    * ``PAASTA_IMAGE_VERSION``: The version of the docker image
+    * ``PAASTA_IMAGE_VERSION`` (optional) : The version of the docker image - only present for instances using automated redeploys or manually deployed using --image-version
     * ``PAASTA_INSTANCE_TYPE``: The instance type of the service (e.g: tron, kubernetes, eks, etc)
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_LAUNCHED_BY`` (optional): May not be present. If present, will have the username of the user who launched the PaaSTA container
