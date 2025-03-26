@@ -2,7 +2,7 @@
 openapi: 3.0.0
 info:
   title: Paasta API
-  version: 1.1.0
+  version: 1.1.1
 servers:
 - url: "{scheme}://{host}/{basePath}"
   variables:
@@ -1216,6 +1216,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RemoteRunOutcome'
           description: Successfully started remote-run sandbox
+        "403":
+          description: Unauthorized to remote-run this service
         "404":
           description: Service instance not found
         "500":
@@ -1252,6 +1254,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RemoteRunOutcome'
           description: Remote run pod stopped
+        "403":
+          description: Unauthorized to remote-run this service
         "404":
           description: Service instance not found
         "500":
@@ -1288,6 +1292,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RemoteRunOutcome'
           description: Pod status information
+        "403":
+          description: Unauthorized to remote-run this service
         "404":
           description: Service instance not found
         "500":
@@ -1324,6 +1330,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/RemoteRunToken'
           description: Token generated successfully
+        "403":
+          description: Unauthorized to remote-run this service
         "404":
           description: Service instance not found
         "500":
