@@ -65,7 +65,7 @@ specify the following options:
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
     * ``PAASTA_GIT_SHA``: The short git sha of the code the container has
-    * ``PAASTA_HOST``: The hostname of the actual server the container is runnig on
+    * ``PAASTA_HOST``: The hostname of the actual server the container is running on
     * ``PAASTA_IMAGE_VERSION``: The version of the docker image
     * ``PAASTA_INSTANCE_TYPE``: The instance type of the service (e.g: tron, kubernetes, eks, etc)
     * ``PAASTA_INSTANCE``: The instance name
