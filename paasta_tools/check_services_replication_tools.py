@@ -57,7 +57,7 @@ log = logging.getLogger(__name__)
 CheckServiceReplication = Callable[
     [
         Arg(InstanceConfig_T, "instance_config"),
-        Arg(Dict[str, Dict[str, List[V1Pod]]], "grouped_pods"),
+        Arg(Dict[str, Dict[str, List[V1Pod]]], "pods_by_service_instance"),
         Arg(Any, "replication_checker"),
         NamedArg(bool, "dry_run"),
     ],
@@ -126,7 +126,7 @@ def check_services_replication(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
-    grouped_pods: Dict[str, Dict[str, List[V1Pod]]],
+    pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]],
     dry_run: bool = False,
 ) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
@@ -146,7 +146,7 @@ def check_services_replication(
             if instance_config.get_docker_image():
                 is_well_replicated = check_service_replication(
                     instance_config=instance_config,
-                    grouped_pods=grouped_pods,
+                    pods_by_service_instance=pods_by_service_instance,
                     replication_checker=replication_checker,
                     dry_run=dry_run,
                 )
@@ -212,7 +212,7 @@ def main(
             system_paasta_config=system_paasta_config,
         )
 
-    grouped_pods = group_pods_by_service_instance(pods)
+    pods_by_service_instance = group_pods_by_service_instance(pods)
 
     count_under_replicated, total = check_services_replication(
         soa_dir=args.soa_dir,
@@ -221,7 +221,7 @@ def main(
         instance_type_class=instance_type_class,
         check_service_replication=check_service_replication,
         replication_checker=replication_checker,
-        grouped_pods=grouped_pods,
+        pods_by_service_instance=pods_by_service_instance,
         dry_run=args.dry_run,
     )
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total

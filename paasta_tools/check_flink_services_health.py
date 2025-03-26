@@ -133,11 +133,11 @@ def get_cr_name(si_pods: Sequence[V1Pod]) -> str:
 
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
-    grouped_pods: Dict[str, Dict[str, List[V1Pod]]],
+    pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
 ) -> None:
-    si_pods = grouped_pods.get(instance_config.service, {}).get(
+    si_pods = pods_by_service_instance.get(instance_config.service, {}).get(
         instance_config.instance, []
     )
     taskmanagers_expected_cnt = instance_config.config_dict.get(

@@ -52,7 +52,7 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
     ) as mock_check_replication_for_service:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            grouped_pods={},
+            pods_by_service_instance={},
             replication_checker=None,
             dry_run=True,
         )
@@ -82,7 +82,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         instance_config.get_registrations.return_value = ["some-random-other-namespace"]
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            grouped_pods={},
+            pods_by_service_instance={},
             replication_checker=None,
             dry_run=True,
         )
@@ -90,7 +90,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
             instance_config=instance_config,
             expected_count=100,
-            grouped_pods={},
+            pods_by_service_instance={},
             dry_run=True,
         )
 
@@ -108,14 +108,14 @@ def test_check_service_replication_for_non_smartstack(instance_config):
     ) as mock_check_healthy_kubernetes_tasks:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            grouped_pods={},
+            pods_by_service_instance={},
             replication_checker=None,
             dry_run=True,
         )
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
             instance_config=instance_config,
             expected_count=100,
-            grouped_pods={},
+            pods_by_service_instance={},
             dry_run=True,
         )
 
@@ -132,7 +132,7 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
         mock_instance_config = mock.Mock()
         mock_pod_1 = mock.Mock()
         mock_pod_2 = mock.Mock()
-        grouped_pods = {
+        pods_by_service_instance = {
             mock_instance_config.service: {
                 mock_instance_config.instance: [mock_pod_1, mock_pod_2]
             }
@@ -140,7 +140,7 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
         check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance(
             mock_instance_config,
             5,
-            grouped_pods=grouped_pods,
+            pods_by_service_instance=pods_by_service_instance,
             dry_run=True,
         )
         mock_send_replication_event_if_under_replication.assert_called_with(

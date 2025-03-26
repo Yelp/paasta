@@ -3452,21 +3452,21 @@ def filter_pods_by_service_instance(
 def group_pods_by_service_instance(
     pods: Sequence[V1Pod],
 ) -> Dict[str, Dict[str, List[V1Pod]]]:
-    grouped_pods: Dict[str, Dict[str, List[V1Pod]]] = {}
+    pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]] = {}
     for pod in pods:
         if pod.metadata.labels is not None:
             service = pod.metadata.labels.get("paasta.yelp.com/service")
             instance = pod.metadata.labels.get("paasta.yelp.com/instance")
 
             if service and instance:
-                if service not in grouped_pods:
-                    grouped_pods[service] = {}
-                if instance not in grouped_pods[service]:
-                    grouped_pods[service][instance] = []
+                if service not in pods_by_service_instance:
+                    pods_by_service_instance[service] = {}
+                if instance not in pods_by_service_instance[service]:
+                    pods_by_service_instance[service][instance] = []
 
-                grouped_pods[service][instance].append(pod)
+                pods_by_service_instance[service][instance].append(pod)
 
-    return grouped_pods
+    return pods_by_service_instance
 
 
 def _is_it_ready(
