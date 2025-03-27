@@ -3439,8 +3439,11 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: str) -> List[V1Pod]:
-    return kube_client.core.list_namespaced_pod(namespace=namespace).items
+def get_all_pods(kube_client: KubeClient, namespace: Optional[str]) -> List[V1Pod]:
+    if namespace:
+        return kube_client.core.list_namespaced_pod(namespace=namespace).items
+    else:
+        return kube_client.core.list_pod_for_all_namespaces().items
 
 
 @time_cache(ttl=300)
@@ -3459,6 +3462,26 @@ def filter_pods_by_service_instance(
         and pod.metadata.labels.get("paasta.yelp.com/service", "") == service
         and pod.metadata.labels.get("paasta.yelp.com/instance", "") == instance
     ]
+
+
+def group_pods_by_service_instance(
+    pods: Sequence[V1Pod],
+) -> Dict[str, Dict[str, List[V1Pod]]]:
+    pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]] = {}
+    for pod in pods:
+        if pod.metadata.labels is not None:
+            service = pod.metadata.labels.get("paasta.yelp.com/service")
+            instance = pod.metadata.labels.get("paasta.yelp.com/instance")
+
+            if service and instance:
+                if service not in pods_by_service_instance:
+                    pods_by_service_instance[service] = {}
+                if instance not in pods_by_service_instance[service]:
+                    pods_by_service_instance[service][instance] = []
+
+                pods_by_service_instance[service][instance].append(pod)
+
+    return pods_by_service_instance
 
 
 def _is_it_ready(
