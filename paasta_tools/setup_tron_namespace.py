@@ -26,8 +26,6 @@ import sys
 from typing import Dict
 from typing import List
 
-import ruamel.yaml as yaml
-
 from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools.kubernetes_tools import ensure_service_account
@@ -167,9 +165,6 @@ def main():
             failed.append(MASTER_NAMESPACE)
             log.exception(f"Error while updating {MASTER_NAMESPACE}:")
 
-    k8s_enabled_for_cluster = (
-        yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
-    )
     new_configs: Dict[str, str] = {}  # service -> new_config
     for service in sorted(services):
         try:
@@ -177,7 +172,7 @@ def main():
                 cluster=args.cluster,
                 service=service,
                 soa_dir=args.soa_dir,
-                k8s_enabled=k8s_enabled_for_cluster,
+                k8s_enabled=True,
                 dry_run=args.dry_run,
             )
             new_configs[service] = new_config

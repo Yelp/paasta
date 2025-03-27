@@ -29,8 +29,8 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.8-dev \
-        python3.8-distutils \
+        python3.10-dev \
+        python3.10-distutils \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -40,7 +40,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.8 --no-download
+RUN virtualenv /venv -ppython3.10 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install --only-binary=grpcio -r requirements.txt
 

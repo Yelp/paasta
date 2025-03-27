@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# We just want to test that task_processing is available in the virtualenv
 import mock
 from slackclient import SlackClient
 
