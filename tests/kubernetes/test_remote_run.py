@@ -229,7 +229,7 @@ def test_find_job_pod(mock_sleep):
         [
             call(
                 "namespace",
-                label_selector="paasta.yelp.com/job_type=remote-run,batch.kubernetes.io/job-name=somejob",
+                label_selector="paasta.yelp.com/job_type=remote-run,job-name=somejob",
             )
         ]
         * 2

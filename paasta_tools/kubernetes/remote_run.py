@@ -259,7 +259,7 @@ def find_job_pod(
     """
     selectors = (
         f"{paasta_prefixed(JOB_TYPE_LABEL_NAME)}={job_label}",
-        f"batch.kubernetes.io/job-name={job_name}",
+        f"job-name={job_name}",
     )
     for _ in range(retries):
         pod_list = kube_client.core.list_namespaced_pod(
