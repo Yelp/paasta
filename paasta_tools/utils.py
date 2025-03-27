@@ -3373,7 +3373,7 @@ def get_docker_host() -> str:
 
 
 def get_docker_client() -> APIClient:
-    client_opts = kwargs_from_env(assert_hostname=False)
+    client_opts = kwargs_from_env()
     if "base_url" in client_opts:
         return APIClient(**client_opts)
     else:

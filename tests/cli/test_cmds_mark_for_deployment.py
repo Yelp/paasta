@@ -550,6 +550,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     )
 
 
+# TODO: why is this hanging?!?
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
     autospec=True,
@@ -593,7 +594,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     )
 
     mock_mark_for_deployment.return_value = 0
-    mock_wait_for_deployment.side_effect = KeyboardInterrupt()
+    mock_wait_for_deployment.side_effect = TimeoutError()
 
     retval = mfdp.run()
 

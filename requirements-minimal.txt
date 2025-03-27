@@ -39,6 +39,7 @@ objgraph
 ply
 progressbar2 >= 3.10.0
 prometheus-client
+protobuf<4  # pycontainerd seems to not support a version beyond this
 pymesos >= 0.2.0
 pyramid >= 1.8
 pyramid-swagger >= 2.3.0
@@ -58,7 +59,7 @@ ruamel.yaml
 sensu-plugin
 service-configuration-lib >= 3.1.1
 signalfx
-slackclient >= 1.2.1
+slackclient >= 1.2.1, <2 # v2 significantly changes the API
 sticht >= 1.1.0
 syslogmp
 thriftpy2
