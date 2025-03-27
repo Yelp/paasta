@@ -1,3 +1,14 @@
+paasta-tools (1.14.3) xenial; urgency=medium
+
+  * 1.14.3 tagged with 'make release'
+    Commit: Fix job pod labelling (#4035)  * The documentation lied to
+    me, pods only have `job-name` rather than `batch.kubernetes.io/job-
+    name` (maybe it"s a difference across versions, I have not checked).
+    * I wrongly assumed that job labels would propagate to be pod
+    labels. I"m too naive.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 27 Mar 2025 10:04:53 -0700
+
 paasta-tools (1.14.2) xenial; urgency=medium
 
   * 1.14.2 tagged with 'make release'
