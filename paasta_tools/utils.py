@@ -2044,6 +2044,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
+    default_spark_iam_user: str
 
 
 def load_system_paasta_config(
@@ -2141,6 +2142,11 @@ class SystemPaastaConfig:
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
+
+    def get_default_spark_iam_user(self) -> str:
+        return self.config_dict.get(
+            "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
+        )
 
     def get_sidecar_requirements_config(
         self,
