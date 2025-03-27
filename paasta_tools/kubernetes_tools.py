@@ -2066,33 +2066,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         :param bool include_sidecars: do not discard sidecar containers when building pod spec
         :return: job object
         """
+        additional_labels = {paasta_prefixed(JOB_TYPE_LABEL_NAME): job_label}
         try:
             docker_url = self.get_docker_url()
             git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
             system_paasta_config = load_system_paasta_config()
+            image_version = self.get_image_version()
+            if image_version is not None:
+                additional_labels[paasta_prefixed("image_version")] = image_version
+            pod_template = self.get_pod_template_spec(
+                git_sha=git_sha,
+                system_paasta_config=system_paasta_config,
+                restart_on_failure=False,
+                include_sidecars=include_sidecars,
+                force_no_routable_ip=not keep_routable_ip,
+            )
+            pod_template.metadata.labels.update(additional_labels)
             complete_config = V1Job(
                 api_version="batch/v1",
                 kind="Job",
                 metadata=self.get_kubernetes_metadata(git_sha),
                 spec=V1JobSpec(
                     active_deadline_seconds=deadline_seconds,
-                    template=self.get_pod_template_spec(
-                        git_sha=git_sha,
-                        system_paasta_config=system_paasta_config,
-                        restart_on_failure=False,
-                        include_sidecars=include_sidecars,
-                        force_no_routable_ip=not keep_routable_ip,
-                    ),
+                    template=pod_template,
                 ),
             )
-            image_version = self.get_image_version()
-            if image_version is not None:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/image_version"
-                ] = image_version
-            complete_config.metadata.labels[
-                paasta_prefixed(JOB_TYPE_LABEL_NAME)
-            ] = job_label
+            complete_config.metadata.labels.update(additional_labels)
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug(

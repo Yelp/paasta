@@ -1500,6 +1500,7 @@ class TestKubernetesDeploymentConfig:
             mock_get_kubernetes_metadata.return_value.labels = {
                 "paasta.yelp.com/owner": "whatever"
             }
+            mock_get_pod_template_spec.return_value.metadata.labels = {}
             job = self.deployment.format_kubernetes_job("foobar", 100)
             assert job == V1Job(
                 api_version="batch/v1",
@@ -1528,6 +1529,10 @@ class TestKubernetesDeploymentConfig:
             )
             assert job.metadata.labels == {
                 "paasta.yelp.com/owner": "whatever",
+                "paasta.yelp.com/image_version": mock_get_image_version.return_value,
+                "paasta.yelp.com/job_type": "foobar",
+            }
+            assert mock_get_pod_template_spec.return_value.metadata.labels == {
                 "paasta.yelp.com/image_version": mock_get_image_version.return_value,
                 "paasta.yelp.com/job_type": "foobar",
             }
