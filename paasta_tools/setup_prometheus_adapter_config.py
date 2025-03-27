@@ -23,7 +23,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-import ruamel.yaml as yaml
+import ruamel.yaml
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1ObjectMeta
@@ -63,6 +63,11 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+
+yaml = ruamel.yaml.YAML()
+yaml.default_flow_style = False  # Ensures block style formatting
+yaml.explicit_start = True  # Ensures the document starts with '---'
+yaml.width = sys.maxsize  # ALlow lines to be as long as possible
 
 log = logging.getLogger(__name__)
 
@@ -878,14 +883,7 @@ def update_prometheus_adapter_configmap(
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={
-                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
-                    config,
-                    default_flow_style=False,
-                    explicit_start=True,
-                    width=sys.maxsize,
-                )
-            },
+            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(config)},
         ),
     )
 
@@ -897,11 +895,7 @@ def create_prometheus_adapter_configmap(
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={
-                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
-                    config, default_flow_style=False, explicit_start=True
-                )
-            },
+            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(config)},
         ),
     )
 
@@ -924,10 +918,11 @@ def get_prometheus_adapter_configmap(
         else:
             raise
 
-    if not config:
+    if not config or not config.data:
         return None
 
-    return yaml.safe_load(config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME])
+    # this uses ruamel, thus the lack of safe_load
+    return yaml.load(config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME])
 
 
 def restart_prometheus_adapter(kube_client: KubeClient) -> None:
@@ -980,17 +975,13 @@ def main() -> int:
     if args.dry_run:
         log.info(
             "Generated the following config:\n%s",
-            yaml.dump(
-                config, default_flow_style=False, explicit_start=True, width=sys.maxsize
-            ),
+            yaml.dump(config),
         )
         return 0  # everything after this point requires creds/updates state
     else:
         log.debug(
             "Generated the following config:\n%s",
-            yaml.dump(
-                config, default_flow_style=False, explicit_start=True, width=sys.maxsize
-            ),
+            yaml.dump(config),
         )
 
     if not config["rules"]:

@@ -10,12 +10,21 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
-import ruamel.yaml as yaml
+import ruamel.yaml
+from ruamel.yaml.nodes import ScalarNode
 
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
+yaml = ruamel.yaml.YAML()
+
+
+def represent_none_as_null_string(self, data) -> ScalarNode:
+    return self.represent_scalar("tag:yaml.org,2002:null", "null")
+
+
+yaml.representer.add_representer(type(None), represent_none_as_null_string)
 
 log = logging.getLogger(__name__)
 
@@ -34,10 +43,6 @@ KNOWN_CONFIG_TYPES = (
 INSTANCE_TYPE_COUNTERPARTS = {"eks": "kubernetes", "kubernetes": "eks"}
 
 
-def my_represent_none(self, data):
-    return self.represent_scalar("tag:yaml.org,2002:null", "null")
-
-
 def write_auto_config_data(
     service: str,
     extra_info: str,
@@ -51,7 +56,6 @@ def write_auto_config_data(
 
     Returns the filename of the modified file, or None if no file was written.
     """
-    yaml.YAML().representer.add_representer(type(None), my_represent_none)
     service_dir = f"{soa_dir}/{service}"
     if not os.path.exists(service_dir):
         log.warning(
@@ -70,7 +74,8 @@ def write_auto_config_data(
         # without this if/else block
         if comment:
             content = (
-                yaml.round_trip_load(
+                # NOTE: this uses ruamel, thus the use of load over [the nonexistent] safe_load
+                yaml.load(
                     comment.format(
                         # this is a bit of a hack, but we've decided to not rename files back to kubernetes-*
                         # files. while we still need to update things to reference the eks files directly, there's
@@ -88,7 +93,7 @@ def write_auto_config_data(
             # avoids content.update to preserve comments in `data`
             content = data
 
-        f.write(yaml.round_trip_dump(content))
+        yaml.dump(content, f)
     return filename
 
 
@@ -246,7 +251,8 @@ class AutoConfigUpdater:
             config_file_path + ".yaml",
         )
         try:
-            return yaml.round_trip_load(open(config_file_abs_path))
+            # NOTE: this uses ruamel, thus the use of load over [the nonexistent] safe_load
+            return yaml.load(open(config_file_abs_path))
         except FileNotFoundError:
             return {}
 

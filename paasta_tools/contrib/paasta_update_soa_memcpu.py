@@ -10,11 +10,15 @@ import time
 from http.client import HTTPConnection
 
 import requests
-import ruamel.yaml as yaml
+import ruamel.yaml
 
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
+
+yaml = ruamel.yaml.YAML()
+yaml.preserve_quotes = True  # Ensures that quotes are left un-touched
+yaml.width = 120  # set maximum line width
 
 requests_log = logging.getLogger("requests.packages.urllib3")
 logging.basicConfig(level=logging.INFO)
@@ -319,7 +323,7 @@ def edit_soa_configs(filename, instance, cpu, mem, disk):
         with open(real_filename, "r") as fi:
             yams = fi.read()
             yams = yams.replace("cpus: .", "cpus: 0.")
-            data = yaml.round_trip_load(yams, preserve_quotes=True)
+            data = yaml.load(yams)
 
         instdict = data[instance]
         if cpu:
@@ -329,7 +333,7 @@ def edit_soa_configs(filename, instance, cpu, mem, disk):
             instdict["mem"] = mem
         if disk:
             instdict["disk"] = round(float(disk))
-        out = yaml.round_trip_dump(data, width=120)
+        out = yaml.dump(data)
 
         with open(filename, "w") as fi:
             fi.write(out)
