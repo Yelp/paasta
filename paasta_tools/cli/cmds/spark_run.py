@@ -429,9 +429,20 @@ def add_subparser(subparsers):
             "for the relevant instance in yelpsoa-configs. If the instance "
             "isn't setup there yet, you can override the IAM role arn here."
             " However, it must already be set for a different instance of "
-            "the service."
+            "the service. Must be used with --executor-pod-identity."
         ),
         default=None,
+    )
+
+    aws_group.add_argument(
+        "--executor-pod-identity",
+        help=(
+            "Launch the executor pod with pod-identity derived from "
+            "the iam_role settings attached to the instance settings in "
+            "SOA configs. See also --force-pod-identity."
+        ),
+        action="store_true",
+        default=False,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -1235,7 +1246,13 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
 
     service_account_name = None
     iam_role = instance_config.get_iam_role()
-    if iam_role or args.force_pod_identity:
+    if args.executor_pod_identity and not (iam_role or args.force_pod_identity):
+        print(
+            "--executor-pod-identity set but no iam_role settings found.",
+            file=sys.stderr,
+        )
+        return 1
+    if args.executor_pod_identity:
         if args.force_pod_identity:
             if args.yelpsoa_config_root != DEFAULT_SOA_DIR:
                 print(

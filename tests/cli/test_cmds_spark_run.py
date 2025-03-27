@@ -1032,6 +1032,7 @@ def test_paasta_spark_run_bash(
         use_web_identity=False,
         uses_bulkdata=True,
         force_pod_identity=False,
+        executor_pod_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1162,6 +1163,7 @@ def test_paasta_spark_run(
         use_web_identity=False,
         uses_bulkdata=True,
         force_pod_identity=False,
+        executor_pod_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1292,6 +1294,7 @@ def test_paasta_spark_run_pyspark(
         use_web_identity=False,
         uses_bulkdata=True,
         force_pod_identity=False,
+        executor_pod_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1438,6 +1441,7 @@ def test_paasta_spark_run_uses_bulkdata(
         use_web_identity=False,
         uses_bulkdata=spark_run_arg_uses_bulkdata,
         force_pod_identity=False,
+        executor_pod_identity=False,
     )
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
@@ -1743,6 +1747,7 @@ def test_paasta_spark_run_with_pod_identity(
         use_web_identity=False,
         uses_bulkdata=True,
         force_pod_identity=force_pod_identity,
+        executor_pod_identity=True,
     )
     # Use the expected return code to set the allowed iam roles
     if force_pod_identity and not should_exit_early:
