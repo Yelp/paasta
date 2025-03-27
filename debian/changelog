@@ -1,3 +1,28 @@
+paasta-tools (1.14.2) xenial; urgency=medium
+
+  * 1.14.2 tagged with 'make release'
+    Commit: First wave of fixes for remote-run (#4033)  * Describe 403
+    code for remote-run apis     * Since OPA can deny remote-run
+    requests, it"d be nice to have the right code returned from the API
+    server rather than 500 cause the code is not in the spec (this was
+    actually raise by @Qmando in #4022 but I turned the suggestion down,
+    mistakenly, sorry) * Add more output to remote-run cli     * ...
+    because it"s way too silent now, and pod don"t come online
+    instantaneusly * Fix wrong kwarg in
+    paasta_cleanup_remote_run_resources     * This is just linters
+    failing me (and too much mocking in unit tests) * Drop unneeded pod
+    options for remote-run jobs     * We do not want this to become a
+    way for people to deploy services in prod, so in general these pods
+    should not have routable IPs (it"ll be a different story for toolbox
+    containers as those will run sshd).     * In my recent testing the
+    job pod was failing to becomes ready due to hacheck. I think that
+    may be due to some zookeeper locking which interfered with the
+    existing replicas of the service, but at any rate, we don"t want
+    that, or any other sidecar, as this is effectively meant to be
+    "local-run, but in a pod"
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 27 Mar 2025 08:28:54 -0700
+
 paasta-tools (1.14.1) xenial; urgency=medium
 
   * 1.14.1 tagged with 'make release'
