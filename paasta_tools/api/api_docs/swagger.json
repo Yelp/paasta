@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "title": "Paasta API",
-        "version": "1.1.0"
+        "version": "1.1.1"
     },
     "basePath": "/v1",
     "schemes": [
@@ -856,6 +856,9 @@
                             "$ref": "#/definitions/RemoteRunOutcome"
                         }
                     },
+                    "403": {
+                        "description": "Unauthorized to remote-run this service"
+                    },
                     "404": {
                         "description": "Deployment key not found"
                     },
@@ -903,6 +906,9 @@
                         "schema": {
                             "$ref": "#/definitions/RemoteRunOutcome"
                         }
+                    },
+                    "403": {
+                        "description": "Unauthorized to remote-run this service"
                     },
                     "404": {
                         "description": "Service instance not found"
@@ -952,6 +958,9 @@
                             "$ref": "#/definitions/RemoteRunOutcome"
                         }
                     },
+                    "403": {
+                        "description": "Unauthorized to remote-run this service"
+                    },
                     "404": {
                         "description": "Service instance not found"
                     },
@@ -997,6 +1006,9 @@
                         "schema": {
                             "$ref": "#/definitions/RemoteRunToken"
                         }
+                    },
+                    "403": {
+                        "description": "Unauthorized to remote-run this service"
                     },
                     "404": {
                         "description": "Service instance not found"

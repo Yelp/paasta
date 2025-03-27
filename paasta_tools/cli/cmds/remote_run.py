@@ -61,6 +61,9 @@ def paasta_remote_run_start(
         print(f"Error from PaaSTA APIs while starting job: {start_response.message}")
         return 1
 
+    print(
+        f"Triggered remote-run job for {args.service}. Waiting for pod to come online..."
+    )
     start_time = time.time()
     while time.time() - start_time < args.timeout:
         poll_response = client.remote_run.remote_run_poll(
@@ -69,7 +72,9 @@ def paasta_remote_run_start(
             start_response.job_name,
         )
         if poll_response.status == 200:
+            print("")
             break
+        print(f"\rStatus: {poll_response.message}", end="")
         time.sleep(10)
     else:
         print("Timed out while waiting for job to start")
@@ -78,6 +83,8 @@ def paasta_remote_run_start(
     if not args.interactive:
         print("Successfully started remote-run job")
         return 0
+
+    print("Pod ready, establishing interactive session...")
 
     token_response = client.remote_run.remote_run_token(
         args.service, args.instance, user

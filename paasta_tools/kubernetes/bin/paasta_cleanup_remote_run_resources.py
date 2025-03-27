@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
 def main():
     args = parse_args()
     kube_client = KubeClient()
-    age_limit = datetime.now(tzinfo=timezone.utc) - timedelta(seconds=args.max_age)
+    age_limit = datetime.now(tz=timezone.utc) - timedelta(seconds=args.max_age)
     for namespace in get_all_managed_namespaces(kube_client):
         clean_namespace(kube_client, namespace, age_limit)
 
