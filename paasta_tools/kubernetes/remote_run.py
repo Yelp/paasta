@@ -372,7 +372,7 @@ def create_pod_scoped_role(
             labels={POD_OWNER_LABEL: user},
         ),
     )
-    kube_client.core.create_namespaced_role(namespace=namespace, body=role)
+    kube_client.rbac.create_namespaced_role(namespace=namespace, body=role)
     return role_name
 
 

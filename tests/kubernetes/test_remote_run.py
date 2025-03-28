@@ -305,7 +305,7 @@ def test_create_pod_scoped_role():
         create_pod_scoped_role(mock_client, "namespace", "somepod", "someuser")
         == "remote-run-role-b5189b42def8"
     )
-    mock_client.core.create_namespaced_role.assert_called_once_with(
+    mock_client.rbac.create_namespaced_role.assert_called_once_with(
         namespace="namespace",
         body=V1Role(
             rules=[
