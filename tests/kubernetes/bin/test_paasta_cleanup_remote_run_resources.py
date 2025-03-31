@@ -88,13 +88,14 @@ def test_main(
     mock_datetime, mock_parse_args, mock_kube, mock_clean, mock_get_namespaces
 ):
     mock_parse_args.return_value.max_age = 60
+    mock_parse_args.return_value.dry_run = False
     mock_datetime.now.return_value = datetime(2025, 1, 1, 0, 1, 0)
     mock_get_namespaces.return_value = ["a", "b", "c"]
     main()
     mock_clean.assert_has_calls(
         [
-            call(mock_kube.return_value, "a", datetime(2025, 1, 1, 0, 0, 0)),
-            call(mock_kube.return_value, "b", datetime(2025, 1, 1, 0, 0, 0)),
-            call(mock_kube.return_value, "c", datetime(2025, 1, 1, 0, 0, 0)),
+            call(mock_kube.return_value, "a", datetime(2025, 1, 1, 0, 0, 0), False),
+            call(mock_kube.return_value, "b", datetime(2025, 1, 1, 0, 0, 0), False),
+            call(mock_kube.return_value, "c", datetime(2025, 1, 1, 0, 0, 0), False),
         ]
     )
