@@ -1,3 +1,13 @@
+paasta-tools (1.14.4) xenial; urgency=medium
+
+  * 1.14.4 tagged with 'make release'
+    Commit: more minor fixes for remote-run (#4036)  * use correct api
+    client for create_namespaced_role * minor additions to
+    paasta_cleanup_remote_run_resources:   * some logging   * dry-run
+    option
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 31 Mar 2025 09:52:40 -0700
+
 paasta-tools (1.14.3) xenial; urgency=medium
 
   * 1.14.3 tagged with 'make release'
