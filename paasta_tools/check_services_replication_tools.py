@@ -14,12 +14,16 @@
 import argparse
 import logging
 import sys
+from multiprocessing import Pool
+from os import cpu_count
 from typing import Any
 from typing import Callable
-from typing import Container
+from typing import cast
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 
@@ -29,6 +33,7 @@ from mypy_extensions import NamedArg
 from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import group_pods_by_service_instance
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
@@ -52,7 +57,7 @@ log = logging.getLogger(__name__)
 CheckServiceReplication = Callable[
     [
         Arg(InstanceConfig_T, "instance_config"),
-        Arg(Sequence[V1Pod], "all_pods"),
+        Arg(Dict[str, Dict[str, List[V1Pod]]], "pods_by_service_instance"),
         Arg(Any, "replication_checker"),
         NamedArg(bool, "dry_run"),
     ],
@@ -103,16 +108,6 @@ def parse_args() -> argparse.Namespace:
         help="Print Sensu alert events and metrics instead of sending them",
     )
     parser.add_argument(
-        "--additional-namespaces",
-        help="full names of namespaces to check services replication for that don't match --namespace-prefix"
-        "Used only when service is kubernetes",
-        dest="additional_namespaces",
-        nargs="+",
-        # we default this to paasta since we always want to run this check on paasta namespace
-        # to avoid having two cron jobs running with two different namespace-prefix
-        default=["paasta"],
-    )
-    parser.add_argument(
         "--eks",
         help="This flag checks k8 services running on EKS",
         dest="eks",
@@ -131,7 +126,7 @@ def check_services_replication(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
-    all_pods: Sequence[V1Pod],
+    pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]],
     dry_run: bool = False,
 ) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
@@ -151,7 +146,7 @@ def check_services_replication(
             if instance_config.get_docker_image():
                 is_well_replicated = check_service_replication(
                     instance_config=instance_config,
-                    all_pods=all_pods,
+                    pods_by_service_instance=pods_by_service_instance,
                     replication_checker=replication_checker,
                     dry_run=dry_run,
                 )
@@ -211,13 +206,13 @@ def main(
             system_paasta_config=system_paasta_config,
         )
     else:
-        pods, nodes = get_kubernetes_pods_and_nodes(
-            additional_namespaces=args.additional_namespaces,
-        )
+        pods, nodes = get_kubernetes_pods_and_nodes()
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
         )
+
+    pods_by_service_instance = group_pods_by_service_instance(pods)
 
     count_under_replicated, total = check_services_replication(
         soa_dir=args.soa_dir,
@@ -226,7 +221,7 @@ def main(
         instance_type_class=instance_type_class,
         check_service_replication=check_service_replication,
         replication_checker=replication_checker,
-        all_pods=pods,
+        pods_by_service_instance=pods_by_service_instance,
         dry_run=args.dry_run,
     )
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
@@ -256,21 +251,73 @@ def main(
     sys.exit(exit_code)
 
 
+# XXX: is there a base class for the k8s clientlib models that we could use to type `obj`?
+def set_local_vars_configuration_to_none(obj: Any, visited: Set[int] = None) -> None:
+    """
+    Recursive function to ensure that k8s clientlib objects are pickleable.
+
+    Without this, k8s clientlib objects can't be used by multiprocessing functions
+    as those pickle data to shuttle between processes.
+    """
+    if visited is None:
+        visited = set()
+
+    # Avoid infinite recursion for objects that have already been visited
+    obj_id = id(obj)
+    if obj_id in visited:
+        return
+    visited.add(obj_id)
+
+    # if the object has the attribute, set it to None to essentially delete it
+    if hasattr(obj, "local_vars_configuration"):
+        setattr(obj, "local_vars_configuration", None)
+
+    # recursively check attributes of the object
+    if hasattr(obj, "__dict__"):
+        for attr_name, attr_value in obj.__dict__.items():
+            set_local_vars_configuration_to_none(attr_value, visited)
+
+    # if the object is iterable/a collection, iterate over its elements
+    elif isinstance(obj, (list, tuple, set)):
+        for item in obj:
+            set_local_vars_configuration_to_none(item, visited)
+    elif isinstance(obj, dict):
+        for value in obj.values():
+            set_local_vars_configuration_to_none(value, visited)
+
+
+def __fetch_pods(namespace: str) -> List[V1Pod]:
+    kube_client = KubeClient()
+    pods = get_all_pods(kube_client, namespace)
+    for pod in pods:
+        # this is pretty silly, but V1Pod cannot be pickled otherwise since the local_vars_configuration member
+        # is not picklable - and pretty much every k8s model has this member ;_;
+        set_local_vars_configuration_to_none(pod)
+    return pods
+
+
+def __get_all_pods_parallel(from_namespaces: Set[str]) -> List[V1Pod]:
+    all_pods: List[V1Pod] = []
+    with Pool() as pool:
+        for pod_list in pool.imap_unordered(
+            __fetch_pods,
+            from_namespaces,
+            chunksize=len(from_namespaces) // cast(int, cpu_count()),
+        ):
+            all_pods.extend(pod_list)
+    return all_pods
+
+
 def get_kubernetes_pods_and_nodes(
     namespace: Optional[str] = None,
-    additional_namespaces: Optional[Container[str]] = None,
 ) -> Tuple[List[V1Pod], List[V1Node]]:
     kube_client = KubeClient()
 
-    all_pods: List[V1Pod] = []
     if namespace:
         all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     else:
-        all_managed_namespaces = get_all_managed_namespaces(kube_client)
-        for managed_namespace in all_managed_namespaces:
-            all_pods.extend(
-                get_all_pods(kube_client=kube_client, namespace=managed_namespace)
-            )
+        all_managed_namespaces = set(get_all_managed_namespaces(kube_client))
+        all_pods = __get_all_pods_parallel(all_managed_namespaces)
 
     all_nodes = get_all_nodes(kube_client)
 
