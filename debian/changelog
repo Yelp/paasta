@@ -1,3 +1,28 @@
+paasta-tools (1.14.5) xenial; urgency=medium
+
+  * 1.14.5 tagged with 'make release'
+    Commit: Speed up check_kubernetes_service_replication (#4020)  At
+    some point this ran in <1min, and we have >1 things assuming this is
+    still running in <1min...but the current version of this script
+    actually takes multiple minutes in most of our clusters.  I grabbed
+    a couple flamegraphs of the current version of this (which I"ve
+    since lost in my scrollback/browser history, but I can re-gen pretty
+    easily) and noticed a couple obvious things: * we spend a
+    significant amount of time getting pods - let"s parallelize   that!
+    Note: we do this with multiprocessing and not multithreading   since
+    there"s a lot of serialization happening of k8s objects that   would
+    likely hold onto the GIL * we were spending an obscene amount of
+    time in   filter_pods_by_service_instance() since we were calling it
+    over and   over again - let"s group pods once in a smarter way and
+    pass the   grouping around instead :) * this one is kinda ???:
+    socket.gethostbyaddr() was pretty   prominent in the flamegraphs -
+    we don"t actually use the hostnames in   this check, so let"s add a
+    way to skip that hostname resolution  I also deleted the --
+    additional-namespaces code since it"s entirely unused now and it
+    made things slightly cleaner.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 01 Apr 2025 10:31:49 -0700
+
 paasta-tools (1.14.4) xenial; urgency=medium
 
   * 1.14.4 tagged with 'make release'
