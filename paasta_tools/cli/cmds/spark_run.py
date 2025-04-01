@@ -6,6 +6,7 @@ import re
 import shlex
 import socket
 import sys
+from configparser import ConfigParser
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -150,6 +151,11 @@ def add_subparser(subparsers):
         "--force-use-eks",
         help=argparse.SUPPRESS,
         action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--get-eks-token-via-iam-user",
+        help="Use IAM user to get EKS token for long running spark-run jobs",
+        action="store_true",
     )
 
     group = list_parser.add_mutually_exclusive_group()
@@ -622,7 +628,21 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+    if args.get_eks_token_via_iam_user:
+        with open(
+            "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
+        ) as f:
+            config = ConfigParser()
+            config.read_file(f)
+        spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] = config["default"][
+            "aws_access_key_id"
+        ]
+        spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] = config["default"][
+            "aws_secret_access_key"
+        ]
+        spark_env["KUBECONFIG"] = "/etc/kubernetes/spark2.conf"
+    else:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -799,9 +819,7 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    volumes.append(
-        f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
-    )
+    volumes.append("/etc/kubernetes:/etc/kubernetes:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
