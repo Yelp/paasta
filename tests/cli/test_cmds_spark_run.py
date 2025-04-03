@@ -729,6 +729,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_service_auth_token = False
+        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -756,7 +757,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
+                    "/etc/kubernetes:/etc/kubernetes:ro",
                 ]
             ),
             environment={
@@ -801,7 +802,10 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="pyspark", nvidia=True, use_service_auth_token=False
+                cmd="pyspark",
+                nvidia=True,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
             )
 
             configure_and_run_docker_container(
@@ -839,7 +843,10 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="python mrjob_wrapper.py", mrjob=True, use_service_auth_token=False
+                cmd="python mrjob_wrapper.py",
+                mrjob=True,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
             )
 
             configure_and_run_docker_container(
@@ -868,7 +875,12 @@ class TestConfigureAndRunDockerContainer:
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
         ):
             mock_create_spark_config_str.return_value = "--conf spark.cores.max=5"
-            args = mock.MagicMock(cmd="bash", mrjob=False, use_service_auth_token=False)
+            args = mock.MagicMock(
+                cmd="bash",
+                mrjob=False,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
+            )
 
             configure_and_run_docker_container(
                 args=args,
