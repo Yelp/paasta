@@ -819,7 +819,8 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    volumes.append("/etc/kubernetes:/etc/kubernetes:ro")
+    kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
+    volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
