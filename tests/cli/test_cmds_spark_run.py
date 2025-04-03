@@ -202,6 +202,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
+                get_eks_token_via_iam_user=None,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -216,6 +217,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
+                get_eks_token_via_iam_user=None,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -229,6 +231,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
+                get_eks_token_via_iam_user=None,
             ),
             {},
         ),
