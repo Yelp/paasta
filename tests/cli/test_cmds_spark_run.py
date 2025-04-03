@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import io
 import os
 
 import mock
@@ -285,6 +286,39 @@ def test_get_spark_env(
         )
         == expected_output
     )
+
+
+def test_get_spark_env_load_iam_creds():
+    data = """
+[default]
+aws_access_key_id = <foo-id>
+aws_secret_access_key = <foo-secret>
+    """
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.open",
+        return_value=io.StringIO(data),
+        autospec=None,
+    ) as iam_creds_file:
+        spark_env = spark_run.get_spark_env(
+            argparse.Namespace(
+                get_eks_token_via_iam_user=True, aws_region="us-west-2", cmd="sparkling"
+            ),
+            "spark-conf-string",
+            (None, None, None),
+            "http://myrandomport",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+        )
+        iam_creds_file.assert_called_once_with(
+            "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
+        )
+
+        assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
+        assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"
 
 
 @pytest.mark.parametrize(
