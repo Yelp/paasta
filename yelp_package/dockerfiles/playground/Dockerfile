@@ -1,6 +1,8 @@
-FROM example_cluster_itest_xenial
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/xenial/simple
+ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
+
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update > /dev/null && \
@@ -17,7 +19,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 
 ADD requirements.txt requirements-dev.txt requirements-bootstrap.txt /paasta/
-RUN virtualenv /venv -ppython3.8
+RUN virtualenv /venv -ppython3.10
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements-bootstrap.txt
 RUN pip install -r /paasta/requirements.txt
