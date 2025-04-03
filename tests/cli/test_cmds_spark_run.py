@@ -497,6 +497,7 @@ class TestConfigureAndRunDockerContainer:
         args.tronfig = None
         args.job_id = None
         args.use_service_auth_token = False
+        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -523,7 +524,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
+                    "/etc/kubernetes:/etc/kubernetes:ro",
                 ]
             ),
             environment={
