@@ -907,6 +907,7 @@ class TestConfigureAndRunDockerContainer:
             args = mock.MagicMock(
                 cmd="pyspark",
                 use_service_auth_token=True,
+                get_eks_token_via_iam_user=None,
             )
             configure_and_run_docker_container(
                 args=args,
