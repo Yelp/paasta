@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import io
 import os
 
 import mock
@@ -203,7 +202,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
-                get_eks_token_via_iam_user=None,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -218,7 +216,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
-                get_eks_token_via_iam_user=None,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -232,7 +229,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
-                get_eks_token_via_iam_user=None,
             ),
             {},
         ),
@@ -286,39 +282,6 @@ def test_get_spark_env(
         )
         == expected_output
     )
-
-
-def test_get_spark_env_load_iam_creds():
-    data = """
-[default]
-aws_access_key_id = <foo-id>
-aws_secret_access_key = <foo-secret>
-    """
-    with mock.patch(
-        "paasta_tools.cli.cmds.spark_run.open",
-        return_value=io.StringIO(data),
-        autospec=None,
-    ) as iam_creds_file:
-        spark_env = spark_run.get_spark_env(
-            argparse.Namespace(
-                get_eks_token_via_iam_user=True, aws_region="us-west-2", cmd="sparkling"
-            ),
-            "spark-conf-string",
-            (None, None, None),
-            "http://myrandomport",
-            SystemPaastaConfig(
-                SystemPaastaConfigDict(
-                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
-                ),
-                "fake_dir",
-            ),
-        )
-        iam_creds_file.assert_called_once_with(
-            "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
-        )
-
-        assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
-        assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"
 
 
 @pytest.mark.parametrize(
@@ -531,7 +494,6 @@ class TestConfigureAndRunDockerContainer:
         args.tronfig = None
         args.job_id = None
         args.use_service_auth_token = False
-        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -558,7 +520,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes:/etc/kubernetes:ro",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -647,7 +609,6 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
         args.use_service_auth_token = False
-        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -674,7 +635,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes:/etc/kubernetes:ro",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -763,7 +724,6 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_service_auth_token = False
-        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -791,7 +751,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes:/etc/kubernetes:ro",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -836,10 +796,7 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="pyspark",
-                nvidia=True,
-                use_service_auth_token=False,
-                get_eks_token_via_iam_user=None,
+                cmd="pyspark", nvidia=True, use_service_auth_token=False
             )
 
             configure_and_run_docker_container(
@@ -877,10 +834,7 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="python mrjob_wrapper.py",
-                mrjob=True,
-                use_service_auth_token=False,
-                get_eks_token_via_iam_user=None,
+                cmd="python mrjob_wrapper.py", mrjob=True, use_service_auth_token=False
             )
 
             configure_and_run_docker_container(
@@ -909,12 +863,7 @@ class TestConfigureAndRunDockerContainer:
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
         ):
             mock_create_spark_config_str.return_value = "--conf spark.cores.max=5"
-            args = mock.MagicMock(
-                cmd="bash",
-                mrjob=False,
-                use_service_auth_token=False,
-                get_eks_token_via_iam_user=None,
-            )
+            args = mock.MagicMock(cmd="bash", mrjob=False, use_service_auth_token=False)
 
             configure_and_run_docker_container(
                 args=args,
@@ -953,7 +902,6 @@ class TestConfigureAndRunDockerContainer:
             args = mock.MagicMock(
                 cmd="pyspark",
                 use_service_auth_token=True,
-                get_eks_token_via_iam_user=None,
             )
             configure_and_run_docker_container(
                 args=args,

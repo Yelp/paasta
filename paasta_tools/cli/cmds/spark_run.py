@@ -640,8 +640,9 @@ def get_spark_env(
         spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] = config["default"][
             "aws_secret_access_key"
         ]
-
-    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+        spark_env["KUBECONFIG"] = "/etc/kubernetes/spark2.conf"
+    else:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -818,8 +819,7 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
-    volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
+    volumes.append("/etc/kubernetes:/etc/kubernetes:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
