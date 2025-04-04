@@ -1913,6 +1913,7 @@ def test_paasta_spark_run_with_pod_identity(
         uses_bulkdata=True,
         force_pod_identity=force_pod_identity,
         executor_pod_identity=True,
+        get_eks_token_via_iam_user=False,
     )
     # Use the expected return code to set the allowed iam roles
     if force_pod_identity and not should_exit_early:
