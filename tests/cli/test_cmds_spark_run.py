@@ -1500,6 +1500,115 @@ def test_paasta_spark_run_uses_bulkdata(
     )
 
 
+def test_paasta_spark_run_re_run_sudo():
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="/bin/bash",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        timeout_job_runtime="1m",
+        enable_dra=False,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
+        k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
+        use_web_identity=False,
+        uses_bulkdata=True,
+        get_eks_token_via_iam_user=True,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.getuid",
+        return_value=1001,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+    ) as exec_fn:
+        spark_run.paasta_spark_run(args)
+        assert exec_fn.called
+        args, _ = exec_fn.call_args
+        assert args[0] == "sudo"
+
+
+@mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "get_instance_config", autospec=True)
+@mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
+@mock.patch.object(spark_run, "get_docker_image", autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
+@mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
+def test_paasta_spark_run_re_run_sudo_as_root(
+    mock_get_smart_paasta_instance_name,
+    mock_configure_and_run_docker_container,
+    mock_spark_conf_builder,
+    mock_parse_user_spark_args,
+    mock_get_spark_app_name,
+    mock_get_docker_image,
+    mock_get_aws_credentials,
+    mock_get_instance_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
+    mock_validate_work_dir,
+):
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="/bin/bash",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        timeout_job_runtime="1m",
+        enable_dra=False,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
+        k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
+        use_web_identity=False,
+        uses_bulkdata=True,
+        get_eks_token_via_iam_user=True,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.getuid",
+        return_value=0,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+    ) as exec_fn:
+        spark_run.paasta_spark_run(args)
+        assert not exec_fn.called
+
+
 @pytest.mark.parametrize(
     "docker_cmd, is_mrjob, expected",
     (
