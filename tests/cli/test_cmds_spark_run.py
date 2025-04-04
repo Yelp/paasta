@@ -1083,6 +1083,7 @@ def test_paasta_spark_run_bash(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1210,6 +1211,7 @@ def test_paasta_spark_run(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1337,6 +1339,7 @@ def test_paasta_spark_run_pyspark(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1480,6 +1483,7 @@ def test_paasta_spark_run_uses_bulkdata(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=spark_run_arg_uses_bulkdata,
+        get_eks_token_via_iam_user=False,
     )
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
