@@ -1127,6 +1127,11 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
 
 def paasta_spark_run(args: argparse.Namespace) -> int:
+    if args.get_eks_token_via_iam_user and os.getuid() != 0:
+        print("Re-run proccess as root")
+        # argv[0] is treated as command name, so prepending "sudo"
+        os.execvp("sudo", ["sudo"] + sys.argv)
+
     driver_envs_from_tronfig: Dict[str, str] = dict()
     if args.tronfig is not None:
         if args.job_id is None:
