@@ -5,7 +5,6 @@ import os
 import re
 import shlex
 import socket
-import subprocess
 import sys
 from configparser import ConfigParser
 from typing import Any
@@ -787,31 +786,6 @@ def _calculate_docker_cpu_limit(
     )
 
 
-def create_volume_and_create_spark_conf(
-    spark_conf_volume,
-    spark_conf_name,
-):
-    subprocess.run(
-        ["docker", "volume", "create", spark_conf_volume],
-        check=True,  # raises error if non-0 return code
-        capture_output=True,  # no command output is shown without error
-    )
-    output = subprocess.check_output(
-        ["docker", "volume", "inspect", spark_conf_volume],
-    )
-
-    # write to volume without a container
-    volume_mountpoint = json.loads(output)[0]["Mountpoint"]
-    with open(os.path.join(volume_mountpoint, spark_conf_name), "w") as f:
-        f.write(get_spark_kubeconfig_template())
-
-
-def get_spark_kubeconfig_template():
-    return """
-<placeholder>
-    """
-
-
 def configure_and_run_docker_container(
     args: argparse.Namespace,
     docker_img: str,
@@ -845,20 +819,9 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    if args.get_eks_token_via_iam_user:
-        spark_kubeconfig = system_paasta_config.get_spark_kubeconfig()
-        # can re-use volume because KUBECONFIG does not change across users
-        # or this could be UUID but will result in many volumes - should probably be fine since it'll have a small file
-        spark_conf_volume = "nalma-vol"
-        create_volume_and_create_spark_conf(
-            spark_conf_volume=spark_conf_volume,
-            spark_conf_name=os.path.basename(spark_kubeconfig),
-        )
-        volumes.append(f"{spark_conf_volume}:{os.path.dirname(spark_kubeconfig)}:ro")
-    else:
-        volumes.append(
-            f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
-        )
+    volumes.append(
+        f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
+    )
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
