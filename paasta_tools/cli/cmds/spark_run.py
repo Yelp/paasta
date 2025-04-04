@@ -13,6 +13,7 @@ from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -32,6 +33,7 @@ from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
@@ -39,6 +41,7 @@ from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
+from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
@@ -425,6 +428,29 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    aws_group.add_argument(
+        "--force-pod-identity",
+        help=(
+            "Normally the spark executor will use the pod identity defined "
+            "for the relevant instance in yelpsoa-configs. If the instance "
+            "isn't setup there yet, you can override the IAM role arn here."
+            " However, it must already be set for a different instance of "
+            "the service. Must be used with --executor-pod-identity."
+        ),
+        default=None,
+    )
+
+    aws_group.add_argument(
+        "--executor-pod-identity",
+        help=(
+            "Launch the executor pod with pod-identity derived from "
+            "the iam_role settings attached to the instance settings in "
+            "SOA configs. See also --force-pod-identity."
+        ),
+        action="store_true",
+        default=False,
+    )
+
     jupyter_group = list_parser.add_argument_group(
         title="Jupyter kernel culling options",
         description="Idle kernels will be culled by default. Idle "
@@ -644,6 +670,19 @@ def get_spark_env(
     spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
+
+
+def get_all_iam_roles_for_service(
+    service: str,
+    cluster: str,
+) -> Set[str]:
+    tron_instance_configs = load_tron_instance_configs(service, cluster)
+    roles = set()
+    for action in tron_instance_configs:
+        role = action.get_iam_role()
+        if role:
+            roles.add(role)
+    return roles
 
 
 def _parse_user_spark_args(
@@ -1229,6 +1268,47 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         )
         return 1
 
+    service_account_name = None
+    iam_role = instance_config.get_iam_role()
+    if args.executor_pod_identity and not (iam_role or args.force_pod_identity):
+        print(
+            "--executor-pod-identity set but no iam_role settings found.",
+            file=sys.stderr,
+        )
+        return 1
+    if args.executor_pod_identity:
+        if args.force_pod_identity:
+            if args.yelpsoa_config_root != DEFAULT_SOA_DIR:
+                print(
+                    "--force-pod-identity cannot be used with --yelpsoa-config-root",
+                    file=sys.stderr,
+                )
+                return 1
+
+            allowed_iam_roles = get_all_iam_roles_for_service(
+                args.service, args.cluster
+            )
+            if args.force_pod_identity not in allowed_iam_roles:
+                print(
+                    f"{args.force_pod_identity} is not an allowed role for this service. "
+                    f"Allowed roles are: {allowed_iam_roles}.",
+                    file=sys.stderr,
+                )
+                return 1
+
+            service_account_name = get_service_account_name(args.force_pod_identity)
+        else:
+            service_account_name = get_service_account_name(iam_role)
+        if (
+            not args.aws_credentials_yaml
+            and not args.aws_profile
+            and not args.assume_aws_role
+        ):
+            args.aws_credentials_yaml = (
+                system_paasta_config.get_default_spark_iam_user()
+            )
+        log.info(f"Running executor with service account {service_account_name}")
+
     aws_creds = get_aws_credentials(
         service=args.service,
         aws_credentials_yaml=args.aws_credentials_yaml,
@@ -1237,6 +1317,14 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         session_duration=args.aws_role_duration,
         use_web_identity=args.use_web_identity,
     )
+
+    # If executor pods use a service account, they don't need static aws creds
+    # but the driver still does
+    if service_account_name:
+        executor_aws_creds = None
+    else:
+        executor_aws_creds = aws_creds
+
     docker_image_digest = get_docker_image(args, instance_config)
     if docker_image_digest is None:
         return 1
@@ -1278,11 +1366,12 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         paasta_service=args.service,
         paasta_instance=paasta_instance,
         extra_volumes=cast(List[Mapping[str, str]], volumes),
-        aws_creds=aws_creds,
+        aws_creds=executor_aws_creds,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=True,
         k8s_server_address=k8s_server_address,
+        service_account_name=service_account_name,
     )
 
     return configure_and_run_docker_container(
