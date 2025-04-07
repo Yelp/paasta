@@ -30,6 +30,10 @@ def _create_mock_kube_resource(name: str, creation_time: datetime):
 
 
 @patch(
+    "paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources.get_remote_run_jobs",
+    autospec=True,
+)
+@patch(
     "paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources.get_remote_run_role_bindings",
     autospec=True,
 )
@@ -41,7 +45,7 @@ def _create_mock_kube_resource(name: str, creation_time: datetime):
     "paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources.get_remote_run_service_accounts",
     autospec=True,
 )
-def test_clean_namespace(mock_get_sa, mock_get_roles, mock_get_bindings):
+def test_clean_namespace(mock_get_sa, mock_get_roles, mock_get_bindings, mock_get_jobs):
     mock_client = MagicMock()
     mock_get_sa.return_value = [
         _create_mock_kube_resource("foobar", datetime(2025, 1, 1, 0, 0, 0)),
@@ -54,7 +58,14 @@ def test_clean_namespace(mock_get_sa, mock_get_roles, mock_get_bindings):
     mock_get_bindings.return_value = [
         _create_mock_kube_resource("whatever", datetime(2025, 1, 1, 0, 0, 0)),
     ]
-    clean_namespace(mock_client, "abc", datetime(2025, 1, 1, 1, 1, 1))
+    mock_get_jobs.return_value = [
+        _create_mock_kube_resource(
+            "remote-run-who-what", datetime(2024, 12, 1, 0, 0, 0)
+        ),
+    ]
+    clean_namespace(
+        mock_client, "abc", datetime(2025, 1, 1, 1, 1, 1), datetime(2025, 1, 1, 1, 1, 1)
+    )
     mock_client.core.delete_namespaced_service_account.assert_has_calls(
         [call("remote-run-abc", "abc")]
     )
@@ -62,8 +73,15 @@ def test_clean_namespace(mock_get_sa, mock_get_roles, mock_get_bindings):
         [call("remote-run-def", "abc")]
     )
     mock_client.rbac.delete_namespaced_role_binding.assert_not_called()
+    mock_client.batches.delete_namespaced_job.assert_called_once_with(
+        "remote-run-who-what", "abc"
+    )
 
 
+@patch(
+    "paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources.get_max_job_duration_limit",
+    autospec=True,
+)
 @patch(
     "paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources.get_all_managed_namespaces",
     autospec=True,
@@ -85,17 +103,41 @@ def test_clean_namespace(mock_get_sa, mock_get_roles, mock_get_bindings):
     autospec=True,
 )
 def test_main(
-    mock_datetime, mock_parse_args, mock_kube, mock_clean, mock_get_namespaces
+    mock_datetime,
+    mock_parse_args,
+    mock_kube,
+    mock_clean,
+    mock_get_namespaces,
+    mock_get_max_duration,
 ):
     mock_parse_args.return_value.max_age = 60
+    mock_get_max_duration.return_value = 3600
     mock_parse_args.return_value.dry_run = False
     mock_datetime.now.return_value = datetime(2025, 1, 1, 0, 1, 0)
     mock_get_namespaces.return_value = ["a", "b", "c"]
     main()
     mock_clean.assert_has_calls(
         [
-            call(mock_kube.return_value, "a", datetime(2025, 1, 1, 0, 0, 0), False),
-            call(mock_kube.return_value, "b", datetime(2025, 1, 1, 0, 0, 0), False),
-            call(mock_kube.return_value, "c", datetime(2025, 1, 1, 0, 0, 0), False),
+            call(
+                mock_kube.return_value,
+                "a",
+                datetime(2025, 1, 1, 0, 0, 0),
+                datetime(2024, 12, 31, 23, 1),
+                False,
+            ),
+            call(
+                mock_kube.return_value,
+                "b",
+                datetime(2025, 1, 1, 0, 0, 0),
+                datetime(2024, 12, 31, 23, 1),
+                False,
+            ),
+            call(
+                mock_kube.return_value,
+                "c",
+                datetime(2025, 1, 1, 0, 0, 0),
+                datetime(2024, 12, 31, 23, 1),
+                False,
+            ),
         ]
     )

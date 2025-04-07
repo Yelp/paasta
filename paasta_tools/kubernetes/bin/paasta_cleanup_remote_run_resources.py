@@ -22,6 +22,8 @@ from typing import Callable
 from typing import Sequence
 from typing import Tuple
 
+from paasta_tools.kubernetes.remote_run import get_max_job_duration_limit
+from paasta_tools.kubernetes.remote_run import get_remote_run_jobs
 from paasta_tools.kubernetes.remote_run import get_remote_run_role_bindings
 from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import get_remote_run_service_accounts
@@ -35,24 +37,44 @@ log = logging.getLogger(__name__)
 
 
 def clean_namespace(
-    kube_client: KubeClient, namespace: str, age_limit: datetime, dry_run: bool = False
+    kube_client: KubeClient,
+    namespace: str,
+    auth_age_limit: datetime,
+    job_age_limit: datetime,
+    dry_run: bool = False,
 ):
     """Clean ephemeral remote-run resource in a namespace
 
     :param KubeClient kube_client: kubernetes client
     :param str namepsace: kubernetes namespace
-    :param datetime age_limit: expiration time for resources
+    :param datetime creds_age_limit: expiration time for authentication resources
+    :param datetime job_age_limit: expiration time for job resources
+    :param bool dry_run: delete resources for real or not
     """
     dry_run_msg = " (dry_run)" if dry_run else ""
-    cleanup_actions: Sequence[Tuple[DeletionFuncType, ListingFuncType]] = (
+    cleanup_actions: Sequence[Tuple[DeletionFuncType, ListingFuncType, datetime]] = (
         (
             kube_client.core.delete_namespaced_service_account,
             get_remote_run_service_accounts,
+            auth_age_limit,
         ),
-        (kube_client.rbac.delete_namespaced_role, get_remote_run_roles),
-        (kube_client.rbac.delete_namespaced_role_binding, get_remote_run_role_bindings),
+        (
+            kube_client.rbac.delete_namespaced_role,
+            get_remote_run_roles,
+            auth_age_limit,
+        ),
+        (
+            kube_client.rbac.delete_namespaced_role_binding,
+            get_remote_run_role_bindings,
+            auth_age_limit,
+        ),
+        (
+            kube_client.batches.delete_namespaced_job,
+            get_remote_run_jobs,
+            job_age_limit,
+        ),
     )
-    for delete_func, list_func in cleanup_actions:
+    for delete_func, list_func, age_limit in cleanup_actions:
         for entity in list_func(kube_client, namespace):
             if (
                 not entity.metadata.name.startswith("remote-run-")
@@ -96,9 +118,11 @@ def main():
     args = parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
     kube_client = KubeClient()
-    age_limit = datetime.now(tz=timezone.utc) - timedelta(seconds=args.max_age)
+    now = datetime.now(tz=timezone.utc)
+    age_limit = now - timedelta(seconds=args.max_age)
+    job_age_limit = now - timedelta(seconds=get_max_job_duration_limit())
     for namespace in get_all_managed_namespaces(kube_client):
-        clean_namespace(kube_client, namespace, age_limit, args.dry_run)
+        clean_namespace(kube_client, namespace, age_limit, job_age_limit, args.dry_run)
 
 
 if __name__ == "__main__":

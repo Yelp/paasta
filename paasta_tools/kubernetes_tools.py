@@ -2088,6 +2088,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 metadata=self.get_kubernetes_metadata(git_sha),
                 spec=V1JobSpec(
                     active_deadline_seconds=deadline_seconds,
+                    ttl_seconds_after_finished=0,  # remove job resource after completion
                     template=pod_template,
                 ),
             )
