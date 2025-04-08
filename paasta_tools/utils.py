@@ -350,6 +350,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role_provider: str
     service: str
     uses_bulkdata: bool
+    docker_registry: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -781,8 +782,10 @@ class InstanceConfig:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
-        registry_uri = self.get_docker_registry(
-            system_paasta_config=system_paasta_config
+        registry_uri = (
+            self.config_dict["docker_registry"]
+            if "docker_registry" in self.config_dict
+            else self.get_docker_registry(system_paasta_config=system_paasta_config)
         )
         docker_image = self.get_docker_image()
         if not docker_image:
@@ -1932,6 +1935,14 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     max_skew: int
 
 
+class RemoteRunToolbox(TypedDict, total=False):
+    image: str
+    cpus: int
+    mem: int
+    ssh_port: int
+    extra_volumes: List[DockerVolume]
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_client_timeout: int
@@ -2045,6 +2056,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     default_spark_iam_user: str
+    remote_run_toolboxes: Dict[str, RemoteRunToolbox]
 
 
 def load_system_paasta_config(
@@ -2765,6 +2777,9 @@ class SystemPaastaConfig:
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
+
+    def get_remote_run_toolboxes(self) -> Dict[str, RemoteRunToolbox]:
+        return self.config_dict.get("remote_run_toolboxes", {})
 
 
 def _run(

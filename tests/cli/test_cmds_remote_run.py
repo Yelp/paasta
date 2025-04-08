@@ -42,6 +42,7 @@ def test_paasta_remote_run_start(mock_get_client, mock_pty, mock_time, _):
         recreate=False,
         max_duration=100,
         timeout=600,
+        toolbox=False,
     )
     mock_time.time.return_value = 0
     mock_client = mock_get_client.return_value
@@ -61,11 +62,24 @@ def test_paasta_remote_run_start(mock_get_client, mock_pty, mock_time, _):
         "foo",
         "bar",
         RemoteRunStart(
-            user="pippo", interactive=True, recreate=False, max_duration=100
+            user="pippo",
+            interactive=True,
+            recreate=False,
+            max_duration=100,
+            toolbox=False,
         ),
     )
     mock_client.remote_run.remote_run_poll.assert_has_calls(
-        [call("foo", "bar", "foobar")] * 3
+        [
+            call(
+                service="foo",
+                instance="bar",
+                job_name="foobar",
+                user="pippo",
+                toolbox=False,
+            )
+        ]
+        * 3
     )
     mock_client.remote_run.remote_run_token.assert_called_once_with(
         "foo", "bar", "pippo"
@@ -97,7 +111,7 @@ def test_paasta_remote_run_start(mock_get_client, mock_pty, mock_time, _):
 )
 def test_paasta_remote_run_stop(mock_get_client, _):
     mock_config = MagicMock()
-    mock_args = MagicMock(service="foo", instance="bar")
+    mock_args = MagicMock(service="foo", instance="bar", toolbox=False)
     mock_client = mock_get_client.return_value
     mock_client.remote_run.remote_run_stop.return_value = MagicMock(
         status=200, message="stopped"
@@ -106,5 +120,5 @@ def test_paasta_remote_run_stop(mock_get_client, _):
     mock_client.remote_run.remote_run_stop.assert_called_once_with(
         "foo",
         "bar",
-        RemoteRunStop(user="pippo"),
+        RemoteRunStop(user="pippo", toolbox=False),
     )
