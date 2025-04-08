@@ -2,7 +2,7 @@
 openapi: 3.0.0
 info:
   title: Paasta API
-  version: 1.1.1
+  version: 1.2.0
 servers:
 - url: "{scheme}://{host}/{basePath}"
   variables:
@@ -904,6 +904,8 @@ components:
           type: string
         max_duration:
           type: integer
+        toolbox:
+          type: boolean
       required:
         - user
     RemoteRunStop:
@@ -911,6 +913,8 @@ components:
       properties:
         user:
           type: string
+        toolbox:
+          type: boolean
       required:
         - user
     RemoteRunOutcome:
@@ -921,6 +925,8 @@ components:
         message:
           type: string
         pod_name:
+          type: string
+        pod_address:
           type: string
         job_name:
           type: string
@@ -1285,6 +1291,17 @@ paths:
         schema:
           type: string
         required: true
+      - description: User requesting job
+        in: query
+        name: user
+        schema:
+          type: string
+        required: true
+      - description: Whether this is a toolbox job
+        in: query
+        name: toolbox
+        schema:
+          type: boolean
       responses:
         "200":
           content:
