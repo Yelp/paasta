@@ -47,7 +47,7 @@ def clean_namespace(
 
     :param KubeClient kube_client: kubernetes client
     :param str namepsace: kubernetes namespace
-    :param datetime creds_age_limit: expiration time for authentication resources
+    :param datetime auth_age_limit: expiration time for authentication resources
     :param datetime job_age_limit: expiration time for job resources
     :param bool dry_run: delete resources for real or not
     """
@@ -122,7 +122,13 @@ def main():
     age_limit = now - timedelta(seconds=args.max_age)
     job_age_limit = now - timedelta(seconds=get_max_job_duration_limit())
     for namespace in get_all_managed_namespaces(kube_client):
-        clean_namespace(kube_client, namespace, age_limit, job_age_limit, args.dry_run)
+        clean_namespace(
+            kube_client,
+            namespace,
+            auth_age_limit=age_limit,
+            job_age_limit=job_age_limit,
+            dry_run=args.dry_run,
+        )
 
 
 if __name__ == "__main__":

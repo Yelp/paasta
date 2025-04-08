@@ -121,23 +121,23 @@ def test_main(
             call(
                 mock_kube.return_value,
                 "a",
-                datetime(2025, 1, 1, 0, 0, 0),
-                datetime(2024, 12, 31, 23, 1),
-                False,
+                auth_age_limit=datetime(2025, 1, 1, 0, 0, 0),
+                job_age_limit=datetime(2024, 12, 31, 23, 1),
+                dry_run=False,
             ),
             call(
                 mock_kube.return_value,
                 "b",
-                datetime(2025, 1, 1, 0, 0, 0),
-                datetime(2024, 12, 31, 23, 1),
-                False,
+                auth_age_limit=datetime(2025, 1, 1, 0, 0, 0),
+                job_age_limit=datetime(2024, 12, 31, 23, 1),
+                dry_run=False,
             ),
             call(
                 mock_kube.return_value,
                 "c",
-                datetime(2025, 1, 1, 0, 0, 0),
-                datetime(2024, 12, 31, 23, 1),
-                False,
+                auth_age_limit=datetime(2025, 1, 1, 0, 0, 0),
+                job_age_limit=datetime(2024, 12, 31, 23, 1),
+                dry_run=False,
             ),
         ]
     )
