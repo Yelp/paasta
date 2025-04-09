@@ -32,6 +32,7 @@ from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
 from paasta_tools.kubernetes.remote_run import create_temp_exec_token
 from paasta_tools.kubernetes.remote_run import find_job_pod
+from paasta_tools.kubernetes.remote_run import get_remote_run_jobs
 from paasta_tools.kubernetes.remote_run import get_remote_run_role_bindings
 from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import remote_run_ready
@@ -365,4 +366,13 @@ def test_get_remote_run_role_bindings():
     get_remote_run_role_bindings(mock_client, "namespace")
     mock_client.rbac.list_namespaced_role_binding.assert_called_once_with(
         "namespace", label_selector="paasta.yelp.com/pod_owner"
+    )
+
+
+def test_get_remote_run_jobs():
+    mock_client = MagicMock()
+    get_remote_run_jobs(mock_client, "namespace")
+    mock_client.batches.list_namespaced_job.assert_called_once_with(
+        "namespace",
+        label_selector=f"paasta.yelp.com/job_type=remote-run",
     )

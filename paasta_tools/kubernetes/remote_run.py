@@ -41,11 +41,13 @@ from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL_NAME
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.utils import load_system_paasta_config
 
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
 POD_OWNER_LABEL = paasta_prefixed("pod_owner")
+DEFAULT_MAX_DURATION_LIMIT = 8 * 60 * 60  # 8 hours
 
 
 class RemoteRunError(Exception):
@@ -419,11 +421,12 @@ def get_remote_run_roles(kube_client: KubeClient, namespace: str) -> List[V1Role
     """List all temporary roles related to remote-run
 
     :param KubeClient kube_client: Kubernetes client
-    :param str namespace: pod namespace
+    :param str namespace: role namespace
     :return: list of roles
     """
     return kube_client.rbac.list_namespaced_role(
-        namespace, label_selector=POD_OWNER_LABEL
+        namespace,
+        label_selector=POD_OWNER_LABEL,
     ).items
 
 
@@ -433,9 +436,31 @@ def get_remote_run_role_bindings(
     """List all temporary role bindings related to remote-run
 
     :param KubeClient kube_client: Kubernetes client
-    :param str namespace: pod namespace
+    :param str namespace: role namespace
     :return: list of roles
     """
     return kube_client.rbac.list_namespaced_role_binding(
-        namespace, label_selector=POD_OWNER_LABEL
+        namespace,
+        label_selector=POD_OWNER_LABEL,
     ).items
+
+
+def get_remote_run_jobs(kube_client: KubeClient, namespace: str) -> List[V1Job]:
+    """List all remote-run jobs
+
+    :param KubeClient kube_client: Kubernetes client
+    :param str namespace: job namespace
+    """
+    return kube_client.batches.list_namespaced_job(
+        namespace,
+        label_selector=f"{paasta_prefixed(JOB_TYPE_LABEL_NAME)}={REMOTE_RUN_JOB_LABEL}",
+    ).items
+
+
+def get_max_job_duration_limit() -> int:
+    """Get maximum configured duration for a remote run job
+
+    :return: max duration in seconds
+    """
+    system_config = load_system_paasta_config()
+    return system_config.get_remote_run_duration_limit(DEFAULT_MAX_DURATION_LIMIT)

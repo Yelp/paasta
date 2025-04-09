@@ -17,20 +17,18 @@ from pyramid.view import view_config
 
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.kubernetes.remote_run import get_max_job_duration_limit
 from paasta_tools.kubernetes.remote_run import remote_run_ready
 from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
 from paasta_tools.kubernetes.remote_run import remote_run_token
-from paasta_tools.utils import load_system_paasta_config
 
 
 DEFAULT_MAX_DURATION = 60 * 60  # 1 hour
-DEFAULT_MAX_DURATION_LIMIT = 8 * 60 * 60  # 8 hours
 
 
 @view_config(route_name="remote_run.start", request_method="POST", renderer="json")
 def view_remote_run_start(request):
-    system_config = load_system_paasta_config()
     service = request.swagger_data["service"]
     instance = request.swagger_data["instance"]
     user = request.swagger_data["json_body"]["user"]
@@ -38,7 +36,7 @@ def view_remote_run_start(request):
     recreate = request.swagger_data["json_body"].get("recreate", False)
     max_duration = min(
         request.swagger_data["json_body"].get("max_duration", DEFAULT_MAX_DURATION),
-        system_config.get_remote_run_duration_limit(DEFAULT_MAX_DURATION_LIMIT),
+        get_max_job_duration_limit(),
     )
     try:
         return remote_run_start(
