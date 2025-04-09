@@ -1167,7 +1167,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
 def paasta_spark_run(args: argparse.Namespace) -> int:
     if args.get_eks_token_via_iam_user and os.getuid() != 0:
-        print("Re-run proccess as root", file=sys.stderr)
+        print("Re-executing paasta spark-run with sudo..", file=sys.stderr)
         # argv[0] is treated as command name, so prepending "sudo"
         os.execvp("sudo", ["sudo"] + sys.argv)
         return  # will not reach unless above function is mocked
