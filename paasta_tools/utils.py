@@ -2154,7 +2154,9 @@ class SystemPaastaConfig:
         )
 
     def get_spark_driver_default_pool_override(self) -> str:
-        """Get the spark driver's default pool override variable defined in this host's cluster config file.
+        """
+        If defined, fetches the override for what pool to run a Spark driver in.
+        Otherwise, returns the default Spark driver pool.
 
         :returns: The spark_driver_default_pool_override specified in the paasta configuration
         """
