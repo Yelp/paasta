@@ -622,9 +622,17 @@
                             "type": "string"
                         },
                         "alert_after": {
-                            "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[YMWDhms]$",
-                            "$comment": "See https://pysensu-yelp.readthedocs.io/en/latest/#pysensu_yelp.human_to_seconds"
+                            "oneOf": [
+                                {
+                                    "type": "string",
+                                    "pattern": "^[1-9]+[0-9]*[YMWDhms]$",
+                                    "$comment": "See https://pysensu-yelp.readthedocs.io/en/latest/#pysensu_yelp.human_to_seconds"
+                                },
+                                {
+                                    "type": "integer",
+                                    "minimum": 0
+                                }
+                            ]
                         },
                         "check_that_every_day_has_a_successful_run": {
                             "type": "boolean"
