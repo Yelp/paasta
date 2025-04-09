@@ -697,13 +697,14 @@ class TronActionConfig(InstanceConfig):
         override this value. To control this, we have an optional config item that we'll puppet onto Tron masters
         which this function will read.
         """
-        return (
-            self.config_dict.get(
+        if self.get_executor() == "spark":
+            pool = load_system_paasta_config().get_spark_driver_default_pool_override()
+        else:
+            pool = self.config_dict.get(
                 "pool", load_system_paasta_config().get_tron_default_pool_override()
             )
-            if not self.get_executor() == "spark"
-            else spark_tools.SPARK_DRIVER_POOL
-        )
+
+        return pool
 
     def get_spark_executor_pool(self) -> str:
         return self.config_dict.get("pool", DEFAULT_SPARK_EXECUTOR_POOL)

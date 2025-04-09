@@ -123,6 +123,10 @@ DEFAULT_CPU_BURST_ADD = 1
 
 DEFAULT_SOA_CONFIGS_GIT_URL = "sysgit.yelpcorp.com"
 
+# To ensure the Spark driver not being interrupted due to spot instances,
+# we use stable pool for drivers
+DEFAULT_SPARK_DRIVER_POOL = "stable"
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -2045,6 +2049,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     default_spark_iam_user: str
+    spark_driver_default_pool_override: str
 
 
 def load_system_paasta_config(
@@ -2146,6 +2151,15 @@ class SystemPaastaConfig:
     def get_default_spark_iam_user(self) -> str:
         return self.config_dict.get(
             "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
+        )
+
+    def get_spark_driver_default_pool_override(self) -> str:
+        """Get the spark driver's default pool override variable defined in this host's cluster config file.
+
+        :returns: The spark_driver_default_pool_override specified in the paasta configuration
+        """
+        return self.config_dict.get(
+            "spark_driver_default_pool_override", DEFAULT_SPARK_DRIVER_POOL
         )
 
     def get_sidecar_requirements_config(
