@@ -319,6 +319,7 @@ aws_secret_access_key = <foo-secret>
 
         assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
         assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"
+        assert spark_env["KUBECONFIG"] == "/etc/kubernetes/spark2.conf"
 
 
 @pytest.mark.parametrize(
