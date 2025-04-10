@@ -2032,6 +2032,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
+    spark2_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
