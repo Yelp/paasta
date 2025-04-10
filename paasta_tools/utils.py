@@ -2032,6 +2032,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
+    spark2_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
@@ -2741,6 +2742,9 @@ class SystemPaastaConfig:
 
     def get_spark_kubeconfig(self) -> str:
         return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")
+
+    def get_spark2_kubeconfig(self) -> str:
+        return self.config_dict.get("spark2_kubeconfig", "/etc/kubernetes/spark2.conf")
 
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})
