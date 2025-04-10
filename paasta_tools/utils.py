@@ -2742,6 +2742,9 @@ class SystemPaastaConfig:
     def get_spark_kubeconfig(self) -> str:
         return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")
 
+    def get_spark2_kubeconfig(self) -> str:
+        return self.config_dict.get("spark2_kubeconfig", "/etc/kubernetes/spark2.conf")
+
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})
 

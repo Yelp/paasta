@@ -667,7 +667,9 @@ def get_spark_env(
             "aws_secret_access_key"
         ]
 
-    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark2_kubeconfig()
+    else:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
