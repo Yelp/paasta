@@ -664,6 +664,8 @@ def get_spark_env(
         ) as f:
             config = ConfigParser()
             config.read_file(f)
+
+        # these ENV variables are consumed by spark's KUBECONFIG command
         spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] = config["default"][
             "aws_access_key_id"
         ]
