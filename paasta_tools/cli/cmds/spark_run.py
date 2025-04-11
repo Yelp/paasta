@@ -655,6 +655,10 @@ def get_spark_env(
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
     if args.get_eks_token_via_iam_user:
+        # config looks as follows:
+        # [default]
+        # aws_access_key_id = ...
+        # aws_secret_access_key = ...
         with open(
             "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
         ) as f:
