@@ -2049,7 +2049,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     default_spark_iam_user: str
-    spark_driver_default_pool_override: str
+    default_spark_driver_pool_override: str
 
 
 def load_system_paasta_config(
