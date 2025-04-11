@@ -439,6 +439,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     crypto_keys: CryptoKeyConfig
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
+    privileged: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1411,8 +1412,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_security_context(self) -> Optional[V1SecurityContext]:
         cap_add = self.config_dict.get("cap_add", None)
+        context_kwargs = (
+            # passing parameter like this to avoid all services to bounce
+            # when this change is released
+            {"privileged": self.config_dict["privileged"]}
+            if "privileged" in self.config_dict
+            else {}
+        )
         if cap_add is None:
-            return V1SecurityContext(capabilities=V1Capabilities(drop=CAPS_DROP))
+            return V1SecurityContext(
+                capabilities=V1Capabilities(drop=CAPS_DROP),
+                **context_kwargs,
+            )
         else:
             return V1SecurityContext(
                 # XXX: we should probably generally work in sets, but V1Capabilities is typed as accepting
@@ -1425,7 +1436,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     # WARNING: this must be sorted - otherwise the order of the capabilities will be different
                     # on every setup_kubernetes_job run and cause unnecessary redeployments
                     drop=sorted(list(set(CAPS_DROP) - set(cap_add))),
-                )
+                ),
+                **context_kwargs,
             )
 
     def get_kubernetes_containers(

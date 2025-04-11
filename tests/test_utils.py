@@ -2188,6 +2188,24 @@ class TestInstanceConfig:
             expected_url = f"{fake_registry}/{fake_image}"
             assert fake_conf.get_docker_url() == expected_url
 
+    def test_get_docker_url_override(self):
+        fake_registry = "im.a-real.vm"
+        fake_image = "and-i-can-run:1.0"
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"docker_registry": fake_registry},
+            branch_dict=None,
+        )
+        with mock.patch(
+            "paasta_tools.utils.InstanceConfig.get_docker_image",
+            autospec=True,
+            return_value=fake_image,
+        ):
+            expected_url = f"{fake_registry}/{fake_image}"
+            assert fake_conf.get_docker_url() == expected_url
+
     @pytest.mark.parametrize(
         ("dependencies_reference", "dependencies", "expected"),
         [

@@ -32,6 +32,7 @@ from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
 from paasta_tools.kubernetes.remote_run import create_temp_exec_token
 from paasta_tools.kubernetes.remote_run import find_job_pod
+from paasta_tools.kubernetes.remote_run import generate_toolbox_deployment
 from paasta_tools.kubernetes.remote_run import get_remote_run_role_bindings
 from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import remote_run_ready
@@ -58,6 +59,7 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
         interactive=True,
         recreate=False,
         max_duration=1000,
+        is_toolbox=False,
     ) == {
         "status": 200,
         "message": "Remote run sandbox started",
@@ -65,7 +67,9 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
     }
     assert mock_load_config.return_value.config_dict == {"cmd": "sleep 1000"}
     mock_load_config.return_value.format_kubernetes_job.assert_called_once_with(
-        job_label="remote-run", deadline_seconds=1000
+        job_label="remote-run",
+        deadline_seconds=1000,
+        keep_routable_ip=False,
     )
     mock_wrapper.assert_called_once_with(mock_job)
     mock_wrapper.return_value.create.assert_called_once_with(mock_client)
@@ -100,38 +104,95 @@ def test_remote_run_start_recreate(
         interactive=False,
         recreate=True,
         max_duration=1000,
+        is_toolbox=False,
     ) == {
         "status": 200,
         "message": "Remote run sandbox started",
         "job_name": "remote-run-someuser-somejob",
     }
-    mock_stop.assert_called_once_with("foo", "bar", "dev", "someuser")
+    mock_stop.assert_called_once_with(
+        service="foo", instance="bar", cluster="dev", user="someuser", is_toolbox=False
+    )
+
+
+@patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.generate_toolbox_deployment", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
+def test_remote_run_start_toolbox(mock_client, mock_gen_config, mock_wrapper):
+    mock_client = mock_client.return_value
+    mock_gen_config.return_value.get_namespace.return_value = "remote-run-toolbox"
+    mock_gen_config.return_value.config_dict = {}
+    mock_job = mock_gen_config.return_value.format_kubernetes_job.return_value
+    mock_job.metadata.name = "somejob"
+    assert remote_run_start(
+        "toolbox-foo",
+        "bar",
+        "dev",
+        "someuser",
+        interactive=True,
+        recreate=False,
+        max_duration=1000,
+        is_toolbox=True,
+    ) == {
+        "status": 200,
+        "message": "Remote run sandbox started",
+        "job_name": "remote-run-someuser-somejob",
+    }
+    assert mock_gen_config.return_value.config_dict == {}  # not changing cmd
+    mock_gen_config.return_value.format_kubernetes_job.assert_called_once_with(
+        job_label="remote-run",
+        deadline_seconds=1000,
+        keep_routable_ip=True,
+    )
+    mock_wrapper.assert_called_once_with(mock_job)
+    mock_wrapper.return_value.create.assert_called_once_with(mock_client)
 
 
 @patch("paasta_tools.kubernetes.remote_run.find_job_pod", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.generate_toolbox_deployment", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_ready(mock_client, mock_load_config, mock_find_job_pod):
+def test_remote_run_ready(
+    mock_client, mock_load_config, mock_gen_config, mock_find_job_pod
+):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
+    mock_gen_config.return_value.get_namespace.return_value = "remote-run-toolbox"
     mock_find_job_pod.return_value.metadata.name = "somepod"
+    mock_find_job_pod.return_value.status.pod_ip = "127.1.33.7"
     # job found and ready
     mock_find_job_pod.return_value.status.phase = "Running"
-    assert remote_run_ready("foo", "bar", "dev", "somejob") == {
+    assert remote_run_ready(
+        "foo", "bar", "dev", "somejob", "someuser", is_toolbox=False
+    ) == {
         "status": 200,
         "message": "Pod ready",
         "pod_name": "somepod",
         "namespace": "namespace",
     }
+    # toolbox job
+    assert remote_run_ready(
+        "foo", "bar", "dev", "somejob", "someuser", is_toolbox=True
+    ) == {
+        "status": 200,
+        "message": "Pod ready",
+        "pod_address": "127.1.33.7",
+        "pod_name": "somepod",
+        "namespace": "remote-run-toolbox",
+    }
     # job not ready
     mock_find_job_pod.return_value.status.phase = "Pending"
-    assert remote_run_ready("foo", "bar", "dev", "somejob") == {
+    assert remote_run_ready(
+        "foo", "bar", "dev", "somejob", "someuser", is_toolbox=False
+    ) == {
         "status": 204,
         "message": "Pod not ready",
     }
     # job not found
     mock_find_job_pod.return_value = None
-    assert remote_run_ready("foo", "bar", "dev", "somejob") == {
+    assert remote_run_ready(
+        "foo", "bar", "dev", "somejob", "someuser", is_toolbox=False
+    ) == {
         "status": 404,
         "message": "No pod found",
     }
@@ -145,7 +206,7 @@ def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_job = mock_load_config.return_value.format_kubernetes_job.return_value
     mock_job.metadata.name = "somejob"
-    assert remote_run_stop("foo", "bar", "dev", "someuser") == {
+    assert remote_run_stop("foo", "bar", "dev", "someuser", is_toolbox=False) == {
         "status": 200,
         "message": "Job successfully removed",
     }
@@ -366,3 +427,46 @@ def test_get_remote_run_role_bindings():
     mock_client.rbac.list_namespaced_role_binding.assert_called_once_with(
         "namespace", label_selector="paasta.yelp.com/pod_owner"
     )
+
+
+@patch("paasta_tools.kubernetes.remote_run.load_system_paasta_config", autospec=True)
+def test_generate_toolbox_deployment(
+    mock_load_config,
+):
+    mock_load_config.return_value.get_remote_run_toolboxes.return_value = {
+        "toolbox-something": {
+            "image": "docker-images.example.org:443/something:v1.2.3",
+            "cpus": 2,
+            "mem": 1024,
+        },
+    }
+    result = generate_toolbox_deployment("toolbox-something", "devc", "someone")
+    assert result.service == "toolbox-something"
+    assert result.cluster == "devc"
+    assert result.config_dict == {
+        "cpus": 2,
+        "mem": 1024,
+        "docker_registry": "docker-images.example.org:443",
+        "routable_ip": True,
+        "container_port": 22,
+        "namespace": "remote-run-toolbox",
+        "env": {"SANDBOX_USER": "someone"},
+        "extra_volumes": [
+            {"containerPath": "/etc/passwd", "hostPath": "/etc/passwd", "mode": "RO"},
+            {"containerPath": "/etc/group", "hostPath": "/etc/group", "mode": "RO"},
+            {
+                "containerPath": "/etc/authorized_keys.d/someone.pub",
+                "hostPath": "/etc/authorized_keys.d/someone.pub",
+                "mode": "RO",
+            },
+        ],
+        "cap_add": ["AUDIT_WRITE", "SYS_ADMIN"],
+        "privileged": True,
+    }
+    assert result.branch_dict == {
+        "docker_image": "something:v1.2.3",
+        "git_sha": "",
+        "image_version": None,
+        "force_bounce": None,
+        "desired_state": "start",
+    }
