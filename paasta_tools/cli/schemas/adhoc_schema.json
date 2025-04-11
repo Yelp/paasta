@@ -158,6 +158,9 @@
                         "type": "string"
                     }
                 },
+                "privileged": {
+                    "type": "boolean"
+                },
                 "cfs_period_us": {
                     "type": "integer",
                     "minimum": 1000,
@@ -179,6 +182,15 @@
                     "type": "string"
                 },
                 "role": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "container_port": {
+                    "type": "integer"
+                },
+                "docker_url": {
                     "type": "string"
                 }
             }

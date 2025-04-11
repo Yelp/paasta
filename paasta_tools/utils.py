@@ -326,6 +326,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cfs_period_us: float
     cpu_burst_add: float
     cap_add: List
+    privileged: bool
     env: Dict[str, str]
     monitoring: MonitoringDict
     deploy_blacklist: UnsafeDeployBlacklist
@@ -350,6 +351,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role_provider: str
     service: str
     uses_bulkdata: bool
+    docker_url: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -781,6 +783,8 @@ class InstanceConfig:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
+        if "docker_url" in self.config_dict:
+            return self.config_dict["docker_url"]
         registry_uri = self.get_docker_registry(
             system_paasta_config=system_paasta_config
         )

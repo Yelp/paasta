@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "title": "Paasta API",
-        "version": "1.1.1"
+        "version": "1.2.0"
     },
     "basePath": "/v1",
     "schemes": [
@@ -994,6 +994,19 @@
                         "name": "job_name",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "User requesting the job",
+                        "name": "user",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Whether this is a toolbox job",
+                        "name": "toolbox",
+                        "type": "boolean"
                     }
                 ]
             }
@@ -2184,6 +2197,9 @@
                 },
                 "max_duration": {
                     "type": "integer"
+                },
+                "toolbox": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -2195,6 +2211,9 @@
             "properties": {
                 "user": {
                     "type": "string"
+                },
+                "toolbox": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -2211,6 +2230,9 @@
                     "type": "string"
                 },
                 "pod_name": {
+                    "type": "string"
+                },
+                "pod_address": {
                     "type": "string"
                 },
                 "job_name": {

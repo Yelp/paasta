@@ -16,13 +16,16 @@ import argparse
 import pty
 import shlex
 import time
+from typing import List
 
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
 from paasta_tools.utils import get_username
+from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -32,6 +35,18 @@ from paasta_tools.utils import SystemPaastaConfig
 KUBECTL_CMD_TEMPLATE = (
     "kubectl-eks-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
+
+
+def _list_services_and_toolboxes() -> List[str]:
+    try:
+        toolbox_instances = list_all_instances_for_service(
+            TOOLBOX_MOCK_SERVICE, instance_type="adhoc"
+        )
+    except Exception:
+        toolbox_instances = set()
+    return list(list_services()) + sorted(
+        f"{TOOLBOX_MOCK_SERVICE}-{instance}" for instance in toolbox_instances
+    )
 
 
 def paasta_remote_run_start(
@@ -55,6 +70,7 @@ def paasta_remote_run_start(
             interactive=args.interactive,
             recreate=args.recreate,
             max_duration=args.max_duration,
+            toolbox=args.toolbox,
         ),
     )
     if start_response.status >= 300:
@@ -67,9 +83,11 @@ def paasta_remote_run_start(
     start_time = time.time()
     while time.time() - start_time < args.timeout:
         poll_response = client.remote_run.remote_run_poll(
-            args.service,
-            args.instance,
-            start_response.job_name,
+            service=args.service,
+            instance=args.instance,
+            job_name=start_response.job_name,
+            user=user,
+            toolbox=args.toolbox,
         )
         if poll_response.status == 200:
             print("")
@@ -80,22 +98,24 @@ def paasta_remote_run_start(
         print("Timed out while waiting for job to start")
         return 1
 
-    if not args.interactive:
+    if not args.interactive and not args.toolbox:
         print("Successfully started remote-run job")
         return 0
 
     print("Pod ready, establishing interactive session...")
 
-    token_response = client.remote_run.remote_run_token(
-        args.service, args.instance, user
-    )
-
-    exec_command = KUBECTL_CMD_TEMPLATE.format(
-        cluster=args.cluster,
-        namespace=poll_response.namespace,
-        pod=poll_response.pod_name,
-        token=token_response.token,
-    )
+    if args.toolbox:
+        exec_command = f"ssh -A {poll_response.pod_address}"
+    else:
+        token_response = client.remote_run.remote_run_token(
+            args.service, args.instance, user
+        )
+        exec_command = KUBECTL_CMD_TEMPLATE.format(
+            cluster=args.cluster,
+            namespace=poll_response.namespace,
+            pod=poll_response.pod_name,
+            token=token_response.token,
+        )
     pty.spawn(shlex.split(exec_command))
     return 0
 
@@ -112,7 +132,9 @@ def paasta_remote_run_stop(
         print("Cannot get a paasta-api client")
         return 1
     response = client.remote_run.remote_run_stop(
-        args.service, args.instance, RemoteRunStop(user=get_username())
+        args.service,
+        args.instance,
+        RemoteRunStop(user=get_username(), toolbox=args.toolbox),
     )
     print(response.message)
     return 0 if response.status < 300 else 1
@@ -125,15 +147,22 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
         help="The name of the service you wish to inspect. Required.",
         required=True,
     )
-    service_arg.completer = lazy_choices_completer(list_services)  # type: ignore
-    parser.add_argument(
+    service_arg.completer = lazy_choices_completer(_list_services_and_toolboxes)  # type: ignore
+    instance_or_toolbox = parser.add_mutually_exclusive_group()
+    instance_or_toolbox.add_argument(
         "-i",
         "--instance",
         help=(
             "Simulate a docker run for a particular instance of the "
             "service, like 'main' or 'canary'. Required."
         ),
-        required=True,
+        default="main",
+    )
+    instance_or_toolbox.add_argument(
+        "--toolbox",
+        help="The selected service is a 'toolbox' container",
+        action="store_true",
+        default=False,
     )
     cluster_arg = parser.add_argument(
         "-c",
