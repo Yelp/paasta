@@ -659,9 +659,10 @@ def get_spark_env(
         # [default]
         # aws_access_key_id = ...
         # aws_secret_access_key = ...
-        with open(
+        SPARK_DRIVER_IAM_USER = (
             "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
-        ) as f:
+        )
+        with open(SPARK_DRIVER_IAM_USER) as f:
             config = ConfigParser()
             config.read_file(f)
 
