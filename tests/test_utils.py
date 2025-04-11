@@ -28,6 +28,7 @@ from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.utils import DEFAULT_SPARK_DRIVER_POOL
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
@@ -425,6 +426,30 @@ def test_SystemPaastaConfig_get_tron_default_pool_override():
     actual = fake_config.get_tron_default_pool_override()
     expected = "spam"
     assert actual == expected
+
+
+@pytest.mark.parametrize(
+    argnames=["paasta_config", "expected_pool"],
+    argvalues=[
+        pytest.param({}, DEFAULT_SPARK_DRIVER_POOL, id="default"),
+        pytest.param(
+            {"default_spark_driver_pool_override": "spam-stable"},
+            "spam-stable",
+            id="spam",
+        ),
+    ],
+)
+def test_SystemPaastaConfig_get_default_spark_driver_pool_override(
+    paasta_config, expected_pool
+):
+    fake_config = utils.SystemPaastaConfig(
+        paasta_config,
+        "/some/fake/dir",
+    )
+
+    actual_pool = fake_config.get_default_spark_driver_pool_override()
+
+    assert actual_pool == expected_pool
 
 
 def test_SystemPaastaConfig_get_hacheck_sidecar_volumes():
