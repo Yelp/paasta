@@ -433,13 +433,13 @@ def test_SystemPaastaConfig_get_tron_default_pool_override():
     argvalues=[
         pytest.param({}, DEFAULT_SPARK_DRIVER_POOL, id="default"),
         pytest.param(
-            {"spark_driver_default_pool_override": "spam-stable"},
+            {"default_spark_driver_pool_override": "spam-stable"},
             "spam-stable",
             id="spam",
         ),
     ],
 )
-def test_SystemPaastaConfig_get_spark_driver_default_pool_override(
+def test_SystemPaastaConfig_get_default_spark_driver_pool_override(
     paasta_config, expected_pool
 ):
     fake_config = utils.SystemPaastaConfig(
@@ -447,7 +447,7 @@ def test_SystemPaastaConfig_get_spark_driver_default_pool_override(
         "/some/fake/dir",
     )
 
-    actual_pool = fake_config.get_spark_driver_default_pool_override()
+    actual_pool = fake_config.get_default_spark_driver_pool_override()
 
     assert actual_pool == expected_pool
 

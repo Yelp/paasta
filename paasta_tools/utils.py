@@ -2153,15 +2153,15 @@ class SystemPaastaConfig:
             "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
         )
 
-    def get_spark_driver_default_pool_override(self) -> str:
+    def get_default_spark_driver_pool_override(self) -> str:
         """
         If defined, fetches the override for what pool to run a Spark driver in.
         Otherwise, returns the default Spark driver pool.
 
-        :returns: The spark_driver_default_pool_override specified in the paasta configuration
+        :returns: The default_spark_driver_pool_override specified in the paasta configuration
         """
         return self.config_dict.get(
-            "spark_driver_default_pool_override", DEFAULT_SPARK_DRIVER_POOL
+            "default_spark_driver_pool_override", DEFAULT_SPARK_DRIVER_POOL
         )
 
     def get_sidecar_requirements_config(

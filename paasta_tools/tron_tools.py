@@ -698,7 +698,7 @@ class TronActionConfig(InstanceConfig):
         which this function will read.
         """
         if self.get_executor() == "spark":
-            pool = load_system_paasta_config().get_spark_driver_default_pool_override()
+            pool = load_system_paasta_config().get_default_spark_driver_pool_override()
         else:
             pool = self.config_dict.get(
                 "pool", load_system_paasta_config().get_tron_default_pool_override()
