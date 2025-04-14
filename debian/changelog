@@ -1,3 +1,14 @@
+paasta-tools (1.16.1) xenial; urgency=medium
+
+  * 1.16.1 tagged with 'make release'
+    Commit: remote-run: use k8s conf from environment (#4040)  As
+    promised in
+    https://github.com/Yelp/paasta/pull/4022#discussion_r2000670059.
+    This can only be shipped once the paasta-api permissions have been
+    updated.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 14 Apr 2025 10:52:26 -0700
+
 paasta-tools (1.16.0) xenial; urgency=medium
 
   * 1.16.0 tagged with 'make release'
