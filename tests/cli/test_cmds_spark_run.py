@@ -302,7 +302,7 @@ aws_secret_access_key = <foo-secret>
         "paasta_tools.cli.cmds.spark_run.open",
         return_value=io.StringIO(data),
         autospec=None,
-    ) as iam_creds_file:
+    ) as mock_open_iam_creds_file:
         spark_env = spark_run.get_spark_env(
             argparse.Namespace(
                 get_eks_token_via_iam_user=True, aws_region="us-west-2", cmd="sparkling"
@@ -317,7 +317,7 @@ aws_secret_access_key = <foo-secret>
                 "fake_dir",
             ),
         )
-        iam_creds_file.assert_called_once_with(SPARK_DRIVER_K8S_FILE)
+        mock_open_iam_creds_file.assert_called_once_with(SPARK_DRIVER_K8S_FILE)
 
         assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
         assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"
@@ -1554,10 +1554,10 @@ def test_paasta_spark_run_re_run_sudo():
         autospec=True,
     ), mock.patch(
         "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
-    ) as exec_fn:
+    ) as mock_exec:
         spark_run.paasta_spark_run(args)
-        assert exec_fn.called
-        args, _ = exec_fn.call_args
+        assert mock_exec.called
+        args, _ = mock_exec.call_args
         assert args[0] == "sudo"
 
 
@@ -1622,9 +1622,9 @@ def test_paasta_spark_run_re_run_sudo_as_root(
         autospec=True,
     ), mock.patch(
         "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
-    ) as exec_fn:
+    ) as mock_exec:
         spark_run.paasta_spark_run(args)
-        assert not exec_fn.called
+        assert not mock_exec.called
 
 
 @pytest.mark.parametrize(
