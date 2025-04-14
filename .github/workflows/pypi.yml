@@ -19,9 +19,18 @@ jobs:
       DOCKER_REGISTRY: ""
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
+      # XXX: this should use something like:
+      # - uses: actions/setup-python@v2
+      #   with:
+      #     python-version: 3.X
+      # ...but we have some stragglers that need to be upgraded first - hence
+      # the installation of python through deadsnakes
+      - name: Install Python 3.8 from deadsnakes
+        run: |
+          sudo add-apt-repository ppa:deadsnakes/ppa -y
+          sudo apt-get update
+          sudo apt-get install -y python3.8 python3.8-venv python3.8-dev
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-gha.txt
       - run: tox -e ${{ matrix.toxenv }}
@@ -33,9 +42,18 @@ jobs:
       DOCKER_REGISTRY: ""
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
+      # XXX: this should use something like:
+      # - uses: actions/setup-python@v2
+      #   with:
+      #     python-version: 3.X
+      # ...but we have some stragglers that need to be upgraded first - hence
+      # the installation of python through deadsnakes
+      - name: Install Python 3.8 from deadsnakes
+        run: |
+          sudo add-apt-repository ppa:deadsnakes/ppa -y
+          sudo apt-get update
+          sudo apt-get install -y python3.8 python3.8-venv python3.8-dev
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1
       # this will create a .tar.gz with all the code (i.e., an sdist)
       - run: python setup.py sdist
       # and finally, upload the above sdist to public PyPI
