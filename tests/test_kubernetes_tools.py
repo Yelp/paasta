@@ -1510,6 +1510,7 @@ class TestKubernetesDeploymentConfig:
                 metadata=mock_get_kubernetes_metadata.return_value,
                 spec=V1JobSpec(
                     active_deadline_seconds=100,
+                    ttl_seconds_after_finished=0,
                     template=mock_get_pod_template_spec.return_value,
                 ),
             )
