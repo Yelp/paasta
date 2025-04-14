@@ -2,8 +2,8 @@ How PaaSTA Bounces New Code and SOA-config changes
 ==================================================
 
 In the context of this document, "Bouncing" refers to the procedure of
-replacing old tasks with new ones. With long-running services bouncing
-is implemented by controlling Marathon or Kubernetes.
+replacing old tasks with new ones. With long-running services, bouncing
+is implemented by controlling Kubernetes.
 
 A "Bounce" can happen for one of these reasons:
 
@@ -141,9 +141,9 @@ How to Select A Bounce Method
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A service author can select a bounce method by setting ``bounce_method`` in
-the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
+the kubernetes configuration file. (e.g. ``kubernetes-SHARED.yaml``) This setting
 is set per-instance. If not set, it will default to the ``crossover`` method.
-See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>`_ file.
+See the docs on the `kubernetes config <yelpsoa_configs.html#kubernetes-clustername-yaml>`_ file.
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
@@ -158,10 +158,10 @@ Valid options are:
 Understanding How ``bounce_margin_factor`` Affects Bouncing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``bounce_margin_factor`` setting in marathon yaml files controls how aggressive the bounce is in the face of failures.
+The ``bounce_margin_factor`` setting in eks/kubernetes yaml files controls how aggressive the bounce is in the face of failures.
 It only applies to the ``crossover`` bounce method.
 
-With the default setting (1.0) the ``crossover`` bounce will begin by draining and killing old copies of the code once new copies are health to replace them.
+With a setting of 1.0, the ``crossover`` bounce will begin by draining and killing old copies of the code once new copies are health to replace them.
 For example, if ``instances: 10`` and ``bounce_margin_factor: 1.0`` (default), PaaSTA will not begin draining a single copy of the old 10 until at least one new copy of the service is healthy.
 If 10 new copies of the service are up, then it will being draining the old 10 copies right away.
 If only one new copy of the service comes up, then the bounce will only drain one old copy as it gets replaced.
@@ -170,9 +170,15 @@ The ``bounce_margin_factor`` adjusts how aggressive this procedure is.
 With the example of ``instances: 10`` and a ``bounce_margin_factor: 0.5`` (50%), then PaaSTA will preemptively being to drain and kill 5 copies of the old service to make room for the next 10 copies.
 The setting effectively gives PaaSTA permission to allow the service to dip below the set level of replication for bounce purposes.
 
-The setting is most effective in situations where there are resource constraints.
+The setting is most useful in situations where there are resource constraints.
 If the service is small and running in a large pool with plenty of headroom, a ``bounce_margin_factor`` is not necessary.
 For a large service in a small pool where there is no headroom, a ``bounce_margin_factor`` is essential, as we need to give PaaSTA permission to make room for the new copies of the service.
+
+This setting is also useful for services that occasionally have trouble starting up, as the bounce will be considered finished once enough new copies (instances * bounce_margin_factor) are healthy and the old copies are all killed.
+
+The default for ``bounce_margin_factor`` is 0.95, meaning that PaaSTA will kill up to 5% of your service's pods before the new pods are healthy, and allow bounces to finish even when up to 5% of new replicas are unhealthy.
+The number of healthy replicas that PaaSTA will attempt to maintain (or consider a bounce successful) is ``ceil(instances * bounce_margin_factor)``.
+With the default of 0.95, this means that any service with fewer than 20 replicas will be treated identically to if ``bounce_margin_factor`` were set to 1.0.
 
 Tron Bouncing
 ^^^^^^^^^^^^^
