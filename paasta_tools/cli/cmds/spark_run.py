@@ -866,7 +866,7 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    # Mounting directory because there are multiple KUBECONFIGs due to migration
+    # NOTE: we mount a directory here since the kubeconfig we're transitioning to requires a helper script that will co-exist in the same directory
     kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
     volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
