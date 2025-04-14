@@ -666,7 +666,7 @@ def get_spark_env(
             config = ConfigParser()
             config.read_file(f)
 
-        # these ENV variables are consumed by spark's KUBECONFIG command
+        # these env variables are consumed by a script specified in the spark kubeconfig - and which will result in a tightly-scoped IAM identity being used for EKS cluster access
         spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] = config["default"][
             "aws_access_key_id"
         ]
