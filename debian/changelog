@@ -1,3 +1,12 @@
+paasta-tools (1.16.0) xenial; urgency=medium
+
+  * 1.16.0 tagged with 'make release'
+    Commit: Merge pull request #4041 from
+    Yelp/u/timma/make_spark_on_k8s_driver_pool_configurable  Added code
+    to take spark driver pool from config
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 14 Apr 2025 10:43:49 -0700
+
 paasta-tools (1.15.1) xenial; urgency=medium
 
   * 1.15.1 tagged with 'make release'
