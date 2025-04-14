@@ -95,7 +95,7 @@ def remote_run_start(
     :param int max_duration: maximum allowed duration for the remote-ruh job
     :return: outcome of the operation, and resulting Kubernetes pod information
     """
-    kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    kube_client = KubeClient()
 
     # Load the service deployment settings
     deployment_config = load_eks_service_config(service, instance, cluster)
@@ -151,7 +151,7 @@ def remote_run_ready(
     :param str job_name: name of the remote-run job to check
     :return: job status, with pod info
     """
-    kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    kube_client = KubeClient()
 
     # Load the service deployment settings
     deployment_config = load_eks_service_config(service, instance, cluster)
@@ -184,7 +184,7 @@ def remote_run_stop(
     :param str user: the user requesting the remote-run sandbox
     :return: outcome of the operation
     """
-    kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    kube_client = KubeClient()
 
     # Load the service deployment settings
     deployment_config = load_eks_service_config(service, instance, cluster)
@@ -218,7 +218,7 @@ def remote_run_token(
     :param str cluster: paasta cluster
     :param str user: the user requesting the remote-run sandbox
     """
-    kube_client = KubeClient(config_file="/etc/kubernetes/admin.conf")
+    kube_client = KubeClient()
 
     # Load the service deployment settings
     deployment_config = load_eks_service_config(service, instance, cluster)
