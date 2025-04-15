@@ -484,7 +484,15 @@ instance MAY have:
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
       This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta.)
 
-    * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.  Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
+    * ``pre_stop_drain_seconds``: For services registered in the mesh, we apply a default ``pre_stop_command`` which starts draining the service from the mesh and waits this many seconds before stopping the container.
+      Defaults to ``30`` seconds.
+      If your service has requests that take longer than 30 seconds
+      (or really, longer than about 20 seconds, since it takes a few seconds for the container to actually stop receiving traffic once we start draining it),
+      you should set this to a higher value.
+
+    * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.
+    Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
+    If you have specified ``pre_stop_drain_seconds``, this defaults to ``pre_stop_drain_seconds + 2``, otherwise it defaults to the k8s default of 30 seconds.
 
   * ``namespace``:
     The Kubernetes namespace where Paasta will create objects related to this service.
