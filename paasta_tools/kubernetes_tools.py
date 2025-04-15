@@ -223,9 +223,6 @@ JOB_TYPE_LABEL_NAME = "job_type"
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
-DEFAULT_PRESTOP_SLEEP_SECONDS = 30
-DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
-
 
 DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
     "cpu": 0.1,
@@ -306,6 +303,7 @@ class CustomResourceDefinition(NamedTuple):
 class KubeLifecycleDict(TypedDict, total=False):
     termination_grace_period_seconds: int
     pre_stop_command: Union[str, List[str]]
+    pre_stop_drain_seconds: int
 
 
 class KubeAffinityCondition(TypedDict, total=False):
@@ -1129,7 +1127,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             command=[
                                 "/bin/sh",
                                 "-c",
-                                f"/usr/bin/hadown {registrations}; sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                                f"/usr/bin/hadown {registrations}; sleep {self.get_hacheck_prestop_sleep_seconds()}",
                             ]
                         )
                     )
@@ -1174,7 +1172,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                                 "-c",
                                 # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
                                 # metrics up until our Pod dies
-                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                                f"sleep {self.get_hacheck_prestop_sleep_seconds()}",
                             ]
                         )
                     )
@@ -1489,15 +1487,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
+    def get_lifecycle(self) -> KubeLifecycleDict:
+        return self.config_dict.get("lifecycle", KubeLifecycleDict({}))
+
+    def get_prestop_sleep_seconds(self) -> int:
+        return self.get_lifecycle().get("pre_stop_drain_seconds", 30)
+
+    def get_hacheck_prestop_sleep_seconds(self) -> int:
+        return self.get_prestop_sleep_seconds() + 1
+
     def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
-        command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
-            "pre_stop_command", []
-        )
+        command = self.get_lifecycle().get("pre_stop_command", [])
         # default pre stop hook for the container
         if not command:
             return V1LifecycleHandler(
                 _exec=V1ExecAction(
-                    command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
+                    command=[
+                        "/bin/sh",
+                        "-c",
+                        f"sleep {self.get_prestop_sleep_seconds()}",
+                    ]
                 )
             )
         if isinstance(command, str):
@@ -2615,9 +2624,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return ahash
 
     def get_termination_grace_period(self) -> Optional[int]:
-        return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
-            "termination_grace_period_seconds"
-        )
+        return self.get_lifecycle().get("termination_grace_period_seconds")
 
     def get_prometheus_shard(self) -> Optional[str]:
         return self.config_dict.get("prometheus_shard")
