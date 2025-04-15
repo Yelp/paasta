@@ -2300,7 +2300,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             constraints += pod_topology_spread_constraints
             pod_spec_kwargs["topology_spread_constraints"] = constraints
 
-        termination_grace_period = self.get_termination_grace_period()
+        termination_grace_period = self.get_termination_grace_period(
+            service_namespace_config
+        )
         if termination_grace_period is not None:
             pod_spec_kwargs[
                 "termination_grace_period_seconds"
@@ -2623,8 +2625,23 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return ahash
 
-    def get_termination_grace_period(self) -> Optional[int]:
-        return self.get_lifecycle().get("termination_grace_period_seconds")
+    def get_termination_grace_period(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> Optional[int]:
+        """Return the number of seconds that kubernetes should wait for pre-stop hooks to finish (or for the main
+        process to exit after signaling) before forcefully terminating the pod.
+
+        Defaults to a value long enough to allow the standard hadown draining to finish.
+        """
+
+        return self.get_lifecycle().get(
+            "termination_grace_period_seconds",
+            (
+                self.get_hacheck_prestop_sleep_seconds() + 1
+                if service_namespace_config.is_in_smartstack()
+                else None
+            ),
+        )
 
     def get_prometheus_shard(self) -> Optional[str]:
         return self.config_dict.get("prometheus_shard")
