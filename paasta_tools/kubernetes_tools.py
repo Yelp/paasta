@@ -1487,17 +1487,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_lifecycle(self) -> KubeLifecycleDict:
+    def get_lifecycle_dict(self) -> KubeLifecycleDict:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({}))
 
     def get_prestop_sleep_seconds(self) -> int:
-        return self.get_lifecycle().get("pre_stop_drain_seconds", 30)
+        return self.get_lifecycle_dict().get("pre_stop_drain_seconds", 30)
 
     def get_hacheck_prestop_sleep_seconds(self) -> int:
         return self.get_prestop_sleep_seconds() + 1
 
     def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
-        command = self.get_lifecycle().get("pre_stop_command", [])
+        command = self.get_lifecycle_dict().get("pre_stop_command", [])
         # default pre stop hook for the container
         if not command:
             return V1LifecycleHandler(
@@ -2634,7 +2634,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         Defaults to a value long enough to allow the standard hadown draining to finish.
         """
 
-        return self.get_lifecycle().get(
+        return self.get_lifecycle_dict().get(
             "termination_grace_period_seconds",
             (
                 self.get_hacheck_prestop_sleep_seconds() + 1
