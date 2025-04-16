@@ -81,7 +81,7 @@ python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
 pyyaml==6.0.1
-repoze.lru==0.6
+repoze.lru==0.7
 requests==2.25.0
 requests-cache==0.6.3
 requests-oauthlib==1.2.0
