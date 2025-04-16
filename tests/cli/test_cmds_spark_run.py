@@ -33,6 +33,7 @@ from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
+from paasta_tools.cli.cmds.spark_run import SPARK_DRIVER_IAM_USER
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
@@ -41,10 +42,6 @@ from paasta_tools.utils import SystemPaastaConfigDict
 
 
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
-
-SPARK_DRIVER_K8S_FILE = (
-    "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
-)
 
 
 @mock.patch(
@@ -317,7 +314,7 @@ aws_secret_access_key = <foo-secret>
                 "fake_dir",
             ),
         )
-        mock_open_iam_creds_file.assert_called_once_with(SPARK_DRIVER_K8S_FILE)
+        mock_open_iam_creds_file.assert_called_once_with(SPARK_DRIVER_IAM_USER)
 
         assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
         assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"

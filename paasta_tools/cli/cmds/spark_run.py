@@ -85,6 +85,14 @@ DEPRECATED_OPTS = {
 
 SPARK_COMMANDS = {"pyspark", "spark-submit"}
 
+# config looks as follows:
+# [default]
+# aws_access_key_id = ...
+# aws_secret_access_key = ...
+SPARK_DRIVER_IAM_USER = (
+    "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
+)
+
 log = logging.getLogger(__name__)
 
 
@@ -655,13 +663,6 @@ def get_spark_env(
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
     if args.get_eks_token_via_iam_user:
-        # config looks as follows:
-        # [default]
-        # aws_access_key_id = ...
-        # aws_secret_access_key = ...
-        SPARK_DRIVER_IAM_USER = (
-            "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
-        )
         with open(SPARK_DRIVER_IAM_USER) as f:
             config = ConfigParser()
             config.read_file(f)
