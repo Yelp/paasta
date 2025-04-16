@@ -25,6 +25,7 @@ from pytest import raises
 from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import get_service_auth_token
+from paasta_tools.cli.utils import run_interactive_cli
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -523,4 +524,18 @@ def test_get_service_auth_token(
     )
     mock_vault_client.secrets.identity.generate_signed_id_token.assert_called_once_with(
         name="foobar"
+    )
+
+
+@patch("paasta_tools.cli.utils.shutil", autospec=True)
+@patch("paasta_tools.cli.utils.pty", autospec=True)
+def test_run_interactive_cli(mock_pty, mock_shutil):
+    mock_shutil.get_terminal_size.return_value = (120, 50)
+    run_interactive_cli("kubectl exec foobar")
+    mock_pty.spawn.assert_called_once_with(
+        [
+            "bash",
+            "-c",
+            "export SHELL=bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
+        ]
     )

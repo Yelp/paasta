@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import pty
-import shlex
 import time
 
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import run_interactive_cli
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
 from paasta_tools.utils import get_username
@@ -96,7 +95,7 @@ def paasta_remote_run_start(
         pod=poll_response.pod_name,
         token=token_response.token,
     )
-    pty.spawn(shlex.split(exec_command))
+    run_interactive_cli(exec_command)
     return 0
 
 

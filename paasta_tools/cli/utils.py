@@ -18,8 +18,10 @@ import getpass
 import hashlib
 import logging
 import os
+import pty
 import random
 import re
+import shutil
 import socket
 import subprocess
 from collections import defaultdict
@@ -1150,3 +1152,20 @@ def get_paasta_oapi_client_with_auth(
         http_res=http_res,
         auth_token=get_sso_service_auth_token(),
     )
+
+
+def run_interactive_cli(cmd: str, shell: str = "bash", term: str = "xterm-256color"):
+    """Runs interactive command in a pseudo terminal, handling terminal size management
+
+    :param str cmd: shell command
+    :param str shell: shell utility to use as wrapper
+    :param str term: terminal type
+    """
+    cols, rows = shutil.get_terminal_size()
+    wrapped_cmd = (
+        f"export SHELL={shell};"
+        f"export TERM={term};"
+        f"stty columns {cols} rows {rows};"
+        f"exec {cmd}"
+    )
+    pty.spawn([shell, "-c", wrapped_cmd])
