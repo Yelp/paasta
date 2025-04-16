@@ -12,7 +12,7 @@ on:
 
 jobs:
   tox:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
       - run: pip install -r requirements-gha.txt
       - run: tox -e ${{ matrix.toxenv }}
   k8s_itests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DOCKER_REGISTRY: ""
     steps:
@@ -47,7 +47,7 @@ jobs:
       - run: pip install coveralls tox==3.2 tox-pip-extensions==1.3.0 ephemeral-port-reserve
       - run: make k8s_itests
   build_debs:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
