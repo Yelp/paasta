@@ -122,4 +122,4 @@ ws4py==0.5.1
 wsgicors==0.7.0
 yarl==1.1.1
 zope.deprecation==4.2.0
-zope.interface==4.1.2
+zope.interface==4.7.2
