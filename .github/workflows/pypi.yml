@@ -8,7 +8,7 @@ on:
 
 jobs:
   tox:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -21,21 +21,21 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3.8
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-gha.txt
       - run: tox -e ${{ matrix.toxenv }}
   pypi:
     # lets run tests before we push anything to pypi, much like we do internally
     needs: tox
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DOCKER_REGISTRY: ""
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3.8
       # this will create a .tar.gz with all the code (i.e., an sdist)
       - run: python setup.py sdist
       # and finally, upload the above sdist to public PyPI
