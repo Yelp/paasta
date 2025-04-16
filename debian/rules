@@ -22,7 +22,8 @@ override_dh_virtualenv:
 	dh_virtualenv \
         --python=/usr/bin/python3.8 \
 		--preinstall no-manylinux1 \
-		--preinstall=-rrequirements-bootstrap.txt
+		--preinstall=-rrequirements-bootstrap.txt \
+		--extra-pip-arg --only-binary=grpcio
 	cp yelp_package/gopath/paasta_go $(DH_VENV_DIR)/bin/paasta_go
 	@echo patching k8s client lib
 	patch $(DH_VENV_DIR)/lib/python3.8/site-packages/kubernetes/client/api_client.py contrib/python-k8s-client.diff
