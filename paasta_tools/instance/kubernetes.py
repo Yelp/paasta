@@ -294,7 +294,11 @@ async def get_backends_from_mesh_status(
 ) -> Set[str]:
     status = await mesh_status_task
     if status.get("locations"):
-        backends = {be["address"] for be in status["locations"][0].get("backends", [])}
+        backends = {
+            be["address"]
+            for location in status["locations"]
+            for be in location.get("backends", [])
+        }
     else:
         backends = set()
 
