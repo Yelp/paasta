@@ -1,3 +1,32 @@
+paasta-tools (1.16.2) xenial; urgency=medium
+
+  * 1.16.2 tagged with 'make release'
+    Commit: Merge pull request #4050 from Yelp/jfong/PAASTA-18666
+    PAASTA-18666: Include backends from all locations in backeds from
+    mesh status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 21 Apr 2025 10:00:02 -0700
+
+paasta-tools (1.16.1) xenial; urgency=medium
+
+  * 1.16.1 tagged with 'make release'
+    Commit: remote-run: use k8s conf from environment (#4040)  As
+    promised in
+    https://github.com/Yelp/paasta/pull/4022#discussion_r2000670059.
+    This can only be shipped once the paasta-api permissions have been
+    updated.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 14 Apr 2025 10:52:26 -0700
+
+paasta-tools (1.16.0) xenial; urgency=medium
+
+  * 1.16.0 tagged with 'make release'
+    Commit: Merge pull request #4041 from
+    Yelp/u/timma/make_spark_on_k8s_driver_pool_configurable  Added code
+    to take spark driver pool from config
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 14 Apr 2025 10:43:49 -0700
+
 paasta-tools (1.15.1) xenial; urgency=medium
 
   * 1.15.1 tagged with 'make release'
