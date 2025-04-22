@@ -1455,7 +1455,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             env=self.get_container_env(),
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
-                pre_stop=self.get_kubernetes_container_termination_action()
+                pre_stop=self.get_kubernetes_container_termination_action(
+                    service_namespace_config
+                )
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
@@ -1490,25 +1492,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_lifecycle_dict(self) -> KubeLifecycleDict:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({}))
 
-    def get_prestop_sleep_seconds(self) -> int:
-        return self.get_lifecycle_dict().get("pre_stop_drain_seconds", 30)
+    def get_prestop_sleep_seconds(self, is_in_smartstack: bool) -> int:
+        if is_in_smartstack:
+            default = 30
+        else:
+            default = 0
+        return self.get_lifecycle_dict().get("pre_stop_drain_seconds", default)
 
     def get_hacheck_prestop_sleep_seconds(self) -> int:
-        return self.get_prestop_sleep_seconds() + 1
+        """The number of seconds to sleep between hadown and terminating the hacheck container. We want hacheck to be
+        up for slightly longer than the main container is, so we default to pre_stop_drain_seconds + 1."""
 
-    def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
+        # Everywhere this value is currently used (hacheck sidecar or gunicorn sidecar), we can pretty safely
+        # assume that the service is in smartstack.
+        return self.get_prestop_sleep_seconds(is_in_smartstack=True) + 1
+
+    def get_kubernetes_container_termination_action(
+        self,
+        service_namespace_config: ServiceNamespaceConfig,
+    ) -> V1LifecycleHandler:
         command = self.get_lifecycle_dict().get("pre_stop_command", [])
         # default pre stop hook for the container
         if not command:
-            return V1LifecycleHandler(
-                _exec=V1ExecAction(
-                    command=[
-                        "/bin/sh",
-                        "-c",
-                        f"sleep {self.get_prestop_sleep_seconds()}",
-                    ]
-                )
-            )
+            command = [
+                "/bin/sh",
+                "-c",
+                f"sleep {self.get_prestop_sleep_seconds(service_namespace_config.is_in_smartstack())}",
+            ]
+
         if isinstance(command, str):
             command = [command]
         return V1LifecycleHandler(_exec=V1ExecAction(command=command))

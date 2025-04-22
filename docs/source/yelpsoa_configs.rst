@@ -479,20 +479,21 @@ instance MAY have:
     This only makes a difference when some Pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
   * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
-    This currently supports two sub-keys:
+    This currently supports three sub-keys:
 
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
-      This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta.)
+      This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta).
+      If your command takes longer than 30 seconds, you'll want to specify ``termination_grace_period_seconds`` to be longer than the expected runtime of your ``pre_stop_command``.
 
     * ``pre_stop_drain_seconds``: For services registered in the mesh, we apply a default ``pre_stop_command`` which starts draining the service from the mesh and waits this many seconds before stopping the container.
-      Defaults to ``30`` seconds.
+      Defaults to ``30`` seconds for services that are registered in the mesh, and ``0`` seconds for services that are not.
       If your service has requests that take longer than 30 seconds
       (or really, longer than about 20 seconds, since it takes a few seconds for the container to actually stop receiving traffic once we start draining it),
       you should set this to a higher value.
 
-    * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.
+    * ``termination_grace_period_seconds``: the number of seconds to allow pre-stop hooks to complete before forcibly killing your instance.
     Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
-    If you have specified ``pre_stop_drain_seconds``, this defaults to ``pre_stop_drain_seconds + 2``, otherwise it defaults to the k8s default of 30 seconds.
+    If your service is registered in the mesh, this defaults to ``pre_stop_drain_seconds + 2`` (so 32 seconds by default), otherwise it defaults to the k8s default of 30 seconds.
 
   * ``namespace``:
     The Kubernetes namespace where Paasta will create objects related to this service.
