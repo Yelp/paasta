@@ -1,3 +1,12 @@
+paasta-tools (1.16.2) xenial; urgency=medium
+
+  * 1.16.2 tagged with 'make release'
+    Commit: Merge pull request #4050 from Yelp/jfong/PAASTA-18666
+    PAASTA-18666: Include backends from all locations in backeds from
+    mesh status
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 21 Apr 2025 10:00:02 -0700
+
 paasta-tools (1.16.1) xenial; urgency=medium
 
   * 1.16.1 tagged with 'make release'

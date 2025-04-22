@@ -914,6 +914,21 @@ def test_kubernetes_mesh_status_error(
     assert mock_mesh_status.call_args_list == []
 
 
+@pytest.mark.asyncio
+async def test_backends_from_mesh_status():
+    mock_mesh_status = {
+        "locations": [
+            {"backends": [{"address": "1.1.1.1"}, {"address": "1.2.2.2"}]},
+            {"backends": [{"address": "1.1.1.1"}, {"address": "2.2.2.2"}]},
+        ]
+    }
+
+    mesh_status_task = wrap_value_in_task(mock_mesh_status)
+
+    backends = await pik.get_backends_from_mesh_status(mesh_status_task)
+    assert backends == {"1.1.1.1", "1.2.2.2", "2.2.2.2"}
+
+
 def test_bounce_status():
     with asynctest.patch(
         "paasta_tools.instance.kubernetes.kubernetes_tools", autospec=True
