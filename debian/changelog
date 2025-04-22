@@ -1,3 +1,12 @@
+paasta-tools (1.16.3) xenial; urgency=medium
+
+  * 1.16.3 tagged with 'make release'
+    Commit: Merge pull request #4037 from Yelp/u/nalma/SEC-19835/load-
+    creds-with-cli-arg  Get IAM credentials from root-protected file to
+    fetch EKS token
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Tue, 22 Apr 2025 12:35:43 -0700
+
 paasta-tools (1.16.2) xenial; urgency=medium
 
   * 1.16.2 tagged with 'make release'
