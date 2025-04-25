@@ -15,6 +15,7 @@
 import argparse
 import pty
 import shlex
+import shutil
 import time
 
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
@@ -30,7 +31,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 KUBECTL_CMD_TEMPLATE = (
-    "kubectl-eks-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+    "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
 
 
@@ -90,8 +91,11 @@ def paasta_remote_run_start(
         args.service, args.instance, user
     )
 
+    kubectl_wrapper = f"kubectl-eks-{args.cluster}"
+    if not shutil.which(kubectl_wrapper):
+        kubectl_wrapper = f"kubectl-{args.cluster}"
     exec_command = KUBECTL_CMD_TEMPLATE.format(
-        cluster=args.cluster,
+        kubectl_wrapper=kubectl_wrapper,
         namespace=poll_response.namespace,
         pod=poll_response.pod_name,
         token=token_response.token,
