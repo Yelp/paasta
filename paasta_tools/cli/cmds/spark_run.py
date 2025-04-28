@@ -26,10 +26,10 @@ from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
+from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics

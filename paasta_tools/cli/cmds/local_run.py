@@ -34,12 +34,12 @@ from docker import errors
 from mypy_extensions import TypedDict
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
+from paasta_tools.cli.authentication import get_service_auth_token
+from paasta_tools.cli.authentication import get_sso_service_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import get_service_auth_token
-from paasta_tools.cli.utils import get_sso_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
