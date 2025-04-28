@@ -837,6 +837,9 @@
                 "routable_ip": {
                     "type": "boolean"
                 },
+                "enable_aws_lb_readiness_gate": {
+                    "type": "boolean"
+                },
                 "lifecycle": {
                     "type": "object",
                     "properties": {
