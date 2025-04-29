@@ -374,6 +374,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
         "paasta.yelp.com/managed": str,
+        "elbv2.k8s.aws/pod-readiness-gate-inject": str,
     },
     total=False,
 )
