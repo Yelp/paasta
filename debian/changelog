@@ -1,3 +1,16 @@
+paasta-tools (1.17.0) xenial; urgency=medium
+
+  * 1.17.0 tagged with 'make release'
+    Commit: add AWS app id to services env variables (#4052)  This is
+    something that popped into Infrasec"s conversations lately, as
+    sometimes it"s a bit hard to attribute specific AWS log events to
+    service instances, [and since it"s possible to inject identifiers
+    into the User-Agent set by various AWS
+    SDKs](https://docs.aws.amazon.com/sdkref/latest/guide/feature-
+    appid.html), it"d be nice to get that by default from PaaSTA.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 29 Apr 2025 11:34:07 -0700
+
 paasta-tools (1.16.4) xenial; urgency=medium
 
   * 1.16.4 tagged with 'make release'
