@@ -135,6 +135,11 @@ def cwd(path):
         os.chdir(pwd)
 
 
+def _force_str_to_int(value: str) -> int:
+    """Force convert strings into ints - even if they're technically floats."""
+    return int(float(value))
+
+
 def get_report_from_splunk(creds, app, filename, criteria_filter):
     """Expect a table containing at least the following fields:
     criteria (<service> kubernetes-<cluster_name> <instance>)
@@ -165,29 +170,83 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
     resp_text = [x for x in resp_text if x]
     resp_text = [json.loads(x) for x in resp_text]
     services_to_update = {}
+
     for d in resp_text:
         if "result" not in d:
             raise ValueError(f"Splunk request didn't return any results: {resp_text}")
         criteria = d["result"]["criteria"]
-        serv = {}
-        serv["service"] = criteria.split(" ")[0]
-        serv["cluster"] = criteria.split(" ")[1]
-        serv["instance"] = criteria.split(" ")[2]
-        serv["owner"] = d["result"].get("service_owner", "Unavailable")
-        serv["date"] = d["result"]["_time"].split(" ")[0]
-        serv["money"] = d["result"].get("estimated_monthly_savings", 0)
-        serv["project"] = d["result"].get("project", "Unavailable")
-        serv["cpus"] = d["result"].get("suggested_cpus")
-        serv["old_cpus"] = d["result"].get("current_cpus")
-        serv["mem"] = d["result"].get("suggested_mem")
-        serv["old_mem"] = d["result"].get("current_mem")
-        serv["disk"] = d["result"].get("suggested_disk")
-        serv["old_disk"] = d["result"].get("current_disk")
-        serv["min_instances"] = d["result"].get("suggested_min_instances")
-        serv["max_instances"] = d["result"].get("suggested_max_instances")
-        serv["hacheck_cpus"] = d["result"].get("suggested_hacheck_cpus")
-        serv["cpu_burst_add"] = d["result"].get("suggested_cpu_burst_add")
-        services_to_update[criteria] = serv
+
+        # fill in fields that don't need any transformation
+        serv = {
+            "service": criteria.split(" ")[0],
+            "cluster": criteria.split(" ")[1],
+            "instance": criteria.split(" ")[2],
+            "owner": d["result"].get("service_owner", "Unavailable"),
+            "date": d["result"]["_time"].split(" ")[0],
+            "money": d["result"].get("estimated_monthly_savings", 0),
+            "project": d["result"].get("project", "Unavailable"),
+        }
+
+        # the report we get is all strings, so we need to convert them to the right types
+        field_conversions = {
+            # the general format here is:
+            # expected_key: (source_key, conversion_function)
+            # where expected_key is the key we want in the final output and source_key is the key from the splunk
+            # report
+            "cpu_burst_add": ("suggested_cpu_burst_add", float),
+            "cpus": ("suggested_cpus", float),
+            "disk": ("suggested_disk", int),
+            "hacheck_cpus": ("suggested_hacheck_cpus", float),
+            "max_instances": ("suggested_max_instances", int),
+            "mem": ("suggested_mem", int),
+            "min_instances": ("suggested_min_instances", int),
+            "old_cpus": ("current_cpus", float),
+            # not quite sure why these are floats...they're ints in soaconfigs
+            "old_disk": ("current_disk", _force_str_to_int),
+            "old_mem": ("current_mem", _force_str_to_int),
+        }
+
+        for key, (source_key, conversion_function) in field_conversions.items():
+            value = d["result"].get(source_key)
+            serv[key] = conversion_function(value) if value is not None else None
+
+        # merge results if we've already seen rows for this service
+        # NOTE: this is necessary since the Splunk search can return multiple rows
+        # for the same (service, cluster, instance) tuple as the autotune query
+        # treats certain cpu allocation changes as if the tuple was entirely different.
+        # this is ostensibly due to a theory that if you update resource allocation, existing
+        # autotune data is potentially invalidated - but in practice this ends up hampering
+        # autotune for services with highly variable resource allocation - e.g., we have some services
+        # that have their cpu allocation tweaked by +/-.1 cpu pretty frequently, but then min/max autotune
+        # is never updated.
+        if criteria in services_to_update:
+            for key in serv:
+                # we probably don't want to merge any other fields since they're going to be strings :p
+                if key not in field_conversions:
+                    continue
+
+                last_proposed_suggestion = services_to_update[criteria][key]
+                proposed_suggestion = serv[key]
+
+                # if both are non-null, take the max of the two
+                if (
+                    last_proposed_suggestion is not None
+                    and proposed_suggestion is not None
+                ):
+                    services_to_update[criteria][key] = max(
+                        last_proposed_suggestion, proposed_suggestion
+                    )
+                # otherwise, if only one of these is non-null, use that one
+                elif last_proposed_suggestion is not None:
+                    services_to_update[criteria][key] = last_proposed_suggestion
+                elif proposed_suggestion is not None:
+                    services_to_update[criteria][key] = proposed_suggestion
+                # otherwise, if we didn't enter any of the above branches, we're essentially leaving in place the
+                # existing None
+
+        # otherwise, simply add the service to the final report
+        else:
+            services_to_update[criteria] = serv
 
     return {
         "search": search,
