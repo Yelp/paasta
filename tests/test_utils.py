@@ -623,7 +623,7 @@ def test_SystemPaastaConfig_get_git_config(config, expected_git, expected_primar
     assert actual_repo["deploy_server"] == expected_primary
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def umask_022():
     old_umask = os.umask(0o022)
     yield
@@ -1365,7 +1365,7 @@ def test_run_returns_when_popen_fails():
     with mock.patch(
         "paasta_tools.utils.Popen", autospec=True, side_effect=fake_exception
     ):
-        return_code, output = utils._run("nonexistant command", timeout=10)
+        return_code, output = utils._run("nonexistent command", timeout=10)
     assert return_code == 1234
     assert "fake error" in output
 

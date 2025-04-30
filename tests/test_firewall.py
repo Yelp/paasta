@@ -22,7 +22,7 @@ def service_group():
     return firewall.ServiceGroup(service="my_cool_service", instance="web")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_get_running_mesos_docker_containers():
     with mock.patch.object(
         firewall,
@@ -79,7 +79,7 @@ def test_services_running_here():
     )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_services_running_here():
     with mock.patch.object(
         firewall,
@@ -104,7 +104,7 @@ def test_service_group_chain_name(service_group):
     assert len(service_group.chain_name) <= 28
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_service_config():
     with mock.patch.object(
         firewall, "get_instance_config", autospec=True

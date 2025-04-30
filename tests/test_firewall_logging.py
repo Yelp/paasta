@@ -143,7 +143,7 @@ def fake_syslog_data(hostname, **kwargs):
     return (prefix + fields_str + " \n").encode()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_log():
     with mock.patch.object(firewall_logging, "_log", autospec=True) as mock_log:
         yield mock_log
