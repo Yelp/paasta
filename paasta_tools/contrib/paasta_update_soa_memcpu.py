@@ -176,39 +176,41 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
             raise ValueError(f"Splunk request didn't return any results: {resp_text}")
         criteria = d["result"]["criteria"]
 
-        # fill in fields that don't need any transformation
         serv = {
-            "service": criteria.split(" ")[0],
             "cluster": criteria.split(" ")[1],
-            "instance": criteria.split(" ")[2],
-            "owner": d["result"].get("service_owner", "Unavailable"),
             "date": d["result"]["_time"].split(" ")[0],
+            "instance": criteria.split(" ")[2],
             "money": d["result"].get("estimated_monthly_savings", 0),
+            "owner": d["result"].get("service_owner", "Unavailable"),
             "project": d["result"].get("project", "Unavailable"),
+            "service": criteria.split(" ")[0],
+            # only mergeable fields below
+            "cpu_burst_add": d["result"].get("suggested_cpu_burst_add"),
+            "cpus": d["result"].get("suggested_cpus"),
+            "disk": d["result"].get("suggested_disk"),
+            "hacheck_cpus": d["result"].get("suggested_hacheck_cpus"),
+            "max_instances": d["result"].get("suggested_max_instances"),
+            "mem": d["result"].get("suggested_mem"),
+            "min_instances": d["result"].get("suggested_min_instances"),
+            "old_cpus": d["result"].get("current_cpus"),
+            "old_disk": d["result"].get("current_disk"),
+            "old_mem": d["result"].get("current_mem"),
         }
 
         # the report we get is all strings, so we need to convert them to the right types
         field_conversions = {
-            # the general format here is:
-            # expected_key: (source_key, conversion_function)
-            # where expected_key is the key we want in the final output and source_key is the key from the splunk
-            # report
-            "cpu_burst_add": ("suggested_cpu_burst_add", float),
-            "cpus": ("suggested_cpus", float),
-            "disk": ("suggested_disk", int),
-            "hacheck_cpus": ("suggested_hacheck_cpus", float),
-            "max_instances": ("suggested_max_instances", int),
-            "mem": ("suggested_mem", int),
-            "min_instances": ("suggested_min_instances", int),
-            "old_cpus": ("current_cpus", float),
+            "suggested_cpu_burst_add": float,
+            "suggested_cpus": float,
+            "suggested_disk": int,
+            "suggested_hacheck_cpus": float,
+            "suggested_max_instances": int,
+            "suggested_mem": int,
+            "suggested_min_instances": int,
+            "current_cpus": float,
             # not quite sure why these are floats...they're ints in soaconfigs
-            "old_disk": ("current_disk", _force_str_to_int),
-            "old_mem": ("current_mem", _force_str_to_int),
+            "current_disk": _force_str_to_int,
+            "current_mem": _force_str_to_int,
         }
-
-        for key, (source_key, conversion_function) in field_conversions.items():
-            value = d["result"].get(source_key)
-            serv[key] = conversion_function(value) if value is not None else None
 
         # merge results if we've already seen rows for this service
         # NOTE: this is necessary since the Splunk search can return multiple rows
@@ -234,7 +236,9 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
                     and proposed_suggestion is not None
                 ):
                     services_to_update[criteria][key] = max(
-                        last_proposed_suggestion, proposed_suggestion
+                        last_proposed_suggestion,
+                        proposed_suggestion,
+                        key=field_conversions[key],
                     )
                 # otherwise, if only one of these is non-null, use that one
                 elif last_proposed_suggestion is not None:
