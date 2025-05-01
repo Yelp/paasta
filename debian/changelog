@@ -1,3 +1,10 @@
+paasta-tools (1.17.1) xenial; urgency=medium
+
+  * 1.17.1 tagged with 'make release'
+    Commit: add auth support for Tron client (#4053)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 01 May 2025 02:53:15 -0700
+
 paasta-tools (1.17.0) xenial; urgency=medium
 
   * 1.17.0 tagged with 'make release'
