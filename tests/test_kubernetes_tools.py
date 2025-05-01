@@ -794,6 +794,7 @@ class TestKubernetesDeploymentConfig:
             assert self.deployment.get_env() == {
                 "hello": "world",
                 "PAASTA_SOA_CONFIGS_SHA": "fake_soa_git_sha",
+                "AWS_SDK_UA_APP_ID": "kurupt.fm",
             }
 
     def test_get_container_env(self):
@@ -1510,6 +1511,7 @@ class TestKubernetesDeploymentConfig:
                 metadata=mock_get_kubernetes_metadata.return_value,
                 spec=V1JobSpec(
                     active_deadline_seconds=100,
+                    ttl_seconds_after_finished=0,
                     template=mock_get_pod_template_spec.return_value,
                 ),
             )
@@ -4439,7 +4441,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config1c7deb78"
+            == "config8031ca07"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4485,7 +4487,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config45672f04"
+            == "configae0706b5"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4532,7 +4534,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configa4afe5c4"
+            == "config17be5e89"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

@@ -123,6 +123,10 @@ DEFAULT_CPU_BURST_ADD = 1
 
 DEFAULT_SOA_CONFIGS_GIT_URL = "sysgit.yelpcorp.com"
 
+# To ensure the Spark driver not being interrupted due to spot instances,
+# we use stable pool for drivers
+DEFAULT_SPARK_DRIVER_POOL = "stable"
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -2036,6 +2040,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
+    spark_iam_user_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
@@ -2049,6 +2054,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     default_spark_iam_user: str
+    default_spark_driver_pool_override: str
 
 
 def load_system_paasta_config(
@@ -2150,6 +2156,17 @@ class SystemPaastaConfig:
     def get_default_spark_iam_user(self) -> str:
         return self.config_dict.get(
             "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
+        )
+
+    def get_default_spark_driver_pool_override(self) -> str:
+        """
+        If defined, fetches the override for what pool to run a Spark driver in.
+        Otherwise, returns the default Spark driver pool.
+
+        :returns: The default_spark_driver_pool_override specified in the paasta configuration
+        """
+        return self.config_dict.get(
+            "default_spark_driver_pool_override", DEFAULT_SPARK_DRIVER_POOL
         )
 
     def get_sidecar_requirements_config(
@@ -2745,6 +2762,11 @@ class SystemPaastaConfig:
 
     def get_spark_kubeconfig(self) -> str:
         return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")
+
+    def get_spark_iam_user_kubeconfig(self) -> str:
+        return self.config_dict.get(
+            "spark_iam_user_kubeconfig", "/etc/kubernetes/spark2.conf"
+        )
 
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})

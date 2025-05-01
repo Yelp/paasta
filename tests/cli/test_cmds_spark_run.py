@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import io
 import os
 
 import mock
@@ -32,6 +33,7 @@ from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
+from paasta_tools.cli.cmds.spark_run import SPARK_DRIVER_IAM_USER
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
@@ -202,6 +204,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
+                get_eks_token_via_iam_user=None,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -216,6 +219,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
+                get_eks_token_via_iam_user=None,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -229,6 +233,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
+                get_eks_token_via_iam_user=None,
             ),
             {},
         ),
@@ -282,6 +287,38 @@ def test_get_spark_env(
         )
         == expected_output
     )
+
+
+def test_get_spark_env_load_iam_creds():
+    data = """
+[default]
+aws_access_key_id = <foo-id>
+aws_secret_access_key = <foo-secret>
+    """
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.open",
+        return_value=io.StringIO(data),
+        autospec=None,
+    ) as mock_open_iam_creds_file:
+        spark_env = spark_run.get_spark_env(
+            argparse.Namespace(
+                get_eks_token_via_iam_user=True, aws_region="us-west-2", cmd="sparkling"
+            ),
+            "spark-conf-string",
+            (None, None, None),
+            "http://myrandomport",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+        )
+        mock_open_iam_creds_file.assert_called_once_with(SPARK_DRIVER_IAM_USER)
+
+        assert spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] == "<foo-id>"
+        assert spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] == "<foo-secret>"
+        assert spark_env["KUBECONFIG"] == "/etc/kubernetes/spark2.conf"
 
 
 @pytest.mark.parametrize(
@@ -494,6 +531,7 @@ class TestConfigureAndRunDockerContainer:
         args.tronfig = None
         args.job_id = None
         args.use_service_auth_token = False
+        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -520,7 +558,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
+                    "/etc/kubernetes:/etc/kubernetes:ro",
                 ]
             ),
             environment={
@@ -609,6 +647,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
         args.use_service_auth_token = False
+        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -635,7 +674,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
+                    "/etc/kubernetes:/etc/kubernetes:ro",
                 ]
             ),
             environment={
@@ -724,6 +763,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_service_auth_token = False
+        args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -751,7 +791,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
-                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
+                    "/etc/kubernetes:/etc/kubernetes:ro",
                 ]
             ),
             environment={
@@ -796,7 +836,10 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="pyspark", nvidia=True, use_service_auth_token=False
+                cmd="pyspark",
+                nvidia=True,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
             )
 
             configure_and_run_docker_container(
@@ -834,7 +877,10 @@ class TestConfigureAndRunDockerContainer:
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
             args = mock.MagicMock(
-                cmd="python mrjob_wrapper.py", mrjob=True, use_service_auth_token=False
+                cmd="python mrjob_wrapper.py",
+                mrjob=True,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
             )
 
             configure_and_run_docker_container(
@@ -863,7 +909,12 @@ class TestConfigureAndRunDockerContainer:
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
         ):
             mock_create_spark_config_str.return_value = "--conf spark.cores.max=5"
-            args = mock.MagicMock(cmd="bash", mrjob=False, use_service_auth_token=False)
+            args = mock.MagicMock(
+                cmd="bash",
+                mrjob=False,
+                use_service_auth_token=False,
+                get_eks_token_via_iam_user=None,
+            )
 
             configure_and_run_docker_container(
                 args=args,
@@ -902,6 +953,7 @@ class TestConfigureAndRunDockerContainer:
             args = mock.MagicMock(
                 cmd="pyspark",
                 use_service_auth_token=True,
+                get_eks_token_via_iam_user=None,
             )
             configure_and_run_docker_container(
                 args=args,
@@ -1031,6 +1083,7 @@ def test_paasta_spark_run_bash(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
     )
@@ -1162,6 +1215,7 @@ def test_paasta_spark_run(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
     )
@@ -1293,6 +1347,7 @@ def test_paasta_spark_run_pyspark(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
     )
@@ -1440,6 +1495,7 @@ def test_paasta_spark_run_uses_bulkdata(
         job_id=None,
         use_web_identity=False,
         uses_bulkdata=spark_run_arg_uses_bulkdata,
+        get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
     )
@@ -1457,6 +1513,115 @@ def test_paasta_spark_run_uses_bulkdata(
     assert (
         mock_get_instance_config.return_value.config_dict["uses_bulkdata"] == expected
     )
+
+
+def test_paasta_spark_run_re_run_sudo():
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="/bin/bash",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        timeout_job_runtime="1m",
+        enable_dra=False,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
+        k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
+        use_web_identity=False,
+        uses_bulkdata=True,
+        get_eks_token_via_iam_user=True,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.getuid",
+        return_value=1001,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+    ) as mock_exec:
+        spark_run.paasta_spark_run(args)
+        assert mock_exec.called
+        args, _ = mock_exec.call_args
+        assert args[0] == "sudo"
+
+
+@mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "get_instance_config", autospec=True)
+@mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
+@mock.patch.object(spark_run, "get_docker_image", autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
+@mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
+def test_paasta_spark_run_re_run_sudo_as_root(
+    mock_get_smart_paasta_instance_name,
+    mock_configure_and_run_docker_container,
+    mock_spark_conf_builder,
+    mock_parse_user_spark_args,
+    mock_get_spark_app_name,
+    mock_get_docker_image,
+    mock_get_aws_credentials,
+    mock_get_instance_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
+    mock_validate_work_dir,
+):
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="/bin/bash",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        timeout_job_runtime="1m",
+        enable_dra=False,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
+        k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
+        use_web_identity=False,
+        uses_bulkdata=True,
+        get_eks_token_via_iam_user=True,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.getuid",
+        return_value=0,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+    ) as mock_exec:
+        spark_run.paasta_spark_run(args)
+        assert not mock_exec.called
 
 
 @pytest.mark.parametrize(
@@ -1748,6 +1913,7 @@ def test_paasta_spark_run_with_pod_identity(
         uses_bulkdata=True,
         force_pod_identity=force_pod_identity,
         executor_pod_identity=True,
+        get_eks_token_via_iam_user=False,
     )
     # Use the expected return code to set the allowed iam roles
     if force_pod_identity and not should_exit_early:

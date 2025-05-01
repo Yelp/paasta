@@ -27,12 +27,12 @@ from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.remote_run.time", autospec=True)
-@patch("paasta_tools.cli.cmds.remote_run.pty", autospec=True)
+@patch("paasta_tools.cli.cmds.remote_run.run_interactive_cli", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.remote_run.get_paasta_oapi_client_with_auth",
     autospec=True,
 )
-def test_paasta_remote_run_start(mock_get_client, mock_pty, mock_time, _):
+def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
     mock_config = MagicMock()
     mock_args = MagicMock(
         service="foo",
@@ -84,19 +84,8 @@ def test_paasta_remote_run_start(mock_get_client, mock_pty, mock_time, _):
     mock_client.remote_run.remote_run_token.assert_called_once_with(
         "foo", "bar", "pippo"
     )
-    mock_pty.spawn.assert_called_once_with(
-        [
-            "kubectl-eks-dev",
-            "--token",
-            "aaabbbccc",
-            "exec",
-            "-it",
-            "-n",
-            "svcfoo",
-            "foobar-123",
-            "--",
-            "/bin/bash",
-        ]
+    mock_run_cli.assert_called_once_with(
+        "kubectl-eks-dev --token aaabbbccc exec -it -n svcfoo foobar-123 -- /bin/bash",
     )
 
 
