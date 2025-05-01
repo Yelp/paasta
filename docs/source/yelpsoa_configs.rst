@@ -512,7 +512,12 @@ instance MAY have:
 
     * ``termination_grace_period_seconds``: the number of seconds to allow pre-stop hooks to complete before forcibly killing your instance.
       Note that the instance will be forcibly killed after this period, so your ``pre_stop_command`` and any post-SIGTERM behavior should complete well within this time period!
+
       If your service is registered in the mesh, this defaults to long enough for the default pre-stop hook defined by ``pre_stop_drain_seconds`` and ``pre_stop_wait_for_connections_to_complete`` to complete.
+      Exception: if ``timeout_server_ms`` or ``endpoint_timeouts`` in your smartstack.yaml specifies a timeout greater than 1800000ms (30 minutes), the default will cap at 30 minutes.
+      This is done under the assumption that most services with timeouts that long are able to handle SIGTERM to gracefully close connections.
+      If your service really does need to maintain connections for longer than 30 minutes, and cannot gracefully close connections, just set ``termination_grace_period_seconds`` to an appropriate value.
+
       If your service is not registered in the mesh, it defaults to the k8s default of 30s.
 
   * ``namespace``:

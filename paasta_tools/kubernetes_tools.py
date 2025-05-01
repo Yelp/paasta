@@ -2699,7 +2699,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_pre_stop_wait_for_connections_to_complete(
                 service_namespace_config
             ):
-                default += service_namespace_config.get_longest_timeout_ms()
+                # If the max timeout is more than 30 minutes, cap it to 30 minutes.
+                # Most services with ultra-long timeouts are probably able to handle SIGTERM gracefully anyway.
+                default += int(
+                    math.ceil(
+                        min(
+                            1800,
+                            service_namespace_config.get_longest_timeout_ms() / 1000,
+                        )
+                    )
+                )
         else:
             default = None
 
