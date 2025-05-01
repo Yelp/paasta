@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 from typing import Dict
 from urllib.parse import urljoin
 
 import requests
 
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.utils import get_user_agent
 
 
@@ -43,6 +45,9 @@ class TronClient:
             response = requests.get(**kwargs)
         elif method == "POST":
             kwargs["data"] = data
+            if os.getenv("TRONCTL_API_AUTH"):
+                token = get_service_auth_token()
+                kwargs["headers"]["Authorization"] = f"Bearer {token}"
             response = requests.post(**kwargs)
         else:
             raise ValueError(f"Unrecognized method: {method}")

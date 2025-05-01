@@ -1,4 +1,6 @@
-import mock
+import os
+from unittest import mock
+
 import pytest
 
 from paasta_tools.tron.client import TronClient
@@ -31,6 +33,30 @@ class TestTronClient:
         mock_requests.post.assert_called_once_with(
             headers=mock.ANY, url=self.tron_url + "/some/thing", data={"check": 1}
         )
+
+    def test_post_auth(self, mock_requests):
+        with mock.patch(
+            "paasta_tools.tron.client.get_service_auth_token",
+            autospec=True,
+        ) as mock_get_token, mock.patch(
+            "paasta_tools.tron.client.get_user_agent",
+            autospec=True,
+        ) as mock_get_ua, mock.patch.dict(
+            os.environ,
+            {"TRONCTL_API_AUTH": "1"},
+        ):
+            mock_get_token.return_value = "sup3rs3cr3t"
+            response = self.client._post("/some/auth/thing", {"foo": "bar"})
+            assert response == mock_requests.post.return_value.json.return_value
+            mock_get_token.assert_called_once_with()
+            mock_requests.post.assert_called_once_with(
+                headers={
+                    "User-Agent": mock_get_ua.return_value,
+                    "Authorization": "Bearer sup3rs3cr3t",
+                },
+                url=f"{self.tron_url}/some/auth/thing",
+                data={"foo": "bar"},
+            )
 
     @pytest.mark.parametrize("okay_status", [True, False])
     def test_returned_error_message(self, mock_requests, okay_status):

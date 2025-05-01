@@ -39,8 +39,6 @@ from typing import Set
 from typing import Tuple
 
 import ephemeral_port_reserve
-from botocore.credentials import InstanceMetadataFetcher
-from botocore.credentials import InstanceMetadataProvider
 from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
@@ -48,6 +46,7 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
+from paasta_tools.cli.authentication import get_sso_service_auth_token
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
@@ -80,25 +79,6 @@ from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
-
-try:
-    from vault_tools.paasta_secret import get_client as get_vault_client
-    from vault_tools.paasta_secret import get_vault_url
-    from vault_tools.paasta_secret import get_vault_ca
-    from okta_auth import get_and_cache_jwt_default
-except ImportError:
-
-    def get_vault_client(url: str, capath: str) -> None:
-        pass
-
-    def get_vault_url(ecosystem: str) -> str:
-        return ""
-
-    def get_vault_ca(ecosystem: str) -> str:
-        return ""
-
-    def get_and_cache_jwt_default(client_id: str) -> str:
-        return ""
 
 
 log = logging.getLogger(__name__)
@@ -1102,43 +1082,6 @@ def get_paasta_oapi_api_clustername(cluster: str, is_eks: bool) -> str:
     "eks-" prefix
     """
     return f"eks-{cluster}" if is_eks else cluster
-
-
-def get_current_ecosystem() -> str:
-    """Get current ecosystem from host configs, defaults to dev if no config is found"""
-    try:
-        with open("/nail/etc/ecosystem") as f:
-            return f.read().strip()
-    except IOError:
-        pass
-    return "devc"
-
-
-def get_service_auth_token() -> str:
-    """Uses instance profile to authenticate with Vault and generate token for service authentication"""
-    ecosystem = get_current_ecosystem()
-    vault_client = get_vault_client(get_vault_url(ecosystem), get_vault_ca(ecosystem))
-    vault_role = load_system_paasta_config().get_service_auth_vault_role()
-    metadata_provider = InstanceMetadataProvider(
-        iam_role_fetcher=InstanceMetadataFetcher(),
-    )
-    instance_credentials = metadata_provider.load().get_frozen_credentials()
-    vault_client.auth.aws.iam_login(
-        instance_credentials.access_key,
-        instance_credentials.secret_key,
-        instance_credentials.token,
-        mount_point="aws-iam",
-        role=vault_role,
-        use_token=True,
-    )
-    response = vault_client.secrets.identity.generate_signed_id_token(name=vault_role)
-    return response["data"]["token"]
-
-
-def get_sso_service_auth_token() -> str:
-    """Generate an authentication token for the calling user from the Single Sign On provider"""
-    client_id = load_system_paasta_config().get_service_auth_sso_oidc_client_id()
-    return get_and_cache_jwt_default(client_id)
 
 
 def get_paasta_oapi_client_with_auth(
