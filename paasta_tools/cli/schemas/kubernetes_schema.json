@@ -856,6 +856,13 @@
                                     }
                                 }
                             ]
+                        },
+                        "pre_stop_drain_seconds": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "pre_stop_wait_for_connections_to_complete": {
+                            "type": "boolean"
                         }
                     }
                 },

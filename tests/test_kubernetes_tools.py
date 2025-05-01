@@ -960,6 +960,7 @@ class TestKubernetesDeploymentConfig:
             service_namespace_config = mock.Mock()
             service_namespace_config.get_healthcheck_mode.return_value = "http"
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
+            service_namespace_config.get_longest_timeout_ms.return_value = 1000
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
@@ -2279,6 +2280,7 @@ class TestKubernetesDeploymentConfig:
     ):
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = is_in_smartstack
+        mock_service_namespace_config.get_longest_timeout_ms.return_value = 1000
 
         if termination_action:
             self.deployment.config_dict["lifecycle"] = {

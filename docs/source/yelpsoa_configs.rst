@@ -479,21 +479,41 @@ instance MAY have:
     This only makes a difference when some Pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
   * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
-    This currently supports three sub-keys:
 
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
       This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta).
-      If your command takes longer than 30 seconds, you'll want to specify ``termination_grace_period_seconds`` to be longer than the expected runtime of your ``pre_stop_command``.
+      After the ``pre_stop_command`` is run, Kubernetes sends SIGTERM to the main process in the container.
+      Your main process may then handle the SIGTERM signal and do any additional cleanup it needs to do before exiting.
+      Most HTTP services at Yelp will shut down immediately when they receive SIGTERM (which can interrupt in-flight requests).
+      Kew and SFN workers will finish their existing task before shutting down.
+      If your shutdown behavior (``pre_stop_command`` plus anything your main container does after receiving SIGTERM) takes longer than 30 seconds, you'll want to specify ``termination_grace_period_seconds`` to be long enough.
+      The default pre-stop command is configured by the next few options.
 
     * ``pre_stop_drain_seconds``: For services registered in the mesh, we apply a default ``pre_stop_command`` which starts draining the service from the mesh and waits this many seconds before stopping the container.
       Defaults to ``30`` seconds for services that are registered in the mesh, and ``0`` seconds for services that are not.
-      If your service has requests that take longer than 30 seconds
-      (or really, longer than about 20 seconds, since it takes a few seconds for the container to actually stop receiving traffic once we start draining it),
-      you should set this to a higher value.
+
+    * ``pre_stop_wait_for_connections_to_complete``: If set to ``true``, the default ``pre_stop_command`` will:
+      1. Sleep ``pre_stop_drain_seconds`` seconds, to give the service mesh time to remove the pod from Envoy everywhere.
+      2. Wait for connections on ``container_port`` (8888 by default) to complete (checking once per second.)
+
+      This is useful for services with long-running requests that need to be completed before the container is stopped.
+      Defaults to ``true`` if both of these conditions are true:
+
+        1. Your service is registered in smartstack.
+        2. Your smartstack.yaml specifies a timeout >= 20s, either through ``timeout_server_ms`` or ``endpoint_timeouts``.
+
+      Otherwise, defaults to ``false``.
+      You may override this to ``false`` if you don't want to wait for connections to complete.
+      You may override this to ``true`` if you do want connections to complete, but your service is not registered in smartstack.
+      Note that this will only wait for connections on ``container_port`` to complete.
+      It does not wait for any outbound connections to complete, nor inbound connections on other ports.
+      This is implemented with a shell one-liner that depends on /bin/sh and grep being available in the container.
+      If your container does not have /bin/sh or grep, you will need to set this to ``false``.
 
     * ``termination_grace_period_seconds``: the number of seconds to allow pre-stop hooks to complete before forcibly killing your instance.
-    Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
-    If your service is registered in the mesh, this defaults to ``pre_stop_drain_seconds + 2`` (so 32 seconds by default), otherwise it defaults to the k8s default of 30 seconds.
+      Note that the instance will be forcibly killed after this period, so your ``pre_stop_command`` and any post-SIGTERM behavior should complete well within this time period!
+      If your service is registered in the mesh, this defaults to long enough for the default pre-stop hook defined by ``pre_stop_drain_seconds`` and ``pre_stop_wait_for_connections_to_complete`` to complete.
+      If your service is not registered in the mesh, it defaults to the k8s default of 30s.
 
   * ``namespace``:
     The Kubernetes namespace where Paasta will create objects related to this service.
