@@ -27,12 +27,15 @@ from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.remote_run.time", autospec=True)
+@patch("paasta_tools.cli.cmds.remote_run.shutil", autospec=True)
 @patch("paasta_tools.cli.cmds.remote_run.run_interactive_cli", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.remote_run.get_paasta_oapi_client_with_auth",
     autospec=True,
 )
-def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
+def test_paasta_remote_run_start(
+    mock_get_client, mock_run_cli, mock_shutil, mock_time, _
+):
     mock_config = MagicMock()
     mock_args = MagicMock(
         service="foo",
@@ -44,6 +47,7 @@ def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
         timeout=600,
     )
     mock_time.time.return_value = 0
+    mock_shutil.which.return_value = True
     mock_client = mock_get_client.return_value
     mock_client.remote_run.remote_run_start.return_value = MagicMock(
         status=200, message="started", job_name="foobar"
