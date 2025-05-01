@@ -695,6 +695,10 @@ class InstanceConfig:
         instance_type = self.get_instance_type()
         if instance_type:
             env["PAASTA_INSTANCE_TYPE"] = instance_type
+        # Our workloads interact with AWS quite a lot, so it comes handy to
+        # propagate an "application ID" in the user-agent of API requests
+        # for debugging purposes (max length is 50 chars from AWS docs).
+        env["AWS_SDK_UA_APP_ID"] = f"{self.service}.{self.instance}"[:50]
         user_env = self.config_dict.get("env", {})
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}

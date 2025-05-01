@@ -1198,13 +1198,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "git_sha", ""
         )
 
-        # Our workloads interact with AWS quite a lot, so it comes handy to
-        # propagate an "application ID" in the user-agent of API requests
-        # for debugging purposes (max length is 50 chars from AWS docs).
-        # TODO: temporarily setting this here rather than in `InstanceConfig`
-        # to only affect long running services.
-        env["AWS_SDK_UA_APP_ID"] = f"{self.service}.{self.instance}"[:50]
-
         # We drop PAASTA_CLUSTER here because it will be added via `get_kubernetes_environment()`
         env.pop("PAASTA_CLUSTER", None)
 

@@ -1409,6 +1409,7 @@ class TestTronTools:
                 "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
                 "AWS_DEFAULT_REGION": "us-west-2",
+                "AWS_SDK_UA_APP_ID": "my_service.my_job.do_something",
             },
             "topology_spread_constraints": [
                 {
@@ -2004,7 +2005,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "7ba92b71a5cdf536665260ac3fca76b3"
+        assert hasher.hexdigest() == "b4c7ee4d47787f081b58b44df10a07f1"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
