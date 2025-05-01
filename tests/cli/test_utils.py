@@ -24,7 +24,7 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
-from paasta_tools.cli.utils import get_service_auth_token
+from paasta_tools.cli.utils import run_interactive_cli
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -479,48 +479,15 @@ def test_select_k8s_secret_namespace():
     assert select_k8s_secret_namespace(namespaces) in {"a", "b"}
 
 
-@patch("paasta_tools.cli.utils.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.utils.get_current_ecosystem", autospec=True)
-@patch("paasta_tools.cli.utils.InstanceMetadataProvider", autospec=True)
-@patch("paasta_tools.cli.utils.InstanceMetadataFetcher", autospec=True)
-@patch("paasta_tools.cli.utils.get_vault_client", autospec=True)
-@patch("paasta_tools.cli.utils.get_vault_url", autospec=True)
-@patch("paasta_tools.cli.utils.get_vault_ca", autospec=True)
-def test_get_service_auth_token(
-    mock_vault_ca,
-    mock_vault_url,
-    mock_get_vault_client,
-    mock_metadata_fetcher,
-    mock_metadata_provider,
-    mock_ecosystem,
-    mock_config,
-):
-    mock_ecosystem.return_value = "dev"
-    mock_config.return_value.get_service_auth_vault_role.return_value = "foobar"
-    mock_vault_client = mock_get_vault_client.return_value
-    mock_vault_client.secrets.identity.generate_signed_id_token.return_value = {
-        "data": {"token": "sometoken"},
-    }
-    assert get_service_auth_token() == "sometoken"
-    mock_instance_creds = (
-        mock_metadata_provider.return_value.load.return_value.get_frozen_credentials.return_value
-    )
-    mock_metadata_provider.assert_called_once_with(
-        iam_role_fetcher=mock_metadata_fetcher.return_value
-    )
-    mock_vault_url.assert_called_once_with("dev")
-    mock_vault_ca.assert_called_once_with("dev")
-    mock_get_vault_client.assert_called_once_with(
-        mock_vault_url.return_value, mock_vault_ca.return_value
-    )
-    mock_vault_client.auth.aws.iam_login.assert_called_once_with(
-        mock_instance_creds.access_key,
-        mock_instance_creds.secret_key,
-        mock_instance_creds.token,
-        mount_point="aws-iam",
-        role="foobar",
-        use_token=True,
-    )
-    mock_vault_client.secrets.identity.generate_signed_id_token.assert_called_once_with(
-        name="foobar"
+@patch("paasta_tools.cli.utils.shutil", autospec=True)
+@patch("paasta_tools.cli.utils.pty", autospec=True)
+def test_run_interactive_cli(mock_pty, mock_shutil):
+    mock_shutil.get_terminal_size.return_value = (120, 50)
+    run_interactive_cli("kubectl exec foobar")
+    mock_pty.spawn.assert_called_once_with(
+        [
+            "bash",
+            "-c",
+            "export SHELL=bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
+        ]
     )

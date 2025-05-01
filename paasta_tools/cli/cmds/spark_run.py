@@ -6,6 +6,7 @@ import re
 import shlex
 import socket
 import sys
+from configparser import ConfigParser
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -25,10 +26,10 @@ from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
+from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
@@ -83,6 +84,14 @@ DEPRECATED_OPTS = {
 }
 
 SPARK_COMMANDS = {"pyspark", "spark-submit"}
+
+# config looks as follows:
+# [default]
+# aws_access_key_id = ...
+# aws_secret_access_key = ...
+SPARK_DRIVER_IAM_USER = (
+    "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
+)
 
 log = logging.getLogger(__name__)
 
@@ -153,6 +162,11 @@ def add_subparser(subparsers):
         "--force-use-eks",
         help=argparse.SUPPRESS,
         action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--get-eks-token-via-iam-user",
+        help="Use IAM user to get EKS token for long running spark-run jobs",
+        action="store_true",
     )
 
     group = list_parser.add_mutually_exclusive_group()
@@ -648,7 +662,22 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+    if args.get_eks_token_via_iam_user:
+        with open(SPARK_DRIVER_IAM_USER) as f:
+            config = ConfigParser()
+            config.read_file(f)
+
+        # these env variables are consumed by a script specified in the spark kubeconfig - and which will result in a tightly-scoped IAM identity being used for EKS cluster access
+        spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] = config["default"][
+            "aws_access_key_id"
+        ]
+        spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] = config["default"][
+            "aws_secret_access_key"
+        ]
+
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_iam_user_kubeconfig()
+    else:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -838,9 +867,9 @@ def configure_and_run_docker_container(
     if pod_template_path:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    volumes.append(
-        f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
-    )
+    # NOTE: we mount a directory here since the kubeconfig we're transitioning to requires a helper script that will co-exist in the same directory
+    kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
+    volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -1148,6 +1177,12 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
 
 def paasta_spark_run(args: argparse.Namespace) -> int:
+    if args.get_eks_token_via_iam_user and os.getuid() != 0:
+        print("Re-executing paasta spark-run with sudo..", file=sys.stderr)
+        # argv[0] is treated as command name, so prepending "sudo"
+        os.execvp("sudo", ["sudo"] + sys.argv)
+        return  # will not reach unless above function is mocked
+
     driver_envs_from_tronfig: Dict[str, str] = dict()
     if args.tronfig is not None:
         if args.job_id is None:
