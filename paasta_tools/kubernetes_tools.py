@@ -374,6 +374,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
         "paasta.yelp.com/managed": str,
+        "elbv2.k8s.aws/pod-readiness-gate-inject": str,
     },
     total=False,
 )
@@ -439,6 +440,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     crypto_keys: CryptoKeyConfig
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
+    enable_aws_lb_readiness_gate: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -2216,6 +2218,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return "true"
         return "false"
 
+    def should_enable_aws_lb_readiness_gate(self) -> bool:
+        return self.config_dict.get("enable_aws_lb_readiness_gate", False)
+
     def get_pod_template_spec(
         self,
         git_sha: str,
@@ -2397,6 +2402,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
+
+        # the default AWS LB Controller behavior is to enable this by-namespace
+        # ...but that's kinda annoying to do in a toggleable way - so let's instead
+        # toggle based on pod labels (which of course, will require changing the controller
+        # settings :p)
+        if self.should_enable_aws_lb_readiness_gate():
+            labels["elbv2.k8s.aws/pod-readiness-gate-inject"] = "enabled"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
