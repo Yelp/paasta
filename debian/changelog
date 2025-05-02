@@ -1,3 +1,13 @@
+paasta-tools (1.17.2) xenial; urgency=medium
+
+  * 1.17.2 tagged with 'make release'
+    Commit: Catch HTTP 409 errors and support non-eks-prefixed clusters
+    (#4051)  1. Handle HTTP 409 errors, which you"d otherwise get for
+    both of these commands when trying to start on an existing job 2.
+    Support clusters that don"t have an extra "eks-" in the wrapper name
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 02 May 2025 08:23:28 -0700
+
 paasta-tools (1.17.1) xenial; urgency=medium
 
   * 1.17.1 tagged with 'make release'
