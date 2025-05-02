@@ -1,3 +1,16 @@
+paasta-tools (1.18.0) xenial; urgency=medium
+
+  * 1.18.0 tagged with 'make release'
+    Commit: Enable labeling pods with AWS LB Controller readiness toggle
+    (#4054)  As mentioned in the code comment below, the default way to
+    enable this is per-namespace - that"s somewhat annoying since we
+    generally don"t really edit namespace labels in PaaSTA post-creation
+    (unless we"re doing a one-time bulk edit): so let"s instead see if
+    we can configure the AWS LB Controller to only match on pods with
+    this label (and remove the namespace selector)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 02 May 2025 11:38:17 -0700
+
 paasta-tools (1.17.2) xenial; urgency=medium
 
   * 1.17.2 tagged with 'make release'
