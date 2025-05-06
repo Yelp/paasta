@@ -305,6 +305,8 @@ def generate_toolbox_deployment(
         cluster,
         load_deployments=False,
     )
+    # NOTE: we're explicitly dynamically mounting a single user's public keys
+    # as we want these pods to only be usable by said user.
     adhoc_deployment.config_dict.setdefault("extra_volumes", []).append(
         {
             "containerPath": f"/etc/authorized_keys.d/{user}.pub",

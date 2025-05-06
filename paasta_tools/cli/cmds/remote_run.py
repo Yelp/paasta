@@ -105,6 +105,10 @@ def paasta_remote_run_start(
     print("Pod ready, establishing interactive session...")
 
     if args.toolbox:
+        # NOTE: we only do this for toolbox containers since those images are built with interactive
+        # access in mind, and SSH sessions provide better auditability of user actions.
+        # I.e., being `nobody` is fine in a normal remote-run, but in toolbox containers
+        # we will require knowing the real user (and some tools may need that too).
         exec_command = f"ssh -A {poll_response.pod_address}"
     else:
         token_response = client.remote_run.remote_run_token(
