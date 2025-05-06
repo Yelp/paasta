@@ -453,7 +453,11 @@ def create_pod_scoped_role(
             labels={POD_OWNER_LABEL: user},
         ),
     )
-    kube_client.rbac.create_namespaced_role(namespace=namespace, body=role)
+    try:
+        kube_client.rbac.create_namespaced_role(namespace=namespace, body=role)
+    except ApiException as e:
+        if e.status != 409:
+            raise
     return role_name
 
 
@@ -490,10 +494,14 @@ def bind_role_to_service_account(
             ),
         ],
     )
-    kube_client.rbac.create_namespaced_role_binding(
-        namespace=namespace,
-        body=role_binding,
-    )
+    try:
+        kube_client.rbac.create_namespaced_role_binding(
+            namespace=namespace,
+            body=role_binding,
+        )
+    except ApiException as e:
+        if e.status != 409:
+            raise
 
 
 def get_remote_run_roles(kube_client: KubeClient, namespace: str) -> List[V1Role]:

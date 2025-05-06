@@ -510,6 +510,9 @@ instance MAY have:
 
     NOTE: it's possible to set only one of the bounds, if you only want to set a lower or upper bound (i.e., setting both min/max is not required).
 
+  * ``enable_aws_lb_readiness_gate``: A boolean indicating whether to enable injecting AWS Load Balancer readiness gates for this instance. Defaults to ``false``.
+    This is only applicable to a very small subset of services at Yelp - please chat with #paasta before enabling this.
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier

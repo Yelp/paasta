@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import shutil
 import time
 from typing import List
 
@@ -32,7 +33,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 KUBECTL_CMD_TEMPLATE = (
-    "kubectl-eks-{cluster} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+    "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
 
 
@@ -109,12 +110,16 @@ def paasta_remote_run_start(
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
         )
+        kubectl_wrapper = f"kubectl-eks-{args.cluster}"
+        if not shutil.which(kubectl_wrapper):
+            kubectl_wrapper = f"kubectl-{args.cluster}"
         exec_command = KUBECTL_CMD_TEMPLATE.format(
-            cluster=args.cluster,
+            kubectl_wrapper=kubectl_wrapper,
             namespace=poll_response.namespace,
             pod=poll_response.pod_name,
             token=token_response.token,
         )
+
     run_interactive_cli(exec_command)
     return 0
 
