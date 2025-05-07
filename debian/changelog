@@ -1,3 +1,11 @@
+paasta-tools (1.19.0) xenial; urgency=medium
+
+  * 1.19.0 tagged with 'make release'
+    Commit: Update paasta_tools/kubernetes/remote_run.py  Co-authored-
+    by: Luis Pérez <luisp@yelp.com>
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 May 2025 13:32:42 -0700
+
 paasta-tools (1.18.0) xenial; urgency=medium
 
   * 1.18.0 tagged with 'make release'
