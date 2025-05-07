@@ -298,6 +298,9 @@ def generate_toolbox_deployment(
         raise RemoteRunError(
             f"Provided username contains non-alphanumeric characters: {user}"
         )
+    # NOTE: API authorization is enforced by service, and we want different rules
+    # for each toolbox, so clients send a combined service-instance string, and then
+    # we split it here to laod the correct instance settings.
     adhoc_instance = service[len(TOOLBOX_MOCK_SERVICE) + 1 :]
     adhoc_deployment = load_adhoc_job_config(
         TOOLBOX_MOCK_SERVICE,

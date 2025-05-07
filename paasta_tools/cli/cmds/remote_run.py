@@ -44,6 +44,9 @@ def _list_services_and_toolboxes() -> List[str]:
         )
     except Exception:
         toolbox_instances = set()
+    # NOTE: API authorization is enforced by service, and we want different rules
+    # for each toolbox, so we combine service and instance in this case to properly
+    # allow that to happen.
     return list(list_services()) + sorted(
         f"{TOOLBOX_MOCK_SERVICE}-{instance}" for instance in toolbox_instances
     )
