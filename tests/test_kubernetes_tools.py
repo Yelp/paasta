@@ -961,6 +961,7 @@ class TestKubernetesDeploymentConfig:
             service_namespace_config = mock.Mock()
             service_namespace_config.get_healthcheck_mode.return_value = "http"
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
+            service_namespace_config.get_longest_timeout_ms.return_value = 1000
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
@@ -2261,24 +2262,38 @@ class TestKubernetesDeploymentConfig:
         assert self.deployment.get_pod_anti_affinity() == expected_affinity
 
     @pytest.mark.parametrize(
-        "termination_action,expected",
+        "is_in_smartstack,termination_action,expected",
         [
-            (None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            ("", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ([], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ("/bin/no-args", ["/bin/no-args"]),  # no args command
-            (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
+            (True, None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
+            (True, "", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            (True, [], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            (True, "/bin/no-args", ["/bin/no-args"]),  # no args command
+            (True, ["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
+            (
+                False,
+                None,
+                ["/bin/sh", "-c", "sleep 0"],
+            ),  # no termination action and not in smartstack
         ],
     )
     def test_kubernetes_container_termination_action(
-        self, termination_action, expected
+        self, is_in_smartstack, termination_action, expected
     ):
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.is_in_smartstack.return_value = is_in_smartstack
+        mock_service_namespace_config.get_longest_timeout_ms.return_value = 1000
+
         if termination_action:
             self.deployment.config_dict["lifecycle"] = {
                 "pre_stop_command": termination_action
             }
         handler = V1LifecycleHandler(_exec=V1ExecAction(command=expected))
-        assert self.deployment.get_kubernetes_container_termination_action() == handler
+        assert (
+            self.deployment.get_kubernetes_container_termination_action(
+                mock_service_namespace_config
+            )
+            == handler
+        )
 
     @pytest.mark.parametrize(
         "whitelist,blacklist,expected",
@@ -4441,7 +4456,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config8031ca07"
+            == "config2b01a8cb"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4487,7 +4502,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configae0706b5"
+            == "config89dac766"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4534,7 +4549,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config17be5e89"
+            == "config4b3b6ad6"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

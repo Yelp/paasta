@@ -223,9 +223,6 @@ JOB_TYPE_LABEL_NAME = "job_type"
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
-DEFAULT_PRESTOP_SLEEP_SECONDS = 30
-DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
-
 
 DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
     "cpu": 0.1,
@@ -306,6 +303,8 @@ class CustomResourceDefinition(NamedTuple):
 class KubeLifecycleDict(TypedDict, total=False):
     termination_grace_period_seconds: int
     pre_stop_command: Union[str, List[str]]
+    pre_stop_drain_seconds: int
+    pre_stop_wait_for_connections_to_complete: bool
 
 
 class KubeAffinityCondition(TypedDict, total=False):
@@ -1131,7 +1130,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             command=[
                                 "/bin/sh",
                                 "-c",
-                                f"/usr/bin/hadown {registrations}; sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                                f"/usr/bin/hadown {registrations}; sleep {self.get_hacheck_prestop_sleep_seconds()}",
                             ]
                         )
                     )
@@ -1176,7 +1175,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                                 "-c",
                                 # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
                                 # metrics up until our Pod dies
-                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                                f"sleep {self.get_hacheck_prestop_sleep_seconds()}",
                             ]
                         )
                     )
@@ -1477,7 +1476,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             env=self.get_container_env(),
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
-                pre_stop=self.get_kubernetes_container_termination_action()
+                pre_stop=self.get_kubernetes_container_termination_action(
+                    service_namespace_config
+                )
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
@@ -1509,17 +1510,77 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
-        command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
-            "pre_stop_command", []
+    def get_lifecycle_dict(self) -> KubeLifecycleDict:
+        return self.config_dict.get("lifecycle", KubeLifecycleDict({}))
+
+    def get_prestop_sleep_seconds(self, is_in_smartstack: bool) -> int:
+        if is_in_smartstack:
+            default = 30
+        else:
+            default = 0
+        return self.get_lifecycle_dict().get("pre_stop_drain_seconds", default)
+
+    def get_hacheck_prestop_sleep_seconds(self) -> int:
+        """The number of seconds to sleep between hadown and terminating the hacheck container. We want hacheck to be
+        up for slightly longer than the main container is, so we default to pre_stop_drain_seconds + 1.
+
+        It doesn't super matter if hacheck goes down before the main container -- if it's down, healthchecks will fail
+        and the service will be removed from smartstack, which is the same effect we get after running hadown.
+        """
+
+        # Everywhere this value is currently used (hacheck sidecar or gunicorn sidecar), we can pretty safely
+        # assume that the service is in smartstack.
+        return self.get_prestop_sleep_seconds(is_in_smartstack=True) + 1
+
+    def get_pre_stop_wait_for_connections_to_complete(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> bool:
+        return self.get_lifecycle_dict().get(
+            "pre_stop_wait_for_connections_to_complete",
+            service_namespace_config.is_in_smartstack()
+            and service_namespace_config.get_longest_timeout_ms() >= 20000,
         )
+
+    def get_kubernetes_container_termination_action(
+        self,
+        service_namespace_config: ServiceNamespaceConfig,
+    ) -> V1LifecycleHandler:
+        command = self.get_lifecycle_dict().get("pre_stop_command", [])
         # default pre stop hook for the container
         if not command:
-            return V1LifecycleHandler(
-                _exec=V1ExecAction(
-                    command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
-                )
+            pre_stop_sleep_seconds = self.get_prestop_sleep_seconds(
+                service_namespace_config.is_in_smartstack()
             )
+            if self.get_pre_stop_wait_for_connections_to_complete(
+                service_namespace_config
+            ):
+                # This pre-stop command:
+                # 1. Waits for pre_stop_sleep_seconds seconds (to give hadown time to take effect). This avoids a
+                #    potential race condition where step 2 detects no connections in flight and the pod is terminated
+                #    immediately, but because the pod is still listed in Envoy somewhere, it receives a new connection
+                #    just as the pod is terminated.
+                # 2. Every second, checks if there are any established connections to the pod. It exits when there are no
+                #    established connections.
+                # It exits when all connections are closed, which should mean the pod can be safely terminated.
+                # The first four fields of /proc/net/tcp are:
+                # 1. slot number (which is not relevant here, but it's a decimal number left-padded with whitespace)
+                # 2. local address:port (both in hex)
+                # 3. remote address:port (both in hex)
+                # 4. state (in hex)
+                # State 01 means ESTABLISHED.
+                hex_port = hex(self.get_container_port()).upper()[2:]
+                command = [
+                    "/bin/sh",
+                    "-c",
+                    f"sleep {pre_stop_sleep_seconds}; while grep '^ *[0-9]*: ........:{hex_port} ........:.... 01 ' /proc/net/tcp; do sleep 1; echo; done",
+                ]
+            else:
+                command = [
+                    "/bin/sh",
+                    "-c",
+                    f"sleep {pre_stop_sleep_seconds}",
+                ]
+
         if isinstance(command, str):
             command = [command]
         return V1LifecycleHandler(_exec=V1ExecAction(command=command))
@@ -2314,7 +2375,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             constraints += pod_topology_spread_constraints
             pod_spec_kwargs["topology_spread_constraints"] = constraints
 
-        termination_grace_period = self.get_termination_grace_period()
+        termination_grace_period = self.get_termination_grace_period(
+            service_namespace_config
+        )
         if termination_grace_period is not None:
             pod_spec_kwargs[
                 "termination_grace_period_seconds"
@@ -2644,9 +2707,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return ahash
 
-    def get_termination_grace_period(self) -> Optional[int]:
-        return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
-            "termination_grace_period_seconds"
+    def get_termination_grace_period(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> Optional[int]:
+        """Return the number of seconds that kubernetes should wait for pre-stop hooks to finish (or for the main
+        process to exit after signaling) before forcefully terminating the pod.
+
+        For smartstack services, defaults to a value long enough to allow the default pre-stop hook to finish.
+        For non-smartstack services, defaults to None (kubernetes default of 30s).
+        """
+
+        if service_namespace_config.is_in_smartstack():
+            default = self.get_hacheck_prestop_sleep_seconds() + 1
+            if self.get_pre_stop_wait_for_connections_to_complete(
+                service_namespace_config
+            ):
+                # If the max timeout is more than 30 minutes, cap it to 30 minutes.
+                # Most services with ultra-long timeouts are probably able to handle SIGTERM gracefully anyway.
+                default += int(
+                    math.ceil(
+                        min(
+                            1800,
+                            service_namespace_config.get_longest_timeout_ms() / 1000,
+                        )
+                    )
+                )
+        else:
+            default = None
+
+        return self.get_lifecycle_dict().get(
+            "termination_grace_period_seconds", default
         )
 
     def get_prometheus_shard(self) -> Optional[str]:

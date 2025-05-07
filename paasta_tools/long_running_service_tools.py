@@ -126,6 +126,16 @@ class ServiceNamespaceConfig(dict):
     def is_in_smartstack(self) -> bool:
         return "proxy_port" in self
 
+    def get_timeout_server_ms(self) -> int:
+        return self.get("timeout_server_ms", 1000)
+
+    def get_longest_timeout_ms(self) -> int:
+        """Calculate the longest amount of time a connection to this service might stay open."""
+        return max(
+            [self.get_timeout_server_ms()]
+            + list(self.get("endpoint_timeouts", {}).values())
+        )
+
 
 class LongRunningServiceConfig(InstanceConfig):
     config_dict: LongRunningServiceConfigDict
@@ -503,6 +513,7 @@ def load_service_namespace_config(
         "advertise",
         "extra_healthcheck_headers",
         "lb_policy",
+        "endpoint_timeouts",
     }
 
     for key, value in namespace_config_from_file.items():
