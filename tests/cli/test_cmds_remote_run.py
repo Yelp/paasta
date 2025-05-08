@@ -27,12 +27,15 @@ from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.remote_run.time", autospec=True)
+@patch("paasta_tools.cli.cmds.remote_run.shutil", autospec=True)
 @patch("paasta_tools.cli.cmds.remote_run.run_interactive_cli", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.remote_run.get_paasta_oapi_client_with_auth",
     autospec=True,
 )
-def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
+def test_paasta_remote_run_start(
+    mock_get_client, mock_run_cli, mock_shutil, mock_time, _
+):
     mock_config = MagicMock()
     mock_args = MagicMock(
         service="foo",
@@ -42,8 +45,10 @@ def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
         recreate=False,
         max_duration=100,
         timeout=600,
+        toolbox=False,
     )
     mock_time.time.return_value = 0
+    mock_shutil.which.return_value = True
     mock_client = mock_get_client.return_value
     mock_client.remote_run.remote_run_start.return_value = MagicMock(
         status=200, message="started", job_name="foobar"
@@ -61,11 +66,24 @@ def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
         "foo",
         "bar",
         RemoteRunStart(
-            user="pippo", interactive=True, recreate=False, max_duration=100
+            user="pippo",
+            interactive=True,
+            recreate=False,
+            max_duration=100,
+            toolbox=False,
         ),
     )
     mock_client.remote_run.remote_run_poll.assert_has_calls(
-        [call("foo", "bar", "foobar")] * 3
+        [
+            call(
+                service="foo",
+                instance="bar",
+                job_name="foobar",
+                user="pippo",
+                toolbox=False,
+            )
+        ]
+        * 3
     )
     mock_client.remote_run.remote_run_token.assert_called_once_with(
         "foo", "bar", "pippo"
@@ -86,7 +104,7 @@ def test_paasta_remote_run_start(mock_get_client, mock_run_cli, mock_time, _):
 )
 def test_paasta_remote_run_stop(mock_get_client, _):
     mock_config = MagicMock()
-    mock_args = MagicMock(service="foo", instance="bar")
+    mock_args = MagicMock(service="foo", instance="bar", toolbox=False)
     mock_client = mock_get_client.return_value
     mock_client.remote_run.remote_run_stop.return_value = MagicMock(
         status=200, message="stopped"
@@ -95,5 +113,5 @@ def test_paasta_remote_run_stop(mock_get_client, _):
     mock_client.remote_run.remote_run_stop.assert_called_once_with(
         "foo",
         "bar",
-        RemoteRunStop(user="pippo"),
+        RemoteRunStop(user="pippo", toolbox=False),
     )

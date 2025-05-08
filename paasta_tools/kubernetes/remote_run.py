@@ -32,6 +32,8 @@ from kubernetes.client import V1Subject
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
+from paasta_tools.adhoc_tools import load_adhoc_job_config
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -47,6 +49,7 @@ from paasta_tools.utils import load_system_paasta_config
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
 POD_OWNER_LABEL = paasta_prefixed("pod_owner")
+TOOLBOX_MOCK_SERVICE = "prod-toolbox"
 DEFAULT_MAX_DURATION_LIMIT = 8 * 60 * 60  # 8 hours
 
 
@@ -59,6 +62,7 @@ class RemoteRunOutcome(TypedDict, total=False):
     message: str
     job_name: str
     pod_name: str
+    pod_address: str
     namespace: str
 
 
@@ -83,6 +87,7 @@ def remote_run_start(
     interactive: bool,
     recreate: bool,
     max_duration: int,
+    is_toolbox: bool,
 ) -> RemoteRunOutcome:
     """Trigger remote-run job
 
@@ -93,21 +98,27 @@ def remote_run_start(
     :param bool interactive: whether it is expected to access the remote-run job interactively
     :param bool recreate: whether to recreate remote-run job if existing
     :param int max_duration: maximum allowed duration for the remote-ruh job
+    :param bool is_toolbox: requested job is for a toolbox container
     :return: outcome of the operation, and resulting Kubernetes pod information
     """
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_service_config(service, instance, cluster)
+    deployment_config = (
+        generate_toolbox_deployment(service, cluster, user)
+        if is_toolbox
+        else load_eks_service_config(service, instance, cluster)
+    )
 
     # Set to interactive mode
-    if interactive:
+    if interactive and not is_toolbox:
         deployment_config.config_dict["cmd"] = f"sleep {max_duration}"
 
     # Create the app with a new name
     formatted_job = deployment_config.format_kubernetes_job(
         job_label=REMOTE_RUN_JOB_LABEL,
         deadline_seconds=max_duration,
+        keep_routable_ip=is_toolbox,
     )
     job_name = _format_remote_run_job_name(formatted_job, user)
     formatted_job.metadata.name = job_name
@@ -122,7 +133,13 @@ def remote_run_start(
         if e.status != 409:
             raise
         if recreate:
-            remote_run_stop(service, instance, cluster, user)
+            remote_run_stop(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                user=user,
+                is_toolbox=is_toolbox,
+            )
             return remote_run_start(
                 service=service,
                 instance=instance,
@@ -131,6 +148,7 @@ def remote_run_start(
                 interactive=interactive,
                 recreate=False,
                 max_duration=max_duration,
+                is_toolbox=is_toolbox,
             )
 
     return {
@@ -141,7 +159,12 @@ def remote_run_start(
 
 
 def remote_run_ready(
-    service: str, instance: str, cluster: str, job_name: str
+    service: str,
+    instance: str,
+    cluster: str,
+    job_name: str,
+    user: str,
+    is_toolbox: bool,
 ) -> RemoteRunOutcome:
     """Check if remote-run pod is ready
 
@@ -149,24 +172,32 @@ def remote_run_ready(
     :param str instance: service instance
     :param str cluster: paasta cluster
     :param str job_name: name of the remote-run job to check
+    :param bool is_toolbox: requested job is for a toolbox container
     :return: job status, with pod info
     """
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_service_config(service, instance, cluster)
+    deployment_config = (
+        generate_toolbox_deployment(service, cluster, user)
+        if is_toolbox
+        else load_eks_service_config(service, instance, cluster)
+    )
     namespace = deployment_config.get_namespace()
 
     pod = find_job_pod(kube_client, namespace, job_name)
     if not pod:
         return {"status": 404, "message": "No pod found"}
     if pod.status.phase == "Running":
-        return {
+        result: RemoteRunOutcome = {
             "status": 200,
             "message": "Pod ready",
             "pod_name": pod.metadata.name,
             "namespace": namespace,
         }
+        if is_toolbox:
+            result["pod_address"] = pod.status.pod_ip
+        return result
     return {
         "status": 204,
         "message": "Pod not ready",
@@ -174,7 +205,11 @@ def remote_run_ready(
 
 
 def remote_run_stop(
-    service: str, instance: str, cluster: str, user: str
+    service: str,
+    instance: str,
+    cluster: str,
+    user: str,
+    is_toolbox: bool,
 ) -> RemoteRunOutcome:
     """Stop remote-run job
 
@@ -182,12 +217,17 @@ def remote_run_stop(
     :param str instance: service instance
     :param str cluster: paasta cluster
     :param str user: the user requesting the remote-run sandbox
+    :param bool is_toolbox: requested job is for a toolbox container
     :return: outcome of the operation
     """
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_service_config(service, instance, cluster)
+    deployment_config = (
+        generate_toolbox_deployment(service, cluster, user)
+        if is_toolbox
+        else load_eks_service_config(service, instance, cluster)
+    )
 
     # Rebuild the job metadata
     formatted_job = deployment_config.format_kubernetes_job(
@@ -242,6 +282,50 @@ def remote_run_token(
     role = create_pod_scoped_role(kube_client, namespace, pod_name, user)
     bind_role_to_service_account(kube_client, namespace, service_account, role, user)
     return create_temp_exec_token(kube_client, namespace, service_account)
+
+
+def generate_toolbox_deployment(
+    service: str, cluster: str, user: str
+) -> EksDeploymentConfig:
+    """Creates virtual EKS deployment for toolbox containers starting from adhoc configuration
+
+    :param str service: toolbox name
+    :param str cluster: target deployment cluster
+    :param str user: user requesting the toolbox
+    :return: deployment configuration
+    """
+    if not user.isalnum():
+        raise RemoteRunError(
+            f"Provided username contains non-alphanumeric characters: {user}"
+        )
+    # NOTE: API authorization is enforced by service, and we want different rules
+    # for each toolbox, so clients send a combined service-instance string, and then
+    # we split it here to load the correct instance settings.
+    adhoc_instance = service[len(TOOLBOX_MOCK_SERVICE) + 1 :]
+    adhoc_deployment = load_adhoc_job_config(
+        TOOLBOX_MOCK_SERVICE,
+        adhoc_instance,
+        cluster,
+        load_deployments=False,
+    )
+    # NOTE: we're explicitly dynamically mounting a single user's public keys
+    # as we want these pods to only be usable by said user.
+    adhoc_deployment.config_dict.setdefault("extra_volumes", []).append(
+        {
+            "containerPath": f"/etc/authorized_keys.d/{user}.pub",
+            "hostPath": f"/etc/authorized_keys.d/{user}.pub",
+            "mode": "RO",
+        },
+    )
+    adhoc_deployment.config_dict.setdefault("env", {})["SANDBOX_USER"] = user
+    adhoc_deployment.config_dict["routable_ip"] = True
+    return EksDeploymentConfig(
+        service=service,
+        cluster=cluster,
+        instance="main",
+        config_dict=adhoc_deployment.config_dict,
+        branch_dict=adhoc_deployment.branch_dict,
+    )
 
 
 def find_job_pod(
@@ -374,7 +458,11 @@ def create_pod_scoped_role(
             labels={POD_OWNER_LABEL: user},
         ),
     )
-    kube_client.rbac.create_namespaced_role(namespace=namespace, body=role)
+    try:
+        kube_client.rbac.create_namespaced_role(namespace=namespace, body=role)
+    except ApiException as e:
+        if e.status != 409:
+            raise
     return role_name
 
 
@@ -411,10 +499,14 @@ def bind_role_to_service_account(
             ),
         ],
     )
-    kube_client.rbac.create_namespaced_role_binding(
-        namespace=namespace,
-        body=role_binding,
-    )
+    try:
+        kube_client.rbac.create_namespaced_role_binding(
+            namespace=namespace,
+            body=role_binding,
+        )
+    except ApiException as e:
+        if e.status != 409:
+            raise
 
 
 def get_remote_run_roles(kube_client: KubeClient, namespace: str) -> List[V1Role]:

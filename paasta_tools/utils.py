@@ -330,6 +330,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cfs_period_us: float
     cpu_burst_add: float
     cap_add: List
+    privileged: bool
     env: Dict[str, str]
     monitoring: MonitoringDict
     deploy_blacklist: UnsafeDeployBlacklist
@@ -354,6 +355,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role_provider: str
     service: str
     uses_bulkdata: bool
+    docker_url: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -789,6 +791,10 @@ class InstanceConfig:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
+        # NOTE: we're explicitly only allowing this for adhoc instances to support remote-run toolboxes.
+        # If you're looking at this to expand that support for non-remote-run cases, please chat with #paasta first.
+        if "docker_url" in self.config_dict:
+            return self.config_dict["docker_url"]
         registry_uri = self.get_docker_registry(
             system_paasta_config=system_paasta_config
         )

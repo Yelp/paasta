@@ -34,6 +34,7 @@ def view_remote_run_start(request):
     user = request.swagger_data["json_body"]["user"]
     interactive = request.swagger_data["json_body"].get("interactive", True)
     recreate = request.swagger_data["json_body"].get("recreate", False)
+    is_toolbox = request.swagger_data["json_body"].get("toolbox", False)
     max_duration = min(
         request.swagger_data["json_body"].get("max_duration", DEFAULT_MAX_DURATION),
         get_max_job_duration_limit(),
@@ -47,6 +48,7 @@ def view_remote_run_start(request):
             interactive=interactive,
             recreate=recreate,
             max_duration=max_duration,
+            is_toolbox=is_toolbox,
         )
     except Exception:
         error_message = traceback.format_exc()
@@ -58,12 +60,16 @@ def view_remote_run_poll(request):
     service = request.swagger_data["service"]
     instance = request.swagger_data["instance"]
     job_name = request.swagger_data["job_name"]
+    user = request.swagger_data["user"]
+    is_toolbox = request.swagger_data.get("toolbox", False)
     try:
         return remote_run_ready(
             service=service,
             instance=instance,
             cluster=settings.cluster,
             job_name=job_name,
+            user=user,
+            is_toolbox=is_toolbox,
         )
     except Exception:
         error_message = traceback.format_exc()
@@ -75,12 +81,14 @@ def view_remote_run_stop(request):
     service = request.swagger_data["service"]
     instance = request.swagger_data["instance"]
     user = request.swagger_data["json_body"]["user"]
+    is_toolbox = request.swagger_data["json_body"].get("toolbox", False)
     try:
         return remote_run_stop(
             service=service,
             instance=instance,
             cluster=settings.cluster,
             user=user,
+            is_toolbox=is_toolbox,
         )
     except Exception:
         error_message = traceback.format_exc()
