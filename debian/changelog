@@ -1,3 +1,20 @@
+paasta-tools (1.21.0) xenial; urgency=medium
+
+  * 1.21.0 tagged with 'make release'
+    Commit: move AWS_SDK_UA_APP_ID env var to parent instance config
+    (#4057)  ... so that it"ll affect Tron instances as well (follow up
+    to https://github.com/Yelp/paasta/pull/4052).  I noticed that the
+    effort of doing this in two steps is kinda wasted, as the `env` in a
+    pod container spec is a list, and seems not to be sorted, so if the
+    same key-value gets added but in different moments, it"ll cause the
+    config hash to be different.  A couple of possible options to
+    address that: * sort pod `env` by name, so we get one more big
+    bounce, but it"s stable from now on; * `pop` and add back just this
+    key in kube_tools (super ugly, but avoids a bounce); * ignore the
+    problem, and do another big bounce for this.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 08 May 2025 12:24:35 -0700
+
 paasta-tools (1.20.0) xenial; urgency=medium
 
   * 1.20.0 tagged with 'make release'
