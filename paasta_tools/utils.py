@@ -1947,6 +1947,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_client_timeout: int
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
+    api_auth_sso_oidc_client_id: str
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_config_instance_type_aliases: Dict[str, str]
@@ -2781,6 +2782,9 @@ class SystemPaastaConfig:
 
     def get_service_auth_sso_oidc_client_id(self) -> str:
         return self.config_dict.get("service_auth_sso_oidc_client_id", "")
+
+    def get_api_auth_sso_oidc_client_id(self) -> str:
+        return self.config_dict.get("api_auth_sso_oidc_client_id", "")
 
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])

@@ -35,7 +35,7 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.cli.authentication import get_service_auth_token
-from paasta_tools.cli.authentication import get_sso_service_auth_token
+from paasta_tools.cli.authentication import get_sso_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -936,7 +936,7 @@ def run_docker_container(
     if use_service_auth_token:
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
     elif use_sso_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_service_auth_token()
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
 
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
