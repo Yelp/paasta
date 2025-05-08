@@ -44,7 +44,7 @@ is a heavily customised version of SmartStack and Envoy, allows many systems at 
 to communicate with PaaSTA services and each other.
 
 On the other hand, requiring lots of components, means lots of infrastructure to
-setup before PaaSTA can work effectively! Realistacally, running PaaSTA outside of Yelp
+setup before PaaSTA can work effectively! Realistically, running PaaSTA outside of Yelp
 would not be sensible, because in addition to the integrations mentioned above we also
 have strong opinions encoded in other tooling that you would need to replicate. Nevertheless,
 we code PaaSTA in the open because we think it is useful to share our approach and hope that
