@@ -3760,6 +3760,8 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
         parts = docker_url.split("/")
         parts = parts[-1].split("-")
         git_sha = parts[-1]
+        # Further ensure to only grab the image label in case not using paasta images
+        git_sha = git_sha.split(":")[-1]
 
     return git_sha if long else git_sha[:8]
 
