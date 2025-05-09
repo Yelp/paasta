@@ -71,7 +71,7 @@ def test_file_exists_flock(tmpdir):
         os.kill(flock_process, signal.SIGKILL)
 
 
-@pytest.yield_fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def mock_randbits():
     # make getrandbits() reliably return an incrementing counter starting at 0
     class counter(itertools.count):

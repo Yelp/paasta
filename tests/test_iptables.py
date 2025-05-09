@@ -17,14 +17,14 @@ EMPTY_RULE = iptables.Rule(
 )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_Table():
     with mock.patch.object(iptc, "Table", autospec=True) as m:
         m.return_value.autocommit = True
         yield m
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_Chain():
     with mock.patch.object(iptc, "Chain", autospec=True) as m:
         yield m
@@ -262,7 +262,7 @@ class TestReorderChain:
         def to_iptc(self):
             return self
 
-    @pytest.yield_fixture(autouse=True)
+    @pytest.fixture(autouse=True)
     def chain_mock(self):
         with mock.patch.object(
             iptables, "iptables_txn", autospec=True

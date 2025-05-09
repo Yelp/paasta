@@ -26,7 +26,7 @@ MOCK_NAMESPACES = [
 ]
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_namespaces():
     with mock.patch(
         "paasta_tools.generate_services_file.get_all_namespaces",

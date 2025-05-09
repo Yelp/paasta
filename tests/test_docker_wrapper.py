@@ -277,7 +277,7 @@ def test_add_argument(input_args, expected_args):
 
 
 class TestMain:
-    @pytest.yield_fixture(autouse=True)
+    @pytest.fixture(autouse=True)
     def mock_execlp(self):
         # always patch execlp so we don't actually exec
         with mock.patch.object(
@@ -344,7 +344,7 @@ class TestMain:
             mock.call("docker", "docker", "ps", "--env=MESOS_TASK_ID=my-mesos-task-id")
         ]
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def mock_mac_address(self):
         with mock.patch.object(
             docker_wrapper_imports,
