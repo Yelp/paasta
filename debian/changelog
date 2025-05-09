@@ -1,3 +1,10 @@
+paasta-tools (1.21.1) xenial; urgency=medium
+
+  * 1.21.1 tagged with 'make release'
+    Commit: differentiate auth for services and paasta apis (#4058)
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 09 May 2025 01:36:57 -0700
+
 paasta-tools (1.21.0) xenial; urgency=medium
 
   * 1.21.0 tagged with 'make release'
