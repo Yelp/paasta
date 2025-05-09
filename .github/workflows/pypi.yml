@@ -36,9 +36,10 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      # this will create a .tar.gz with all the code (i.e., an sdist)
-      - run: python setup.py sdist
-      # and finally, upload the above sdist to public PyPI
+      - run: pip install build
+      # this will create both a source distribution and a wheel
+      - run: python -m build
+      # and finally, upload the distributions to public PyPI
       - uses: pypa/gh-action-pypi-publish@v1.2.2
         with:
           password: ${{ secrets.pypi_password }}
