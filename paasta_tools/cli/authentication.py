@@ -71,7 +71,15 @@ def get_service_auth_token() -> str:
     return response["data"]["token"]
 
 
-def get_sso_service_auth_token() -> str:
-    """Generate an authentication token for the calling user from the Single Sign On provider"""
-    client_id = load_system_paasta_config().get_service_auth_sso_oidc_client_id()
+def get_sso_auth_token(paasta_apis: bool = False) -> str:
+    """Generate an authentication token for the calling user from the Single Sign On provider
+
+    :param bool paasta_apis: authenticate for PaaSTA APIs
+    """
+    system_config = load_system_paasta_config()
+    client_id = (
+        system_config.get_api_auth_sso_oidc_client_id()
+        if paasta_apis
+        else system_config.get_service_auth_sso_oidc_client_id()
+    )
     return get_and_cache_jwt_default(client_id)
