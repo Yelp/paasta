@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import time
+from datetime import datetime
+from typing import Optional
+
+import pytz
+from pytimeparse.timeparse import timeparse
 
 import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.api import client
@@ -58,6 +64,24 @@ def add_subparser(subparsers):
     autoscale_parser.add_argument(
         "--set", help="Set the number to scale to. Must be an Int.", type=int
     )
+
+    # Temporary override options
+    override_group = autoscale_parser.add_argument_group("Temporary Override Options")
+    override_group.add_argument(
+        "--set-min",
+        help="Set the minimum number of replicas (must be >= 1). Requires --for parameter.",
+        type=lambda x: int(x)
+        if int(x) >= 1
+        else autoscale_parser.error("Minimum instances must be >= 1"),
+        default=None,
+    )
+    override_group.add_argument(
+        "--for",
+        dest="duration",
+        help="Duration for the temporary override (e.g. '3h', '30m'). Required when using --set-min.",
+        default=None,
+    )
+
     autoscale_parser.add_argument(
         "-d",
         "--soa-dir",
@@ -69,9 +93,46 @@ def add_subparser(subparsers):
     autoscale_parser.set_defaults(command=paasta_autoscale)
 
 
+def parse_duration_to_seconds(duration: str) -> Optional[int]:
+    """Parse a duration string like '3h' or '30m' into seconds.
+
+    Args:
+        duration_str: A string representing a duration (e.g., "3h", "30m", "1d")
+
+    Returns:
+        The duration in seconds, or None if parsing failed
+    """
+    if not duration:
+        return None
+
+    seconds = timeparse(duration)
+    return seconds
+
+
 def paasta_autoscale(args):
     log.setLevel(logging.DEBUG)
     service = figure_out_service_name(args)
+
+    if args.set_min is not None and not args.duration:
+        print(
+            PaastaColors.yellow(
+                "WARNING: --set-min requires --for parameter to specify duration - defaulting to 30m"
+            )
+        )
+        args.duration = "30m"
+
+    if args.duration is not None and args.set_min is None:
+        print(PaastaColors.red("Error: --for requires --set-min parameter"))
+        return 1
+
+    if args.set is not None and args.set_min is not None:
+        print(
+            PaastaColors.red(
+                "Error: Cannot use both --set and --set-min at the same time"
+            )
+        )
+        return 1
+
     instance_config = next(
         get_instance_configs_for_service(
             service=service,
@@ -83,7 +144,7 @@ def paasta_autoscale(args):
     )
     if not instance_config:
         print(
-            "Could not find config files for this service instance in soaconfigs. Maybe you mispelled an argument?"
+            "Could not find config files for this service instance in soaconfigs. Maybe you misspelled an argument?"
         )
         return 1
 
@@ -99,12 +160,15 @@ def paasta_autoscale(args):
         return 1
 
     try:
-        if args.set is None:
+        # get current autoscaler count
+        if args.set is None and args.set_min is None:
             log.debug("Getting the current autoscaler count...")
             res, status, _ = api.autoscaler.get_autoscaler_count(
                 service=service, instance=args.instance, _return_http_data_only=False
             )
-        else:
+
+        # set desired instances
+        elif args.set is not None:
             log.debug(f"Setting desired instances to {args.set}.")
             msg = paastamodels.AutoscalerCountMsg(desired_instances=int(args.set))
             res, status, _ = api.autoscaler.update_autoscaler_count(
@@ -121,16 +185,53 @@ def paasta_autoscale(args):
                 instance=args.instance,
                 cluster=args.cluster,
             )
+
+        # set lower bound
+        elif args.set_min is not None:
+            duration_seconds = parse_duration_to_seconds(args.duration)
+            if not duration_seconds:
+                print(
+                    PaastaColors.red(
+                        f"Error: Invalid duration format '{args.duration}'. "
+                        f"Please use a format like '3h' or '30m'."
+                    )
+                )
+                return 1
+            # NOTE: this is explicitly using time.time() since we're doing everything using epoch time
+            # for simplicity
+            expiration_time = time.time() + duration_seconds
+
+            log.debug(
+                f"Setting minimum instances to {args.set_min} for duration {args.duration}."
+            )
+            msg = paastamodels.HPAOverride(
+                min_instances=args.set_min,
+                expire_after=expiration_time,
+            )
+
+            res, status, _ = api.autoscaler.set_hpa_override(
+                service=service,
+                instance=args.instance,
+                hpa_override=msg,
+                _return_http_data_only=False,
+            )
+            _log_audit(
+                action="manual-autoscale-override",
+                action_details=str(msg),
+                service=service,
+                instance=args.instance,
+                cluster=args.cluster,
+            )
     except api.api_error as exc:
         status = exc.status
 
     if not 200 <= status <= 299:
         print(
             PaastaColors.red(
-                f"ERROR: '{args.instance}' is not configured to autoscale, "
-                f"so paasta autoscale could not scale it up on demand. "
+                f"ERROR: '{args.instance}' is not configured to autoscale OR you set min_instances above the current max_instances, "
+                f"and `paasta autoscale` could not update it. "
                 f"If you want to be able to boost this service, please configure autoscaling for the service "
-                f"in its config file by setting min and max instances. Example: \n"
+                f"in its config file by setting min and max instances appropriately. Example: \n"
                 f"{args.instance}:\n"
                 f"     min_instances: 5\n"
                 f"     max_instances: 50"
@@ -139,5 +240,23 @@ def paasta_autoscale(args):
         return 0
 
     log.debug(f"Res: {res} Http: {status}")
-    print(res.desired_instances)
+    if not args.set_min:
+        print(f"Desired instances: {res.desired_instances}")
+    elif args.set_min:
+        print(
+            f"Temporary override set for {args.service}.{args.instance} with minimum instances: {args.set_min}"
+        )
+        # folks using this might be in different timezones, so let's convert the expiration time to a few common ones
+        # to make it extra clear when the override will expire
+        epoch_time = datetime.fromtimestamp(res.expire_after)
+        eastern_time = epoch_time.astimezone(pytz.timezone("US/Eastern"))
+        pacific_time = epoch_time.astimezone(pytz.timezone("US/Pacific"))
+        london_time = epoch_time.astimezone(pytz.timezone("Europe/London"))
+
+        time_format = "%Y-%m-%d %H:%M:%S %Z%z"
+        print(f"The {args.duration} override will expire at:")
+        print(f"Eastern Time: {eastern_time.strftime(time_format)}")
+        print(f"Pacific Time: {pacific_time.strftime(time_format)}")
+        print(f"London Time:  {london_time.strftime(time_format)}")
+
     return 0

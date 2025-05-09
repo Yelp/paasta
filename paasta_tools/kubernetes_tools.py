@@ -320,6 +320,11 @@ class DatastoreCredentialsConfig(TypedDict, total=False):
     mysql: List[str]
 
 
+class HpaOverride(TypedDict):
+    min_instances: int
+    expire_after: str
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -890,6 +895,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         cluster: str,
         kube_client: KubeClient,
         namespace: str,
+        min_instances_override: Optional[int] = None,
     ) -> Optional[V2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
@@ -904,7 +910,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if autoscaling_params["metrics_providers"][0]["decision_policy"] == "bespoke":
             return None
 
-        min_replicas = self.get_min_instances()
+        min_replicas = min_instances_override or self.get_min_instances()
         max_replicas = self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
@@ -4645,6 +4651,73 @@ def get_kubernetes_secret_volumes(
                 ] = secret_contents
 
     return secret_volumes
+
+
+def get_namespaced_configmap(
+    name: str, *, namespace: str, kube_client: KubeClient
+) -> Optional[V1ConfigMap]:
+    try:
+        return kube_client.core.read_namespaced_config_map(
+            name=name, namespace=namespace
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+
+
+def patch_namespaced_configmap(
+    name: str,
+    body: Dict[str, str],
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> V1ConfigMap:
+    """
+    Patches a configmap with the given body. The body should be a dictionary of key-value pairs.
+    """
+    try:
+        return kube_client.core.patch_namespaced_config_map(
+            name=name, namespace=namespace, body=body
+        )
+    except ApiException as e:
+        if e.status == 404:
+            raise ValueError(f"ConfigMap {name} not found in namespace {namespace}")
+        else:
+            raise
+
+
+def get_or_create_namespaced_configmap(
+    configmap: str,
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> Tuple[V1ConfigMap, bool]:
+    """
+    Returns a 2-tuple of (the configmap, a bool representing whether it was just created)
+    """
+    try:
+        return (
+            kube_client.core.read_namespaced_config_map(
+                name=configmap, namespace=namespace
+            ),
+            False,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            configmap = V1ConfigMap(
+                metadata=V1ObjectMeta(name=configmap, namespace=namespace),
+                data={},
+            )
+            return (
+                kube_client.core.create_namespaced_config_map(
+                    namespace=namespace, body=configmap
+                ),
+                True,
+            )
+        else:
+            raise
 
 
 @lru_cache()

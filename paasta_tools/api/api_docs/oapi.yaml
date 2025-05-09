@@ -262,6 +262,20 @@ components:
           description: setpoint/target_value as specified in yelpsoa_configs
           type: string
       type: object
+    HPAOverride:
+      type: object
+      properties:
+        min_instances:
+          type: integer
+          description: Minimum number of instances to run
+          minimum: 1
+        expire_after:
+          format: float
+          type: number
+          description: Unix timestamp when this override is no longer valid
+      required:
+        - min_instances
+        - expire_after
     InstanceBounceStatus:
       properties:
         active_shas:
@@ -1427,6 +1441,61 @@ paths:
           description: Service autoscaler successfully paused
         "500":
           description: Unable to talk to zookeeper
+  /service_autoscaler/{service}/{instance}/hpa_override:
+    post:
+      operationId: set_hpa_override
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HPAOverride'
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    description: Service name
+                  instance:
+                    type: string
+                    description: Instance name
+                  min_instances:
+                    type: integer
+                    description: Minimum number of instances to run
+                  expire_after:
+                    format: float
+                    type: number
+                    description: Unix timestamp after which the override is no longer valid
+                  status:
+                    type: string
+                    description: Status of the operation
+          description: Successfully set HPA override
+        "400":
+          description: Invalid request parameters
+        "501":
+          description: Autoscaling not supported for this instance type
+        "500":
+          description: Failed to set HPA override
+      summary: Set a temporary HPA override for a service instance
+      tags:
+      - autoscaler
   /services:
     get:
       operationId: list_services_for_cluster
@@ -1520,20 +1589,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AutoscalerCountMsg'
+              type: object
+              required:
+                - desired_instances
+              properties:
+                desired_instances:
+                  type: integer
+                  description: The desired number of instances
         required: true
       responses:
         "202":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AutoscalerCountMsg'
+                type: object
+                properties:
+                  desired_instances:
+                    type: integer
+                    description: The desired number of instances
+                  status:
+                    type: string
+                    description: Status of the operation
           description: Set desired instance count for a service instance
         "404":
           description: Deployment key not found
+        "400":
+          description: Invalid duration format
         "500":
           description: Instance failure
-      summary: Get status of service_name.instance_name
+      summary: Set desired instance count for a service instance with optional duration
       tags:
       - autoscaler
   /services/{service}/{instance}/delay:
