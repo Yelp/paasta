@@ -2936,3 +2936,34 @@ def test_validate_pool_error(cluster, pool, system_paasta_config):
         pool,
         system_paasta_config,
     )
+
+
+@pytest.mark.parametrize(
+    "docker_url,long,expected",
+    (
+        (
+            "registry.localhost:443/services-whatever:paasta-aaaabbbbccccdddd",
+            False,
+            "aaaabbbb",
+        ),
+        (
+            "registry.localhost:443/services-whatever:paasta-aaaabbbbccccdddd",
+            True,
+            "aaaabbbbccccdddd",
+        ),
+        (
+            "registry.localhost:443/services-whatever:foobar-aaaabbbbccccdddd",
+            False,
+            "aaaabbbb",
+        ),
+        (
+            "registry.localhost:443/services-whatever:foobar-aaaabbbbccccdddd",
+            True,
+            "aaaabbbbccccdddd",
+        ),
+        ("registry.localhost:443/toolbox-something-something:1.2.3", False, "1.2.3"),
+        ("registry.localhost:443/toolbox-something-something:1.2.3", True, "1.2.3"),
+    ),
+)
+def test_get_git_sha_from_dockerurl(docker_url, long, expected):
+    assert utils.get_git_sha_from_dockerurl(docker_url, long) == expected
