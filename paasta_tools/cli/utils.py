@@ -1097,7 +1097,9 @@ def get_paasta_oapi_client_with_auth(
     )
 
 
-def run_interactive_cli(cmd: str, shell: str = "bash", term: str = "xterm-256color"):
+def run_interactive_cli(
+    cmd: str, shell: str = "/bin/bash", term: str = "xterm-256color"
+):
     """Runs interactive command in a pseudo terminal, handling terminal size management
 
     :param str cmd: shell command
@@ -1105,6 +1107,8 @@ def run_interactive_cli(cmd: str, shell: str = "bash", term: str = "xterm-256col
     :param str term: terminal type
     """
     cols, rows = shutil.get_terminal_size()
+    if not os.path.isabs(shell):
+        shell = shutil.which(shell)
     wrapped_cmd = (
         f"export SHELL={shell};"
         f"export TERM={term};"
