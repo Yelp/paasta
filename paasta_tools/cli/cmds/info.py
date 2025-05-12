@@ -78,8 +78,9 @@ def get_smartstack_endpoints(service, soa_dir):
         service, full_name=False, soa_dir=soa_dir
     ):
         mode = config.get("mode", "http")
+        url_scheme = "http" if mode == "http2" else mode
         port = config.get("proxy_port")
-        endpoints.append(f"{mode}://169.254.255.254:{port} ({name})")
+        endpoints.append(f"{url_scheme}://169.254.255.254:{port} ({name})")
     return endpoints
 
 
@@ -96,10 +97,12 @@ def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
             service=service, namespace="main", soa_dir=soa_dir
         )
         service_mode = service_config.get_mode()
+        url_scheme = "http" if service_mode == "http2" else service_mode
+
         for cluster in deployments_to_clusters(deployments):
             if service_mode in TESTABLE_SERVICE_MODES:
                 link = PaastaColors.cyan(
-                    f"{service_mode}://{service}.proxy.{cluster}.paasta/"
+                    f"{url_scheme}://{service}.proxy.{cluster}.paasta/"
                 )
             else:
                 link = "N/A"
