@@ -817,12 +817,13 @@ def _print_flink_status_from_job_manager(
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
 
+    cluster_without_pnw_dash = cluster.replace("pnw-", "")
+
     # Print Flink config link resources
     if verbose:
         output.append(
             f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/{service}"
         )
-        cluster_without_pnw_dash = cluster.replace("pnw-", "")
         output.append(
             f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/"
             f"{cluster_without_pnw_dash}/{service}"
@@ -842,6 +843,19 @@ def _print_flink_status_from_job_manager(
         )
         output.append(
             f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
+        )
+
+    # Print Flink Metrics Links
+    if verbose:
+        output.append(f"    Flink Monitoring:")
+        output.append(
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+        )
+        output.append(
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+        )
+        output.append(
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
         )
 
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
