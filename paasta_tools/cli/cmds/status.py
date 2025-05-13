@@ -828,6 +828,22 @@ def _print_flink_status_from_job_manager(
             f"{cluster_without_pnw_dash}/{service}"
         )
 
+    # Print Flink Log Commands
+    if verbose:
+        output.append(f"    Flink Log Commands:")
+        output.append(
+            f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
+        )
+        output.append(
+            f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER"
+        )
+        output.append(
+            f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER"
+        )
+        output.append(
+            f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
+        )
+
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
 
