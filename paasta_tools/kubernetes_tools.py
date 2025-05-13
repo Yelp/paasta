@@ -4285,7 +4285,7 @@ def get_all_limit_ranges(
     return kube_client.core.list_namespaced_limit_range(namespace).items
 
 
-_RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
+_RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]")
 
 
 def get_service_account_name(
@@ -4302,6 +4302,10 @@ def get_service_account_name(
         # with only an IAM role attached.
         # to support these two usecases, we'll suffix the name of a Service Account with the
         # Kubernetes Role name to disambiguate between the two.
+
+        # People often mistake underscores and dashes. Replace underscores with double dashes so paasta recreates SA
+        iam_role = iam_role.replace("_", "--")
+
         if k8s_role:
             sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role.lower())}--{k8s_role}"
         else:

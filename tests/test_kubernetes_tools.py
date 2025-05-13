@@ -4690,7 +4690,7 @@ def test_ensure_service_account_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = None
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
@@ -4727,7 +4727,7 @@ def test_ensure_service_account_with_k8s_role_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role--mega-admin"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
@@ -4788,7 +4788,7 @@ def test_ensure_service_account_existing():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role--mega-admin"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
@@ -4844,11 +4844,110 @@ def test_ensure_service_account_existing():
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
+def test_ensure_service_account_existing_different_role():
+    # This is only an issue when the role names differ by only non-alphanum characters
+    old_iam_role = "arn:aws:iam::000000000000:role/some-role"
+    new_iam_role = "arn:aws:iam::000000000000:role/some_role"
+    namespace = "test_namespace"
+    k8s_role = "mega-admin"
+    old_expected_sa_name = (
+        "paasta--arn-aws-iam--000000000000-role-some-role--mega-admin"
+    )
+    new_expected_sa_name = (
+        "paasta--arn-aws-iam--000000000000-role-some--role--mega-admin"
+    )
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = [
+            V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=old_expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": old_iam_role},
+                ),
+            )
+        ]
+        mock_client.rbac.list_namespaced_role_binding.return_value = mock.Mock(
+            spec=V1RoleBinding,
+        )
+        mock_client.rbac.list_namespaced_role_binding.return_value.items = [
+            V1RoleBinding(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=old_expected_sa_name,
+                    namespace=namespace,
+                ),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=old_expected_sa_name,
+                    )
+                ],
+            )
+        ]
+        mock_kube_client.return_value = mock_client
+        ensure_service_account(
+            new_iam_role,
+            namespace=namespace,
+            kube_client=mock_client,
+            k8s_role=k8s_role,
+        )
+        mock_client.core.create_namespaced_service_account.assert_called_once_with(
+            namespace=namespace,
+            body=V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=new_expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": new_iam_role},
+                ),
+            ),
+        )
+        mock_client.rbac.create_namespaced_role_binding.assert_called_once_with(
+            namespace=namespace,
+            body=V1RoleBinding(
+                metadata=V1ObjectMeta(
+                    name=new_expected_sa_name,
+                    namespace=namespace,
+                ),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=new_expected_sa_name,
+                    ),
+                ],
+            ),
+        )
+
+
 def test_ensure_service_account_existing_create_rb_only():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role--mega-admin"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
@@ -4886,7 +4985,7 @@ def test_ensure_service_account_existing_create_rb_only():
 
 def test_ensure_service_account_caps():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ):
@@ -4899,7 +4998,7 @@ def test_ensure_service_account_caps_with_k8s():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
-    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam--000000000000-role-some--role--mega-admin"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(

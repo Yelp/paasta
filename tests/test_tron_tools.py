@@ -1372,7 +1372,7 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
-            "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
+            "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam--000000000000-role-some--role "
             "file://this/is/a_test.py",
             "executor": "spark",
             "requires": ["required_action"],
@@ -1390,7 +1390,7 @@ class TestTronTools:
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
-            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role",
+            "service_account_name": "paasta--arn-aws-iam--000000000000-role-some--role",
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "env": {
