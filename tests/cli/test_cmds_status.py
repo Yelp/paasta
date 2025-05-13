@@ -2712,6 +2712,8 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
             f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/fake_cluster/fake_service",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
@@ -2757,6 +2759,8 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
             f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/fake_cluster/fake_service",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
@@ -2865,6 +2869,8 @@ def _get_base_status_verbose_0(metadata):
 def _get_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]

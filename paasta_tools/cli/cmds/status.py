@@ -789,6 +789,13 @@ def _print_flink_status_from_job_manager(
 
     output.append(f"    Config SHA: {config_sha}")
 
+    # Print Flink repo links
+    if verbose:
+        output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+        output.append(
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+        )
+
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
