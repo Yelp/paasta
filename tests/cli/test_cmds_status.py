@@ -2712,6 +2712,8 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
+            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/fake_cluster/fake_service",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -2755,6 +2757,8 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
+            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/fake_cluster/fake_service",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -2784,7 +2788,7 @@ class TestPrintFlinkStatus:
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
-            cluster="fake_cluster",
+            cluster="pnw-fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2798,6 +2802,8 @@ class TestPrintFlinkStatus:
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
         expected_output = _get_base_status_verbose_1(metadata) + [
+            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
+            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/fake_cluster/fake_service",
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",

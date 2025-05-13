@@ -766,6 +766,7 @@ def append_pod_status(pod_status, output: List[str]):
 def _print_flink_status_from_job_manager(
     service: str,
     instance: str,
+    cluster: str,
     output: List[str],
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
@@ -808,6 +809,17 @@ def _print_flink_status_from_job_manager(
         # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
+
+    # Print Flink config link resources
+    if verbose:
+        output.append(
+            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/{service}"
+        )
+        cluster_without_pnw_dash = cluster.replace("pnw-", "")
+        output.append(
+            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/"
+            f"{cluster_without_pnw_dash}/{service}"
+        )
 
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
@@ -988,7 +1000,7 @@ def print_flink_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, verbose
     )
 
 
@@ -1015,7 +1027,7 @@ def print_flinkeks_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, verbose
     )
 
 
