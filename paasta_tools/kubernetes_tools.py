@@ -4325,21 +4325,42 @@ def ensure_service_account(
     kube_client: KubeClient,
     k8s_role: Optional[str] = None,
 ) -> None:
+    role_annotation = "eks.amazonaws.com/role-arn"
     sa_name = get_service_account_name(iam_role, k8s_role)
 
-    if not any(
-        sa.metadata and sa.metadata.name == sa_name
-        for sa in get_all_service_accounts(kube_client, namespace)
-    ):
+    existing_sa = None
+    for sa in get_all_service_accounts(kube_client, namespace):
+        if sa.metadata and sa.metadata.name == sa_name:
+            existing_sa = sa
+            break
+    else:
         sa = V1ServiceAccount(
             kind="ServiceAccount",
             metadata=V1ObjectMeta(
                 name=sa_name,
                 namespace=namespace,
-                annotations={"eks.amazonaws.com/role-arn": iam_role},
+                annotations={role_annotation: iam_role},
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
+    if existing_sa:
+        requires_patch = False
+        if (
+            sa.metadata.annotations
+            and sa.metadata.annotations.get(role_annotation, None) != iam_role
+        ):
+            sa.metadata.annotations[role_annotation] = iam_role
+            requires_patch = True
+        elif sa.metadata.annotations is None:
+            sa.metadata.annotations = {role_annotation: iam_role}
+            requires_patch = True
+        if requires_patch:
+            kube_client.core.patch_namespaced_service_account(
+                namespace=namespace, body=sa, name=sa.metadata.name
+            )
+            log.info(
+                f"Updated ServiceAccount {sa.metadata.name} iam_role to {iam_role}"
+            )
 
     # we're expecting that any Role dynamically associated with a Service Account already exists.
     # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
