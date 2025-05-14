@@ -14,6 +14,7 @@ croniter
 docker
 dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
+future>=0.18.3
 graphviz
 grpcio
 gunicorn
@@ -22,6 +23,7 @@ humanize >= 0.5.1
 inotify >= 0.2.8
 ipaddress >= 1.0.22
 isodate >= 0.7.2
+jinja2-time>=0.1.0
 jsonschema[format]
 kazoo >= 2.0.0
 # the upper-bound here is mainly for things that use paasta-tools as a library and don't benefit
@@ -37,6 +39,7 @@ nats-py
 nulltype
 objgraph
 ply
+poyo>=0.4.0
 progressbar2>=4.3.2
 prometheus-client
 pymesos >= 0.2.0
@@ -71,5 +74,6 @@ tzlocal
 urllib3
 utaw >= 0.2.0
 WebOb>=1.8.7
+whichcraft>=0.4.0
 wsgicors
 zope.interface>=7.2
