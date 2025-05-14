@@ -72,6 +72,7 @@ from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -794,7 +795,6 @@ def _print_flink_status_from_job_manager(
 
     if verbose:
         # Get Yelpsoa Information for flink instance
-        flink_monitoring_team = None
         flink_instance_config = load_soa_flink_instance_yaml(
             service=service,
             instance_key=instance,
@@ -811,8 +811,9 @@ def _print_flink_status_from_job_manager(
         output.append(f"    Flink Pool: {flink_pool}")
 
         # Print ownership information
+        flink_monitoring_team = None
         if flink_instance_config is not None:
-            flink_monitoring_team = get_monitoring_team_from_flink_instance_config(
+            flink_monitoring_team = get_team_from_flink_instance_config(
                 flink_instance_config
             )
         if flink_monitoring_team is None:
@@ -820,6 +821,18 @@ def _print_flink_status_from_job_manager(
                 overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
             )
         output.append(f"    Owner: {flink_monitoring_team}")
+
+        # Print rb information
+        flink_rb_for_instance = None
+        if flink_instance_config is not None:
+            flink_rb_for_instance = get_runbook_from_flink_instance_config(
+                flink_instance_config
+            )
+        if flink_rb_for_instance is None:
+            flink_rb_for_instance = get_runbook(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+        output.append(f"    Flink Runbook: {flink_rb_for_instance}")
 
         # Print Flink repo links
         output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
@@ -1172,9 +1185,9 @@ def get_flink_pool_from_flink_instance_config(
             return "flink-spot"
 
 
-def get_monitoring_team_from_flink_instance_config(
+def get_team_from_flink_instance_config(
     instance_config_data: Optional[Dict[str, Any]],
-) -> str:
+) -> Optional[str]:
     """
     Parses monitoring team from a specific Flink instance's configuration data.
 
@@ -1185,15 +1198,37 @@ def get_monitoring_team_from_flink_instance_config(
         The monitoring_team string.
     """
     monitoring_team = None
-
     if instance_config_data and isinstance(instance_config_data, dict):
         monitoring_config = instance_config_data.get("monitoring")
         if monitoring_config and isinstance(monitoring_config, dict):
-            team_val = monitoring_config.get("team")
-            if team_val:
-                monitoring_team = team_val
-
+            team = monitoring_config.get("team", None)
+            # Return team only if it's not empty
+            if team:
+                return team
     return monitoring_team
+
+
+def get_runbook_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Parses reunbook from a specific Flink instance's configuration data.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The runbook link string.
+    """
+    monitoring_runbook = None
+    if instance_config_data and isinstance(instance_config_data, dict):
+        monitoring_config = instance_config_data.get("monitoring")
+        if monitoring_config and isinstance(monitoring_config, dict):
+            runbook = monitoring_config.get("runbook", None)
+            # Return runbook only if it's not empty
+            if runbook:
+                return runbook
+    return monitoring_runbook
 
 
 def print_kubernetes_status_v2(
