@@ -2702,7 +2702,10 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {"monitoring": {"team": "fake_owner"}}
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner"},
+            "spot": False,
+        }
 
         output = []
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
@@ -2717,6 +2720,7 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Flink Pool: flink",
             f"    Owner: fake_owner",
             f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
@@ -2760,7 +2764,10 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {"monitoring": {"team": "fake_owner"}}
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner"},
+            "spot": True,
+        }
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
         mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
@@ -2777,6 +2784,7 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Flink Pool: flink-spot",
             f"    Owner: fake_owner",
             f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
@@ -2820,8 +2828,10 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {"monitoring": {"team": "fake_owner"}}
-
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner"},
+            "spot": False,
+        }
         output = []
         print_flink_status(
             cluster="pnw-devc",
@@ -2910,6 +2920,7 @@ def _get_base_status_verbose_0(metadata):
 def _get_flink_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Flink Pool: flink",
         f"    Owner: fake_owner",
         f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
         f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",

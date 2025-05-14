@@ -793,7 +793,7 @@ def _print_flink_status_from_job_manager(
     output.append(f"    Config SHA: {config_sha}")
 
     if verbose:
-        # Print Team Information
+        # Get Yelpsoa Information for flink instance
         flink_monitoring_team = None
         flink_instance_config = load_soa_flink_instance_yaml(
             service=service,
@@ -801,6 +801,16 @@ def _print_flink_status_from_job_manager(
             cluster=cluster,
             soa_dir=DEFAULT_SOA_DIR,
         )
+
+        # Print Flink Pool information
+        flink_pool = None
+        if flink_instance_config is not None:
+            flink_pool = get_flink_pool_from_flink_instance_config(
+                flink_instance_config
+            )
+        output.append(f"    Flink Pool: {flink_pool}")
+
+        # Print ownership information
         if flink_instance_config is not None:
             flink_monitoring_team = get_monitoring_team_from_flink_instance_config(
                 flink_instance_config
@@ -1140,11 +1150,33 @@ def load_soa_flink_instance_yaml(
         return None
 
 
+def get_flink_pool_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> str:
+    """
+    Parses flink_pool from a specific Flink instance's configuration data, using key 'spot'.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The flink pool string.
+    """
+
+    if instance_config_data and isinstance(instance_config_data, dict):
+        spot_config = instance_config_data.get("spot", None)
+        if spot_config is False:
+            return "flink"
+        else:
+            # if not set Flink instance default to use flink-spot pool
+            return "flink-spot"
+
+
 def get_monitoring_team_from_flink_instance_config(
     instance_config_data: Optional[Dict[str, Any]],
 ) -> str:
     """
-    Parses TaskManager instances and monitoring team from a specific Flink instance's configuration data.
+    Parses monitoring team from a specific Flink instance's configuration data.
 
     Args:
         instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
