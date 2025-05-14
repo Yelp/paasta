@@ -15,6 +15,7 @@
 import asyncio
 import concurrent.futures
 import difflib
+import os
 import shutil
 import sys
 from collections import Counter
@@ -43,6 +44,7 @@ import a_sync
 import humanize
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
+from service_configuration_lib import read_yaml_file
 
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
@@ -790,13 +792,36 @@ def _print_flink_status_from_job_manager(
 
     output.append(f"    Config SHA: {config_sha}")
 
-    # Print Flink repo links
     if verbose:
+
+        # Print Team Information
+
+        flink_monitoring_team = None
+        flink_instance_config = load_soa_flink_instance_yaml(
+            service=service,
+            instance_key=instance,
+            cluster=cluster,
+            soa_dir=DEFAULT_SOA_DIR,
+        )
+        if flink_instance_config is not None:
+            flink_monitoring_team = get_monitoring_team_from_flink_instance_config(
+                flink_instance_config
+            )
+
+        if flink_monitoring_team is None:
+            flink_monitoring_team = get_team(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+
+        output.append(f"    Owner: {flink_monitoring_team}")
+
+        # Print Flink repo links
         output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
         output.append(
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
         )
 
+    # Print Flink Version
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
@@ -1081,6 +1106,67 @@ async def get_flink_job_details(
         ]
     )
     return [jd for jd in jobs_details]
+
+
+def load_soa_flink_instance_yaml(
+    service: str,
+    instance_key: str,
+    cluster: str,
+    soa_dir: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Loads and parses the Flink configuration YAML file for a given service and cluster.
+
+    Args:
+        service: The name of the service (e.g., "sqlclient").
+        instance_key: The specific Flink job/instance key within the YAML
+        cluster: The cluster identifier (e.g., "pnw-prod").
+        soa_dir: The base directory for SOA configurations.
+
+    Returns:
+        A dictionary containing the parsed YAML data, or None if the file
+        is not found, cannot be read, is empty, or is not valid YAML.
+    """
+
+    flink_config_filename = f"flinkeks-{cluster}.yaml"
+    flink_config_file_path = os.path.join(soa_dir, service, flink_config_filename)
+
+    try:
+        config_data = read_yaml_file(flink_config_file_path)
+        if config_data and isinstance(config_data, dict):
+            instance_config_data = config_data.get(instance_key)
+            if instance_config_data and isinstance(instance_config_data, dict):
+                return instance_config_data
+            else:
+                return None
+        else:
+            return None  # Or {} if preferred for downstream
+    except Exception:
+        return None
+
+
+def get_monitoring_team_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> str:
+    """
+    Parses TaskManager instances and monitoring team from a specific Flink instance's configuration data.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The monitoring_team string.
+    """
+    monitoring_team = None
+
+    if instance_config_data and isinstance(instance_config_data, dict):
+        monitoring_config = instance_config_data.get("monitoring")
+        if monitoring_config and isinstance(monitoring_config, dict):
+            team_val = monitoring_config.get("team")
+            if team_val:
+                monitoring_team = team_val
+
+    return monitoring_team
 
 
 def print_kubernetes_status_v2(
