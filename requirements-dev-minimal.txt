@@ -1,3 +1,4 @@
+appdirs
 astroid
 asynctest
 coverage

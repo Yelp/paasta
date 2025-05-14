@@ -6,10 +6,10 @@ Babel==2.9.1
 cfgv==2.0.1
 coverage==6.5.0
 debugpy==1.8.0
-distlib==0.3.4
+distlib==0.3.9
 docutils==0.12
 exceptiongroup==1.1.2
-filelock==3.0.12
+filelock==3.13.1
 flake8==3.5.0
 freezegun==0.3.7
 hypothesis==6.79.4
@@ -25,8 +25,10 @@ packaging==20.9
 path.py==8.1
 pbr==3.1.1
 pep8==1.5.7
+
+platformdirs==4.3.8
 pluggy==1.2.0
-pre-commit==2.17.0
+pre-commit==3.7.0
 pycodestyle==2.3.1
 pyfakefs==5.3.5
 pyflakes==1.6.0
@@ -48,6 +50,6 @@ sphinxcontrib-qthelp==1.0.2
 sphinxcontrib-serializinghtml==1.1.3
 toml==0.9.4
 tomli==2.0.1
-virtualenv==20.4.3
+virtualenv==20.24.7
 wrapt==1.12.1
 zake==0.2.2
