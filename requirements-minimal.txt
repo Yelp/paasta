@@ -37,11 +37,12 @@ nats-py
 nulltype
 objgraph
 ply
-progressbar2 >= 3.10.0
+progressbar2>=4.3.2
 prometheus-client
 pymesos >= 0.2.0
-pyramid >= 1.8
 pyramid-swagger >= 2.3.0
+pyramid>=2.0.2
+pyrsistent>=0.18.1
 pysensu-yelp >= 0.3.4
 PyStaticConfiguration
 python-crontab>=2.1.1
@@ -49,23 +50,26 @@ python-dateutil >= 2.4.0
 python-iptables
 pytimeparse >= 1.1.0
 pytz >= 2014.10
+repoze.lru>=0.7
 # the upper-bound is required for older docker-py (<=7.0.0)
 # to function: https://github.com/psf/requests/issues/6707
 requests >= 2.18.4, <2.32.0
 requests-cache >= 0.4.10
 retry
 ruamel.yaml
+ruamel.yaml.clib>=0.2.8
 sensu-plugin
 service-configuration-lib >= 3.2.0
 signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0
 syslogmp
-task-processing
-thriftpy2
+thriftpy2>=0.5.2
 transitions
 typing-extensions
 tzlocal
 urllib3
 utaw >= 0.2.0
+WebOb>=1.8.7
 wsgicors
+zope.interface>=7.2
