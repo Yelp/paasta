@@ -53,12 +53,12 @@ def install_vscode_support() -> None:
                 "python": "${workspaceFolder}/.paasta/bin/python",
                 "program": "${workspaceFolder}/.paasta/bin/tox",
                 "subProcess": True,
-                "args": ["-e", "py38-linux,docs,mypy,tests"],
+                "args": ["-e", "py310-linux,docs,mypy,tests"],
             },
             {
                 "name": "paasta cli",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -66,7 +66,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta rollback",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -83,7 +83,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta mark-for-deployment",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -101,7 +101,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta status",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -118,7 +118,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta playground",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -138,7 +138,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta status playground",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -157,7 +157,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta logs",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -175,7 +175,7 @@ def install_vscode_support() -> None:
                 "name": "paasta validate",
                 # This command has to be ran from inside the service repo in yelpsoa-configs
                 "cwd": "${userHome}/pg/yelpsoa-configs/",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.cli.cli",
@@ -184,10 +184,10 @@ def install_vscode_support() -> None:
             {
                 # 1) Follow step 1 in "Running the PaaSTA HTTP API Locally" wiki
                 # 2) Run this "paasta API" test to debug paasta API
-                # 3) Run client command, e.g. PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_for_development/  .tox/py38-linux/bin/python paasta_tools/cli/cli.py status --clusters norcal-devc --service katamari_test_service
+                # 3) Run client command, e.g. PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_for_development/  .tox/py310-linux/bin/python paasta_tools/cli/cli.py status --clusters norcal-devc --service katamari_test_service
                 "name": "paasta API",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.run-paasta-api-in-dev-mode",
@@ -203,7 +203,7 @@ def install_vscode_support() -> None:
             {
                 "name": "paasta API playground",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.run-paasta-api-playground",
@@ -221,7 +221,7 @@ def install_vscode_support() -> None:
             {
                 "name": "Run setup k8s job in playground",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.setup_kubernetes_job",
@@ -244,7 +244,7 @@ def install_vscode_support() -> None:
             {
                 "name": "Generate deployments.json in playground",
                 "cwd": "${workspaceFolder}",
-                "python": "${workspaceFolder}/.tox/py38-linux/bin/python",
+                "python": "${workspaceFolder}/.tox/py310-linux/bin/python",
                 "type": "python",
                 "request": "launch",
                 "module": "paasta_tools.generate_deployments_for_service",
