@@ -181,6 +181,16 @@ CAPS_DROP = [
     "SETFCAP",
 ]
 
+# https://github.yelpcorp.com/sysgit/srv-configs/tree/master/superregion
+SUPPERREGION_TO_ECOSYSTEM_MAPPINGS = {
+    "norcal-devc": "devc",
+    "norcal-stagef": "stagef",
+    "norcal-stageg": "stageg",
+    "nova-prod": "prod",
+    "pnw-devc": "devc",
+    "pnw-prod": "prod",
+}
+
 
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"

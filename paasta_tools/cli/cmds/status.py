@@ -93,6 +93,7 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import SUPPERREGION_TO_ECOSYSTEM_MAPPINGS
 from paasta_tools.utils import SystemPaastaConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
@@ -817,7 +818,8 @@ def _print_flink_status_from_job_manager(
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
 
-    cluster_without_pnw_dash = cluster.replace("pnw-", "")
+    # Get ecosystem from mapping or default to "prod" if not found
+    ecosystem = SUPPERREGION_TO_ECOSYSTEM_MAPPINGS.get(cluster, "prod")
 
     # Print Flink config link resources
     if verbose:
@@ -826,7 +828,7 @@ def _print_flink_status_from_job_manager(
         )
         output.append(
             f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/"
-            f"{cluster_without_pnw_dash}/{service}"
+            f"{ecosystem}/{service}"
         )
 
     # Print Flink Log Commands
@@ -849,13 +851,13 @@ def _print_flink_status_from_job_manager(
     if verbose:
         output.append(f"    Flink Monitoring:")
         output.append(
-            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
         )
         output.append(
-            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
         )
         output.append(
-            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{cluster_without_pnw_dash}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
         )
 
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
