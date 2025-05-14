@@ -780,6 +780,7 @@ def _print_flink_status_from_job_manager(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    # Print Flink Config SHA
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
@@ -789,13 +790,10 @@ def _print_flink_status_from_job_manager(
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
         config_sha = config_sha[6:]
-
     output.append(f"    Config SHA: {config_sha}")
 
     if verbose:
-
         # Print Team Information
-
         flink_monitoring_team = None
         flink_instance_config = load_soa_flink_instance_yaml(
             service=service,
@@ -807,12 +805,10 @@ def _print_flink_status_from_job_manager(
             flink_monitoring_team = get_monitoring_team_from_flink_instance_config(
                 flink_instance_config
             )
-
         if flink_monitoring_team is None:
             flink_monitoring_team = get_team(
                 overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
             )
-
         output.append(f"    Owner: {flink_monitoring_team}")
 
         # Print Flink repo links
@@ -839,15 +835,15 @@ def _print_flink_status_from_job_manager(
         else:
             output.append(f"    Flink version: {flink_config.flink_version}")
 
+        # Print Flink Dashboard URL
         # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
 
-    # Get ecosystem from mapping or default to "prod" if not found
-    ecosystem = SUPPERREGION_TO_ECOSYSTEM_MAPPINGS.get(cluster, "prod")
-
-    # Print Flink config link resources
     if verbose:
+        # Print Flink config link resources
+        # Get ecosystem from mapping or default to "prod" if not found
+        ecosystem = SUPPERREGION_TO_ECOSYSTEM_MAPPINGS.get(cluster, "prod")
         output.append(
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
         )
@@ -855,8 +851,7 @@ def _print_flink_status_from_job_manager(
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
         )
 
-    # Print Flink Log Commands
-    if verbose:
+        # Print Flink Log Commands
         output.append(f"    Flink Log Commands:")
         output.append(
             f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
@@ -871,8 +866,7 @@ def _print_flink_status_from_job_manager(
             f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
         )
 
-    # Print Flink Metrics Links
-    if verbose:
+        # Print Flink Metrics Links
         output.append(f"    Flink Monitoring:")
         output.append(
             f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
@@ -884,13 +878,14 @@ def _print_flink_status_from_job_manager(
             f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
         )
 
+    # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
 
+    # Print Flink Cluster Pod Info
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
-
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
