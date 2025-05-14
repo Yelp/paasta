@@ -2714,8 +2714,8 @@ class TestPrintFlinkStatus:
             f"    Config SHA: 00000",
             f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
-            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/devc/fake_service",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
@@ -2770,8 +2770,8 @@ class TestPrintFlinkStatus:
             f"    Config SHA: 00000",
             f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
-            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/devc/fake_service",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
@@ -2824,8 +2824,8 @@ class TestPrintFlinkStatus:
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
         expected_output = _get_base_status_verbose_1(metadata) + [
-            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/fake_service",
-            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/devc/fake_service",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",

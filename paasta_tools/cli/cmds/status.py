@@ -824,11 +824,10 @@ def _print_flink_status_from_job_manager(
     # Print Flink config link resources
     if verbose:
         output.append(
-            f"    Yelpsoa configs: https://sourcegraph.yelpcorp.com/sysgit/yelpsoa-configs/-/tree/{service}"
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
         )
         output.append(
-            f"    Srv configs: https://sourcegraph.yelpcorp.com/sysgit/srv-configs/-/tree/ecosystem/"
-            f"{ecosystem}/{service}"
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
         )
 
     # Print Flink Log Commands
