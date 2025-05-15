@@ -1158,14 +1158,14 @@ def load_soa_flink_instance_yaml(
             else:
                 return None
         else:
-            return None  # Or {} if preferred for downstream
+            return None
     except Exception:
         return None
 
 
 def get_flink_pool_from_flink_instance_config(
     instance_config_data: Optional[Dict[str, Any]],
-) -> str:
+) -> Optional[str]:
     """
     Parses flink_pool from a specific Flink instance's configuration data, using key 'spot'.
 
@@ -1183,6 +1183,7 @@ def get_flink_pool_from_flink_instance_config(
         else:
             # if not set Flink instance default to use flink-spot pool
             return "flink-spot"
+    return None
 
 
 def get_team_from_flink_instance_config(
