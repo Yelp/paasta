@@ -4346,12 +4346,12 @@ def ensure_service_account(
     if existing_sa:
         requires_patch = False
         if (
-            sa.metadata.annotations
-            and sa.metadata.annotations.get(role_annotation, None) != iam_role
+            not sa.metadata.annotations
+            or sa.metadata.annotations.get(role_annotation, None) != iam_role
         ):
-            sa.metadata.annotations[role_annotation] = iam_role
-            requires_patch = True
-        elif sa.metadata.annotations is None:
+            # NOTE: we don't annotate SAs apart with anything other
+            # than the pod identity role ARN, so this will remove
+            # any annotations that folks may have manually added
             sa.metadata.annotations = {role_annotation: iam_role}
             requires_patch = True
         if requires_patch:
