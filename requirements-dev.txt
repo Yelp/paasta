@@ -33,7 +33,7 @@ pycodestyle==2.3.1
 pyfakefs==5.3.5
 pyflakes==1.6.0
 pylint==2.6.0
-pyparsing==2.4.7
+pyparsing==3.1.2
 pytest==7.4.0
 pytest-asyncio==0.21.1
 requirements-tools==1.1.2
