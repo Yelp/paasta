@@ -45,6 +45,7 @@ from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import load_soa_flink_instance_yaml
 from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status
@@ -2673,7 +2674,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(metadata) + [
+        expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2729,15 +2730,19 @@ class TestPrintFlinkStatus:
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
             f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
             f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Monitoring:",
             f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
             f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -2794,15 +2799,19 @@ class TestPrintFlinkStatus:
             f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
             f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
             f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Monitoring:",
             f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
             f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -2854,15 +2863,19 @@ class TestPrintFlinkStatus:
         expected_output = _get_flink_base_status_verbose_1(metadata) + [
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Log Commands:",
             f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
             f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
             f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
             f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    Flink Monitoring:",
             f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
             f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2913,7 +2926,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
     )
 
 
-def _get_base_status_verbose_0(metadata):
+def _get_flink_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
         f"    Flink version: {config_obj.flink_version}",

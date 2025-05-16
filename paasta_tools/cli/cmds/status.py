@@ -767,6 +767,11 @@ def append_pod_status(pod_status, output: List[str]):
     output.extend([f"      {line}" for line in pods_table])
 
 
+OUTPUT_HORIZONTAL_RULE = (
+    "=================================================================="
+)
+
+
 def _print_flink_status_from_job_manager(
     service: str,
     instance: str,
@@ -874,6 +879,9 @@ def _print_flink_status_from_job_manager(
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
         )
 
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
         # Print Flink Log Commands
         output.append(f"    Flink Log Commands:")
         output.append(
@@ -889,6 +897,9 @@ def _print_flink_status_from_job_manager(
             f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
         )
 
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
         # Print Flink Metrics Links
         output.append(f"    Flink Monitoring:")
         output.append(
@@ -900,6 +911,14 @@ def _print_flink_status_from_job_manager(
         output.append(
             f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
         )
+
+        # Print Flink Costs Link
+        output.append(
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
+        )
+
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
     # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
