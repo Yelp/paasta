@@ -614,7 +614,7 @@ def group_slaves_by_key_func(
     """
     sorted_slaves: Sequence[_GenericNodeT]
     if sort_func is None:
-        sorted_slaves = sorted(slaves, key=key_func)
+        sorted_slaves = sorted(slaves, key=key_func)  # type: ignore
     else:
         sorted_slaves = sort_func(slaves)
 

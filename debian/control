@@ -2,11 +2,11 @@ Source: paasta-tools
 Section: python
 Priority: optional
 Maintainer: Compute Infrastructure <compute-infra@yelp.com>
-Build-Depends: debhelper (>= 7), python3.8, dh-virtualenv
+Build-Depends: debhelper (>= 7), python3.10, dh-virtualenv
 Standards-Version: 3.8.3
 
 Package: paasta-tools
 Architecture: any
-Depends: python3.8, ${shlibs:Depends}, ${misc:Depends}
+Depends: python3.10, ${shlibs:Depends}, ${misc:Depends}
 Description: CLI tools for PaaSTA
 Conflicts: service-deployment-tools

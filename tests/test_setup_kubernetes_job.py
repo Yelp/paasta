@@ -460,7 +460,7 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
             branch_dict=None,
             soa_dir=soa_dir,
         )
-        fake_app.__str__ = lambda app: "fake_app"
+        fake_app.__str__ = lambda app: "fake_app"  # type: ignore
         return True, fake_app
 
     with mock.patch(
@@ -910,7 +910,7 @@ def test_setup_kube_deployments_skip_malformed_apps(
         fake_app.create = mock.Mock(
             side_effect=[Exception("Kaboom!"), mock.Mock(create=mock.Mock())]
         )
-        fake_app.__str__ = mock.Mock(return_value="fake_app")
+        fake_app.__str__ = mock.Mock(return_value="fake_app")  # type: ignore
         mock_create_application_object.return_value = (True, fake_app)
 
         setup_kube_deployments(
