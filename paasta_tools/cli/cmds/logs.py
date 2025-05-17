@@ -178,7 +178,7 @@ def add_subparser(subparsers) -> None:
         help=(
             "The time to get logs up to. "
             'This can be an ISO-8601 timestamp or a human readable duration parsable by pytimeparse such as "5m", "1d3h" etc. '
-            "Incompatiable with --line-offset and --lines. "
+            "Incompatible with --line-offset and --lines. "
             "Defaults to now."
         ),
     )
@@ -190,7 +190,7 @@ def add_subparser(subparsers) -> None:
         help=(
             "The number of lines to retrieve from the specified offset. "
             'May optionally be prefixed with a "+" or "-" to specify which direction from the offset. '
-            "Incompatiable with --from and --to. "
+            "Incompatible with --from and --to. "
             'Defaults to "-100".'
         ),
         type=int,
@@ -204,7 +204,7 @@ def add_subparser(subparsers) -> None:
             "For example, --line-offset 1 would be the first line. "
             "Paired with --lines, --line-offset +100 would give you the first 100 lines of logs. "
             "Some logging backends may not support line offsetting by time or lines. "
-            "Incompatiable with --from and --to. "
+            "Incompatible with --from and --to. "
             "Defaults to the latest line's offset."
         ),
         type=int,
@@ -804,7 +804,7 @@ class ScribeLogReader(LogReader):
                     # sure all the tailers are still running.
                     running_processes = [tt.is_alive() for tt in spawned_processes]
                     if not running_processes or not all(running_processes):
-                        log.warn(
+                        log.warning(
                             "Quitting because I expected %d log tailers to be alive but only %d are alive."
                             % (len(spawned_processes), running_processes.count(True))
                         )
@@ -819,12 +819,12 @@ class ScribeLogReader(LogReader):
                     # This extra nested catch is because it's pretty easy to be in
                     # the above try block when the user hits Ctrl-C which otherwise
                     # dumps a stack trace.
-                    log.warn("Terminating.")
+                    log.warning("Terminating.")
                     break
             except KeyboardInterrupt:
                 # Die peacefully rather than printing N threads worth of stack
                 # traces.
-                log.warn("Terminating.")
+                log.warning("Terminating.")
                 break
 
     def print_logs_by_time(
@@ -1019,7 +1019,7 @@ class ScribeLogReader(LogReader):
             tzinfo=pytz.utc
         ) - datetime.timedelta(hours=4)
         if end_time > warning_end_time:
-            log.warn("Recent logs might be incomplete. Consider tailing instead.")
+            log.warning("Recent logs might be incomplete. Consider tailing instead.")
 
         # scribereader, sadly, is not based on UTC timestamps. It uses YST
         # dates instead.

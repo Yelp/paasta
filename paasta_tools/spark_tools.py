@@ -133,7 +133,7 @@ def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
         )
 
         if host_path in seen_paths:
-            log.warn(f"Skipping {host_path} - already added a binding for it.")
+            log.warning(f"Skipping {host_path} - already added a binding for it.")
             continue
         seen_paths.add(host_path)
 
@@ -209,7 +209,7 @@ def auto_add_timeout_for_spark_job(
             f"'timeout' could not be added to spark command: '{cmd}' due to error '{e}'. "
             "Please report to #spark."
         )
-        log.warn(err_msg)
+        log.warning(err_msg)
         print(PaastaColors.red(err_msg))
     return cmd
 

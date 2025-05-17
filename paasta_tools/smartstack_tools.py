@@ -473,7 +473,7 @@ def get_service_discovery_providers(
         elif name == "envoy":
             providers.append(EnvoyServiceDiscovery(system_paasta_config))
         else:
-            log.warn("unknown provider")
+            log.warning("unknown provider")
     return providers
 
 
@@ -530,7 +530,7 @@ class BaseReplicationChecker(ReplicationChecker):
                         )
                         break
                     except Exception as e:
-                        log.warn(
+                        log.warning(
                             f"Error while getting replication info for {location} from {hostname}: {e}"
                         )
                         if hostname == hostnames[-1]:
