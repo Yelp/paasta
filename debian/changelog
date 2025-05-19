@@ -1,3 +1,10 @@
+paasta-tools (1.21.3) xenial; urgency=medium
+
+  * 1.21.3 tagged with 'make release'
+    Commit: ensure run_interactive_cli uses abs path for shell (#4061)
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 12 May 2025 02:06:34 -0700
+
 paasta-tools (1.21.2) xenial; urgency=medium
 
   * 1.21.2 tagged with 'make release'

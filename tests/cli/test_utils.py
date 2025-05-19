@@ -486,8 +486,8 @@ def test_run_interactive_cli(mock_pty, mock_shutil):
     run_interactive_cli("kubectl exec foobar")
     mock_pty.spawn.assert_called_once_with(
         [
-            "bash",
+            "/bin/bash",
             "-c",
-            "export SHELL=bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
+            "export SHELL=/bin/bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
         ]
     )
