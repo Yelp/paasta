@@ -1589,27 +1589,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - desired_instances
-              properties:
-                desired_instances:
-                  type: integer
-                  description: The desired number of instances
+              $ref: '#/components/schemas/AutoscalerCountMsg'
         required: true
       responses:
         "202":
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  desired_instances:
-                    type: integer
-                    description: The desired number of instances
-                  status:
-                    type: string
-                    description: Status of the operation
+                $ref: '#/components/schemas/AutoscalerCountMsg'
           description: Set desired instance count for a service instance
         "404":
           description: Deployment key not found
@@ -1617,7 +1604,7 @@ paths:
           description: Invalid duration format
         "500":
           description: Instance failure
-      summary: Set desired instance count for a service instance with optional duration
+      summary: Set desired instance count for a service instance
       tags:
       - autoscaler
   /services/{service}/{instance}/delay:

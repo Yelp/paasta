@@ -27,11 +27,9 @@ from paasta_tools.paastaapi.model.float_and_error import FloatAndError
 from paasta_tools.paastaapi.model.hpa_metric import HPAMetric
 from paasta_tools.paastaapi.model.hpa_override import HPAOverride
 from paasta_tools.paastaapi.model.inline_object import InlineObject
-from paasta_tools.paastaapi.model.inline_object1 import InlineObject1
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
 from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
-from paasta_tools.paastaapi.model.inline_response2021 import InlineResponse2021
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
 from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus

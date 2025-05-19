@@ -25,9 +25,7 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 )
 from paasta_tools.paastaapi.model.autoscaler_count_msg import AutoscalerCountMsg
 from paasta_tools.paastaapi.model.hpa_override import HPAOverride
-from paasta_tools.paastaapi.model.inline_object1 import InlineObject1
 from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
-from paasta_tools.paastaapi.model.inline_response2021 import InlineResponse2021
 
 
 class AutoscalerApi(object):
@@ -309,21 +307,21 @@ class AutoscalerApi(object):
             self,
             service,
             instance,
-            inline_object1,
+            autoscaler_count_msg,
             **kwargs
         ):
-            """Set desired instance count for a service instance with optional duration  # noqa: E501
+            """Set desired instance count for a service instance  # noqa: E501
 
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.update_autoscaler_count(service, instance, inline_object1, async_req=True)
+            >>> thread = api.update_autoscaler_count(service, instance, autoscaler_count_msg, async_req=True)
             >>> result = thread.get()
 
             Args:
                 service (str): Service name
                 instance (str): Instance name
-                inline_object1 (InlineObject1):
+                autoscaler_count_msg (AutoscalerCountMsg):
 
             Keyword Args:
                 _return_http_data_only (bool): response data without head status
@@ -347,7 +345,7 @@ class AutoscalerApi(object):
                 async_req (bool): execute request asynchronously
 
             Returns:
-                InlineResponse2021
+                AutoscalerCountMsg
                     If the method is called asynchronously, returns the request
                     thread.
             """
@@ -374,13 +372,13 @@ class AutoscalerApi(object):
                 service
             kwargs['instance'] = \
                 instance
-            kwargs['inline_object1'] = \
-                inline_object1
+            kwargs['autoscaler_count_msg'] = \
+                autoscaler_count_msg
             return self.call_with_http_info(**kwargs)
 
         self.update_autoscaler_count = Endpoint(
             settings={
-                'response_type': (InlineResponse2021,),
+                'response_type': (AutoscalerCountMsg,),
                 'auth': [],
                 'endpoint_path': '/services/{service}/{instance}/autoscaler',
                 'operation_id': 'update_autoscaler_count',
@@ -391,12 +389,12 @@ class AutoscalerApi(object):
                 'all': [
                     'service',
                     'instance',
-                    'inline_object1',
+                    'autoscaler_count_msg',
                 ],
                 'required': [
                     'service',
                     'instance',
-                    'inline_object1',
+                    'autoscaler_count_msg',
                 ],
                 'nullable': [
                 ],
@@ -415,8 +413,8 @@ class AutoscalerApi(object):
                         (str,),
                     'instance':
                         (str,),
-                    'inline_object1':
-                        (InlineObject1,),
+                    'autoscaler_count_msg':
+                        (AutoscalerCountMsg,),
                 },
                 'attribute_map': {
                     'service': 'service',
@@ -425,7 +423,7 @@ class AutoscalerApi(object):
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
-                    'inline_object1': 'body',
+                    'autoscaler_count_msg': 'body',
                 },
                 'collection_format_map': {
                 }
