@@ -1600,8 +1600,6 @@ paths:
           description: Set desired instance count for a service instance
         "404":
           description: Deployment key not found
-        "400":
-          description: Invalid duration format
         "500":
           description: Instance failure
       summary: Set desired instance count for a service instance
