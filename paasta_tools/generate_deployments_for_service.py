@@ -130,6 +130,10 @@ def get_deploy_group_mappings(
     v2_mappings: V2_Mappings = {"deployments": {}, "controls": {}}
     git_url = get_git_url(service=service, soa_dir=soa_dir)
 
+    # Some pseudo-services like toolboxes explicitly have no git_url, and therefore no deployments
+    if git_url is None:
+        return mappings, v2_mappings
+
     # Most of the time of this function is in two parts:
     # 1. getting remote refs from git. (Mostly IO, just waiting for git to get back to us.)
     # 2. loading instance configs. (Mostly CPU, copy.deepcopying yaml over and over again)
