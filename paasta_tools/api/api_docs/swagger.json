@@ -279,6 +279,79 @@
                 "operationId": "delete_service_autoscaler_pause"
             }
         },
+        "/service_autoscaler/{service}/{instance}/hpa_override": {
+            "post": {
+                "operationId": "set_hpa_override",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "json_body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/HPAOverride"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Successfully set HPA override",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string",
+                                    "description": "Service name"
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "Instance name"
+                                },
+                                "min_instances": {
+                                    "type": "integer",
+                                    "description": "Minimum number of instances to run"
+                                },
+                                "expire_after": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "description": "Unix timestamp after which the override is no longer valid"
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "description": "Status of the operation"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters"
+                    },
+                    "501": {
+                        "description": "Autoscaling not supported for this instance type"
+                    },
+                    "500": {
+                        "description": "Failed to set HPA override"
+                    }
+                },
+                "summary": "Set a temporary HPA override for a service instance",
+                "tags": [
+                    "autoscaler"
+                ]
+            }
+        },
         "/resources/utilization": {
             "get": {
                 "responses": {
@@ -1626,6 +1699,25 @@
                     "description": "setpoint/target_value as specified in yelpsoa_configs"
                 }
             }
+        },
+        "HPAOverride": {
+            "type": "object",
+            "properties": {
+                "min_instances": {
+                    "type": "integer",
+                    "description": "Minimum number of instances to run",
+                    "minimum": 1
+                },
+                "expire_after": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp when this override is no longer valid"
+                }
+            },
+            "required": [
+                "min_instances",
+                "expire_after"
+            ]
         },
         "KubernetesReplicaSet": {
             "type": "object",

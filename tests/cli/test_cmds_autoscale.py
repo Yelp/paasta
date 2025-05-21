@@ -50,6 +50,9 @@ def test_paasta_autoscale(
     args.clusters = cluster
     args.instances = instance
     args.set = 14
+    # this is kinda silly, but Mocks are truthy by default - without this, the underlying code thinks that both --set and --set-min are both set
+    args.set_min = None
+    args.duration = None
 
     mock_api.update_autoscaler_count.return_value = (
         mock.Mock(desired_instances=14),
