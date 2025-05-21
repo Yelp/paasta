@@ -69,7 +69,7 @@ class AuthTweenFactory:
             )
         return self.handler(request)
 
-    @cachetools.func.ttl_cache(maxsize=AUTH_CACHE_SIZE, ttl=AUTH_CACHE_TTL)
+    @cachetools.func.ttl_cache(maxsize=AUTH_CACHE_SIZE, ttl=AUTH_CACHE_TTL)  # type: ignore
     def is_request_authorized(
         self,
         path: str,
@@ -77,7 +77,8 @@ class AuthTweenFactory:
         method: str,
         service: Optional[str],
     ) -> AuthorizationOutcome:
-        """Check if API request is authorized
+        """
+        Check if API request is authorized
 
         :param str path: API path
         :param str token: authentication token

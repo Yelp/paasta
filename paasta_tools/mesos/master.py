@@ -147,7 +147,7 @@ class MesosMaster:
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
 
-    @retry(KazooTimeoutError, tries=5, delay=0.5, logger=logger)
+    @retry(KazooTimeoutError, tries=5, delay=0.5, logger=logger)  # type: ignore
     def _zookeeper_resolver(self, cfg):
         hosts, path = cfg[5:].split("/", 1)
         path = "/" + path

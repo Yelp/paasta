@@ -1933,9 +1933,7 @@ class TestKubernetesDeploymentConfig:
             return False
 
         mock_get_prometheus_port.return_value = prometheus_port
-        self.deployment.should_use_metrics_provider = (
-            mock_should_use_metrics_provider_fn
-        )
+        self.deployment.should_use_metrics_provider = mock_should_use_metrics_provider_fn  # type: ignore
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_system_paasta_config = mock.Mock()
@@ -2925,7 +2923,12 @@ class TestKubernetesDeploymentConfig:
             assert len(ret) == 2
 
     def test_get_storage_class_name_default(self):
-        pv = kubernetes_tools.PersistentVolume()
+        pv = kubernetes_tools.PersistentVolume(
+            mode="rw",
+            size=1000,
+            container_path="/tmp",
+            storage_class_name="ebs",
+        )
         assert self.deployment.get_storage_class_name(pv) == "ebs"
 
     def test_get_storage_class_name_wrong(self):
