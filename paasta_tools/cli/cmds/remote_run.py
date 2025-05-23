@@ -32,8 +32,11 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 
-KUBECTL_CMD_TEMPLATE = (
+KUBECTL_EXEC_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+)
+KUBECTL_CP_CMD_TEMPLATE = (
+    "{kubectl_wrapper} --token {token} -n {namespace} cp {filename} {pod}:/tmp/"
 )
 
 
@@ -120,12 +123,23 @@ def paasta_remote_run_start(
         kubectl_wrapper = f"kubectl-eks-{args.cluster}"
         if not shutil.which(kubectl_wrapper):
             kubectl_wrapper = f"kubectl-{args.cluster}"
-        exec_command = KUBECTL_CMD_TEMPLATE.format(
+        exec_command = KUBECTL_EXEC_CMD_TEMPLATE.format(
             kubectl_wrapper=kubectl_wrapper,
             namespace=poll_response.namespace,
             pod=poll_response.pod_name,
             token=token_response.token,
         )
+
+    if args.copy_file:
+        for filename in args.copy_file:
+            cp_command = KUBECTL_CP_CMD_TEMPLATE.format(
+                kubectl_wrapper=kubectl_wrapper,
+                namespace=poll_response.namespace,
+                pod=poll_response.pod_name,
+                filename=filename,
+                token=token_response.token,
+            )
+            run_interactive_cli(cp_command)
 
     run_interactive_cli(exec_command)
     return 0
@@ -231,6 +245,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Maximum time to wait for a job to start, in seconds",
         type=int,
         default=600,
+    )
+    start_parser.add_argument(
+        "--copy-file",
+        help="Adds a local file to /tmp inside the pod",
+        type=str,
+        action="append",
     )
     stop_parser = subparsers.add_parser(
         "stop",
