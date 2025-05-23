@@ -36,11 +36,16 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import get_flink_job_name
+from paasta_tools.cli.cmds.status import get_flink_pool_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_instance_state
+from paasta_tools.cli.cmds.status import get_runbook_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
+from paasta_tools.cli.cmds.status import get_team_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
+from paasta_tools.cli.cmds.status import load_soa_flink_instance_yaml
 from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status
@@ -2669,7 +2674,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(metadata) + [
+        expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2683,8 +2688,10 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
     def test_output_stopping_jobmanager(
         self,
+        mock_load_soa_flink_yaml,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2698,11 +2705,15 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            "spot": False,
+        }
 
         output = []
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
         print_flink_status(
-            cluster="fake_cluster",
+            cluster="pnw-devc",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2712,6 +2723,26 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Flink Pool: flink",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -2724,8 +2755,10 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
     def test_output_stopping_taskmanagers(
         self,
+        mock_load_soa_flink_yaml,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2739,13 +2772,17 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            "spot": True,
+        }
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
         mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
             "pod_status"
         ][2:]
         print_flink_status(
-            cluster="fake_cluster",
+            cluster="pnw-devc",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2755,6 +2792,26 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Flink Pool: flink-spot",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -2766,10 +2823,12 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_output_1_verbose(
         self,
         mock_get_paasta_oapi_client,
+        mock_load_soa_flink_yaml,
         mock_naturaltime,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2782,9 +2841,13 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_soa_flink_yaml.return_value = {
+            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            "spot": False,
+        }
         output = []
         print_flink_status(
-            cluster="fake_cluster",
+            cluster="pnw-devc",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2797,7 +2860,22 @@ class TestPrintFlinkStatus:
         job_start_time = str(
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
-        expected_output = _get_base_status_verbose_1(metadata) + [
+        expected_output = _get_flink_base_status_verbose_1(metadata) + [
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c pnw-devc -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=pnw-devc",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2848,7 +2926,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
     )
 
 
-def _get_base_status_verbose_0(metadata):
+def _get_flink_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
         f"    Flink version: {config_obj.flink_version}",
@@ -2856,12 +2934,180 @@ def _get_base_status_verbose_0(metadata):
     ]
 
 
-def _get_base_status_verbose_1(metadata):
+def _get_flink_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Flink Pool: flink",
+        f"    Owner: fake_owner",
+        f"    Flink Runbook: fake_runbook_url",
+        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
+
+
+class TestLoadSoaFlinkInstanceYaml:
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    @patch("os.path.join", autospec=True)
+    def test_successful_load(self, mock_os_path_join, mock_read_yaml_file):
+        mock_os_path_join.return_value = "/soa/dir/service/flinkeks-cluster.yaml"
+        instance_data = {"key": "value"}
+        mock_read_yaml_file.return_value = {
+            "my_instance": instance_data,
+            "other_instance": {},
+        }
+
+        result = load_soa_flink_instance_yaml(
+            "service", "my_instance", "cluster", "/soa/dir"
+        )
+
+        mock_os_path_join.assert_called_once_with(
+            "/soa/dir", "service", "flinkeks-cluster.yaml"
+        )
+        mock_read_yaml_file.assert_called_once_with(
+            "/soa/dir/service/flinkeks-cluster.yaml"
+        )
+        assert result == instance_data
+
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    def test_instance_key_not_found(self, mock_read_yaml_file):
+        mock_read_yaml_file.return_value = {"other_instance": {}}
+        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
+        assert result is None
+
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    def test_instance_data_not_dict(self, mock_read_yaml_file):
+        mock_read_yaml_file.return_value = {"my_instance": "not_a_dict"}
+        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
+        assert result is None
+
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    def test_config_data_not_dict(self, mock_read_yaml_file):
+        mock_read_yaml_file.return_value = ["a_list_not_a_dict"]
+        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
+        assert result is None
+
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    def test_read_yaml_file_returns_none(self, mock_read_yaml_file):
+        mock_read_yaml_file.return_value = None
+        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
+        assert result is None
+
+    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
+    def test_read_yaml_file_raises_exception(self, mock_read_yaml_file):
+        mock_read_yaml_file.side_effect = Exception("Boom!")
+        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
+        assert result is None
+
+
+class TestGetMonitoringTeamFromFlinkInstanceConfig:
+    def test_team_present(self):
+        config = {"monitoring": {"team": "team_awesome"}}
+        assert get_team_from_flink_instance_config(config) == "team_awesome"
+
+    def test_monitoring_present_no_team(self):
+        config = {"monitoring": {"other_key": "value"}}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_no_monitoring_key(self):
+        config = {"other_data": "value"}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_monitoring_is_not_dict(self):
+        config = {"monitoring": "not_a_dict"}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_team_is_none(self):
+        config = {"monitoring": {"team": None}}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_team_is_empty_string(self):
+        config = {"monitoring": {"team": ""}}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_empty_config(self):
+        config = {}
+        assert get_team_from_flink_instance_config(config) is None
+
+    def test_none_config(self):
+        assert get_team_from_flink_instance_config(None) is None
+
+    def test_config_is_not_dict(self):
+        config = "this is not a dict"
+        assert get_team_from_flink_instance_config(config) is None
+
+
+class TestGetRunbookFromFlinkInstanceConfig:
+    def test_runbook_present(self):
+        config = {"monitoring": {"runbook": "runbook_url"}}
+        assert get_runbook_from_flink_instance_config(config) == "runbook_url"
+
+    def test_monitoring_present_no_team(self):
+        config = {"monitoring": {"other_key": "value"}}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_no_monitoring_key(self):
+        config = {"other_data": "value"}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_monitoring_is_not_dict(self):
+        config = {"monitoring": "not_a_dict"}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_runbook_is_none(self):
+        config = {"monitoring": {"runbook": None}}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_runbook_is_empty_string(self):
+        config = {"monitoring": {"runbook": ""}}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_empty_config(self):
+        config = {}
+        assert get_runbook_from_flink_instance_config(config) is None
+
+    def test_none_config(self):
+        assert get_runbook_from_flink_instance_config(None) is None
+
+    def test_config_is_not_dict(self):
+        config = "this is not a dict"
+        assert get_runbook_from_flink_instance_config(config) is None
+
+
+class TestGetFlinkPoolFromFlinkInstanceConfig:
+    def test_explicit_spot_false(self):
+        # When spot is explicitly set to False, should return "flink"
+        config = {"spot": False}
+        assert get_flink_pool_from_flink_instance_config(config) == "flink"
+
+    def test_explicit_spot_true(self):
+        # When spot is explicitly set to True, should return "flink-spot"
+        config = {"spot": True}
+        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
+
+    def test_spot_not_set(self):
+        # When spot is not set, should default to "flink-spot"
+        config = {"some_other_key": "value"}
+        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
+
+    def test_empty_config(self):
+        # When config is empty (but not None), should return None
+        config = {}
+        assert get_flink_pool_from_flink_instance_config(config) is None
+
+    def test_none_config(self):
+        # When config is None, should return None
+        assert get_flink_pool_from_flink_instance_config(None) is None
+
+    def test_non_bool_spot_value(self):
+        # When spot has a non-boolean value like a string, it should treat it as non-False
+        config = {"spot": "some_string"}
+        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
+
+        # Test with a numeric value
+        config = {"spot": 0}
+        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
 
 
 def _formatted_table_to_dict(formatted_table):
