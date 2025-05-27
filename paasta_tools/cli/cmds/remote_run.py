@@ -14,6 +14,8 @@
 # limitations under the License.
 import argparse
 import shutil
+import subprocess
+import sys
 import time
 from typing import List
 
@@ -138,8 +140,12 @@ def paasta_remote_run_start(
                 pod=poll_response.pod_name,
                 filename=filename,
                 token=token_response.token,
-            )
-            run_interactive_cli(cp_command)
+            ).split(" ")
+            call = subprocess.run(cp_command, capture_output=True)
+            if call.returncode != 0:
+                print("Error copying file to remote-run pod: ", file=sys.stderr)
+                print(call.stderr.decode("utf-8"), file=sys.stderr)
+                return 1
 
     run_interactive_cli(exec_command)
     return 0
