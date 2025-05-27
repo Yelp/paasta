@@ -24,7 +24,7 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
     validate_and_convert_types
 )
 from paasta_tools.paastaapi.model.autoscaler_count_msg import AutoscalerCountMsg
-from paasta_tools.paastaapi.model.hpa_override import HPAOverride
+from paasta_tools.paastaapi.model.autoscaling_override import AutoscalingOverride
 from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
 
 
@@ -166,25 +166,25 @@ class AutoscalerApi(object):
             callable=__get_autoscaler_count
         )
 
-        def __set_hpa_override(
+        def __set_autoscaling_override(
             self,
             service,
             instance,
-            hpa_override,
+            autoscaling_override,
             **kwargs
         ):
-            """Set a temporary HPA override for a service instance  # noqa: E501
+            """Set a temporary autoscaling override for a service instance  # noqa: E501
 
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.set_hpa_override(service, instance, hpa_override, async_req=True)
+            >>> thread = api.set_autoscaling_override(service, instance, autoscaling_override, async_req=True)
             >>> result = thread.get()
 
             Args:
                 service (str): Service name
                 instance (str): Instance name
-                hpa_override (HPAOverride):
+                autoscaling_override (AutoscalingOverride):
 
             Keyword Args:
                 _return_http_data_only (bool): response data without head status
@@ -235,16 +235,16 @@ class AutoscalerApi(object):
                 service
             kwargs['instance'] = \
                 instance
-            kwargs['hpa_override'] = \
-                hpa_override
+            kwargs['autoscaling_override'] = \
+                autoscaling_override
             return self.call_with_http_info(**kwargs)
 
-        self.set_hpa_override = Endpoint(
+        self.set_autoscaling_override = Endpoint(
             settings={
                 'response_type': (InlineResponse202,),
                 'auth': [],
-                'endpoint_path': '/service_autoscaler/{service}/{instance}/hpa_override',
-                'operation_id': 'set_hpa_override',
+                'endpoint_path': '/service_autoscaler/{service}/{instance}/autoscaling_override',
+                'operation_id': 'set_autoscaling_override',
                 'http_method': 'POST',
                 'servers': None,
             },
@@ -252,12 +252,12 @@ class AutoscalerApi(object):
                 'all': [
                     'service',
                     'instance',
-                    'hpa_override',
+                    'autoscaling_override',
                 ],
                 'required': [
                     'service',
                     'instance',
-                    'hpa_override',
+                    'autoscaling_override',
                 ],
                 'nullable': [
                 ],
@@ -276,8 +276,8 @@ class AutoscalerApi(object):
                         (str,),
                     'instance':
                         (str,),
-                    'hpa_override':
-                        (HPAOverride,),
+                    'autoscaling_override':
+                        (AutoscalingOverride,),
                 },
                 'attribute_map': {
                     'service': 'service',
@@ -286,7 +286,7 @@ class AutoscalerApi(object):
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
-                    'hpa_override': 'body',
+                    'autoscaling_override': 'body',
                 },
                 'collection_format_map': {
                 }
@@ -300,7 +300,7 @@ class AutoscalerApi(object):
                 ]
             },
             api_client=api_client,
-            callable=__set_hpa_override
+            callable=__set_autoscaling_override
         )
 
         def __update_autoscaler_count(

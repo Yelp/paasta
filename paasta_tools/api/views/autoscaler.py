@@ -32,9 +32,9 @@ from paasta_tools.kubernetes_tools import get_or_create_namespaced_configmap
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import patch_namespaced_configmap
 
-# ConfigMap name for storing HPA overrides
-HPA_OVERRIDES_CONFIGMAP_NAME = "paasta-hpa-overrides"
-HPA_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
+# ConfigMap name for storing autoscaling overrides
+AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
+AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
 
 log = logging.getLogger(__name__)
 
@@ -115,21 +115,21 @@ def update_autoscaler_count(request):
     return Response(json_body=response_body, status_code=202)
 
 
-def get_or_create_hpa_overrides_configmap() -> Tuple[V1ConfigMap, bool]:
+def get_or_create_autoscaling_overrides_configmap() -> Tuple[V1ConfigMap, bool]:
     return get_or_create_namespaced_configmap(
-        HPA_OVERRIDES_CONFIGMAP_NAME,
-        namespace=HPA_OVERRIDES_CONFIGMAP_NAMESPACE,
+        AUTOSCALING_OVERRIDES_CONFIGMAP_NAME,
+        namespace=AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
         kube_client=settings.kubernetes_client,
     )
 
 
 @view_config(
-    route_name="service_autoscaler.hpa_override.post",
+    route_name="service_autoscaler.autoscaling_override.post",
     request_method="POST",
     renderer="json",
 )
-def set_hpa_override(request):
-    """Set a temporary HPA override for a service/instance.
+def set_autoscaling_override(request):
+    """Set a temporary autoscaling override for a service/instance.
 
     This endpoint creates or updates a ConfigMap entry with override information
     including expiration time. The override will be applied by the autoscaler.
@@ -138,7 +138,7 @@ def set_hpa_override(request):
     - service: The service name
     - instance: The instance name
     - min_instances: The minimum number of instances to enforce
-    - expires_after: ISO timestamp after which the override is no longer valid
+    - expires_after: unix timestamp after which the override is no longer valid
     """
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
@@ -175,9 +175,9 @@ def set_hpa_override(request):
             400,
         )
 
-    configmap, created = get_or_create_hpa_overrides_configmap()
+    configmap, created = get_or_create_autoscaling_overrides_configmap()
     if created:
-        log.info("Created new HPA overrides ConfigMap")
+        log.info("Created new autoscaling overrides ConfigMap")
     # i dunno why this is necessary, but a newly created configmap doesn't have a data field
     # even when we set it in the create call
     if not configmap.data:
@@ -201,8 +201,8 @@ def set_hpa_override(request):
     serialized_overrides = json.dumps(merged_overrides)
 
     patch_namespaced_configmap(
-        name=HPA_OVERRIDES_CONFIGMAP_NAME,
-        namespace=HPA_OVERRIDES_CONFIGMAP_NAMESPACE,
+        name=AUTOSCALING_OVERRIDES_CONFIGMAP_NAME,
+        namespace=AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
         # this should only update the single entry for the $service.$instance key
         # ain't k8s grand?
         body={"data": {service_instance: serialized_overrides}},

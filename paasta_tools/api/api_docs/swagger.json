@@ -279,9 +279,9 @@
                 "operationId": "delete_service_autoscaler_pause"
             }
         },
-        "/service_autoscaler/{service}/{instance}/hpa_override": {
+        "/service_autoscaler/{service}/{instance}/autoscaling_override": {
             "post": {
-                "operationId": "set_hpa_override",
+                "operationId": "set_autoscaling_override",
                 "parameters": [
                     {
                         "description": "Service name",
@@ -302,13 +302,13 @@
                         "name": "json_body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/HPAOverride"
+                            "$ref": "#/definitions/AutoscalingOverride"
                         }
                     }
                 ],
                 "responses": {
                     "202": {
-                        "description": "Successfully set HPA override",
+                        "description": "Successfully set autoscaling override",
                         "schema": {
                             "type": "object",
                             "properties": {
@@ -343,10 +343,10 @@
                         "description": "Autoscaling not supported for this instance type"
                     },
                     "500": {
-                        "description": "Failed to set HPA override"
+                        "description": "Failed to set autoscaling override"
                     }
                 },
-                "summary": "Set a temporary HPA override for a service instance",
+                "summary": "Set a temporary autoscaling override for a service instance",
                 "tags": [
                     "autoscaler"
                 ]
@@ -1700,7 +1700,7 @@
                 }
             }
         },
-        "HPAOverride": {
+        "AutoscalingOverride": {
             "type": "object",
             "properties": {
                 "min_instances": {

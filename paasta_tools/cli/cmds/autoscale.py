@@ -204,15 +204,15 @@ def paasta_autoscale(args):
             log.debug(
                 f"Setting minimum instances to {args.set_min} for duration {args.duration}."
             )
-            msg = paastamodels.HPAOverride(
+            msg = paastamodels.AutoscalingOverride(
                 min_instances=args.set_min,
                 expire_after=expiration_time,
             )
 
-            res, status, _ = api.autoscaler.set_hpa_override(
+            res, status, _ = api.autoscaler.set_autoscaling_override(
                 service=service,
                 instance=args.instance,
-                hpa_override=msg,
+                autoscaling_override=msg,
                 _return_http_data_only=False,
             )
             _log_audit(

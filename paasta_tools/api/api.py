@@ -190,8 +190,8 @@ def make_app(global_config=None):
         request_method="GET",
     )
     config.add_route(
-        "service_autoscaler.hpa_override.post",
-        "/v1/service_autoscaler/{service}/{instance}/hpa_override",
+        "service_autoscaler.autoscaling_override.post",
+        "/v1/service_autoscaler/{service}/{instance}/autoscaling_override",
         request_method="POST",
     )
     config.add_route(
