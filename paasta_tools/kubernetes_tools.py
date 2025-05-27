@@ -4344,7 +4344,6 @@ def ensure_service_account(
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
     if existing_sa:
-        requires_patch = False
         if (
             not sa.metadata.annotations
             or sa.metadata.annotations.get(role_annotation, None) != iam_role
@@ -4353,8 +4352,6 @@ def ensure_service_account(
             # than the pod identity role ARN, so this will remove
             # any annotations that folks may have manually added
             sa.metadata.annotations = {role_annotation: iam_role}
-            requires_patch = True
-        if requires_patch:
             kube_client.core.patch_namespaced_service_account(
                 namespace=namespace, body=sa, name=sa.metadata.name
             )
