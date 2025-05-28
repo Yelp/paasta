@@ -1,3 +1,10 @@
+paasta-tools (1.21.4) xenial; urgency=medium
+
+  * 1.21.4 tagged with 'make release'
+    Commit: use oidc token method from vault-tools (#4072)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 28 May 2025 07:56:15 -0700
+
 paasta-tools (1.21.3) xenial; urgency=medium
 
   * 1.21.3 tagged with 'make release'
