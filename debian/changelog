@@ -1,3 +1,17 @@
+paasta-tools (1.22.0) xenial; urgency=medium
+
+  * 1.22.0 tagged with 'make release'
+    Commit: Enable temporary min-bound autoscaling overrides (#4068)  As
+    it says on the tin: this allows folks to temporarily bump
+    min_instances for an arbitrary amount of time - this is useful for
+    scenarios like region failovers where our service autoscaler may
+    have scaled down a service in one region, but we"re preparing to
+    shift traffic back and want to ensure we have the capacity to serve
+    requests (or this can even be useful in the other direction where
+    we"re shifting traffic and want to pre-emptively scale up services)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 28 May 2025 11:50:25 -0700
+
 paasta-tools (1.21.4) xenial; urgency=medium
 
   * 1.21.4 tagged with 'make release'
