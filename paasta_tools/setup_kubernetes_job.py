@@ -24,6 +24,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 import traceback
 from typing import Dict
 from typing import List
@@ -32,9 +33,6 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-from build.lib.paasta_tools.api.views.autoscaler import (
-    AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
-)
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes.application.controller_wrappers import Application
@@ -42,6 +40,7 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import HpaOverride
@@ -291,7 +290,7 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
         )
 
         if configmap.data:
-            current_time = 0  # datetime.now(timezone.utc)
+            current_time = time.time()
 
             for service_instance, override_json in configmap.data.items():
                 try:
