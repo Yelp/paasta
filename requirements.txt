@@ -92,7 +92,7 @@ ruamel.yaml==0.16.12
 ruamel.yaml.clib==0.2.8
 s3transfer==0.10.0
 sensu-plugin==0.3.1
-service-configuration-lib==3.2.0
+service-configuration-lib==3.3.2
 setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
