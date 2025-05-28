@@ -18,6 +18,7 @@ from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_service_account
+from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -219,6 +220,15 @@ class Application(ABC):
 
 
 class DeploymentWrapper(Application):
+    def __init__(
+        self,
+        item: Union[V1Deployment, V1StatefulSet],
+        logging=logging.getLogger(__name__),
+        hpa_override: Optional[HpaOverride] = None,
+    ) -> None:
+        super().__init__(item, logging)
+        self.hpa_override = hpa_override
+
     def deep_delete(
         self, kube_client: KubeClient, propagation_policy="Foreground"
     ) -> None:
@@ -290,6 +300,9 @@ class DeploymentWrapper(Application):
             cluster=self.soa_config.cluster,
             kube_client=kube_client,
             namespace=self.item.metadata.namespace,
+            min_instances_override=(
+                self.hpa_override["min_instances"] if self.hpa_override else None
+            ),
         )
 
         hpa_exists = self.exists_hpa(kube_client)
@@ -461,11 +474,12 @@ class JobWrapper(Application):
 
 
 def get_application_wrapper(
-    formatted_application: Union[V1Deployment, V1StatefulSet, V1Job]
+    formatted_application: Union[V1Deployment, V1StatefulSet, V1Job],
+    hpa_override: Optional[HpaOverride] = None,
 ) -> Application:
     app: Application
     if isinstance(formatted_application, V1Deployment):
-        app = DeploymentWrapper(formatted_application)
+        app = DeploymentWrapper(formatted_application, hpa_override=hpa_override)
     elif isinstance(formatted_application, V1StatefulSet):
         app = StatefulSetWrapper(formatted_application)
     elif isinstance(formatted_application, V1Job):
