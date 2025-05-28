@@ -28,13 +28,12 @@ from pyramid.view import view_config
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
 from paasta_tools.kubernetes_tools import get_or_create_namespaced_configmap
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import patch_namespaced_configmap
 
-# ConfigMap name for storing autoscaling overrides
-AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
-AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
 
 log = logging.getLogger(__name__)
 
