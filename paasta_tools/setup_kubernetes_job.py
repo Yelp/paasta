@@ -32,12 +32,16 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from build.lib.paasta_tools.api.views.autoscaler import (
+    AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
+)
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import HpaOverride
@@ -248,9 +252,9 @@ def get_kubernetes_deployment_config(
 
 def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverride]]:
     """
-    Load HPA overrides from the ConfigMap once.
+    Load autoscaling overrides from the ConfigMap once.
 
-    This function reads the "paasta-hpa-overrides" ConfigMap in the "paasta" namespace
+    This function reads the "paasta-autoscaling-overrides" ConfigMap in the "paasta" namespace
     and extracts all valid (non-expired) overrides to return a dictionary mapping
     service.instance pairs to override data (currently, just min_instances and when the
     override should expire by).
@@ -281,8 +285,8 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
     overrides: Dict[str, Dict[str, HpaOverride]] = {}
     try:
         configmap = get_namespaced_configmap(
-            "paasta-hpa-overrides",
-            namespace="paasta",
+            name=AUTOSCALING_OVERRIDES_CONFIGMAP_NAME,
+            namespace=AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
             kube_client=kube_client,
         )
 
@@ -326,7 +330,7 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
     except Exception:
         # If ConfigMap doesn't exist or there's an error, just return empty dict
         log.exception(
-            "Unable to load the paasta-hpa-overrides ConfigMap - proceeding without overrides"
+            f"Unable to load the {AUTOSCALING_OVERRIDES_CONFIGMAP_NAME} ConfigMap - proceeding without overrides"
         )
 
     return overrides

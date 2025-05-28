@@ -233,6 +233,9 @@ DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
 DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS = 3600
 PROJECTED_SA_TOKEN_PATH = "token"
 
+AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
+AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
+
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
