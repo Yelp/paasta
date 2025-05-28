@@ -857,7 +857,15 @@
                         }
                     },
                     "403": {
-                        "description": "Unauthorized to remote-run this service"
+                        "description": "Unauthorized to remote-run this service",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Deployment key not found"
@@ -908,7 +916,15 @@
                         }
                     },
                     "403": {
-                        "description": "Unauthorized to remote-run this service"
+                        "description": "Unauthorized to remote-run this service",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Service instance not found"

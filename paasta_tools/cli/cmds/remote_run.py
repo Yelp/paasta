@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import json
 import shutil
 import time
 from typing import List
@@ -22,6 +23,7 @@ from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import run_interactive_cli
 from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
+from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
 from paasta_tools.utils import get_username
@@ -52,6 +54,18 @@ def _list_services_and_toolboxes() -> List[str]:
     )
 
 
+def parse_error(body: str) -> str:
+    try:
+        body_object = json.loads(body)
+    except json.decoder.JSONDecodeError:
+        return body
+    return (
+        body_object.get("reason")
+        or body_object.get("message")
+        or json.dumps(body_object, indent=4)
+    )
+
+
 def paasta_remote_run_start(
     args: argparse.Namespace,
     system_paasta_config: SystemPaastaConfig,
@@ -65,19 +79,21 @@ def paasta_remote_run_start(
         return 1
 
     user = get_username()
-    start_response = client.remote_run.remote_run_start(
-        args.service,
-        args.instance,
-        RemoteRunStart(
-            user=user,
-            interactive=args.interactive,
-            recreate=args.recreate,
-            max_duration=args.max_duration,
-            toolbox=args.toolbox,
-        ),
-    )
-    if start_response.status >= 300:
-        print(f"Error from PaaSTA APIs while starting job: {start_response.message}")
+    try:
+        start_response = client.remote_run.remote_run_start(
+            args.service,
+            args.instance,
+            RemoteRunStart(
+                user=user,
+                interactive=args.interactive,
+                recreate=args.recreate,
+                max_duration=args.max_duration,
+                toolbox=args.toolbox,
+            ),
+        )
+    except ApiException as e:
+        error_msg = parse_error(e.body)
+        print(f"Error from PaaSTA APIs while starting job: {error_msg}")
         return 1
 
     print(
@@ -142,13 +158,18 @@ def paasta_remote_run_stop(
     if not client:
         print("Cannot get a paasta-api client")
         return 1
-    response = client.remote_run.remote_run_stop(
-        args.service,
-        args.instance,
-        RemoteRunStop(user=get_username(), toolbox=args.toolbox),
-    )
+    try:
+        response = client.remote_run.remote_run_stop(
+            args.service,
+            args.instance,
+            RemoteRunStop(user=get_username(), toolbox=args.toolbox),
+        )
+    except ApiException as e:
+        error_msg = parse_error(e.body)
+        print(f"Error from PaaSTA APIs while stopping job: {error_msg}")
+        return 1
     print(response.message)
-    return 0 if response.status < 300 else 1
+    return 0
 
 
 def add_common_args_to_parser(parser: argparse.ArgumentParser):
