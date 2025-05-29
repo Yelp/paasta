@@ -379,9 +379,9 @@ def add_subparser(subparsers):
         "--jira-ticket",
         help=(
             "The top level jira ticket used to track the project that this spark-job is related to. "
-            "eg: --jira-ticket=PROJ-123 "
+            "eg: --jira-ticket=PROJ-123. "
             "Must be passed for all adhoc jobs. "
-            "See https://yelpwiki.yelpcorp.com/spaces/AML/pages/402885641"
+            "See https://yelpwiki.yelpcorp.com/spaces/AML/pages/402885641. "
         ),
         type=str,
         required=False,
