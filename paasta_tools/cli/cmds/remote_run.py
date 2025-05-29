@@ -34,7 +34,9 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 
-KUBECTL_EXEC_CMD_TEMPLATE = "{kubectl_wrapper} --token {token} exec -it --pod-running-timeout=10s -n {namespace} {pod} -- /bin/bash"
+KUBECTL_EXEC_CMD_TEMPLATE = (
+    "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
+)
 KUBECTL_CP_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} -n {namespace} cp {filename} {pod}:/tmp/"
 )

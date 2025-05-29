@@ -1037,6 +1037,9 @@
                     "404": {
                         "description": "Service instance not found"
                     },
+                    "409": {
+                        "description": "A pod was found but is currently being terminated"
+                    },
                     "500": {
                         "description": "Failure"
                     }
