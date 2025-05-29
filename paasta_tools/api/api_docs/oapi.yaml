@@ -1224,6 +1224,13 @@ paths:
           description: Successfully started remote-run sandbox
         "403":
           description: Unauthorized to remote-run this service
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reason:
+                    type: string
         "404":
           description: Service instance not found
         "500":
@@ -1262,6 +1269,13 @@ paths:
           description: Remote run pod stopped
         "403":
           description: Unauthorized to remote-run this service
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reason:
+                    type: string
         "404":
           description: Service instance not found
         "500":
