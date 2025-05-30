@@ -1049,7 +1049,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 limit=63,
                 suffix=4,
             ),
-            "tron.yelp.com/idempotent-action": action_config.get_idempotent(),
+            "tron.yelp.com/idempotent-action": str(
+                action_config.get_idempotent()
+            ).lower(),
             # XXX: should this be different for Spark drivers launched by Tron?
             "app.kubernetes.io/managed-by": "tron",
         }
