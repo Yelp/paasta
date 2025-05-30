@@ -422,6 +422,9 @@ class TronActionConfig(InstanceConfig):
     def get_job_name(self):
         return self.job
 
+    def get_idempotent(self) -> bool:
+        return self.config_dict.get("idempotent", False)
+
     def get_action_name(self):
         return self.action
 
@@ -1046,6 +1049,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 limit=63,
                 suffix=4,
             ),
+            "tron.yelp.com/idempotent-action": action_config.get_idempotent(),
             # XXX: should this be different for Spark drivers launched by Tron?
             "app.kubernetes.io/managed-by": "tron",
         }

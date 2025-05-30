@@ -1083,6 +1083,7 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "paasta.yelp.com/idempotent-action": False,
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1150,6 +1151,7 @@ class TestTronTools:
             "deploy_group": "prod",
             "executor": "spark",
             "disk": 42,
+            "idempotent": True,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
             "secret_volumes": [
@@ -1449,6 +1451,7 @@ class TestTronTools:
                 "paasta.yelp.com/prometheus_shard": "ml-compute",
                 "spark.yelp.com/user": "TRON",
                 "spark.yelp.com/driver_ui_port": "39091",
+                "paasta.yelp.com/idempotent-action": True,
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
@@ -1493,6 +1496,7 @@ class TestTronTools:
             "deploy_group": "prod",
             "pool": "default",
             "executor": "paasta",
+            "idempotent": True,
         }
         branch_dict = {
             "docker_image": "my_service:paasta-123abcde",
@@ -1541,6 +1545,7 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "paasta.yelp.com/idempotent-action": True,
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1687,6 +1692,7 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "paasta.yelp.com/idempotent-action": False,
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1849,6 +1855,7 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "paasta.yelp.com/idempotent-action": False,
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -2004,7 +2011,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "b4c7ee4d47787f081b58b44df10a07f1"
+        assert hasher.hexdigest() == "b0359064555555dec6cfb5476de143c7"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
