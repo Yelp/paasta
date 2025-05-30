@@ -2685,6 +2685,7 @@ class TestPrintFlinkStatus:
         ]
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2695,9 +2696,12 @@ class TestPrintFlinkStatus:
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
+        mock_convert_location_type,
         mock_flink_status,
         system_paasta_config,
     ):
+        # Mock the convert_location_type to return the expected ecosystem
+        mock_convert_location_type.return_value = ["devc"]
         # System_paasta_config mock to return the right cluster data
         system_paasta_config.get_kube_clusters = Mock(
             return_value={
@@ -2734,6 +2738,11 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+        # Assert that convert_location_type was called with the correct parameters
+        mock_convert_location_type.assert_called_once_with(
+            location="uswest2-devc", source_type="region", desired_type="ecosystem"
+        )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
@@ -2766,6 +2775,7 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2776,9 +2786,12 @@ class TestPrintFlinkStatus:
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
+        mock_convert_location_type,
         mock_flink_status,
         system_paasta_config,
     ):
+        # Mock the convert_location_type to return the expected ecosystem
+        mock_convert_location_type.return_value = ["devc"]
         # System_paasta_config mock to return the right cluster data
         system_paasta_config.get_kube_clusters = Mock(
             return_value={
@@ -2816,6 +2829,11 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+        # Assert that convert_location_type was called with the correct parameters
+        mock_convert_location_type.assert_called_once_with(
+            location="uswest2-devc", source_type="region", desired_type="ecosystem"
+        )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
@@ -2848,6 +2866,7 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
@@ -2858,10 +2877,12 @@ class TestPrintFlinkStatus:
         mock_load_soa_flink_yaml,
         mock_naturaltime,
         mock_load_system_paasta_config,
+        mock_convert_location_type,
         mock_flink_status,
         system_paasta_config,
     ):
-
+        # Mock the convert_location_type to return the expected ecosystem
+        mock_convert_location_type.return_value = ["devc"]
         # System_paasta_config mock to return the right cluster data
         system_paasta_config.get_kube_clusters = Mock(
             return_value={
@@ -2895,6 +2916,10 @@ class TestPrintFlinkStatus:
             output=output,
             flink=mock_flink_status,
             verbose=1,
+        )
+        # Assert that convert_location_type was called with the correct parameters
+        mock_convert_location_type.assert_called_once_with(
+            location="uswest2-devc", source_type="region", desired_type="ecosystem"
         )
 
         status = mock_flink_status["status"]
