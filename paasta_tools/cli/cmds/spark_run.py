@@ -375,6 +375,20 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--jira-ticket",
+        help=(
+            "The top level jira ticket used to track the project that this spark-job is related to. "
+            "eg: --jira-ticket=PROJ-123. "
+            "Must be passed for all adhoc jobs. "
+            "See https://yelpwiki.yelpcorp.com/spaces/AML/pages/402885641. "
+        ),
+        type=str,
+        required=False,
+        dest="jira_ticket",
+        default=None,
+    )
+
     aws_group = list_parser.add_argument_group(
         title="AWS credentials options",
         description="If --aws-credentials-yaml is specified, it overrides all "
@@ -1383,6 +1397,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         use_eks=True,
         k8s_server_address=k8s_server_address,
         service_account_name=service_account_name,
+        jira_ticket=args.jira_ticket,
     )
 
     return configure_and_run_docker_container(
