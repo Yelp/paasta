@@ -15,6 +15,7 @@
 import asyncio
 import concurrent.futures
 import difflib
+import os
 import shutil
 import sys
 from collections import Counter
@@ -41,8 +42,10 @@ from typing import Union
 
 import a_sync
 import humanize
+from environment_tools.type_utils import convert_location_type
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
+from service_configuration_lib import read_yaml_file
 
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
@@ -70,6 +73,7 @@ from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -763,12 +767,19 @@ def append_pod_status(pod_status, output: List[str]):
     output.extend([f"      {line}" for line in pods_table])
 
 
+OUTPUT_HORIZONTAL_RULE = (
+    "=================================================================="
+)
+
+
 def _print_flink_status_from_job_manager(
     service: str,
     instance: str,
+    cluster: str,
     output: List[str],
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
+    system_paasta_config: "SystemPaastaConfig",
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -776,6 +787,7 @@ def _print_flink_status_from_job_manager(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    # Print Flink Config SHA
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
@@ -785,9 +797,56 @@ def _print_flink_status_from_job_manager(
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
         config_sha = config_sha[6:]
-
     output.append(f"    Config SHA: {config_sha}")
 
+    if verbose:
+        # Get Yelpsoa Information for flink instance
+        flink_instance_config = load_soa_flink_instance_yaml(
+            service=service,
+            instance_key=instance,
+            cluster=cluster,
+            soa_dir=DEFAULT_SOA_DIR,
+        )
+
+        # Print Flink Pool information
+        flink_pool = None
+        if flink_instance_config is not None:
+            flink_pool = get_flink_pool_from_flink_instance_config(
+                flink_instance_config
+            )
+        output.append(f"    Flink Pool: {flink_pool}")
+
+        # Print ownership information
+        flink_monitoring_team = None
+        if flink_instance_config is not None:
+            flink_monitoring_team = get_team_from_flink_instance_config(
+                flink_instance_config
+            )
+        if flink_monitoring_team is None:
+            flink_monitoring_team = get_team(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+        output.append(f"    Owner: {flink_monitoring_team}")
+
+        # Print rb information
+        flink_rb_for_instance = None
+        if flink_instance_config is not None:
+            flink_rb_for_instance = get_runbook_from_flink_instance_config(
+                flink_instance_config
+            )
+        if flink_rb_for_instance is None:
+            flink_rb_for_instance = get_runbook(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+        output.append(f"    Flink Runbook: {flink_rb_for_instance}")
+
+        # Print Flink repo links
+        output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+        output.append(
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+        )
+
+    # Print Flink Version
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
@@ -805,17 +864,94 @@ def _print_flink_status_from_job_manager(
         else:
             output.append(f"    Flink version: {flink_config.flink_version}")
 
+        # Print Flink Dashboard URL
         # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
 
+    if verbose:
+        # Print Flink config link resources
+
+        try:
+            # Convert the yelp_region to ecosystem
+            # https://yelpwiki.yelpcorp.com/spaces/PRODENG/pages/14226200/Habitat+Datacenter+Ecosystem+Runtimeenv+Region+Superregion
+            # Example
+            #  convert_location_type(
+            #      location="uswest2-devc",
+            #      source_type="region",
+            #      desired_type="ecosystem",
+            #  )
+            # Output: devc
+            kube_clusters_data = system_paasta_config.get_kube_clusters()
+            cluster_info = kube_clusters_data.get(cluster)
+            yelp_region = cluster_info.get("yelp_region", None)  # uswest2-devc
+
+            ecosystem = convert_location_type(
+                location=yelp_region,
+                source_type="region",
+                desired_type="ecosystem",
+            )[0]
+        except Exception as e:
+            ecosystem = "pnw-prod"  # Default ecosystem
+            print("Error converting yelp_region to ecosystem: ", e)
+            print("Setting ecosystem to default: ", ecosystem)
+
+        output.append(
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+        )
+        output.append(
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+        )
+
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+        # Print Flink Log Commands
+        output.append(f"    Flink Log Commands:")
+        output.append(
+            f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
+        )
+        output.append(
+            f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER"
+        )
+        output.append(
+            f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER"
+        )
+        output.append(
+            f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
+        )
+
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+        # Print Flink Metrics Links
+        output.append(f"    Flink Monitoring:")
+        output.append(
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+        )
+        output.append(
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+        )
+        output.append(
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+        )
+
+        # Print Flink Costs Link
+        output.append(
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
+        )
+
+        # Formatting
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+    # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
 
+    # Print Flink Cluster Pod Info
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
-
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -988,7 +1124,7 @@ def print_flink_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, system_paasta_config, verbose
     )
 
 
@@ -1015,7 +1151,7 @@ def print_flinkeks_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, system_paasta_config, verbose
     )
 
 
@@ -1031,6 +1167,112 @@ async def get_flink_job_details(
         ]
     )
     return [jd for jd in jobs_details]
+
+
+def load_soa_flink_instance_yaml(
+    service: str,
+    instance_key: str,
+    cluster: str,
+    soa_dir: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Loads and parses the Flink configuration YAML file for a given service and cluster.
+
+    Args:
+        service: The name of the service (e.g., "sqlclient").
+        instance_key: The specific Flink job/instance key within the YAML
+        cluster: The cluster identifier (e.g., "pnw-prod").
+        soa_dir: The base directory for SOA configurations.
+
+    Returns:
+        A dictionary containing the parsed YAML data, or None if the file
+        is not found, cannot be read, is empty, or is not valid YAML.
+    """
+
+    flink_config_filename = f"flinkeks-{cluster}.yaml"
+    flink_config_file_path = os.path.join(soa_dir, service, flink_config_filename)
+
+    try:
+        config_data = read_yaml_file(flink_config_file_path)
+        if config_data and isinstance(config_data, dict):
+            instance_config_data = config_data.get(instance_key)
+            if instance_config_data and isinstance(instance_config_data, dict):
+                return instance_config_data
+            else:
+                return None
+        else:
+            return None
+    except Exception:
+        return None
+
+
+def get_flink_pool_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Parses flink_pool from a specific Flink instance's configuration data, using key 'spot'.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The flink pool string.
+    """
+
+    if instance_config_data and isinstance(instance_config_data, dict):
+        spot_config = instance_config_data.get("spot", None)
+        if spot_config is False:
+            return "flink"
+        else:
+            # if not set Flink instance default to use flink-spot pool
+            return "flink-spot"
+    return None
+
+
+def get_team_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Parses monitoring team from a specific Flink instance's configuration data.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The monitoring_team string.
+    """
+    monitoring_team = None
+    if instance_config_data and isinstance(instance_config_data, dict):
+        monitoring_config = instance_config_data.get("monitoring")
+        if monitoring_config and isinstance(monitoring_config, dict):
+            team = monitoring_config.get("team", None)
+            # Return team only if it's not empty
+            if team:
+                return team
+    return monitoring_team
+
+
+def get_runbook_from_flink_instance_config(
+    instance_config_data: Optional[Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Parses reunbook from a specific Flink instance's configuration data.
+
+    Args:
+        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
+
+    Returns:
+        The runbook link string.
+    """
+    monitoring_runbook = None
+    if instance_config_data and isinstance(instance_config_data, dict):
+        monitoring_config = instance_config_data.get("monitoring")
+        if monitoring_config and isinstance(monitoring_config, dict):
+            runbook = monitoring_config.get("runbook", None)
+            # Return runbook only if it's not empty
+            if runbook:
+                return runbook
+    return monitoring_runbook
 
 
 def print_kubernetes_status_v2(
