@@ -21,9 +21,12 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import json
 import logging
 import sys
+import time
 import traceback
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -36,7 +39,11 @@ from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
+from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_namespaced_configmap
+from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -129,6 +136,8 @@ def main() -> None:
     kube_client = KubeClient()
     service_instances_valid = True
 
+    hpa_overrides = get_hpa_overrides(kube_client)
+
     # validate the service_instance names
     service_instances_with_valid_names = get_service_instances_with_valid_names(
         service_instances=args.service_instance_list
@@ -162,6 +171,7 @@ def main() -> None:
             soa_dir=soa_dir,
             metrics_interface=deploy_metrics,
             eks=args.eks,
+            hpa_overrides=hpa_overrides,
         )
     else:
         setup_kube_succeeded = False
@@ -239,6 +249,92 @@ def get_kubernetes_deployment_config(
     return service_instance_configs_list
 
 
+def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverride]]:
+    """
+    Load autoscaling overrides from the ConfigMap once.
+
+    This function reads the "paasta-autoscaling-overrides" ConfigMap in the "paasta" namespace
+    and extracts all valid (non-expired) overrides to return a dictionary mapping
+    service.instance pairs to override data (currently, just min_instances and when the
+    override should expire by).
+
+    The incoming ConfigMap is expected to have the following format:
+    {
+        $SERVICE_A.$INSTANCE_A: {
+            "min_instances": 2,
+            "expire_after": "2023-10-01T00:00:00Z"
+        },
+        $SERVICE_A.$INSTANCE_B: {
+            "min_instances": 3,
+            "expire_after": "2023-10-01T00:00:00Z"
+        },
+            ...
+        },
+        $SERVICE_B.$INSTANCE_A: {
+            "min_instances": 1,
+            "expire_after": "2023-10-01T00:00:00Z"
+        },
+        $SERVICE_B.$INSTANCE_B: {
+            "min_instances": 2,
+            "expire_after": "2023-10-01T00:00:00Z"
+        },
+        ...
+    }
+    """
+    overrides: Dict[str, Dict[str, HpaOverride]] = {}
+    try:
+        configmap = get_namespaced_configmap(
+            name=AUTOSCALING_OVERRIDES_CONFIGMAP_NAME,
+            namespace=AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
+            kube_client=kube_client,
+        )
+
+        if configmap.data:
+            current_time = time.time()
+
+            for service_instance, override_json in configmap.data.items():
+                try:
+                    service, instance = service_instance.split(".")
+                    override_metadata = json.loads(override_json)
+                    expire_after = override_metadata.get("expire_after")
+                    min_instances = override_metadata.get("min_instances")
+
+                    if expire_after and min_instances:
+                        if current_time < expire_after:
+                            if service not in overrides:
+                                overrides[service] = {}
+
+                            overrides[service][instance] = {
+                                "min_instances": min_instances,
+                                "expire_after": expire_after,
+                            }
+                            log.info(
+                                f"Found valid HPA override for {service}: "
+                                f"{override_metadata.get('min_instances')} (expires at {expire_after})"
+                            )
+                        else:
+                            log.info(
+                                f"Ignoring expired HPA override for {service}.{instance}"
+                                f"(expired at {expire_after})"
+                            )
+                    else:
+                        log.warning(
+                            f"Invalid HPA override for {service}.{instance}: "
+                            f"missing 'min_instances' or 'expire_after': {override_metadata}"
+                        )
+                except Exception:
+                    log.exception(
+                        f"Error parsing override for {service} - proceeding without overrides for this service."
+                    )
+    except Exception:
+        # If ConfigMap doesn't exist or there's an error, just return empty dict
+        log.exception(
+            f"Unable to load the {AUTOSCALING_OVERRIDES_CONFIGMAP_NAME} ConfigMap - proceeding without overrides"
+        )
+
+    return overrides
+
+
 def setup_kube_deployments(
     kube_client: KubeClient,
     cluster: str,
@@ -249,6 +345,7 @@ def setup_kube_deployments(
     soa_dir: str = DEFAULT_SOA_DIR,
     metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
     eks: bool = False,
+    hpa_overrides: Optional[Dict[str, Dict[str, HpaOverride]]] = None,
 ) -> bool:
 
     if not service_instance_configs_list:
@@ -260,12 +357,17 @@ def setup_kube_deployments(
         for deployment in existing_kube_deployments
     }
 
+    hpa_overrides = hpa_overrides or {}
+
     applications = [
         create_application_object(
             cluster=cluster,
             soa_dir=soa_dir,
             service_instance_config=service_instance,
             eks=eks,
+            hpa_override=hpa_overrides.get(service_instance.service, {}).get(
+                service_instance.instance, None
+            ),
         )
         if service_instance
         else (_, None)
@@ -337,6 +439,7 @@ def create_application_object(
     soa_dir: str,
     service_instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     eks: bool = False,
+    hpa_override: Optional[HpaOverride] = None,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
@@ -344,8 +447,9 @@ def create_application_object(
         log.error(traceback.format_exc())
         return False, None
 
-    app = get_application_wrapper(formatted_application)
+    app = get_application_wrapper(formatted_application, hpa_override)
     app.load_local_config(soa_dir, cluster, eks)
+
     return True, app
 
 

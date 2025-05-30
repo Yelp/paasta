@@ -8,6 +8,7 @@ Submodules
 
    paasta_tools.paastaapi.model.adhoc_launch_history
    paasta_tools.paastaapi.model.autoscaler_count_msg
+   paasta_tools.paastaapi.model.autoscaling_override
    paasta_tools.paastaapi.model.deploy_queue
    paasta_tools.paastaapi.model.deploy_queue_service_instance
    paasta_tools.paastaapi.model.envoy_backend
@@ -23,6 +24,7 @@ Submodules
    paasta_tools.paastaapi.model.inline_object
    paasta_tools.paastaapi.model.inline_response200
    paasta_tools.paastaapi.model.inline_response2001
+   paasta_tools.paastaapi.model.inline_response202
    paasta_tools.paastaapi.model.instance_bounce_status
    paasta_tools.paastaapi.model.instance_mesh_status
    paasta_tools.paastaapi.model.instance_status
