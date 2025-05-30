@@ -42,6 +42,7 @@ from typing import Union
 
 import a_sync
 import humanize
+from environment_tools.type_utils import convert_location_type
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 from service_configuration_lib import read_yaml_file
@@ -96,7 +97,6 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SUPPERREGION_TO_ECOSYSTEM_MAPPINGS
 from paasta_tools.utils import SystemPaastaConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
@@ -779,6 +779,7 @@ def _print_flink_status_from_job_manager(
     output: List[str],
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
+    system_paasta_config: "SystemPaastaConfig",
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -870,8 +871,31 @@ def _print_flink_status_from_job_manager(
 
     if verbose:
         # Print Flink config link resources
-        # Get ecosystem from mapping or default to "prod" if not found
-        ecosystem = SUPPERREGION_TO_ECOSYSTEM_MAPPINGS.get(cluster, "prod")
+
+        try:
+            # Convert the yelp_region to ecosystem
+            # https://yelpwiki.yelpcorp.com/spaces/PRODENG/pages/14226200/Habitat+Datacenter+Ecosystem+Runtimeenv+Region+Superregion
+            # Example
+            #  convert_location_type(
+            #      location="uswest2-devc",
+            #      source_type="region",
+            #      desired_type="ecosystem",
+            #  )
+            # Output: devc
+            kube_clusters_data = system_paasta_config.get_kube_clusters()
+            cluster_info = kube_clusters_data.get(cluster)
+            yelp_region = cluster_info.get("yelp_region", None)  # uswest2-devc
+
+            ecosystem = convert_location_type(
+                location=yelp_region,
+                source_type="region",
+                desired_type="ecosystem",
+            )[0]
+        except Exception as e:
+            ecosystem = "pnw-prod"  # Default ecosystem
+            print("Error converting yelp_region to ecosystem: ", e)
+            print("Setting ecosystem to default: ", ecosystem)
+
         output.append(
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
         )
@@ -1100,7 +1124,7 @@ def print_flink_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, cluster, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, system_paasta_config, verbose
     )
 
 
@@ -1127,7 +1151,7 @@ def print_flinkeks_status(
         return 1
 
     return _print_flink_status_from_job_manager(
-        service, instance, cluster, output, flink, client, verbose
+        service, instance, cluster, output, flink, client, system_paasta_config, verbose
     )
 
 

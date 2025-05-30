@@ -13,6 +13,7 @@ cookiecutter >= 1.4.0
 croniter
 docker
 dulwich >= 0.17.3
+environment-tools==1.2.2
 ephemeral-port-reserve >= 1.0.1
 graphviz
 grpcio

@@ -2698,6 +2698,20 @@ class TestPrintFlinkStatus:
         mock_flink_status,
         system_paasta_config,
     ):
+        # System_paasta_config mock to return the right cluster data
+        system_paasta_config.get_kube_clusters = Mock(
+            return_value={
+                "pnw-devc": {
+                    "server": "https://k8s.test.paasta:1234",
+                    "certificate-authority-data": "test-cert",
+                    "aws_region": "us-west-2",
+                    "aws_account": "test",
+                    "yelp_region": "uswest2-devc",
+                    "aws_account_id": "123456789012",
+                }
+            }
+        )
+
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2765,6 +2779,19 @@ class TestPrintFlinkStatus:
         mock_flink_status,
         system_paasta_config,
     ):
+        # System_paasta_config mock to return the right cluster data
+        system_paasta_config.get_kube_clusters = Mock(
+            return_value={
+                "pnw-devc": {
+                    "server": "https://k8s.test.paasta:1234",
+                    "certificate-authority-data": "test-cert",
+                    "aws_region": "us-west-2",
+                    "aws_account": "test",
+                    "yelp_region": "uswest2-devc",
+                    "aws_account_id": "123456789012",
+                }
+            }
+        )
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2834,6 +2861,21 @@ class TestPrintFlinkStatus:
         mock_flink_status,
         system_paasta_config,
     ):
+
+        # System_paasta_config mock to return the right cluster data
+        system_paasta_config.get_kube_clusters = Mock(
+            return_value={
+                "pnw-devc": {
+                    "server": "https://k8s.test.paasta:1234",
+                    "certificate-authority-data": "test-cert",
+                    "aws_region": "us-west-2",
+                    "aws_account": "test",
+                    "yelp_region": "uswest2-devc",
+                    "aws_account_id": "123456789012",
+                }
+            }
+        )
+
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
