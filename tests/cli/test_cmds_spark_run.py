@@ -1086,6 +1086,7 @@ def test_paasta_spark_run_bash(
         get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
+        jira_ticket="TEST-123",
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1145,6 +1146,7 @@ def test_paasta_spark_run_bash(
         use_eks=True,
         k8s_server_address=None,
         service_account_name=None,
+        jira_ticket="TEST-123",
     )
     mock_spark_conf = mock_spark_conf_builder.return_value.get_spark_conf.return_value
     mock_configure_and_run_docker_container.assert_called_once_with(
@@ -1218,6 +1220,7 @@ def test_paasta_spark_run(
         get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
+        jira_ticket=None,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1280,6 +1283,7 @@ def test_paasta_spark_run(
         use_eks=True,
         k8s_server_address=None,
         service_account_name=None,
+        jira_ticket=None,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1350,6 +1354,7 @@ def test_paasta_spark_run_pyspark(
         get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
+        jira_ticket="TEST-123",
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1414,6 +1419,7 @@ def test_paasta_spark_run_pyspark(
         use_eks=True,
         k8s_server_address=None,
         service_account_name=None,
+        jira_ticket="TEST-123",
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1498,6 +1504,7 @@ def test_paasta_spark_run_uses_bulkdata(
         get_eks_token_via_iam_user=False,
         force_pod_identity=False,
         executor_pod_identity=False,
+        jira_ticket="TEST-123",
     )
     mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
@@ -1544,6 +1551,7 @@ def test_paasta_spark_run_re_run_sudo():
         use_web_identity=False,
         uses_bulkdata=True,
         get_eks_token_via_iam_user=True,
+        jira_ticket=None,
     )
     with mock.patch(
         "paasta_tools.cli.cmds.spark_run.os.getuid",
@@ -1612,6 +1620,7 @@ def test_paasta_spark_run_re_run_sudo_as_root(
         use_web_identity=False,
         uses_bulkdata=True,
         get_eks_token_via_iam_user=True,
+        jira_ticket="TEST-123",
     )
     with mock.patch(
         "paasta_tools.cli.cmds.spark_run.os.getuid",
@@ -1914,6 +1923,7 @@ def test_paasta_spark_run_with_pod_identity(
         force_pod_identity=force_pod_identity,
         executor_pod_identity=True,
         get_eks_token_via_iam_user=False,
+        jira_ticket="TEST-123",
     )
     # Use the expected return code to set the allowed iam roles
     if force_pod_identity and not should_exit_early:
@@ -1993,6 +2003,7 @@ def test_paasta_spark_run_with_pod_identity(
         use_eks=True,
         k8s_server_address=None,
         service_account_name="paasta--arn-aws-iam-123456789-role-test",
+        jira_ticket="TEST-123",
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -2004,4 +2015,120 @@ def test_paasta_spark_run_with_pod_identity(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="/test/pod-template.yaml",
         extra_driver_envs=dict(),
+    )
+
+
+@mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "get_instance_config", autospec=True)
+@mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
+@mock.patch.object(spark_run, "get_docker_image", autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
+@mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
+@pytest.mark.parametrize(
+    "jira_ticket,expected_in_call",
+    [
+        (
+            "PROJ-123",
+            True,
+        ),  # Valid ticket format - should be passed to SparkConfBuilder
+        (
+            "TICKET-456",
+            True,
+        ),  # Valid format - should be passed to SparkConfBuilder
+        (None, True),  # No ticket provided - None should be passed to SparkConfBuilder
+    ],
+)
+def test_jira_ticket_parameter(
+    mock_get_smart_paasta_instance_name,
+    mock_configure_and_run_docker_container,
+    mock_spark_conf_builder,
+    mock_parse_user_spark_args,
+    mock_get_spark_app_name,
+    mock_get_docker_image,
+    mock_get_aws_credentials,
+    mock_get_instance_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
+    mock_validate_work_dir,
+    jira_ticket,
+    expected_in_call,
+):
+    """Test that the jira_ticket parameter is correctly passed to SparkConfBuilder."""
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="pyspark",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        timeout_job_runtime="1m",
+        enable_dra=False,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
+        k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
+        use_web_identity=False,
+        uses_bulkdata=True,
+        get_eks_token_via_iam_user=False,
+        force_pod_identity=False,
+        executor_pod_identity=False,
+        jira_ticket=jira_ticket,
+    )
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
+        "test-pool"
+    ]
+    mock_load_system_paasta_config_spark_run.return_value.get_eks_cluster_aliases.return_value = {
+        "test-cluster": "test-cluster"
+    }
+    mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
+    mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
+        "spark.kubernetes.executor.podTemplateFile": "/test/pod-template.yaml",
+    }
+    mock_get_instance_config.return_value.get_iam_role.return_value = None
+
+    spark_run.paasta_spark_run(args)
+
+    # Verify that jira_ticket is passed correctly to SparkConfBuilder.get_spark_conf
+    mock_spark_conf_builder.return_value.get_spark_conf.assert_called_once_with(
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+        spark_app_base_name=mock_get_spark_app_name.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
+        user_spark_opts=mock_parse_user_spark_args.return_value,
+        paasta_cluster="test-cluster",
+        paasta_pool="test-pool",
+        paasta_service="test-service",
+        paasta_instance=mock_get_smart_paasta_instance_name.return_value,
+        extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
+        aws_creds=mock_get_aws_credentials.return_value,
+        aws_region="test-region",
+        force_spark_resource_configs=False,
+        use_eks=True,
+        k8s_server_address=None,
+        service_account_name=None,
+        jira_ticket=jira_ticket,
     )

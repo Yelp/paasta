@@ -13,6 +13,7 @@
 
 from paasta_tools.paastaapi.model.adhoc_launch_history import AdhocLaunchHistory
 from paasta_tools.paastaapi.model.autoscaler_count_msg import AutoscalerCountMsg
+from paasta_tools.paastaapi.model.autoscaling_override import AutoscalingOverride
 from paasta_tools.paastaapi.model.deploy_queue import DeployQueue
 from paasta_tools.paastaapi.model.deploy_queue_service_instance import DeployQueueServiceInstance
 from paasta_tools.paastaapi.model.envoy_backend import EnvoyBackend
@@ -29,6 +30,7 @@ from paasta_tools.paastaapi.model.inline_object import InlineObject
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
 from paasta_tools.paastaapi.model.inline_response403 import InlineResponse403
+from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
 from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus

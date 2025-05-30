@@ -1357,7 +1357,6 @@ class TestTronTools:
             "--conf spark.dynamicAllocation.shuffleTracking.enabled=true "
             "--conf spark.dynamicAllocation.executorAllocationRatio=0.8 "
             "--conf spark.dynamicAllocation.cachedExecutorIdleTimeout=1500s "
-            "--conf spark.dynamicAllocation.minExecutors=0 "
             "--conf spark.dynamicAllocation.maxExecutors=2 "
             "--conf spark.ui.prometheus.enabled=true "
             "--conf spark.metrics.conf.*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet "
