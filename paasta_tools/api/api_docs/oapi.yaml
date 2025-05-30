@@ -1327,6 +1327,8 @@ paths:
           description: Unauthorized to remote-run this service
         "404":
           description: Service instance not found
+        "409":
+          description: A pod was found but is currently being terminated
         "500":
           description: Failure
   /remote_run/{service}/{instance}/token:
