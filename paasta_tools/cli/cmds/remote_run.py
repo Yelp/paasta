@@ -62,7 +62,7 @@ def paasta_remote_run_start(
     system_paasta_config: SystemPaastaConfig,
     recursed: bool = False,
 ) -> int:
-    status_prefix = "\x1b[2K\r"  # Clear line, carridge return
+    status_prefix = "\x1b[2K\r"  # Clear line, carriage return
     client = get_paasta_oapi_client_with_auth(
         cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
         system_paasta_config=system_paasta_config,
