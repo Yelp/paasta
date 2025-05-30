@@ -24,6 +24,8 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
     validate_and_convert_types
 )
 from paasta_tools.paastaapi.model.autoscaler_count_msg import AutoscalerCountMsg
+from paasta_tools.paastaapi.model.autoscaling_override import AutoscalingOverride
+from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
 
 
 class AutoscalerApi(object):
@@ -164,6 +166,143 @@ class AutoscalerApi(object):
             callable=__get_autoscaler_count
         )
 
+        def __set_autoscaling_override(
+            self,
+            service,
+            instance,
+            autoscaling_override,
+            **kwargs
+        ):
+            """Set a temporary autoscaling override for a service instance  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.set_autoscaling_override(service, instance, autoscaling_override, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+                autoscaling_override (AutoscalingOverride):
+
+            Keyword Args:
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                InlineResponse202
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            kwargs['autoscaling_override'] = \
+                autoscaling_override
+            return self.call_with_http_info(**kwargs)
+
+        self.set_autoscaling_override = Endpoint(
+            settings={
+                'response_type': (InlineResponse202,),
+                'auth': [],
+                'endpoint_path': '/service_autoscaler/{service}/{instance}/autoscaling_override',
+                'operation_id': 'set_autoscaling_override',
+                'http_method': 'POST',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                    'autoscaling_override',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                    'autoscaling_override',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                    'autoscaling_override':
+                        (AutoscalingOverride,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                    'autoscaling_override': 'body',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [
+                    'application/json'
+                ]
+            },
+            api_client=api_client,
+            callable=__set_autoscaling_override
+        )
+
         def __update_autoscaler_count(
             self,
             service,
@@ -171,7 +310,7 @@ class AutoscalerApi(object):
             autoscaler_count_msg,
             **kwargs
         ):
-            """Get status of service_name.instance_name  # noqa: E501
+            """Set desired instance count for a service instance  # noqa: E501
 
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
