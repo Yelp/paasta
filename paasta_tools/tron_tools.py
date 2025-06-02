@@ -260,6 +260,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # TODO: TRON-2145: use this to implement timeout for non-spark actions in tron
     max_runtime: str
     mrjob: bool
+    idempotent: bool
 
 
 class TronActionConfig(InstanceConfig):
