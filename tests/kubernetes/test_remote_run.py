@@ -160,6 +160,7 @@ def test_remote_run_ready(
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_gen_config.return_value.get_namespace.return_value = "remote-run-toolbox"
     mock_find_job_pod.return_value.metadata.name = "somepod"
+    mock_find_job_pod.return_value.metadata.deletion_timestamp = None
     mock_find_job_pod.return_value.status.pod_ip = "127.1.33.7"
     # job found and ready
     mock_find_job_pod.return_value.status.phase = "Running"

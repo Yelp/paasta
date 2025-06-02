@@ -1,3 +1,11 @@
+paasta-tools (1.23.0) xenial; urgency=medium
+
+  * 1.23.0 tagged with 'make release'
+    Commit: Merge pull request #4075 from Yelp/remote_run_terminating
+    Remote run - handle terminating pods better
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Mon, 02 Jun 2025 10:12:33 -0700
+
 paasta-tools (1.22.0) xenial; urgency=medium
 
   * 1.22.0 tagged with 'make release'

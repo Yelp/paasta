@@ -60,7 +60,9 @@ def _list_services_and_toolboxes() -> List[str]:
 def paasta_remote_run_start(
     args: argparse.Namespace,
     system_paasta_config: SystemPaastaConfig,
+    recursed: bool = False,
 ) -> int:
+    status_prefix = "\x1b[2K\r"  # Clear line, carriage return
     client = get_paasta_oapi_client_with_auth(
         cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
         system_paasta_config=system_paasta_config,
@@ -100,10 +102,18 @@ def paasta_remote_run_start(
         if poll_response.status == 200:
             print("")
             break
-        print(f"\rStatus: {poll_response.message}", end="")
+        print(f"{status_prefix}Status: {poll_response.message}", end="")
+        if poll_response.status == 404:
+            # Probably indicates a pod was terminating. Now that its gone, retry the whole process
+            if not recursed:
+                print("\nPod finished terminating. Rerunning")
+                return paasta_remote_run_start(args, system_paasta_config, True)
+            else:
+                print("\nSomething went wrong. Pod still not found.")
+                return 1
         time.sleep(10)
     else:
-        print("Timed out while waiting for job to start")
+        print(f"{status_prefix}Timed out while waiting for job to start")
         return 1
 
     if not args.interactive and not args.toolbox:
