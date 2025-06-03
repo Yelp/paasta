@@ -260,6 +260,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # TODO: TRON-2145: use this to implement timeout for non-spark actions in tron
     max_runtime: str
     mrjob: bool
+    idempotent: bool
 
 
 class TronActionConfig(InstanceConfig):
@@ -421,6 +422,9 @@ class TronActionConfig(InstanceConfig):
 
     def get_job_name(self):
         return self.job
+
+    def get_idempotent(self) -> bool:
+        return self.config_dict.get("idempotent", False)
 
     def get_action_name(self):
         return self.action
@@ -977,6 +981,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
         "secret_volumes": action_config.get_secret_volumes(),
         "expected_runtime": action_config.get_expected_runtime(),
         "trigger_downstreams": action_config.get_trigger_downstreams(),
+        "idempotent": action_config.get_idempotent(),
         "triggered_by": action_config.get_triggered_by(),
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
@@ -1046,6 +1051,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 limit=63,
                 suffix=4,
             ),
+            "tron.yelp.com/idempotent-action": str(
+                action_config.get_idempotent()
+            ).lower(),
             # XXX: should this be different for Spark drivers launched by Tron?
             "app.kubernetes.io/managed-by": "tron",
         }

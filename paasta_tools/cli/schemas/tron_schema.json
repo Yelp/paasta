@@ -91,6 +91,11 @@
                     },
                     "uniqueItems": true
                 },
+                "idempotent": {
+                    "type": "boolean",
+                    "default": false,
+                    "$comment": "This will be used to determine whether the action can be retried without side effects."
+                },
                 "extra_constraints": {
                     "type": "array",
                     "items": {
