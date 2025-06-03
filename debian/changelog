@@ -1,3 +1,19 @@
+paasta-tools (1.23.1) xenial; urgency=medium
+
+  * 1.23.1 tagged with 'make release'
+    Commit: Take the max suggestion from autotune (#4056)  autotune
+    currently does some aggregation for service instances where it takes
+    into account the cpu (and if the cpu allocation changes, that"s
+    essentially treated as a new service instance) - this is likely done
+    on purpose, but our current thinking is that this is hurting us more
+    than it"s helping us  however, changing the autotune query is a much
+    bigger deal than changing the code that uses the results of that
+    query, so we"re thinking of simply taking the max from the results
+    across these cpu aggregations - this is a little wasteful, but
+    better than having values that are too low
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 03 Jun 2025 13:01:33 -0700
+
 paasta-tools (1.23.0) xenial; urgency=medium
 
   * 1.23.0 tagged with 'make release'
