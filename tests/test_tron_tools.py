@@ -1043,6 +1043,7 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "idempotent": False,
             "topology_spread_constraints": [
                 {
                     "label_selector": {
@@ -1453,6 +1454,7 @@ class TestTronTools:
                 "spark.yelp.com/driver_ui_port": "39091",
                 "tron.yelp.com/idempotent-action": "true",
             },
+            "idempotent": True,
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
                 "paasta.yelp.com/service": "my_service",
@@ -1538,6 +1540,7 @@ class TestTronTools:
             "disk": 1024,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
+            "idempotent": True,
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
                 "paasta.yelp.com/instance": "job_name.instance_name",
@@ -1683,6 +1686,7 @@ class TestTronTools:
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
+            "idempotent": False,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
             "labels": {
@@ -1817,6 +1821,7 @@ class TestTronTools:
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
+            "idempotent": False,
             "env": mock.ANY,
             "topology_spread_constraints": [
                 {
@@ -2011,7 +2016,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "98d9e4bca4ec9f0a36d8d576733cc68a"
+        assert hasher.hexdigest() == "5cf9985b6227ce18dc87376b687046f7"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
