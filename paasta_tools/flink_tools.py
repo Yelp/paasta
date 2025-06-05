@@ -122,14 +122,12 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         Returns:
             The flink pool string.
         """
-        if hasattr(self, "config_dict"):
-            spot_config = self.config_dict.get("spot", None)
-            if spot_config is False:
-                return "flink"
-            else:
-                # if not set or True, Flink instance defaults to use flink-spot pool
-                return "flink-spot"
-        return None
+        spot_config = self.config_dict.get("spot", None)
+        if spot_config is False:
+            return "flink"
+        else:
+            # if not set or True, Flink instance defaults to use flink-spot pool
+            return "flink-spot"
 
 
 def load_flink_instance_config(
