@@ -861,7 +861,7 @@ def _print_flink_status_from_job_manager(
 
         try:
             # Convert the yelp_region to ecosystem
-            # https://yelpwiki.yelpcorp.com/spaces/PRODENG/pages/14226200/Habitat+Datacenter+Ecosystem+Runtimeenv+Region+Superregion
+            # See y/habitat for what these mean
             # Example
             #  convert_location_type(
             #      location="uswest2-devc",
