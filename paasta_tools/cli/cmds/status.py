@@ -859,33 +859,29 @@ def _print_flink_status_from_job_manager(
     if verbose:
         # Print Flink config link resources
 
-        try:
-            # Convert the yelp_region to ecosystem
-            # See y/habitat for what these mean
-            # Example
-            #  convert_location_type(
-            #      location="uswest2-devc",
-            #      source_type="region",
-            #      desired_type="ecosystem",
-            #  )
-            # Output: devc
-            kube_clusters_data = system_paasta_config.get_kube_clusters()
-            cluster_info = kube_clusters_data.get(cluster)
-            # NOTE: this returns a string like uswest2-devc which
-            # loosely looks like an aws region - but while you can
-            # go from yelp region -> aws region, the reverse is not
-            # true without additional data
-            yelp_region = cluster_info.get("yelp_region", None)  
+        # Convert the yelp_region to ecosystem
+        # See y/habitat for what these mean
+        # Example
+        #  convert_location_type(
+        #      location="uswest2-devc",
+        #      source_type="region",
+        #      desired_type="ecosystem",
+        #  )
+        # Output: devc
 
-            ecosystem = convert_location_type(
-                location=yelp_region,
-                source_type="region",
-                desired_type="ecosystem",
-            )[0]
-        except Exception as e:
-            ecosystem = "pnw-prod"  # Default ecosystem
-            print("Error converting yelp_region to ecosystem: ", e)
-            print("Setting ecosystem to default: ", ecosystem)
+        kube_clusters_data = system_paasta_config.get_kube_clusters()
+        cluster_info = kube_clusters_data.get(cluster)
+        # NOTE: this returns a string like uswest2-devc which
+        # loosely looks like an aws region - but while you can
+        # go from yelp region -> aws region, the reverse is not
+        # true without additional data
+        yelp_region = cluster_info.get("yelp_region", None)
+
+        ecosystem = convert_location_type(
+            location=yelp_region,
+            source_type="region",
+            desired_type="ecosystem",
+        )[0]
 
         output.append(
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
@@ -894,7 +890,6 @@ def _print_flink_status_from_job_manager(
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
         )
 
-        # Formatting
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
         # Print Flink Log Commands
@@ -912,7 +907,6 @@ def _print_flink_status_from_job_manager(
             f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
         )
 
-        # Formatting
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
         # Print Flink Metrics Links
@@ -932,7 +926,6 @@ def _print_flink_status_from_job_manager(
             f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
         )
 
-        # Formatting
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
     # Print Flink Cluster State
