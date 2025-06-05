@@ -14,7 +14,6 @@
 import mock
 
 import paasta_tools.flink_tools as flink_tools
-from paasta_tools.cli.cmds.status import get_flink_pool_from_flink_deployment_config
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 
@@ -260,10 +259,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink"
-        )
+        assert flink_deployment_config.get_pool() == "flink"
 
     def test_explicit_spot_true(self):
         # When spot is explicitly set to True, should return "flink-spot"
@@ -275,10 +271,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink-spot"
-        )
+        assert flink_deployment_config.get_pool() == "flink-spot"
 
     def test_spot_not_set(self):
         # When spot is not set, should default to "flink-spot"
@@ -290,10 +283,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink-spot"
-        )
+        assert flink_deployment_config.get_pool() == "flink-spot"
 
     def test_empty_config_dict(self):
         # When config_dict is empty (but not None), should default to "flink-spot"
@@ -305,14 +295,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink-spot"
-        )
-
-    def test_none_config(self):
-        # When config is None, should return None
-        assert get_flink_pool_from_flink_deployment_config(None) is None
+        assert flink_deployment_config.get_pool() == "flink-spot"
 
     def test_non_bool_spot_value(self):
         # When spot has a non-boolean value like a string, it should treat it as non-False
@@ -324,10 +307,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink-spot"
-        )
+        assert flink_deployment_config.get_pool() == "flink-spot"
 
         # Test with a numeric value
         config_dict = FlinkDeploymentConfigDict({"spot": 0})
@@ -338,7 +318,4 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        assert (
-            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
-            == "flink-spot"
-        )
+        assert flink_deployment_config.get_pool() == "flink-spot"

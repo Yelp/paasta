@@ -64,7 +64,6 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_pool_from_flink_deployment_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -805,9 +804,7 @@ def _print_flink_status_from_job_manager(
         # Print Flink Pool information
         flink_pool = None
         if flink_instance_config is not None:
-            flink_pool = get_flink_pool_from_flink_deployment_config(
-                flink_instance_config
-            )
+            flink_pool = flink_instance_config.get_pool()
         output.append(f"    Flink Pool: {flink_pool}")
 
         # Print ownership information
