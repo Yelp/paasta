@@ -21,6 +21,7 @@ import warnings
 from typing import Any
 from typing import Dict
 from typing import List
+from unittest.mock import patch
 
 import mock
 import pytest
@@ -589,6 +590,36 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     actual = fake_config.get_cluster_fqdn_format()
     expected = "paasta-{cluster:s}.something"
     assert actual == expected
+
+
+@patch("paasta_tools.utils.convert_location_type", autospec=True)
+def test_SystemPaastaConfig_get_ecosystem_for_cluster(mock_convert_location_type):
+    # Mock convert_location_type to return the expected ecosystem
+    mock_convert_location_type.return_value = ["devc"]
+    # Create a mock SystemPaastaConfig with predefined cluster data
+    fake_system_paasta_config = SystemPaastaConfig(
+        SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "fake-cluster": {
+                        "server": "https://k8s.test.paasta:1234",
+                        "certificate-authority-data": "test-cert",
+                        "aws_region": "us-west-2",
+                        "aws_account": "test",
+                        "yelp_region": "uswest2-devc",
+                        "aws_account_id": "123456789012",
+                    }
+                }
+            }
+        ),
+        "/fake/path",
+    )
+    # Test with existing cluster
+    ecosystem = fake_system_paasta_config.get_ecosystem_for_cluster("fake-cluster")
+    assert ecosystem == "devc"
+    mock_convert_location_type.assert_called_once_with(
+        location="uswest2-devc", source_type="region", desired_type="ecosystem"
+    )
 
 
 @pytest.mark.parametrize(

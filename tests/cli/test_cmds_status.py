@@ -2714,7 +2714,6 @@ class TestPrintFlinkStatus:
         ]
         assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2725,25 +2724,12 @@ class TestPrintFlinkStatus:
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
-        mock_convert_location_type,
         mock_flink_status,
         system_paasta_config,
     ):
-        # Mock the convert_location_type to return the expected ecosystem
-        mock_convert_location_type.return_value = ["devc"]
-        # System_paasta_config mock to return the right cluster data
-        system_paasta_config.get_kube_clusters = Mock(
-            return_value={
-                "fake-cluster": {
-                    "server": "https://k8s.test.paasta:1234",
-                    "certificate-authority-data": "test-cert",
-                    "aws_region": "us-west-2",
-                    "aws_account": "test",
-                    "yelp_region": "uswest2-devc",
-                    "aws_account_id": "123456789012",
-                }
-            }
-        )
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        mock_load_system_paasta_config.return_value = system_paasta_config
 
         # Mock the FlinkDeploymentConfig
         config_dict = FlinkDeploymentConfigDict(
@@ -2779,10 +2765,6 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
-        # Assert that convert_location_type was called with the correct parameters
-        mock_convert_location_type.assert_called_once_with(
-            location="uswest2-devc", source_type="region", desired_type="ecosystem"
-        )
 
         status = mock_flink_status["status"]
         expected_output = [
@@ -2816,7 +2798,6 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2827,25 +2808,11 @@ class TestPrintFlinkStatus:
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
-        mock_convert_location_type,
         mock_flink_status,
         system_paasta_config,
     ):
-        # Mock the convert_location_type to return the expected ecosystem
-        mock_convert_location_type.return_value = ["devc"]
-        # System_paasta_config mock to return the right cluster data
-        system_paasta_config.get_kube_clusters = Mock(
-            return_value={
-                "fake-cluster": {
-                    "server": "https://k8s.test.paasta:1234",
-                    "certificate-authority-data": "test-cert",
-                    "aws_region": "us-west-2",
-                    "aws_account": "test",
-                    "yelp_region": "uswest2-devc",
-                    "aws_account_id": "123456789012",
-                }
-            }
-        )
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
 
         # Mock the FlinkDeploymentConfig
         config_dict = FlinkDeploymentConfigDict(
@@ -2862,7 +2829,6 @@ class TestPrintFlinkStatus:
             branch_dict=None,
         )
         mock_load_flink_instance_config.return_value = mock_flink_instance_config
-
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2883,10 +2849,6 @@ class TestPrintFlinkStatus:
             output=output,
             flink=mock_flink_status,
             verbose=1,
-        )
-        # Assert that convert_location_type was called with the correct parameters
-        mock_convert_location_type.assert_called_once_with(
-            location="uswest2-devc", source_type="region", desired_type="ecosystem"
         )
 
         status = mock_flink_status["status"]
@@ -2921,36 +2883,22 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
-    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     def test_output_1_verbose(
         self,
-        mock_get_paasta_oapi_client,
-        mock_load_flink_instance_config,
-        mock_naturaltime,
         mock_load_system_paasta_config,
-        mock_convert_location_type,
+        mock_naturaltime,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_flink_status,
         system_paasta_config,
     ):
-        # Mock the convert_location_type to return the expected ecosystem
-        mock_convert_location_type.return_value = ["devc"]
-        # System_paasta_config mock to return the right cluster data
-        system_paasta_config.get_kube_clusters = Mock(
-            return_value={
-                "fake-cluster": {
-                    "server": "https://k8s.test.paasta:1234",
-                    "certificate-authority-data": "test-cert",
-                    "aws_region": "us-west-2",
-                    "aws_account": "test",
-                    "yelp_region": "uswest2-devc",
-                    "aws_account_id": "123456789012",
-                }
-            }
-        )
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        mock_load_system_paasta_config.return_value = system_paasta_config
 
         # Mock the Flink Delployment Config
         config_dict = FlinkDeploymentConfigDict(
@@ -2967,8 +2915,6 @@ class TestPrintFlinkStatus:
             branch_dict=None,
         )
         mock_load_flink_instance_config.return_value = mock_flink_instance_config
-
-        mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
@@ -2984,10 +2930,6 @@ class TestPrintFlinkStatus:
             output=output,
             flink=mock_flink_status,
             verbose=1,
-        )
-        # Assert that convert_location_type was called with the correct parameters
-        mock_convert_location_type.assert_called_once_with(
-            location="uswest2-devc", source_type="region", desired_type="ecosystem"
         )
 
         status = mock_flink_status["status"]

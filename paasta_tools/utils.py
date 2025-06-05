@@ -76,6 +76,7 @@ import requests_cache
 import service_configuration_lib
 from docker import APIClient
 from docker.utils import kwargs_from_env
+from environment_tools.type_utils import convert_location_type
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
@@ -2804,6 +2805,46 @@ class SystemPaastaConfig:
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
+
+    def get_ecosystem_for_cluster(self, cluster: str) -> Optional[Any]:
+        """
+        Convert a Kubernetes cluster's region information to an ecosystem name.
+
+        This function extracts the 'yelp_region' from the cluster data and
+        converts it to an ecosystem identifier (e.g., 'uswest2-devc' → 'devc').
+
+        Convert the yelp_region to ecosystem
+        See y/habitat for what these mean
+        Example
+         convert_location_type(
+             location="uswest2-devc",
+             source_type="region",
+             desired_type="ecosystem",
+         )
+        Output: devc
+
+        NOTE: kube_clusters_data.get(cluster) returns a string like uswest2-devc
+        which loosely looks like an aws region - but while you can
+        go from yelp region -> aws region, the reverse is not
+        true without additional data
+        """
+        #  kube_clusters_data = system_paasta_config.get_kube_clusters()
+        #         cluster_info = kube_clusters_data.get(cluster)
+        #
+        kube_clusters_data = self.get_kube_clusters()
+        cluster_info = kube_clusters_data.get(cluster)
+        if cluster_info is not None:
+            yelp_region = cluster_info.get("yelp_region", None)
+        else:
+            # Default behavior when cluster_info is None
+            return None
+
+        ecosystem = convert_location_type(
+            location=yelp_region,
+            source_type="region",
+            desired_type="ecosystem",
+        )[0]
+        return ecosystem
 
 
 def _run(

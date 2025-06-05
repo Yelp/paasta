@@ -41,7 +41,6 @@ from typing import Union
 
 import a_sync
 import humanize
-from environment_tools.type_utils import convert_location_type
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
@@ -858,31 +857,7 @@ def _print_flink_status_from_job_manager(
 
     if verbose:
         # Print Flink config link resources
-
-        # Convert the yelp_region to ecosystem
-        # See y/habitat for what these mean
-        # Example
-        #  convert_location_type(
-        #      location="uswest2-devc",
-        #      source_type="region",
-        #      desired_type="ecosystem",
-        #  )
-        # Output: devc
-
-        kube_clusters_data = system_paasta_config.get_kube_clusters()
-        cluster_info = kube_clusters_data.get(cluster)
-        # NOTE: this returns a string like uswest2-devc which
-        # loosely looks like an aws region - but while you can
-        # go from yelp region -> aws region, the reverse is not
-        # true without additional data
-        yelp_region = cluster_info.get("yelp_region", None)
-
-        ecosystem = convert_location_type(
-            location=yelp_region,
-            source_type="region",
-            desired_type="ecosystem",
-        )[0]
-
+        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
         output.append(
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
         )
