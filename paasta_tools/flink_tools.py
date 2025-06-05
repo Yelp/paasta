@@ -62,6 +62,7 @@ class TaskManagerConfig(TypedDict, total=False):
 
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
+    spot: bool
 
 
 class FlinkDeploymentConfig(LongRunningServiceConfig):
@@ -111,7 +112,7 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 100)
 
-    def get_pool(self):
+    def get_pool(self) -> Optional[str]:
         """
         Parses flink_pool from a specific Flink Deployment instance's configuration data, using key 'spot'.
 
@@ -122,7 +123,6 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             The flink pool string.
         """
         if hasattr(self, "config_dict"):
-
             spot_config = self.config_dict.get("spot", None)
             if spot_config is False:
                 return "flink"
