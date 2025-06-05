@@ -871,7 +871,11 @@ def _print_flink_status_from_job_manager(
             # Output: devc
             kube_clusters_data = system_paasta_config.get_kube_clusters()
             cluster_info = kube_clusters_data.get(cluster)
-            yelp_region = cluster_info.get("yelp_region", None)  # uswest2-devc
+            # NOTE: this returns a string like uswest2-devc which
+            # loosely looks like an aws region - but while you can
+            # go from yelp region -> aws region, the reverse is not
+            # true without additional data
+            yelp_region = cluster_info.get("yelp_region", None)  
 
             ecosystem = convert_location_type(
                 location=yelp_region,
