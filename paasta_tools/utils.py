@@ -2839,12 +2839,16 @@ class SystemPaastaConfig:
             # Default behavior when cluster_info is None
             return None
 
-        ecosystem = convert_location_type(
+        result = convert_location_type(
             location=yelp_region,
             source_type="region",
             desired_type="ecosystem",
-        )[0]
-        return ecosystem
+        )
+        if result:
+            return result[0]
+        else:
+            # Handle the case where the result is empty
+            return None
 
 
 def _run(
