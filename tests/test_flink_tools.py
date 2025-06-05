@@ -14,6 +14,9 @@
 import mock
 
 import paasta_tools.flink_tools as flink_tools
+from paasta_tools.cli.cmds.status import get_flink_pool_from_flink_deployment_config
+from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 
 
 def test_get_flink_ingress_url_root():
@@ -244,3 +247,98 @@ def test_get_flink_jobmanager_overview():
             "flink-version": "1.6.4",
             "flink-commit": "6241481",
         }
+
+
+class TestGetFlinkPoolFromFlinkDeploymentConfig:
+    def test_explicit_spot_false(self):
+        # When spot is explicitly set to False, should return "flink"
+        config_dict = FlinkDeploymentConfigDict({"spot": False})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink"
+        )
+
+    def test_explicit_spot_true(self):
+        # When spot is explicitly set to True, should return "flink-spot"
+        config_dict = FlinkDeploymentConfigDict({"spot": True})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink-spot"
+        )
+
+    def test_spot_not_set(self):
+        # When spot is not set, should default to "flink-spot"
+        config_dict = FlinkDeploymentConfigDict({"some_other_key": "value"})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink-spot"
+        )
+
+    def test_empty_config_dict(self):
+        # When config_dict is empty (but not None), should default to "flink-spot"
+        config_dict = FlinkDeploymentConfigDict({})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink-spot"
+        )
+
+    def test_none_config(self):
+        # When config is None, should return None
+        assert get_flink_pool_from_flink_deployment_config(None) is None
+
+    def test_non_bool_spot_value(self):
+        # When spot has a non-boolean value like a string, it should treat it as non-False
+        config_dict = FlinkDeploymentConfigDict({"spot": "some_string"})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink-spot"
+        )
+
+        # Test with a numeric value
+        config_dict = FlinkDeploymentConfigDict({"spot": 0})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert (
+            get_flink_pool_from_flink_deployment_config(flink_deployment_config)
+            == "flink-spot"
+        )

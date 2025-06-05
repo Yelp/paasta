@@ -15,7 +15,6 @@
 import asyncio
 import concurrent.futures
 import difflib
-import os
 import shutil
 import sys
 from collections import Counter
@@ -45,7 +44,6 @@ import humanize
 from environment_tools.type_utils import convert_location_type
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
-from service_configuration_lib import read_yaml_file
 
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
@@ -66,7 +64,10 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_pool_from_flink_deployment_config
+from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
+from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -780,6 +781,7 @@ def _print_flink_status_from_job_manager(
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
     system_paasta_config: "SystemPaastaConfig",
+    flink_instance_config: FlinkDeploymentConfig,
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -800,18 +802,10 @@ def _print_flink_status_from_job_manager(
     output.append(f"    Config SHA: {config_sha}")
 
     if verbose:
-        # Get Yelpsoa Information for flink instance
-        flink_instance_config = load_soa_flink_instance_yaml(
-            service=service,
-            instance_key=instance,
-            cluster=cluster,
-            soa_dir=DEFAULT_SOA_DIR,
-        )
-
         # Print Flink Pool information
         flink_pool = None
         if flink_instance_config is not None:
-            flink_pool = get_flink_pool_from_flink_instance_config(
+            flink_pool = get_flink_pool_from_flink_deployment_config(
                 flink_instance_config
             )
         output.append(f"    Flink Pool: {flink_pool}")
@@ -819,9 +813,7 @@ def _print_flink_status_from_job_manager(
         # Print ownership information
         flink_monitoring_team = None
         if flink_instance_config is not None:
-            flink_monitoring_team = get_team_from_flink_instance_config(
-                flink_instance_config
-            )
+            flink_monitoring_team = flink_instance_config.get_team()
         if flink_monitoring_team is None:
             flink_monitoring_team = get_team(
                 overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
@@ -831,13 +823,11 @@ def _print_flink_status_from_job_manager(
         # Print rb information
         flink_rb_for_instance = None
         if flink_instance_config is not None:
-            flink_rb_for_instance = get_runbook_from_flink_instance_config(
-                flink_instance_config
-            )
-        if flink_rb_for_instance is None:
-            flink_rb_for_instance = get_runbook(
-                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-            )
+            flink_rb_for_instance = flink_instance_config.get_runbook()
+            if flink_rb_for_instance is None:
+                flink_rb_for_instance = get_runbook(
+                    overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+                )
         output.append(f"    Flink Runbook: {flink_rb_for_instance}")
 
         # Print Flink repo links
@@ -1123,8 +1113,22 @@ def print_flink_status(
         )
         return 1
 
+    flink_instance_config = load_flink_instance_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+    )
+
     return _print_flink_status_from_job_manager(
-        service, instance, cluster, output, flink, client, system_paasta_config, verbose
+        service,
+        instance,
+        cluster,
+        output,
+        flink,
+        client,
+        system_paasta_config,
+        flink_instance_config,
+        verbose,
     )
 
 
@@ -1149,9 +1153,21 @@ def print_flinkeks_status(
             )
         )
         return 1
-
+    flink_eks_instance_config = load_flinkeks_instance_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+    )
     return _print_flink_status_from_job_manager(
-        service, instance, cluster, output, flink, client, system_paasta_config, verbose
+        service,
+        instance,
+        cluster,
+        output,
+        flink,
+        client,
+        system_paasta_config,
+        flink_eks_instance_config,
+        verbose,
     )
 
 
@@ -1167,112 +1183,6 @@ async def get_flink_job_details(
         ]
     )
     return [jd for jd in jobs_details]
-
-
-def load_soa_flink_instance_yaml(
-    service: str,
-    instance_key: str,
-    cluster: str,
-    soa_dir: str,
-) -> Optional[Dict[str, Any]]:
-    """
-    Loads and parses the Flink configuration YAML file for a given service and cluster.
-
-    Args:
-        service: The name of the service (e.g., "sqlclient").
-        instance_key: The specific Flink job/instance key within the YAML
-        cluster: The cluster identifier (e.g., "pnw-prod").
-        soa_dir: The base directory for SOA configurations.
-
-    Returns:
-        A dictionary containing the parsed YAML data, or None if the file
-        is not found, cannot be read, is empty, or is not valid YAML.
-    """
-
-    flink_config_filename = f"flinkeks-{cluster}.yaml"
-    flink_config_file_path = os.path.join(soa_dir, service, flink_config_filename)
-
-    try:
-        config_data = read_yaml_file(flink_config_file_path)
-        if config_data and isinstance(config_data, dict):
-            instance_config_data = config_data.get(instance_key)
-            if instance_config_data and isinstance(instance_config_data, dict):
-                return instance_config_data
-            else:
-                return None
-        else:
-            return None
-    except Exception:
-        return None
-
-
-def get_flink_pool_from_flink_instance_config(
-    instance_config_data: Optional[Dict[str, Any]],
-) -> Optional[str]:
-    """
-    Parses flink_pool from a specific Flink instance's configuration data, using key 'spot'.
-
-    Args:
-        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
-
-    Returns:
-        The flink pool string.
-    """
-
-    if instance_config_data and isinstance(instance_config_data, dict):
-        spot_config = instance_config_data.get("spot", None)
-        if spot_config is False:
-            return "flink"
-        else:
-            # if not set Flink instance default to use flink-spot pool
-            return "flink-spot"
-    return None
-
-
-def get_team_from_flink_instance_config(
-    instance_config_data: Optional[Dict[str, Any]],
-) -> Optional[str]:
-    """
-    Parses monitoring team from a specific Flink instance's configuration data.
-
-    Args:
-        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
-
-    Returns:
-        The monitoring_team string.
-    """
-    monitoring_team = None
-    if instance_config_data and isinstance(instance_config_data, dict):
-        monitoring_config = instance_config_data.get("monitoring")
-        if monitoring_config and isinstance(monitoring_config, dict):
-            team = monitoring_config.get("team", None)
-            # Return team only if it's not empty
-            if team:
-                return team
-    return monitoring_team
-
-
-def get_runbook_from_flink_instance_config(
-    instance_config_data: Optional[Dict[str, Any]],
-) -> Optional[str]:
-    """
-    Parses reunbook from a specific Flink instance's configuration data.
-
-    Args:
-        instance_config_data: The configuration dictionary for a specific Flink yelpsoa instance
-
-    Returns:
-        The runbook link string.
-    """
-    monitoring_runbook = None
-    if instance_config_data and isinstance(instance_config_data, dict):
-        monitoring_config = instance_config_data.get("monitoring")
-        if monitoring_config and isinstance(monitoring_config, dict):
-            runbook = monitoring_config.get("runbook", None)
-            # Return runbook only if it's not empty
-            if runbook:
-                return runbook
-    return monitoring_runbook
 
 
 def print_kubernetes_status_v2(

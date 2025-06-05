@@ -36,14 +36,10 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import get_flink_job_name
-from paasta_tools.cli.cmds.status import get_flink_pool_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_instance_state
-from paasta_tools.cli.cmds.status import get_runbook_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
-from paasta_tools.cli.cmds.status import get_team_from_flink_instance_config
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
-from paasta_tools.cli.cmds.status import load_soa_flink_instance_yaml
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
@@ -57,6 +53,8 @@ from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import remove_ansi_escape_sequences
@@ -2455,16 +2453,24 @@ class TestPrintKafkaStatus:
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink(
         self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
+        # Fixtures
         mock_flink_status,
         system_paasta_config,
     ):
         mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
+        mock_load_flink_instance_config.return_value = None
+        mock_get_paasta_oapi_client.return_value = None
+
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2476,12 +2482,18 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+        assert output == [
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        ]
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_client(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2489,6 +2501,7 @@ class TestPrintFlinkStatus:
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_get_paasta_oapi_client.return_value = None
+        mock_load_flink_instance_config.return_value = None
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2509,14 +2522,17 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_config(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = None
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
         output = []
@@ -2534,14 +2550,17 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_overview(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = None
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
@@ -2560,8 +2579,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_jobs(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2587,8 +2608,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_job_details(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2620,8 +2643,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_successful_return_value(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2633,6 +2658,7 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_load_flink_instance_config.return_value = None
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2647,8 +2673,10 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2662,6 +2690,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_flink_instance_config.return_value = None
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2689,10 +2718,10 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_jobmanager(
         self,
-        mock_load_soa_flink_yaml,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2716,6 +2745,22 @@ class TestPrintFlinkStatus:
             }
         )
 
+        # Mock the FlinkDeploymentConfig
+        config_dict = FlinkDeploymentConfigDict(
+            {
+                "spot": False,
+                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            }
+        )
+        mock_flink_instance_config = FlinkDeploymentConfig(
+            service="fake-service",
+            cluster="fake-cluster",
+            instance="fake-instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        mock_load_flink_instance_config.return_value = mock_flink_instance_config
+
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2723,10 +2768,6 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {
-            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            "spot": False,
-        }
 
         output = []
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
@@ -2779,10 +2820,10 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_taskmanagers(
         self,
-        mock_load_soa_flink_yaml,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2805,6 +2846,23 @@ class TestPrintFlinkStatus:
                 }
             }
         )
+
+        # Mock the FlinkDeploymentConfig
+        config_dict = FlinkDeploymentConfigDict(
+            {
+                "spot": True,
+                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            }
+        )
+        mock_flink_instance_config = FlinkDeploymentConfig(
+            service="fake-service",
+            cluster="fake-cluster",
+            instance="fake-instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        mock_load_flink_instance_config.return_value = mock_flink_instance_config
+
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2812,10 +2870,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {
-            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            "spot": True,
-        }
+
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
         mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
@@ -2869,12 +2924,12 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.convert_location_type", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_soa_flink_instance_yaml", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_output_1_verbose(
         self,
         mock_get_paasta_oapi_client,
-        mock_load_soa_flink_yaml,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_load_system_paasta_config,
         mock_convert_location_type,
@@ -2897,6 +2952,22 @@ class TestPrintFlinkStatus:
             }
         )
 
+        # Mock the Flink Delployment Config
+        config_dict = FlinkDeploymentConfigDict(
+            {
+                "spot": False,
+                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+            }
+        )
+        mock_flink_instance_config = FlinkDeploymentConfig(
+            service="fake-service",
+            cluster="fake-cluster",
+            instance="fake-instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        mock_load_flink_instance_config.return_value = mock_flink_instance_config
+
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2904,10 +2975,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_soa_flink_yaml.return_value = {
-            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            "spot": False,
-        }
+
         output = []
         print_flink_status(
             cluster="fake-cluster",
@@ -3012,169 +3080,6 @@ def _get_flink_base_status_verbose_1(metadata):
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
-
-
-class TestLoadSoaFlinkInstanceYaml:
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    @patch("os.path.join", autospec=True)
-    def test_successful_load(self, mock_os_path_join, mock_read_yaml_file):
-        mock_os_path_join.return_value = "/soa/dir/service/flinkeks-cluster.yaml"
-        instance_data = {"key": "value"}
-        mock_read_yaml_file.return_value = {
-            "my_instance": instance_data,
-            "other_instance": {},
-        }
-
-        result = load_soa_flink_instance_yaml(
-            "service", "my_instance", "cluster", "/soa/dir"
-        )
-
-        mock_os_path_join.assert_called_once_with(
-            "/soa/dir", "service", "flinkeks-cluster.yaml"
-        )
-        mock_read_yaml_file.assert_called_once_with(
-            "/soa/dir/service/flinkeks-cluster.yaml"
-        )
-        assert result == instance_data
-
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    def test_instance_key_not_found(self, mock_read_yaml_file):
-        mock_read_yaml_file.return_value = {"other_instance": {}}
-        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
-        assert result is None
-
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    def test_instance_data_not_dict(self, mock_read_yaml_file):
-        mock_read_yaml_file.return_value = {"my_instance": "not_a_dict"}
-        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
-        assert result is None
-
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    def test_config_data_not_dict(self, mock_read_yaml_file):
-        mock_read_yaml_file.return_value = ["a_list_not_a_dict"]
-        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
-        assert result is None
-
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    def test_read_yaml_file_returns_none(self, mock_read_yaml_file):
-        mock_read_yaml_file.return_value = None
-        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
-        assert result is None
-
-    @patch("paasta_tools.cli.cmds.status.read_yaml_file", autospec=True)
-    def test_read_yaml_file_raises_exception(self, mock_read_yaml_file):
-        mock_read_yaml_file.side_effect = Exception("Boom!")
-        result = load_soa_flink_instance_yaml("s", "my_instance", "c", "soa")
-        assert result is None
-
-
-class TestGetMonitoringTeamFromFlinkInstanceConfig:
-    def test_team_present(self):
-        config = {"monitoring": {"team": "team_awesome"}}
-        assert get_team_from_flink_instance_config(config) == "team_awesome"
-
-    def test_monitoring_present_no_team(self):
-        config = {"monitoring": {"other_key": "value"}}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_no_monitoring_key(self):
-        config = {"other_data": "value"}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_monitoring_is_not_dict(self):
-        config = {"monitoring": "not_a_dict"}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_team_is_none(self):
-        config = {"monitoring": {"team": None}}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_team_is_empty_string(self):
-        config = {"monitoring": {"team": ""}}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_empty_config(self):
-        config = {}
-        assert get_team_from_flink_instance_config(config) is None
-
-    def test_none_config(self):
-        assert get_team_from_flink_instance_config(None) is None
-
-    def test_config_is_not_dict(self):
-        config = "this is not a dict"
-        assert get_team_from_flink_instance_config(config) is None
-
-
-class TestGetRunbookFromFlinkInstanceConfig:
-    def test_runbook_present(self):
-        config = {"monitoring": {"runbook": "runbook_url"}}
-        assert get_runbook_from_flink_instance_config(config) == "runbook_url"
-
-    def test_monitoring_present_no_team(self):
-        config = {"monitoring": {"other_key": "value"}}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_no_monitoring_key(self):
-        config = {"other_data": "value"}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_monitoring_is_not_dict(self):
-        config = {"monitoring": "not_a_dict"}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_runbook_is_none(self):
-        config = {"monitoring": {"runbook": None}}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_runbook_is_empty_string(self):
-        config = {"monitoring": {"runbook": ""}}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_empty_config(self):
-        config = {}
-        assert get_runbook_from_flink_instance_config(config) is None
-
-    def test_none_config(self):
-        assert get_runbook_from_flink_instance_config(None) is None
-
-    def test_config_is_not_dict(self):
-        config = "this is not a dict"
-        assert get_runbook_from_flink_instance_config(config) is None
-
-
-class TestGetFlinkPoolFromFlinkInstanceConfig:
-    def test_explicit_spot_false(self):
-        # When spot is explicitly set to False, should return "flink"
-        config = {"spot": False}
-        assert get_flink_pool_from_flink_instance_config(config) == "flink"
-
-    def test_explicit_spot_true(self):
-        # When spot is explicitly set to True, should return "flink-spot"
-        config = {"spot": True}
-        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
-
-    def test_spot_not_set(self):
-        # When spot is not set, should default to "flink-spot"
-        config = {"some_other_key": "value"}
-        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
-
-    def test_empty_config(self):
-        # When config is empty (but not None), should return None
-        config = {}
-        assert get_flink_pool_from_flink_instance_config(config) is None
-
-    def test_none_config(self):
-        # When config is None, should return None
-        assert get_flink_pool_from_flink_instance_config(None) is None
-
-    def test_non_bool_spot_value(self):
-        # When spot has a non-boolean value like a string, it should treat it as non-False
-        config = {"spot": "some_string"}
-        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
-
-        # Test with a numeric value
-        config = {"spot": 0}
-        assert get_flink_pool_from_flink_instance_config(config) == "flink-spot"
 
 
 def _formatted_table_to_dict(formatted_table):

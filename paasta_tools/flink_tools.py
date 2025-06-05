@@ -343,3 +343,27 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_flink_pool_from_flink_deployment_config(
+    flink_deployment_config_data: FlinkDeploymentConfig,
+) -> Optional[str]:
+    """
+    Parses flink_pool from a specific Flink Deployment instance's configuration data, using key 'spot'.
+
+    Args:
+        flink_deployment_config_data: The FlinkDeploymentConfig for a specific Flink yelpsoa instance
+
+    Returns:
+        The flink pool string.
+    """
+    if flink_deployment_config_data and hasattr(
+        flink_deployment_config_data, "config_dict"
+    ):
+        spot_config = flink_deployment_config_data.config_dict.get("spot", None)
+        if spot_config is False:
+            return "flink"
+        else:
+            # if not set or True, Flink instance defaults to use flink-spot pool
+            return "flink-spot"
+    return None

@@ -490,6 +490,9 @@ class InstanceConfig:
     def get_team(self) -> str:
         return self.config_dict.get("monitoring", {}).get("team", None)
 
+    def get_runbook(self) -> str:
+        return self.config_dict.get("monitoring", {}).get("runbook", None)
+
     def get_mem(self) -> float:
         """Gets the memory required from the service's configuration.
 

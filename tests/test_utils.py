@@ -1415,6 +1415,19 @@ class TestInstanceConfig:
             == fake_info
         )
 
+    def test_get_monitoring_runbook(self):
+        fake_info: utils.MonitoringDict = {"runbook": "fake_runbook"}
+        assert (
+            utils.InstanceConfig(
+                service="",
+                cluster="",
+                instance="",
+                config_dict={"monitoring": fake_info},
+                branch_dict=None,
+            ).get_runbook()
+            == "fake_runbook"
+        )
+
     def test_get_cpus_in_config(self):
         fake_conf = utils.InstanceConfig(
             service="",
