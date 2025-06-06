@@ -779,7 +779,7 @@ def _print_flink_status_from_job_manager(
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
     system_paasta_config: "SystemPaastaConfig",
-    flink_instance_config: FlinkDeploymentConfig,
+    flink_instance_config: Optional[FlinkDeploymentConfig],
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -800,21 +800,22 @@ def _print_flink_status_from_job_manager(
     output.append(f"    Config SHA: {config_sha}")
 
     if verbose:
-        # Print Flink Pool information
-        flink_pool = flink_instance_config.get_pool()
-        output.append(f"    Flink Pool: {flink_pool}")
+        if flink_instance_config:
+            # Print Flink Pool information
+            flink_pool = flink_instance_config.get_pool()
+            output.append(f"    Flink Pool: {flink_pool}")
 
-        # Print ownership information
-        flink_monitoring_team = flink_instance_config.get_team() or get_team(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
-        output.append(f"    Owner: {flink_monitoring_team}")
+            # Print ownership information
+            flink_monitoring_team = flink_instance_config.get_team() or get_team(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+            output.append(f"    Owner: {flink_monitoring_team}")
 
-        # Print rb information
-        flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
-        output.append(f"    Flink Runbook: {flink_rb_for_instance}")
+            # Print rb information
+            flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
+                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+            )
+            output.append(f"    Flink Runbook: {flink_rb_for_instance}")
 
         # Print Flink repo links
         output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
