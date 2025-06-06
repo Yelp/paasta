@@ -801,29 +801,19 @@ def _print_flink_status_from_job_manager(
 
     if verbose:
         # Print Flink Pool information
-        flink_pool = None
-        if flink_instance_config is not None:
-            flink_pool = flink_instance_config.get_pool()
+        flink_pool = flink_instance_config.get_pool()
         output.append(f"    Flink Pool: {flink_pool}")
 
         # Print ownership information
-        flink_monitoring_team = None
-        if flink_instance_config is not None:
-            flink_monitoring_team = flink_instance_config.get_team()
-        if flink_monitoring_team is None:
-            flink_monitoring_team = get_team(
-                overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-            )
+        flink_monitoring_team = flink_instance_config.get_team() or get_team(
+            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+        )
         output.append(f"    Owner: {flink_monitoring_team}")
 
         # Print rb information
-        flink_rb_for_instance = None
-        if flink_instance_config is not None:
-            flink_rb_for_instance = flink_instance_config.get_runbook()
-            if flink_rb_for_instance is None:
-                flink_rb_for_instance = get_runbook(
-                    overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-                )
+        flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
+            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+        )
         output.append(f"    Flink Runbook: {flink_rb_for_instance}")
 
         # Print Flink repo links
