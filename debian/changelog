@@ -1,3 +1,31 @@
+paasta-tools (1.23.2) xenial; urgency=medium
+
+  * 1.23.2 tagged with 'make release'
+    Commit: Add better error handling for 403s in remote-run (#4074)  ##
+    Problems  ### Swagger spec The swagger spec specified that for 403s
+    in remote_run, there should be no data in the response. However,
+    there are error messages that should be returned. Because of this,
+    they got wrapped in another error: ``` The server has either erred
+    or is incapable of performing the requested operation.  Response
+    body should be empty: {"reason": "User not owning service"} ```  ###
+    Client error handling The remote run code expects non-200s to be
+    available in the client response objects, however, the current code
+    will automatically raise ApiExceptions. So rather than "Error from
+    PaaSTA APIs while...", you"d get a full client side traceback.  ##
+    Solutions  ### Swagger spec Add `reason` as a response type in
+    swagger.json. I"m not sure if this needs to be reflected in
+    oapi.yaml as well, as that doesn"t seem to have any effect. I"ve
+    also left every other API unchanged, even though some could generate
+    500s or 403s. These are the two that are most important.   ###
+    Client error handling Catch ApiExceptions and try parsing error body
+    as best as possible.   ## Validation ``` paasta remote-run start -c
+    cluster -s service -i main --interactive Error from PaaSTA APIs
+    while starting job: User not owning service  $ paasta remote-run
+    stop -c cluster -s service -i main Error from PaaSTA APIs while
+    stopping job: User not owning service ```
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 06 Jun 2025 09:40:30 -0700
+
 paasta-tools (1.23.1) xenial; urgency=medium
 
   * 1.23.1 tagged with 'make release'
