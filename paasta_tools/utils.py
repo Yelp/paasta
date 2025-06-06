@@ -2806,7 +2806,7 @@ class SystemPaastaConfig:
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
 
-    def get_ecosystem_for_cluster(self, cluster: str) -> Optional[Any]:
+    def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
         """
         Convert a Kubernetes cluster's region information to an ecosystem name.
 
