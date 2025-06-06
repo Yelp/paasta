@@ -2833,7 +2833,7 @@ class SystemPaastaConfig:
         if cluster_info is not None:
             yelp_region = cluster_info.get("yelp_region", None)
         else:
-            # Default behavior when cluster_info is None
+            # NOTE: this should never happen unless our kube metadata generator is broken
             return None
 
         result = convert_location_type(
