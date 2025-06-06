@@ -2828,9 +2828,6 @@ class SystemPaastaConfig:
         go from yelp region -> aws region, the reverse is not
         true without additional data
         """
-        #  kube_clusters_data = system_paasta_config.get_kube_clusters()
-        #         cluster_info = kube_clusters_data.get(cluster)
-        #
         kube_clusters_data = self.get_kube_clusters()
         cluster_info = kube_clusters_data.get(cluster)
         if cluster_info is not None:
