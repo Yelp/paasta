@@ -2844,7 +2844,7 @@ class SystemPaastaConfig:
         if result:
             return result[0]
         else:
-            # Handle the case where the result is empty
+            # NOTE: this should never happen unless we've gotten bad data
             return None
 
 
