@@ -62,6 +62,7 @@ class TaskManagerConfig(TypedDict, total=False):
 
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
+    spot: bool
 
 
 class FlinkDeploymentConfig(LongRunningServiceConfig):
@@ -110,6 +111,23 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
     # Since Flink services are stateful, losing capacity is not transparent to the users
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 100)
+
+    def get_pool(self) -> Optional[str]:
+        """
+        Parses flink_pool from a specific Flink Deployment instance's configuration data, using key 'spot'.
+
+        Args:
+            flink_deployment_config_data: The FlinkDeploymentConfig for a specific Flink yelpsoa instance
+
+        Returns:
+            The flink pool string.
+        """
+        spot_config = self.config_dict.get("spot", None)
+        if spot_config is False:
+            return "flink"
+        else:
+            # if not set or True, Flink instance defaults to use flink-spot pool
+            return "flink-spot"
 
 
 def load_flink_instance_config(
