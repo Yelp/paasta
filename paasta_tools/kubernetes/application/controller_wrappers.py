@@ -301,7 +301,10 @@ class DeploymentWrapper(Application):
             kube_client=kube_client,
             namespace=self.item.metadata.namespace,
             min_instances_override=(
-                self.hpa_override["min_instances"] if self.hpa_override else None
+                self.hpa_override.get("min_instances") if self.hpa_override else None
+            ),
+            max_instances_override=(
+                self.hpa_override.get("max_instances") if self.hpa_override else None
             ),
         )
 

@@ -156,19 +156,24 @@ def set_autoscaling_override(request):
 
     json_body = request.swagger_data.get("json_body", {})
     min_instances_override = json_body.get("min_instances")
+    max_instances_override = json_body.get("max_instances")
     expire_after = json_body.get("expire_after")
 
     if not isinstance(min_instances_override, int) or min_instances_override < 1:
         raise ApiFailure("min_instances must be a positive integer", 400)
 
+    if not isinstance(max_instances_override, int) or max_instances_override < 1:
+        raise ApiFailure("max_instances must be a positive integer", 400)
+
     if not expire_after:
         raise ApiFailure("expire_after is required", 400)
 
-    max_instances = instance_config.get_max_instances()
+    min_instances = min_instances_override or instance_config.get_min_instances()
+    max_instances = max_instances_override or instance_config.get_max_instances()
     if max_instances is None:
         raise ApiFailure(f"Autoscaling is not enabled for {service}.{instance}", 400)
 
-    if max_instances < min_instances_override:
+    if max_instances < min_instances:
         raise ApiFailure(
             f"min_instances ({min_instances_override}) cannot be greater than max_instances ({max_instances})",
             400,
@@ -184,9 +189,8 @@ def set_autoscaling_override(request):
 
     override_data = {
         "min_instances": min_instances_override,
+        "max_instances": max_instances_override,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        # NOTE: we may want to also allow setting a max_instances override in the future, but if we do that
-        # we'd probably want to force folks to either set one or both and share the same expiration time
         "expire_after": expire_after,
     }
 
@@ -213,6 +217,7 @@ def set_autoscaling_override(request):
         "instance": instance,
         "cluster": cluster,
         "min_instances": min_instances_override,
+        "max_instances": max_instances_override,
         "expire_after": expire_after,
         "status": "SUCCESS",
     }
