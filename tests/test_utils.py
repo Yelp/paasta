@@ -592,34 +592,36 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     assert actual == expected
 
 
-@patch("paasta_tools.utils.convert_location_type", autospec=True)
-def test_SystemPaastaConfig_get_ecosystem_for_cluster(mock_convert_location_type):
-    # Mock convert_location_type to return the expected ecosystem
-    mock_convert_location_type.return_value = ["devc"]
-    # Create a mock SystemPaastaConfig with predefined cluster data
-    fake_system_paasta_config = SystemPaastaConfig(
-        SystemPaastaConfigDict(
-            {
-                "kube_clusters": {
-                    "fake-cluster": {
-                        "server": "https://k8s.test.paasta:1234",
-                        "certificate-authority-data": "test-cert",
-                        "aws_region": "us-west-2",
-                        "aws_account": "test",
-                        "yelp_region": "uswest2-devc",
-                        "aws_account_id": "123456789012",
+def test_SystemPaastaConfig_get_ecosystem_for_cluster():
+    with patch(
+        "paasta_tools.utils.convert_location_type", autospec=True
+    ) as mock_convert_location_type:
+        # Mock convert_location_type to return the expected ecosystem
+        mock_convert_location_type.return_value = ["devc"]
+        # Create a mock SystemPaastaConfig with predefined cluster data
+        fake_system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                {
+                    "kube_clusters": {
+                        "fake-cluster": {
+                            "server": "https://k8s.test.paasta:1234",
+                            "certificate-authority-data": "test-cert",
+                            "aws_region": "us-west-2",
+                            "aws_account": "test",
+                            "yelp_region": "uswest2-devc",
+                            "aws_account_id": "123456789012",
+                        }
                     }
                 }
-            }
-        ),
-        "/fake/path",
-    )
-    # Test with existing cluster
-    ecosystem = fake_system_paasta_config.get_ecosystem_for_cluster("fake-cluster")
-    assert ecosystem == "devc"
-    mock_convert_location_type.assert_called_once_with(
-        location="uswest2-devc", source_type="region", desired_type="ecosystem"
-    )
+            ),
+            "/fake/path",
+        )
+        # Test with existing cluster
+        ecosystem = fake_system_paasta_config.get_ecosystem_for_cluster("fake-cluster")
+        assert ecosystem == "devc"
+        mock_convert_location_type.assert_called_once_with(
+            location="uswest2-devc", source_type="region", desired_type="ecosystem"
+        )
 
 
 @pytest.mark.parametrize(
@@ -2954,7 +2956,7 @@ def test_validate_pool(cluster, pool, system_paasta_config, expected):
             "test-pool",
             SystemPaastaConfig(
                 SystemPaastaConfigDict(
-                    {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}}
+                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}  # type: ignore
                 ),
                 "fake_dir",
             ),
