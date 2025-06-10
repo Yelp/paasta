@@ -779,7 +779,7 @@ def _print_flink_status_from_job_manager(
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
     system_paasta_config: "SystemPaastaConfig",
-    flink_instance_config: Optional[FlinkDeploymentConfig],
+    flink_instance_config: FlinkDeploymentConfig,
     verbose: int,
 ) -> int:
     status = flink.get("status")
