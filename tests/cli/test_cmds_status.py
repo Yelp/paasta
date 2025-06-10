@@ -53,8 +53,6 @@ from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
-from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import remove_ansi_escape_sequences
@@ -2464,11 +2462,12 @@ class TestPrintFlinkStatus:
         # Fixtures
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_get_paasta_oapi_client.return_value = None
 
         output = []
@@ -2498,10 +2497,11 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_get_paasta_oapi_client.return_value = None
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2530,9 +2530,10 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
         output = []
@@ -2558,9 +2559,10 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
@@ -2651,6 +2653,7 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2658,7 +2661,7 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2682,6 +2685,7 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2690,7 +2694,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
-        mock_load_flink_instance_config.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2726,27 +2730,12 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         # Mock ecosystem lookup
         system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
         mock_load_system_paasta_config.return_value = system_paasta_config
-
-        # Mock the FlinkDeploymentConfig
-        config_dict = FlinkDeploymentConfigDict(
-            {
-                "spot": False,
-                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            }
-        )
-        mock_flink_instance_config = FlinkDeploymentConfig(
-            service="fake_service",
-            cluster="fake_cluster",
-            instance="fake_instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        mock_load_flink_instance_config.return_value = mock_flink_instance_config
-
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2810,25 +2799,12 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         # Mock ecosystem lookup
         system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
-
-        # Mock the FlinkDeploymentConfig
-        config_dict = FlinkDeploymentConfigDict(
-            {
-                "spot": True,
-                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            }
-        )
-        mock_flink_instance_config = FlinkDeploymentConfig(
-            service="fake_service",
-            cluster="fake_cluster",
-            instance="fake_instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        mock_load_flink_instance_config.return_value = mock_flink_instance_config
+        flink_instance_config.config_dict["spot"] = "flink"
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2895,26 +2871,12 @@ class TestPrintFlinkStatus:
         mock_get_paasta_oapi_client,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         # Mock ecosystem lookup
         system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
         mock_load_system_paasta_config.return_value = system_paasta_config
-
-        # Mock the Flink Delployment Config
-        config_dict = FlinkDeploymentConfigDict(
-            {
-                "spot": False,
-                "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
-            }
-        )
-        mock_flink_instance_config = FlinkDeploymentConfig(
-            service="fake-service",
-            cluster="fake_cluster",
-            instance="fake-instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        mock_load_flink_instance_config.return_value = mock_flink_instance_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
