@@ -2769,11 +2769,11 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Flink Pool: flink",
             f"    Owner: fake_owner",
             f"    Flink Runbook: fake_runbook_url",
-            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"{OUTPUT_HORIZONTAL_RULE}",
@@ -2854,11 +2854,11 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Flink Pool: flink-spot",
             f"    Owner: fake_owner",
             f"    Flink Runbook: fake_runbook_url",
-            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"{OUTPUT_HORIZONTAL_RULE}",
@@ -3014,11 +3014,11 @@ def _get_flink_base_status_verbose_0(metadata):
 def _get_flink_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         f"    Flink Pool: flink",
         f"    Owner: fake_owner",
         f"    Flink Runbook: fake_runbook_url",
-        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
