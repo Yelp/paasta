@@ -593,7 +593,7 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
 
 
 def test_SystemPaastaConfig_get_ecosystem_for_cluster():
-    with patch(
+    with mock.patch(
         "paasta_tools.utils.convert_location_type", autospec=True
     ) as mock_convert_location_type:
         # Mock convert_location_type to return the expected ecosystem
