@@ -38,7 +38,7 @@ def setup_logging(verbose):
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=level)
     # silence kubernetes client metadata logs since debug ones are pretty noisy
-    # logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
+    logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
 def main():
