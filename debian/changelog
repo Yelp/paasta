@@ -1,3 +1,12 @@
+paasta-tools (1.24.0) xenial; urgency=medium
+
+  * 1.24.0 tagged with 'make release'
+    Commit: Merge pull request #4063 from Yelp/u/nathanleigh/FLINK-
+    5725/AddMoreDetailsToFlinkPaastaStatus  FLINK-5725: Add extra Flink
+    details to paasta status
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Jun 2025 07:15:05 -0700
+
 paasta-tools (1.23.2) xenial; urgency=medium
 
   * 1.23.2 tagged with 'make release'
