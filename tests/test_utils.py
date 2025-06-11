@@ -2955,7 +2955,7 @@ def test_validate_pool(cluster, pool, system_paasta_config, expected):
             "test-pool",
             SystemPaastaConfig(
                 SystemPaastaConfigDict(
-                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}  # type: ignore
+                    {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}}
                 ),
                 "fake_dir",
             ),
