@@ -1,3 +1,13 @@
+paasta-tools (1.24.1) xenial; urgency=medium
+
+  * 1.24.1 tagged with 'make release'
+    Commit: Handle non-existent configmaps for autoscaling overrides
+    (#4080)  I"m not quite sure why `mypy`/`pyright` didn"t yell at me
+    for this, but this should silence some noise in our logs in clusters
+    where we haven"t used the override functionality
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Jun 2025 11:25:22 -0700
+
 paasta-tools (1.24.0) xenial; urgency=medium
 
   * 1.24.0 tagged with 'make release'
