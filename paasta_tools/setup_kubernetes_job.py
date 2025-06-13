@@ -255,27 +255,31 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
 
     This function reads the "paasta-autoscaling-overrides" ConfigMap in the "paasta" namespace
     and extracts all valid (non-expired) overrides to return a dictionary mapping
-    service.instance pairs to override data (currently, just min_instances and when the
+    service.instance pairs to override data (currently, just {min,max_instances} and when the
     override should expire by).
 
     The incoming ConfigMap is expected to have the following format:
     {
         $SERVICE_A.$INSTANCE_A: {
             "min_instances": 2,
+            "m_instances": 2,
             "expire_after": "2023-10-01T00:00:00Z"
         },
         $SERVICE_A.$INSTANCE_B: {
             "min_instances": 3,
+            "max_instances": 10,
             "expire_after": "2023-10-01T00:00:00Z"
         },
             ...
         },
         $SERVICE_B.$INSTANCE_A: {
             "min_instances": 1,
+            "max_instances": 11,
             "expire_after": "2023-10-01T00:00:00Z"
         },
         $SERVICE_B.$INSTANCE_B: {
             "min_instances": 2,
+            "max_instances": 20,
             "expire_after": "2023-10-01T00:00:00Z"
         },
         ...
@@ -298,19 +302,21 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
                     override_metadata = json.loads(override_json)
                     expire_after = override_metadata.get("expire_after")
                     min_instances = override_metadata.get("min_instances")
+                    max_instances = override_metadata.get("max_instances")
 
-                    if expire_after and min_instances:
+                    if expire_after and (min_instances or max_instances):
                         if current_time < expire_after:
                             if service not in overrides:
                                 overrides[service] = {}
 
                             overrides[service][instance] = {
                                 "min_instances": min_instances,
+                                "max_instances": max_instances,
                                 "expire_after": expire_after,
                             }
                             log.info(
                                 f"Found valid HPA override for {service}: "
-                                f"{override_metadata.get('min_instances')} (expires at {expire_after})"
+                                f"min_instances: {max_instances} :: max_instances {min_instances} (expires at {expire_after})"
                             )
                         else:
                             log.info(
@@ -320,7 +326,7 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
                     else:
                         log.warning(
                             f"Invalid HPA override for {service}.{instance}: "
-                            f"missing 'min_instances' or 'expire_after': {override_metadata}"
+                            f"missing 'min_instances' or 'max_instances' or 'expire_after': {override_metadata}"
                         )
                 except Exception:
                     log.exception(

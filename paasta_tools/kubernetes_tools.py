@@ -325,6 +325,7 @@ class DatastoreCredentialsConfig(TypedDict, total=False):
 
 class HpaOverride(TypedDict):
     min_instances: int
+    max_instances: int
     expire_after: str
 
 
@@ -899,6 +900,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         kube_client: KubeClient,
         namespace: str,
         min_instances_override: Optional[int] = None,
+        max_instances_override: Optional[int] = None,
     ) -> Optional[V2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
@@ -914,7 +916,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         min_replicas = min_instances_override or self.get_min_instances()
-        max_replicas = self.get_max_instances()
+        max_replicas = max_instances_override or self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
                 f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"

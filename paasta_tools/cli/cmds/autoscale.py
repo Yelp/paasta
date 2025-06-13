@@ -76,6 +76,14 @@ def add_subparser(subparsers):
         default=None,
     )
     override_group.add_argument(
+        "--set-max",
+        help="Set the maximum number of replicas (must be >= 1). Requires --for parameter.",
+        type=lambda x: int(x)
+        if int(x) >= 1
+        else autoscale_parser.error("Maximum instances must be >= 1"),
+        default=None,
+    )
+    override_group.add_argument(
         "--for",
         dest="duration",
         help="Duration for the temporary override (e.g. '3h', '30m'). Required when using --set-min.",
@@ -113,7 +121,7 @@ def paasta_autoscale(args):
     log.setLevel(logging.DEBUG)
     service = figure_out_service_name(args)
 
-    if args.set_min is not None and not args.duration:
+    if (args.set_min is not None or args.set_max is not None) and not args.duration:
         print(
             PaastaColors.yellow(
                 "WARNING: --set-min requires --for parameter to specify duration - defaulting to 30m"
@@ -121,14 +129,16 @@ def paasta_autoscale(args):
         )
         args.duration = "30m"
 
-    if args.duration is not None and args.set_min is None:
-        print(PaastaColors.red("Error: --for requires --set-min parameter"))
+    if args.duration is not None and args.set_min is None and args.set_max is None:
+        print(
+            PaastaColors.red("Error: --for requires --set-min or --set-max parameter")
+        )
         return 1
 
-    if args.set is not None and args.set_min is not None:
+    if args.set is not None and args.set_min is not None and args.set_max is not None:
         print(
             PaastaColors.red(
-                "Error: Cannot use both --set and --set-min at the same time"
+                "Error: Cannot use both --set and --set-min or --set-max at the same time"
             )
         )
         return 1
@@ -161,7 +171,7 @@ def paasta_autoscale(args):
 
     try:
         # get current autoscaler count
-        if args.set is None and args.set_min is None:
+        if args.set is None and args.set_min is None and args.set_max is None:
             log.debug("Getting the current autoscaler count...")
             res, status, _ = api.autoscaler.get_autoscaler_count(
                 service=service, instance=args.instance, _return_http_data_only=False
@@ -187,7 +197,7 @@ def paasta_autoscale(args):
             )
 
         # set lower bound
-        elif args.set_min is not None:
+        elif args.set_min is not None or args.set_max is not None:
             duration_seconds = parse_duration_to_seconds(args.duration)
             if not duration_seconds:
                 print(
@@ -206,6 +216,7 @@ def paasta_autoscale(args):
             )
             msg = paastamodels.AutoscalingOverride(
                 min_instances=args.set_min,
+                max_instances=args.set_max,
                 expire_after=expiration_time,
             )
 
@@ -228,7 +239,7 @@ def paasta_autoscale(args):
     if not 200 <= status <= 299:
         print(
             PaastaColors.red(
-                f"ERROR: '{args.instance}' is not configured to autoscale OR you set min_instances above the current max_instances, "
+                f"ERROR: '{args.instance}' is not configured to autoscale OR you set impossible {{min, max}}_instances, "
                 f"and `paasta autoscale` could not update it. "
                 f"If you want to be able to boost this service, please configure autoscaling for the service "
                 f"in its config file by setting min and max instances appropriately. Example: \n"
@@ -242,10 +253,15 @@ def paasta_autoscale(args):
     log.debug(f"Res: {res} Http: {status}")
     if not args.set_min:
         print(f"Desired instances: {res.desired_instances}")
-    elif args.set_min:
-        print(
-            f"Temporary override set for {args.service}.{args.instance} with minimum instances: {args.set_min}"
-        )
+    elif args.set_min or args.set_max:
+        if args.set_min:
+            print(
+                f"Temporary override set for {args.service}.{args.instance} with minimum instances: {args.set_min}"
+            )
+        if args.set_max:
+            print(
+                f"Temporary override set for {args.service}.{args.instance} with maximum instances: {args.set_max}"
+            )
         # folks using this might be in different timezones, so let's convert the expiration time to a few common ones
         # to make it extra clear when the override will expire
         epoch_time = datetime.fromtimestamp(res.expire_after)

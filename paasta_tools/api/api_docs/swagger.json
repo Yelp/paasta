@@ -322,7 +322,13 @@
                                 },
                                 "min_instances": {
                                     "type": "integer",
+                                    "x-nullable": true,
                                     "description": "Minimum number of instances to run"
+                                },
+                                "max_instances": {
+                                    "type": "integer",
+                                    "x-nullable": true,
+                                    "description": "Maximum number of instances to run"
                                 },
                                 "expire_after": {
                                     "type": "number",
@@ -1724,7 +1730,14 @@
             "properties": {
                 "min_instances": {
                     "type": "integer",
+                    "x-nullable": true,
                     "description": "Minimum number of instances to run",
+                    "minimum": 1
+                },
+                "max_instances": {
+                    "type": "integer",
+                    "x-nullable": true,
+                    "description": "Maximum number of instances to run",
                     "minimum": 1
                 },
                 "expire_after": {
@@ -1735,6 +1748,7 @@
             },
             "required": [
                 "min_instances",
+                "max_instances",
                 "expire_after"
             ]
         },
