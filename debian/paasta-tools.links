@@ -20,6 +20,7 @@ opt/venvs/paasta-tools/bin/paasta_cleanup_remote_run_resources.py usr/bin/paasta
 opt/venvs/paasta-tools/bin/paasta_cleanup_stale_nodes.py usr/bin/paasta_cleanup_stale_nodes
 opt/venvs/paasta-tools/bin/paasta_prune_completed_pods usr/bin/paasta_prune_completed_pods
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces
+opt/venvs/paasta-tools/bin/paasta_cleanup_expired_autoscaling_overrides usr/bin/paasta_cleanup_expired_autoscaling_overrides
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs
 opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
