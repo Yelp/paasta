@@ -2449,7 +2449,9 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
+    @patch(
+        "paasta_tools.cli.cmds.status_flink.load_system_paasta_config", autospec=True
+    )
     @patch("paasta_tools.cli.cmds.status_flink.get_paasta_oapi_client", autospec=True)
     @patch(
         "paasta_tools.cli.cmds.status_flink.load_flink_instance_config", autospec=True
@@ -2464,9 +2466,9 @@ class TestPrintFlinkStatus:
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_system_paasta_config.return_value = flink_instance_config
         mock_flink_status["status"] = None
-        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_load_flink_instance_config.return_value = system_paasta_config
         mock_get_paasta_oapi_client.return_value = None
 
         output = []
