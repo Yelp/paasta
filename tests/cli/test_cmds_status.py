@@ -2504,9 +2504,9 @@ class TestPrintFlinkStatus:
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_system_paasta_config.return_value = flink_instance_config
         mock_get_paasta_oapi_client.return_value = None
-        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_load_flink_instance_config.return_value = system_paasta_config
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
