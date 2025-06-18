@@ -1,3 +1,11 @@
+paasta-tools (1.25.1) xenial; urgency=medium
+
+  * 1.25.1 tagged with 'make release'
+    Commit: Merge pull request #4084 from Yelp/u/sids/CLOUD-816/bump-
+    service-configuration-lib  bump service-configuration-lib to 3.3.5
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 18 Jun 2025 10:00:34 -0700
+
 paasta-tools (1.25.0) xenial; urgency=medium
 
   * 1.25.0 tagged with 'make release'
