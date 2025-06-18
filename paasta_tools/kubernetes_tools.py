@@ -2017,7 +2017,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-    def get_min_instances(self) -> Optional[int]:
+    def get_min_instances(self) -> int:
         return self.config_dict.get(
             "min_instances",
             1,
@@ -4692,7 +4692,9 @@ def get_namespaced_configmap(
 
 def patch_namespaced_configmap(
     name: str,
-    body: Dict[str, str],
+    # NOTE: passing a dict *seems* to work - but we should likely switch to passing a ConfigMap since that seems to be
+    # the most supported option
+    body: Union[V1ConfigMap, Dict[str, Any]],
     *,
     namespace: str,
     kube_client: KubeClient,

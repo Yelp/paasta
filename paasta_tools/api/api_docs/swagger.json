@@ -1743,7 +1743,8 @@
                 "expire_after": {
                     "type": "number",
                     "format": "float",
-                    "description": "Unix timestamp when this override is no longer valid"
+                    "description": "Unix timestamp when this override is no longer valid",
+                    "minimum": 1
                 }
             },
             "required": [

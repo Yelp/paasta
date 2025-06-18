@@ -277,6 +277,7 @@ components:
           format: float
           type: number
           description: Unix timestamp when this override is no longer valid
+          minimum: 1
       required:
         - min_instances
         - max_instances

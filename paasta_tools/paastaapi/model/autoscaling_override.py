@@ -65,6 +65,9 @@ class AutoscalingOverride(ModelNormal):
         ('max_instances',): {
             'inclusive_minimum': 1,
         },
+        ('expire_after',): {
+            'inclusive_minimum': 1,
+        },
     }
 
     additional_properties_type = None

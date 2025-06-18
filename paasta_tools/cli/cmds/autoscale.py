@@ -86,7 +86,7 @@ def add_subparser(subparsers):
     override_group.add_argument(
         "--for",
         dest="duration",
-        help="Duration for the temporary override (e.g. '3h', '30m'). Required when using --set-min.",
+        help="Duration for the temporary override (e.g. '3h', '30m'). Required when using --set-min and/or --set-max.",
         default=None,
     )
 
