@@ -6,6 +6,8 @@ import time
 import mock
 import pytest
 
+from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -44,6 +46,24 @@ def system_paasta_config():
             },
         },
         "/fake_dir/",
+    )
+
+
+@pytest.fixture
+def flink_instance_config() -> FlinkDeploymentConfig:
+    # Mock the FlinkDeploymentConfig
+    config_dict = FlinkDeploymentConfigDict(
+        {
+            "spot": False,
+            "monitoring": {"team": "fake_owner", "runbook": "fake_runbook_url"},
+        }
+    )
+    return FlinkDeploymentConfig(
+        service="fake_service",
+        cluster="fake_cluster",
+        instance="fake_instance",
+        config_dict=config_dict,
+        branch_dict=None,
     )
 
 

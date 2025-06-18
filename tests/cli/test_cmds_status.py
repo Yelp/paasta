@@ -41,6 +41,7 @@ from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status
@@ -2450,16 +2451,25 @@ class TestPrintKafkaStatus:
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink(
         self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
+        # Fixtures
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_get_paasta_oapi_client.return_value = None
+
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2471,19 +2481,27 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+        assert output == [
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        ]
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_client(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_get_paasta_oapi_client.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2504,14 +2522,18 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_config(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
         output = []
@@ -2529,14 +2551,18 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_overview(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
@@ -2555,8 +2581,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_jobs(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2582,8 +2610,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_job_details(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2615,12 +2645,15 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_successful_return_value(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2628,6 +2661,7 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_load_flink_instance_config.return_value = flink_instance_config
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2642,13 +2676,16 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2657,6 +2694,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2669,7 +2707,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(metadata) + [
+        expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2683,14 +2721,21 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_jobmanager(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2709,9 +2754,30 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Flink Pool: flink",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -2724,14 +2790,21 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_taskmanagers(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        flink_instance_config.config_dict["spot"] = "flink"
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2739,6 +2812,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
         mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
@@ -2752,9 +2826,30 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Flink Pool: flink-spot",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -2764,24 +2859,31 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     def test_output_1_verbose(
         self,
-        mock_get_paasta_oapi_client,
-        mock_naturaltime,
         mock_load_system_paasta_config,
+        mock_naturaltime,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2797,7 +2899,22 @@ class TestPrintFlinkStatus:
         job_start_time = str(
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
-        expected_output = _get_base_status_verbose_1(metadata) + [
+        expected_output = _get_flink_base_status_verbose_1(metadata) + [
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2848,7 +2965,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
     )
 
 
-def _get_base_status_verbose_0(metadata):
+def _get_flink_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
         f"    Flink version: {config_obj.flink_version}",
@@ -2856,9 +2973,14 @@ def _get_base_status_verbose_0(metadata):
     ]
 
 
-def _get_base_status_verbose_1(metadata):
+def _get_flink_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+        f"    Flink Pool: flink",
+        f"    Owner: fake_owner",
+        f"    Flink Runbook: fake_runbook_url",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]

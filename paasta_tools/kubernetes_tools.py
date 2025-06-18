@@ -4713,6 +4713,49 @@ def patch_namespaced_configmap(
             raise
 
 
+def replace_namespaced_configmap(
+    name: str,
+    body: V1ConfigMap,
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> V1ConfigMap:
+    """
+    Replaces an existing configmap with the given configmap.
+    """
+    try:
+        return kube_client.core.replace_namespaced_config_map(
+            name=name, namespace=namespace, body=body
+        )
+    except ApiException as e:
+        if e.status == 404:
+            raise ValueError(f"ConfigMap {name} not found in namespace {namespace}")
+        else:
+            raise
+
+
+def delete_namespaced_configmap(
+    name: str,
+    body: V1ConfigMap,
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> V1ConfigMap:
+    """
+    Delete a configmap with the given name in the given namespace.
+    """
+    try:
+        return kube_client.core.delete_namespaced_config_map(
+            name=name,
+            namespace=namespace,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            raise ValueError(f"ConfigMap {name} not found in namespace {namespace}")
+        else:
+            raise
+
+
 def get_or_create_namespaced_configmap(
     configmap: str,
     *,
