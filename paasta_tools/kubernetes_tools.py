@@ -4334,21 +4334,39 @@ def ensure_service_account(
     kube_client: KubeClient,
     k8s_role: Optional[str] = None,
 ) -> None:
+    role_annotation = "eks.amazonaws.com/role-arn"
     sa_name = get_service_account_name(iam_role, k8s_role)
 
-    if not any(
-        sa.metadata and sa.metadata.name == sa_name
-        for sa in get_all_service_accounts(kube_client, namespace)
-    ):
+    existing_sa = None
+    for sa in get_all_service_accounts(kube_client, namespace):
+        if sa.metadata and sa.metadata.name == sa_name:
+            existing_sa = sa
+            break
+    else:
         sa = V1ServiceAccount(
             kind="ServiceAccount",
             metadata=V1ObjectMeta(
                 name=sa_name,
                 namespace=namespace,
-                annotations={"eks.amazonaws.com/role-arn": iam_role},
+                annotations={role_annotation: iam_role},
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
+    if existing_sa:
+        if (
+            not sa.metadata.annotations
+            or sa.metadata.annotations.get(role_annotation, None) != iam_role
+        ):
+            # NOTE: we don't annotate SAs apart with anything other
+            # than the pod identity role ARN, so this will remove
+            # any annotations that folks may have manually added
+            sa.metadata.annotations = {role_annotation: iam_role}
+            kube_client.core.patch_namespaced_service_account(
+                namespace=namespace, body=sa, name=sa.metadata.name
+            )
+            log.info(
+                f"Updated ServiceAccount {sa.metadata.name} iam_role to {iam_role}"
+            )
 
     # we're expecting that any Role dynamically associated with a Service Account already exists.
     # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
@@ -4683,6 +4701,49 @@ def patch_namespaced_configmap(
     try:
         return kube_client.core.patch_namespaced_config_map(
             name=name, namespace=namespace, body=body
+        )
+    except ApiException as e:
+        if e.status == 404:
+            raise ValueError(f"ConfigMap {name} not found in namespace {namespace}")
+        else:
+            raise
+
+
+def replace_namespaced_configmap(
+    name: str,
+    body: V1ConfigMap,
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> V1ConfigMap:
+    """
+    Replaces an existing configmap with the given configmap.
+    """
+    try:
+        return kube_client.core.replace_namespaced_config_map(
+            name=name, namespace=namespace, body=body
+        )
+    except ApiException as e:
+        if e.status == 404:
+            raise ValueError(f"ConfigMap {name} not found in namespace {namespace}")
+        else:
+            raise
+
+
+def delete_namespaced_configmap(
+    name: str,
+    body: V1ConfigMap,
+    *,
+    namespace: str,
+    kube_client: KubeClient,
+) -> V1ConfigMap:
+    """
+    Delete a configmap with the given name in the given namespace.
+    """
+    try:
+        return kube_client.core.delete_namespaced_config_map(
+            name=name,
+            namespace=namespace,
         )
     except ApiException as e:
         if e.status == 404:

@@ -1,3 +1,75 @@
+paasta-tools (1.25.0) xenial; urgency=medium
+
+  * 1.25.0 tagged with 'make release'
+    Commit: Add paasta_cleanup_expired_autoscaling_overrides (#4081)  As
+    it says on the tin: we should probably be expiring things from this
+    configmap rather than leaving them around 5eva.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Jun 2025 12:46:46 -0700
+
+paasta-tools (1.24.1) xenial; urgency=medium
+
+  * 1.24.1 tagged with 'make release'
+    Commit: Handle non-existent configmaps for autoscaling overrides
+    (#4080)  I"m not quite sure why `mypy`/`pyright` didn"t yell at me
+    for this, but this should silence some noise in our logs in clusters
+    where we haven"t used the override functionality
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Jun 2025 11:25:22 -0700
+
+paasta-tools (1.24.0) xenial; urgency=medium
+
+  * 1.24.0 tagged with 'make release'
+    Commit: Merge pull request #4063 from Yelp/u/nathanleigh/FLINK-
+    5725/AddMoreDetailsToFlinkPaastaStatus  FLINK-5725: Add extra Flink
+    details to paasta status
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Jun 2025 07:15:05 -0700
+
+paasta-tools (1.23.2) xenial; urgency=medium
+
+  * 1.23.2 tagged with 'make release'
+    Commit: Add better error handling for 403s in remote-run (#4074)  ##
+    Problems  ### Swagger spec The swagger spec specified that for 403s
+    in remote_run, there should be no data in the response. However,
+    there are error messages that should be returned. Because of this,
+    they got wrapped in another error: ``` The server has either erred
+    or is incapable of performing the requested operation.  Response
+    body should be empty: {"reason": "User not owning service"} ```  ###
+    Client error handling The remote run code expects non-200s to be
+    available in the client response objects, however, the current code
+    will automatically raise ApiExceptions. So rather than "Error from
+    PaaSTA APIs while...", you"d get a full client side traceback.  ##
+    Solutions  ### Swagger spec Add `reason` as a response type in
+    swagger.json. I"m not sure if this needs to be reflected in
+    oapi.yaml as well, as that doesn"t seem to have any effect. I"ve
+    also left every other API unchanged, even though some could generate
+    500s or 403s. These are the two that are most important.   ###
+    Client error handling Catch ApiExceptions and try parsing error body
+    as best as possible.   ## Validation ``` paasta remote-run start -c
+    cluster -s service -i main --interactive Error from PaaSTA APIs
+    while starting job: User not owning service  $ paasta remote-run
+    stop -c cluster -s service -i main Error from PaaSTA APIs while
+    stopping job: User not owning service ```
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 06 Jun 2025 09:40:30 -0700
+
+paasta-tools (1.23.1) xenial; urgency=medium
+
+  * 1.23.1 tagged with 'make release'
+    Commit: Take the max suggestion from autotune (#4056)  autotune
+    currently does some aggregation for service instances where it takes
+    into account the cpu (and if the cpu allocation changes, that"s
+    essentially treated as a new service instance) - this is likely done
+    on purpose, but our current thinking is that this is hurting us more
+    than it"s helping us  however, changing the autotune query is a much
+    bigger deal than changing the code that uses the results of that
+    query, so we"re thinking of simply taking the max from the results
+    across these cpu aggregations - this is a little wasteful, but
+    better than having values that are too low
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 03 Jun 2025 13:01:33 -0700
+
 paasta-tools (1.23.0) xenial; urgency=medium
 
   * 1.23.0 tagged with 'make release'

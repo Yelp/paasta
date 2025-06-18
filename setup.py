@@ -82,6 +82,7 @@ setup(
             "paasta-fsm=paasta_tools.cli.fsm_cmd:main",
             "paasta_prune_completed_pods=paasta_tools.prune_completed_pods:main",
             "paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main",
+            "paasta_cleanup_expired_autoscaling_overrides=paasta_tools.cleanup_expired_autoscaling_overrides:main",
             "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
             "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",
             "paasta_setup_tron_namespace=paasta_tools.setup_tron_namespace:main",

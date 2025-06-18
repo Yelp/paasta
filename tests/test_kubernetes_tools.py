@@ -4844,6 +4844,80 @@ def test_ensure_service_account_existing():
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
+def test_ensure_service_account_existing_different_role():
+    old_iam_role = "arn:aws:iam::000000000000:role/some_role"
+    new_iam_role = "arn:aws:iam::000000000000:role/some-role"
+    namespace = "test_namespace"
+    k8s_role = "mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = [
+            V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": old_iam_role},
+                ),
+            )
+        ]
+        mock_client.rbac.list_namespaced_role_binding.return_value = mock.Mock(
+            spec=V1RoleBinding,
+        )
+        mock_client.rbac.list_namespaced_role_binding.return_value.items = [
+            V1RoleBinding(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                ),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=expected_sa_name,
+                    )
+                ],
+            )
+        ]
+        mock_kube_client.return_value = mock_client
+        ensure_service_account(
+            new_iam_role,
+            namespace=namespace,
+            kube_client=mock_client,
+            k8s_role=k8s_role,
+        )
+        mock_client.core.create_namespaced_service_account.assert_not_called()
+        mock_client.core.patch_namespaced_service_account.assert_called_once_with(
+            namespace=namespace,
+            body=V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": new_iam_role},
+                ),
+            ),
+            name=expected_sa_name,
+        )
+
+
 def test_ensure_service_account_existing_create_rb_only():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"

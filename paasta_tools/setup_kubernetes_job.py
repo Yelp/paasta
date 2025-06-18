@@ -289,7 +289,7 @@ def get_hpa_overrides(kube_client: KubeClient) -> Dict[str, Dict[str, HpaOverrid
             kube_client=kube_client,
         )
 
-        if configmap.data:
+        if configmap and configmap.data:
             current_time = time.time()
 
             for service_instance, override_json in configmap.data.items():
