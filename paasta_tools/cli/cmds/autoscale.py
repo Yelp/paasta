@@ -256,9 +256,9 @@ def paasta_autoscale(args):
         return 0
 
     log.debug(f"Res: {res} Http: {status}")
-    if not args.set_min:
+    if not args.set_min and not args.set_max:
         print(f"Desired instances: {res.desired_instances}")
-    elif args.set_min or args.set_max:
+    else:
         if args.set_min:
             print(
                 f"Temporary override set for {args.service}.{args.instance} with minimum instances: {args.set_min}"
