@@ -1731,14 +1731,12 @@
                 "min_instances": {
                     "type": "integer",
                     "x-nullable": true,
-                    "description": "Minimum number of instances to run",
-                    "minimum": 1
+                    "description": "Minimum number of instances to run"
                 },
                 "max_instances": {
                     "type": "integer",
                     "x-nullable": true,
-                    "description": "Maximum number of instances to run",
-                    "minimum": 1
+                    "description": "Maximum number of instances to run"
                 },
                 "expire_after": {
                     "type": "number",

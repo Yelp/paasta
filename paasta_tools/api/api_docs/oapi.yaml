@@ -267,17 +267,16 @@ components:
       properties:
         min_instances:
           type: integer
+          nullable: true
           description: Minimum number of instances to run
-          minimum: 1
         max_instances:
           type: integer
+          nullable: true
           description: Maximum number of instances to run
-          minimum: 1
         expire_after:
           format: float
           type: number
           description: Unix timestamp when this override is no longer valid
-          minimum: 1
       required:
         - min_instances
         - max_instances

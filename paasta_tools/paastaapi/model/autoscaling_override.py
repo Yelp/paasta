@@ -59,15 +59,6 @@ class AutoscalingOverride(ModelNormal):
     }
 
     validations = {
-        ('min_instances',): {
-            'inclusive_minimum': 1,
-        },
-        ('max_instances',): {
-            'inclusive_minimum': 1,
-        },
-        ('expire_after',): {
-            'inclusive_minimum': 1,
-        },
     }
 
     additional_properties_type = None
@@ -85,8 +76,8 @@ class AutoscalingOverride(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'min_instances': (int,),  # noqa: E501
-            'max_instances': (int,),  # noqa: E501
+            'min_instances': (int, none_type,),  # noqa: E501
+            'max_instances': (int, none_type,),  # noqa: E501
             'expire_after': (float,),  # noqa: E501
         }
 
@@ -117,8 +108,8 @@ class AutoscalingOverride(ModelNormal):
         """AutoscalingOverride - a model defined in OpenAPI
 
         Args:
-            min_instances (int): Minimum number of instances to run
-            max_instances (int): Maximum number of instances to run
+            min_instances (int, none_type): Minimum number of instances to run
+            max_instances (int, none_type): Maximum number of instances to run
             expire_after (float): Unix timestamp when this override is no longer valid
 
         Keyword Args:

@@ -124,7 +124,7 @@ def paasta_autoscale(args):
     if (args.set_min is not None or args.set_max is not None) and not args.duration:
         print(
             PaastaColors.yellow(
-                "WARNING: --set-min requires --for parameter to specify duration - defaulting to 30m"
+                "WARNING: --set-min/--set-max usage requires --for parameter to specify duration - defaulting to 30m"
             )
         )
         args.duration = "30m"
@@ -169,6 +169,9 @@ def paasta_autoscale(args):
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
 
+    # TODO: we should probably also make sure we set a couple other defaults - currently, it's possible for
+    # status/res/etc to be unbound in some code paths
+    err_reason = None
     try:
         # get current autoscaler count
         if args.set is None and args.set_min is None and args.set_max is None:
@@ -212,7 +215,7 @@ def paasta_autoscale(args):
             expiration_time = time.time() + duration_seconds
 
             log.debug(
-                f"Setting minimum instances to {args.set_min} for duration {args.duration}."
+                f"Sending the following overrides for duration {args.duration}: min_instances: {args.set_min}, max_instances: {args.set_max}."
             )
             msg = paastamodels.AutoscalingOverride(
                 min_instances=args.set_min,
@@ -235,6 +238,7 @@ def paasta_autoscale(args):
             )
     except api.api_error as exc:
         status = exc.status
+        err_reason = exc.body
 
     if not 200 <= status <= 299:
         print(
@@ -245,7 +249,8 @@ def paasta_autoscale(args):
                 f"in its config file by setting min and max instances appropriately. Example: \n"
                 f"{args.instance}:\n"
                 f"     min_instances: 5\n"
-                f"     max_instances: 50"
+                f"     max_instances: 50\n"
+                f"{err_reason}"
             )
         )
         return 0

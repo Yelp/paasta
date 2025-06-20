@@ -165,7 +165,11 @@ def set_autoscaling_override(request):
             "At least one of min_instances or max_instances must be provided", 400
         )
 
-    # TODO: these should be enforced in the API spec - verify and potentially remove these
+    # we can't currently enforce this in the API spec since the generator seems to have issues generating a validator
+    # for a nullable integer field with a minimum value as we get errors like:
+    # `TypeError: '<' not supported between instances of 'NoneType' and 'int'`
+    # that said, unless someone is manually crafting requests, this should never happen
+    # since the CLI includes a check for this as well
     if min_instances_override is not None and min_instances_override < 1:
         raise ApiFailure("min_instances must be a positive integer", 400)
     if max_instances_override is not None and max_instances_override < 1:
@@ -221,7 +225,12 @@ def set_autoscaling_override(request):
         "expire_after": expire_after,
     }
 
-    merged_overrides = {**existing_overrides, **override_data}
+    # NOTE: we need to strip out null values from the incoming overrides since otherwise we'd remove existing overrides
+    # (since if only --set-min or --set-max is provided, the other will be sent as None)
+    merged_overrides = {
+        **existing_overrides,
+        **{k: v for k, v in override_data.items() if v is not None},
+    }
     serialized_overrides = json.dumps(merged_overrides)
 
     # note: we can only append with patching - if we ever want to remove overrides outside of the cleanup cronjob,
