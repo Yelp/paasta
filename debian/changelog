@@ -1,3 +1,13 @@
+paasta-tools (1.26.0) xenial; urgency=medium
+
+  * 1.26.0 tagged with 'make release'
+    Commit: Adding idempotent label to Tron pods - TRON-2154 (#4076)  *
+    Adding idempotent label to Tron pods  * convert boolean label value
+    to string  * fix mypy test  * pass the idempotent key to tron  * fix
+    tests
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 23 Jun 2025 08:56:00 -0700
+
 paasta-tools (1.25.1) xenial; urgency=medium
 
   * 1.25.1 tagged with 'make release'
