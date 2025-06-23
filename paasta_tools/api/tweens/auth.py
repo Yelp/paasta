@@ -69,7 +69,7 @@ class AuthTweenFactory:
             )
         return self.handler(request)
 
-    @cachetools.func.ttl_cache(maxsize=AUTH_CACHE_SIZE, ttl=AUTH_CACHE_TTL)  # type: ignore
+    @cachetools.func.ttl_cache(maxsize=AUTH_CACHE_SIZE, ttl=AUTH_CACHE_TTL)
     def is_request_authorized(
         self,
         path: str,

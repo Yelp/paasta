@@ -1,4 +1,3 @@
-appdirs
 astroid
 asynctest
 coverage
@@ -20,4 +19,5 @@ pytest-asyncio
 requirements-tools
 Sphinx
 sphinx-rtd-theme
+types-cachetools
 zake
