@@ -493,8 +493,9 @@ instance MAY have:
       Defaults to ``30`` seconds for services that are registered in the mesh, and ``0`` seconds for services that are not.
 
     * ``pre_stop_wait_for_connections_to_complete``: If set to ``true``, the default ``pre_stop_command`` will:
-      1. Sleep ``pre_stop_drain_seconds`` seconds, to give the service mesh time to remove the pod from Envoy everywhere.
-      2. Wait for connections on ``container_port`` (8888 by default) to complete (checking once per second.)
+
+        1. Sleep ``pre_stop_drain_seconds`` seconds, to give the service mesh time to remove the pod from Envoy everywhere.
+        2. Wait for connections on ``container_port`` (8888 by default) to complete (checking once per second.)
 
       This is useful for services with long-running requests that need to be completed before the container is stopped.
       Defaults to ``true`` if both of these conditions are true:

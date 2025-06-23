@@ -279,6 +279,79 @@
                 "operationId": "delete_service_autoscaler_pause"
             }
         },
+        "/service_autoscaler/{service}/{instance}/autoscaling_override": {
+            "post": {
+                "operationId": "set_autoscaling_override",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "body",
+                        "name": "json_body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AutoscalingOverride"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Successfully set autoscaling override",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string",
+                                    "description": "Service name"
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "Instance name"
+                                },
+                                "min_instances": {
+                                    "type": "integer",
+                                    "description": "Minimum number of instances to run"
+                                },
+                                "expire_after": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "description": "Unix timestamp after which the override is no longer valid"
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "description": "Status of the operation"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters"
+                    },
+                    "501": {
+                        "description": "Autoscaling not supported for this instance type"
+                    },
+                    "500": {
+                        "description": "Failed to set autoscaling override"
+                    }
+                },
+                "summary": "Set a temporary autoscaling override for a service instance",
+                "tags": [
+                    "autoscaler"
+                ]
+            }
+        },
         "/resources/utilization": {
             "get": {
                 "responses": {
@@ -857,7 +930,15 @@
                         }
                     },
                     "403": {
-                        "description": "Unauthorized to remote-run this service"
+                        "description": "Unauthorized to remote-run this service",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Deployment key not found"
@@ -908,7 +989,15 @@
                         }
                     },
                     "403": {
-                        "description": "Unauthorized to remote-run this service"
+                        "description": "Unauthorized to remote-run this service",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "reason": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Service instance not found"
@@ -963,6 +1052,9 @@
                     },
                     "404": {
                         "description": "Service instance not found"
+                    },
+                    "409": {
+                        "description": "A pod was found but is currently being terminated"
                     },
                     "500": {
                         "description": "Failure"
@@ -1626,6 +1718,25 @@
                     "description": "setpoint/target_value as specified in yelpsoa_configs"
                 }
             }
+        },
+        "AutoscalingOverride": {
+            "type": "object",
+            "properties": {
+                "min_instances": {
+                    "type": "integer",
+                    "description": "Minimum number of instances to run",
+                    "minimum": 1
+                },
+                "expire_after": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp when this override is no longer valid"
+                }
+            },
+            "required": [
+                "min_instances",
+                "expire_after"
+            ]
         },
         "KubernetesReplicaSet": {
             "type": "object",

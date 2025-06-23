@@ -189,6 +189,8 @@ def remote_run_ready(
     if not pod:
         return {"status": 404, "message": "No pod found"}
     if pod.status.phase == "Running":
+        if pod.metadata.deletion_timestamp:
+            return {"status": 409, "message": "Pod is terminating"}
         result: RemoteRunOutcome = {
             "status": 200,
             "message": "Pod ready",

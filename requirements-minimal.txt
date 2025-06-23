@@ -13,6 +13,7 @@ cookiecutter >= 1.4.0
 croniter
 docker
 dulwich >= 0.17.3
+environment-tools
 ephemeral-port-reserve >= 1.0.1
 future>=0.18.3
 graphviz
@@ -62,7 +63,7 @@ retry
 ruamel.yaml
 ruamel.yaml.clib>=0.2.8
 sensu-plugin
-service-configuration-lib >= 3.2.0
+service-configuration-lib >= 3.3.5
 signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0
