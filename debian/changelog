@@ -1,3 +1,11 @@
+paasta-tools (1.26.1) xenial; urgency=medium
+
+  * 1.26.1 tagged with 'make release'
+    Commit: Ignore new services (that haven"t been marked for deployment
+    yet) in setup_kubernetes_cr.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 23 Jun 2025 16:09:29 -0700
+
 paasta-tools (1.26.0) xenial; urgency=medium
 
   * 1.26.0 tagged with 'make release'
