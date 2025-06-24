@@ -38,7 +38,6 @@ Submodules
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
-   paasta_tools.check_spark_jobs
    paasta_tools.cleanup_expired_autoscaling_overrides
    paasta_tools.cleanup_kubernetes_cr
    paasta_tools.cleanup_kubernetes_crd
