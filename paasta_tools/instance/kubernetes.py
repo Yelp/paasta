@@ -641,7 +641,7 @@ async def kubernetes_status_v2(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         )
-        tasks.append(autoscaling_task)  # type: ignore
+        tasks.append(autoscaling_task)  # type: ignore  # autoscaling_task is a Task[KubernetesAutoscalingStatusDict], but tasks expects Future[Dict[str, Any]]; ignoring due to type mismatch
     else:
         autoscaling_task = None
 
@@ -653,7 +653,7 @@ async def kubernetes_status_v2(
             namespaces=relevant_namespaces,
         )
     )
-    tasks.append(pods_task)  # type: ignore
+    tasks.append(pods_task)  # type: ignore  # pods_task is a Task[Sequence[Any]], but tasks expects Future[Dict[str, Any]]; ignoring due to type mismatch
 
     service_namespace_config = kubernetes_tools.load_service_namespace_config(
         service=service,
@@ -674,9 +674,9 @@ async def kubernetes_status_v2(
             )
         )
         backends_task = asyncio.create_task(
-            get_backends_from_mesh_status(mesh_status_task)  # type: ignore
+            get_backends_from_mesh_status(mesh_status_task)  # type: ignore  # get_backends_from_mesh_status expects a Future[Dict[str, Any]], but mesh_status_task is a Task[Mapping[str, Any]]; ignoring due to type mismatch
         )
-        tasks.extend([mesh_status_task, backends_task])  # type: ignore
+        tasks.extend([mesh_status_task, backends_task])  # type: ignore  # mesh_status_task is a Task[Mapping[str, Any]] and backends_task is a Task[Set[str]], but tasks expects Future[Dict[str, Any]]; ignoring due to type mismatch
     else:
         mesh_status_task = None
         backends_task = None
@@ -685,7 +685,7 @@ async def kubernetes_status_v2(
         pod_status_by_sha_and_readiness_task = asyncio.create_task(
             get_pod_status_tasks_by_sha_and_readiness(
                 pods_task,
-                backends_task,  # type: ignore
+                backends_task,  # type: ignore  # backends_task is a Task[Set[str]], but tasks expects Future[Dict[str, Any]]; ignoring due to type mismatch
                 kube_client,
                 verbose,
             )
@@ -696,15 +696,15 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,  # type: ignore
+                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,  # type: ignore  # pod_status_by_sha_and_readiness_task is a Task[defaultdict[Tuple[str, str], defaultdict[bool, List[Future[Dict[str, Any]]]]]], but the function expects Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[Future[Mapping[str, Any]]]]]]; ignoring due to type mismatch
             )
         )
-        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])  # type: ignore
+        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])  # type: ignore  # pod_status_by_sha_and_readiness_task is a Task[defaultdict[Tuple[str, str], defaultdict[bool, List[Future[Dict[str, Any]]]]]], and versions_task is a Task[List[KubernetesVersionDict]], but tasks expects List[Future[Dict[str, Any]]]; ignoring due to type mismatch
     else:
         pod_status_by_replicaset_task = asyncio.create_task(
             get_pod_status_tasks_by_replicaset(
                 pods_task,
-                backends_task,  # type: ignore
+                backends_task,  # type: ignore  # backends_task is a Task[Set[str]], but the function expects Future[Dict[str, Any]]; ignoring due to type mismatch
                 kube_client,
                 verbose,
             )
@@ -715,10 +715,10 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_replicaset_task=pod_status_by_replicaset_task,  # type: ignore
+                pod_status_by_replicaset_task=pod_status_by_replicaset_task,  # type: ignore  # pod_status_by_replicaset_task is a Task[Dict[str, List[Future[Dict[str, Any]]]]], but the function expects Future[Mapping[str, Sequence[Future[Dict[str, Any]]]]]; ignoring due to type mismatch
             )
         )
-        tasks.extend([pod_status_by_replicaset_task, versions_task])  # type: ignore
+        tasks.extend([pod_status_by_replicaset_task, versions_task])  # type: ignore  # pod_status_by_replicaset_task is a Task[Dict[str, List[Future[Dict[str, Any]]]]], and versions_task is a Task[List[KubernetesVersionDict]], but tasks expects List[Future[Dict[str, Any]]]; ignoring due to type mismatch
 
     await asyncio.gather(*tasks, return_exceptions=True)
 

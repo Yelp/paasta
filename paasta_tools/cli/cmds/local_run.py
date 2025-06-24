@@ -977,12 +977,12 @@ def run_docker_container(
             # First try to write the file as a string
             # This is for text like config files
             with open(temp_secret_filename, "w") as f:
-                f.write(secret_content)  # type: ignore
+                f.write(secret_content)  # type: ignore  # secret_content can be str or bytes, and mypy cannot infer the correct type
         except TypeError:
             # If that fails, try to write it as bytes
             # This is for binary files like TLS keys
             with open(temp_secret_filename, "wb") as fb:
-                fb.write(secret_content)  # type: ignore
+                fb.write(secret_content)  # type: ignore  # secret_content can be str or bytes, and mypy cannot infer the correct type
 
         # Append this to the list of volumes passed to docker run
         volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
