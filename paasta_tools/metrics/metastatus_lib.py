@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import itertools
 import math
 import re
@@ -26,7 +25,6 @@ from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
 
-import a_sync
 from humanize import naturalsize
 from kubernetes.client import V1Node
 from kubernetes.client import V1Pod
@@ -41,16 +39,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import PodStatus
-from paasta_tools.mesos.master import MesosMetrics
-from paasta_tools.mesos.master import MesosState
-from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
-from paasta_tools.mesos_tools import get_all_tasks_from_state
-from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_number_of_mesos_masters
-from paasta_tools.mesos_tools import get_zookeeper_host_path
-from paasta_tools.mesos_tools import is_task_terminal
-from paasta_tools.mesos_tools import MesosResources
-from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -76,34 +64,6 @@ class ResourceUtilization(NamedTuple):
     free: int
 
 
-def get_num_masters() -> int:
-    """Gets the number of masters from mesos state"""
-    zookeeper_host_path = get_zookeeper_host_path()
-    return get_number_of_mesos_masters(
-        zookeeper_host_path.host, zookeeper_host_path.path
-    )
-
-
-def get_mesos_cpu_status(
-    metrics: MesosMetrics, mesos_state: MesosState
-) -> Tuple[int, int, int]:
-    """Takes in the mesos metrics and analyzes them, returning the status.
-
-    :param metrics: mesos metrics dictionary.
-    :param mesos_state: mesos state dictionary.
-    :returns: Tuple of total, used, and available CPUs.
-    """
-
-    total = metrics["master/cpus_total"]
-    used = metrics["master/cpus_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["cpus"]
-
-    available = total - used
-    return total, used, available
-
-
 def get_kube_cpu_status(
     nodes: Sequence[V1Node],
 ) -> Tuple[float, float, float]:
@@ -120,26 +80,6 @@ def get_kube_cpu_status(
         total += suffixed_number_value(node.status.capacity["cpu"])
 
     used = total - available
-    return total, used, available
-
-
-def get_mesos_memory_status(
-    metrics: MesosMetrics, mesos_state: MesosState
-) -> Tuple[int, int, int]:
-    """Takes in the mesos metrics and analyzes them, returning the status.
-
-    :param metrics: mesos metrics dictionary.
-    :param mesos_state: mesos state dictionary.
-    :returns: Tuple of total, used, and available memory in Mi.
-    """
-    total = metrics["master/mem_total"]
-    used = metrics["master/mem_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["mem"]
-
-    available = total - used
-
     return total, used, available
 
 
@@ -160,26 +100,6 @@ def get_kube_memory_status(
     total //= 1024 * 1024
     available //= 1024 * 1024
     used = total - available
-    return total, used, available
-
-
-def get_mesos_disk_status(
-    metrics: MesosMetrics, mesos_state: MesosState
-) -> Tuple[int, int, int]:
-    """Takes in the mesos metrics and analyzes them, returning the status.
-
-    :param metrics: mesos metrics dictionary.
-    :param mesos_state: mesos state dictionary.
-    :returns: Tuple of total, used, and available disk space in Mi.
-    """
-
-    total = metrics["master/disk_total"]
-    used = metrics["master/disk_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["disk"]
-
-    available = total - used
     return total, used, available
 
 
@@ -204,25 +124,6 @@ def get_kube_disk_status(
     return total, used, available
 
 
-def get_mesos_gpu_status(
-    metrics: MesosMetrics, mesos_state: MesosState
-) -> Tuple[int, int, int]:
-    """Takes in the mesos metrics and analyzes them, returning gpus status.
-
-    :param metrics: mesos metrics dictionary.
-    :param mesos_state: mesos state dictionary.
-    :returns: Tuple of total, used, and available GPUs.
-    """
-    total = metrics["master/gpus_total"]
-    used = metrics["master/gpus_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["gpus"]
-
-    available = total - used
-    return total, used, available
-
-
 def get_kube_gpu_status(
     nodes: Sequence[V1Node],
 ) -> Tuple[float, float, float]:
@@ -242,11 +143,6 @@ def get_kube_gpu_status(
 
     used = total - available
     return total, used, available
-
-
-def filter_mesos_state_metrics(dictionary: Mapping[str, Any]) -> Mapping[str, Any]:
-    valid_keys = ["cpus", "mem", "disk", "gpus"]
-    return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
 def filter_kube_resources(dictionary: Mapping[str, str]) -> Mapping[str, str]:
@@ -339,7 +235,7 @@ def assert_cpu_health(
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
         return HealthCheckResult(
-            message="Error reading total available cpu from mesos!", healthy=False
+            message="Error reading total available cpu!", healthy=False
         )
 
     if check_threshold(perc_used, threshold):
@@ -370,7 +266,7 @@ def assert_memory_health(
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
         return HealthCheckResult(
-            message="Error reading total available memory from mesos!", healthy=False
+            message="Error reading total available memory!", healthy=False
         )
 
     if check_threshold(perc_used, threshold):
@@ -401,7 +297,7 @@ def assert_disk_health(
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
         return HealthCheckResult(
-            message="Error reading total available disk from mesos!", healthy=False
+            message="Error reading total available disk!", healthy=False
         )
 
     if check_threshold(perc_used, threshold):
@@ -444,19 +340,6 @@ def assert_gpu_health(
         )
 
 
-def assert_mesos_tasks_running(
-    metrics: MesosMetrics,
-) -> HealthCheckResult:
-    running = metrics["master/tasks_running"]
-    staging = metrics["master/tasks_staging"]
-    starting = metrics["master/tasks_starting"]
-    return HealthCheckResult(
-        message="Tasks: running: %d staging: %d starting: %d"
-        % (running, staging, starting),
-        healthy=True,
-    )
-
-
 def assert_kube_pods_running(
     kube_client: KubeClient, namespace: str
 ) -> HealthCheckResult:
@@ -471,12 +354,6 @@ def assert_kube_pods_running(
         message=f"Pods: running: {running} pending: {pending} failed: {failed}",
         healthy=healthy,
     )
-
-
-def get_mesos_slaves_health_status(
-    metrics: MesosMetrics,
-) -> Tuple[int, int]:
-    return metrics["master/slaves_active"], metrics["master/slaves_inactive"]
 
 
 def get_kube_nodes_health_status(
@@ -496,76 +373,16 @@ def assert_nodes_health(
     )
 
 
-def assert_quorum_size() -> HealthCheckResult:
-    masters, quorum = get_num_masters(), a_sync.block(get_mesos_quorum)
-    if quorum_ok(masters, quorum):
-        return HealthCheckResult(
-            message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
-            healthy=True,
-        )
-    else:
-        return HealthCheckResult(
-            message="CRITICAL: Number of masters (%d) less than configured quorum(%d)."
-            % (masters, quorum),
-            healthy=False,
-        )
-
-
 _KeyFuncRetT = Sequence[Tuple[str, str]]
 
 
-class _SlaveT(TypedDict):
-    id: str
-    resources: MesosResources
-    reserved_resources: MesosResources
-    attributes: Mapping[str, str]
-
-
-_GenericNodeT = TypeVar("_GenericNodeT", _SlaveT, V1Node)
+_GenericNodeT = TypeVar("_GenericNodeT", bound=V1Node)
 
 _GenericNodeGroupingFunctionT = Callable[[_GenericNodeT], _KeyFuncRetT]
 
 _GenericNodeFilterFunctionT = Callable[[_GenericNodeT], bool]
 
 _GenericNodeSortFunctionT = Callable[[Sequence[_GenericNodeT]], Sequence[_GenericNodeT]]
-
-
-def key_func_for_attribute(
-    attribute: str,
-) -> Callable[[_SlaveT], str]:
-    """Return a closure that given a slave, will return the value of a specific
-    attribute.
-
-    :param attribute: the attribute to inspect in the slave
-    :returns: a closure, which takes a slave and returns the value of an attribute
-    """
-
-    def key_func(slave):
-        return slave["attributes"].get(attribute, "unknown")
-
-    return key_func
-
-
-def key_func_for_attribute_multi(
-    attributes: Sequence[str],
-) -> _GenericNodeGroupingFunctionT:
-    """Return a closure that given a slave, will return the value of a list of
-    attributes, compiled into a hashable tuple
-
-    :param attributes: the attributes to inspect in the slave
-    :returns: a closure, which takes a slave and returns the value of those attributes
-    """
-
-    def get_attribute(slave, attribute):
-        if attribute == "hostname":
-            return slave["hostname"]
-        else:
-            return slave["attributes"].get(attribute, "unknown")
-
-    def key_func(slave):
-        return tuple((a, get_attribute(slave, a)) for a in attributes)
-
-    return key_func
 
 
 def key_func_for_attribute_multi_kube(
@@ -585,17 +402,6 @@ def key_func_for_attribute_multi_kube(
         return tuple((a, get_attribute(node, a)) for a in attributes)
 
     return key_func
-
-
-def sort_func_for_attributes(
-    attributes: Sequence[str],
-) -> _GenericNodeSortFunctionT:
-    def sort(slaves):
-        for attribute in attributes:
-            slaves = sorted(slaves, key=key_func_for_attribute(attribute))
-        return slaves
-
-    return sort
 
 
 def group_slaves_by_key_func(
@@ -625,48 +431,6 @@ class ResourceUtilizationDict(TypedDict):
     free: ResourceInfo
     total: ResourceInfo
     slave_count: int
-
-
-def calculate_resource_utilization_for_slaves(
-    slaves: Sequence[_SlaveT], tasks: Sequence[MesosTask]
-) -> ResourceUtilizationDict:
-    """Given a list of slaves and a list of tasks, calculate the total available
-    resource available in that list of slaves, and the resources consumed by tasks
-    running on those slaves.
-
-    :param slaves: a list of slaves to calculate resource usage for
-    :param tasks: the list of tasks running in the mesos cluster
-    :returns: a dict, containing keys for "free" and "total" resources. Each of these keys
-    is a ResourceInfo tuple, exposing a number for cpu, disk and mem.
-    """
-    resource_total_dict: _Counter[str] = Counter()
-    for slave in slaves:
-        filtered_resources = filter_mesos_state_metrics(slave["resources"])
-        resource_total_dict.update(Counter(filtered_resources))
-    resource_free_dict = copy.deepcopy(resource_total_dict)
-    for task in tasks:
-        task_resources = task["resources"]
-        resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
-    for slave in slaves:
-        filtered_resources = filter_mesos_state_metrics(
-            reserved_maintenence_resources(slave["reserved_resources"])
-        )
-        resource_free_dict.subtract(Counter(filtered_resources))
-    return {
-        "free": ResourceInfo(
-            cpus=resource_free_dict["cpus"],
-            disk=resource_free_dict["disk"],
-            mem=resource_free_dict["mem"],
-            gpus=resource_free_dict.get("gpus", 0),
-        ),
-        "total": ResourceInfo(
-            cpus=resource_total_dict["cpus"],
-            disk=resource_total_dict["disk"],
-            mem=resource_total_dict["mem"],
-            gpus=resource_total_dict.get("gpus", 0),
-        ),
-        "slave_count": len(slaves),
-    }
 
 
 _IEC_NUMBER_SUFFIXES = {
@@ -746,32 +510,6 @@ def calculate_resource_utilization_for_kube_nodes(
     }
 
 
-def filter_tasks_for_slaves(
-    slaves: Sequence[_SlaveT], tasks: Sequence[MesosTask]
-) -> Sequence[MesosTask]:
-    """Given a list of slaves and a list of tasks, return a filtered
-    list of tasks, where those returned belong to slaves in the list of
-    slaves
-
-    :param slaves: the list of slaves which the tasks provided should be
-    running on.
-    :param tasks: the tasks to filter :returns: a list of tasks,
-    identical to that provided by the tasks param, but with only those where
-    the task is running on one of the provided slaves included.
-    """
-    slave_ids = [slave["id"] for slave in slaves]
-    return [task for task in tasks if task["slave_id"] in slave_ids]
-
-
-def make_filter_slave_func(
-    attribute: str, values: Sequence[str]
-) -> _GenericNodeFilterFunctionT:
-    def filter_func(slave):
-        return slave["attributes"].get(attribute, None) in values
-
-    return filter_func
-
-
 def filter_slaves(
     slaves: Sequence[_GenericNodeT], filters: Sequence[_GenericNodeFilterFunctionT]
 ) -> Sequence[_GenericNodeT]:
@@ -785,43 +523,6 @@ def filter_slaves(
     if filters is None:
         return slaves
     return [s for s in slaves if all([f(s) for f in filters])]
-
-
-def get_resource_utilization_by_grouping(
-    grouping_func: _GenericNodeGroupingFunctionT,
-    mesos_state: MesosState,
-    filters: Sequence[_GenericNodeFilterFunctionT] = [],
-    sort_func: _GenericNodeSortFunctionT = None,
-) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
-    """Given a function used to group slaves and mesos state, calculate
-    resource utilization for each value of a given attribute.
-
-    :grouping_func: a function that given a slave, will return the value of an
-    attribute to group by.
-    :param mesos_state: the mesos state
-    :param filters: filters to apply to the slaves in the calculation, with
-    filtering preformed by filter_slaves
-    :param sort_func: a function that given a list of slaves, will return the
-    sorted list of slaves.
-    :returns: a dict of {attribute_value: resource_usage}, where resource usage
-    is the dict returned by ``calculate_resource_utilization_for_slaves`` for
-    slaves grouped by attribute value.
-    """
-    slaves: Sequence[_SlaveT] = mesos_state.get("slaves", [])
-    slaves = filter_slaves(slaves, filters)
-    if not has_registered_slaves(mesos_state):
-        raise ValueError("There are no slaves registered in the mesos state.")
-
-    tasks = get_all_tasks_from_state(mesos_state, include_orphans=True)
-    non_terminal_tasks = [task for task in tasks if not is_task_terminal(task)]
-    slave_groupings = group_slaves_by_key_func(grouping_func, slaves, sort_func)
-
-    return {
-        attribute_value: calculate_resource_utilization_for_slaves(
-            slaves=slaves, tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks)
-        )
-        for attribute_value, slaves in slave_groupings.items()
-    }
 
 
 def get_resource_utilization_by_grouping_kube(
@@ -884,35 +585,6 @@ def resource_utillizations_from_resource_info(
     ]
 
 
-def has_registered_slaves(
-    mesos_state: MesosState,
-) -> bool:
-    """Return a boolean indicating if there are any slaves registered
-    to the master according to the mesos state.
-    :param mesos_state: the mesos state from the master
-    :returns: a boolean, indicating if there are > 0 slaves
-    """
-    return len(mesos_state.get("slaves", [])) > 0
-
-
-def get_mesos_resource_utilization_health(
-    mesos_metrics: MesosMetrics, mesos_state: MesosState
-) -> Sequence[HealthCheckResult]:
-    """Perform healthchecks against mesos metrics.
-    :param mesos_metrics: a dict exposing the mesos metrics described in
-    https://mesos.apache.org/documentation/latest/monitoring/
-    :returns: a list of HealthCheckResult tuples
-    """
-    return [
-        assert_cpu_health(get_mesos_cpu_status(mesos_metrics, mesos_state)),
-        assert_memory_health(get_mesos_memory_status(mesos_metrics, mesos_state)),
-        assert_disk_health(get_mesos_disk_status(mesos_metrics, mesos_state)),
-        assert_gpu_health(get_mesos_gpu_status(mesos_metrics, mesos_state)),
-        assert_mesos_tasks_running(mesos_metrics),
-        assert_nodes_health(get_mesos_slaves_health_status(mesos_metrics)),
-    ]
-
-
 def get_kube_resource_utilization_health(
     kube_client: KubeClient,
 ) -> Sequence[HealthCheckResult]:
@@ -929,19 +601,6 @@ def get_kube_resource_utilization_health(
         assert_disk_health(get_kube_disk_status(nodes)),
         assert_gpu_health(get_kube_gpu_status(nodes)),
         assert_nodes_health(get_kube_nodes_health_status(nodes)),
-    ]
-
-
-def get_mesos_state_status(
-    mesos_state: MesosState,
-) -> Sequence[HealthCheckResult]:
-    """Perform healthchecks against mesos state.
-    :param mesos_state: a dict exposing the mesos state described in
-    https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
-    :returns: a list of HealthCheckResult tuples
-    """
-    return [
-        assert_quorum_size(),
     ]
 
 
@@ -1102,9 +761,3 @@ def get_table_rows_for_resource_info_dict(
     return attribute_values + format_row_for_resource_utilization_healthchecks(
         healthcheck_utilization_pairs
     )
-
-
-def reserved_maintenence_resources(
-    resources: MesosResources,
-):
-    return resources.get(MAINTENANCE_ROLE, {"cpus": 0, "mem": 0, "disk": 0, "gpus": 0})

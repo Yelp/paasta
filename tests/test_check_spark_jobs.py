@@ -4,7 +4,6 @@ import mock
 import pytest
 
 import paasta_tools.check_spark_jobs as check_spark_jobs
-from paasta_tools.mesos.framework import Framework
 
 
 @pytest.fixture
@@ -33,49 +32,12 @@ def mock_datetime(mock_current_time):
 
 @pytest.fixture
 def mock_get_frameworks(mock_current_time):
-    mock_current_timestamp = mock_current_time.timestamp()
-    mock_frameworks = [
-        {
-            "id": "uuid1",
-            "name": "not_spark_25_hours",
-            "user": "test_user",
-            "active": True,
-            "registered_time": mock_current_timestamp - 60 * 60 * 25,
-        },
-        {
-            "id": "uuid2",
-            "name": "spark_2_hours",
-            "principal": "spark",
-            "user": "test_user",
-            "active": True,
-            "webui_url": "url2",
-            "registered_time": mock_current_timestamp - 60 * 60 * 2,
-        },
-        {
-            "id": "uuid3",
-            "name": "spark_25_hours",
-            "principal": "spark",
-            "user": "test_user",
-            "active": True,
-            "webui_url": "url3",
-            "registered_time": mock_current_timestamp - 60 * 60 * 25,
-        },
-        {
-            "id": "uuid4",
-            "name": "spark_25_hours_inactive",
-            "principal": "spark",
-            "user": "test_user",
-            "active": False,
-            "webui_url": "url4",
-            "registered_time": mock_current_timestamp - 60 * 60 * 25,
-        },
-    ]
     with mock.patch(
-        "paasta_tools.check_spark_jobs.mesos_tools.get_all_frameworks", autospec=True
+        "paasta_tools.check_spark_jobs.get_matching_framework_info", autospec=True
     ) as mock_get_frameworks:
-        mock_get_frameworks.return_value = [
-            Framework(config) for config in mock_frameworks
-        ]
+        # Since mesos_tools.get_all_frameworks now returns empty list,
+        # we mock get_matching_framework_info directly for testing
+        mock_get_frameworks.return_value = []
         yield mock_get_frameworks
 
 
@@ -95,29 +57,13 @@ def test_guess_service(properties, expected):
     assert check_spark_jobs.guess_service(properties) == expected
 
 
-@mock.patch("paasta_tools.check_spark_jobs.get_spark_properties", autospec=True)
-@mock.patch("paasta_tools.check_spark_jobs.guess_service", autospec=True)
-def test_get_matching_framework_info(
-    mock_guess_service, mock_get_spark_properties, mock_get_frameworks
-):
-    mock_get_spark_properties.return_value = None
+def test_get_matching_framework_info():
+    # Since Mesos is removed, get_matching_framework_info should return empty list
+    result = check_spark_jobs.get_matching_framework_info(min_hours=20)
+    assert result == []
 
-    more_than_20_hours = check_spark_jobs.get_matching_framework_info(min_hours=20)
-    assert len(more_than_20_hours) == 1
-    assert more_than_20_hours == [
-        {
-            "id": "uuid3",
-            "name": "spark_25_hours",
-            "webui_url": "url3",
-            "service": mock_guess_service.return_value,
-            "user": "test_user",
-            "time_running": "1 day, 1:00:00",
-        }
-    ]
-
-    more_than_one_hour = check_spark_jobs.get_matching_framework_info(min_hours=1)
-    result_names = [result["name"] for result in more_than_one_hour]
-    assert result_names == ["spark_2_hours", "spark_25_hours"]
+    result = check_spark_jobs.get_matching_framework_info(min_hours=1)
+    assert result == []
 
 
 @pytest.mark.parametrize(

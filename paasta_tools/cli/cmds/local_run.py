@@ -49,7 +49,6 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
-from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
@@ -132,6 +131,24 @@ def perform_tcp_healthcheck(url, timeout):
         return (True, "tcp connection succeeded")
     else:
         return (False, "%s (timeout %d seconds)" % (os.strerror(result), timeout))
+
+
+def execute_in_container(docker_client, container_id, command, timeout):
+    """Execute a command inside a Docker container
+
+    :param docker_client: Docker client object
+    :param container_id: Docker container id
+    :param command: command to execute
+    :param timeout: timeout in seconds
+    :returns: tuple of (output, return_code)
+    """
+    try:
+        exec_result = docker_client.exec_create(container_id, command)
+        exec_output = docker_client.exec_start(exec_result["Id"])
+        exec_inspect = docker_client.exec_inspect(exec_result["Id"])
+        return (exec_output.decode("utf-8"), exec_inspect["ExitCode"])
+    except Exception as e:
+        return (str(e), 1)
 
 
 def perform_cmd_healthcheck(docker_client, container_id, command, timeout):

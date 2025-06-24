@@ -47,40 +47,17 @@ def test_load_smartstack_info_for_service(system_paasta_config):
 def test_get_smartstack_replication_for_attribute(system_paasta_config):
     fake_namespace = "fake_main"
     fake_service = "fake_service"
-    mock_filtered_slaves = [
-        {"hostname": "hostone", "attributes": {"fake_attribute": "foo"}},
-        {"hostname": "hostone", "attributes": {"fake_attribute": "bar"}},
-    ]
 
-    with mock.patch(
-        "paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist",
-        return_value=mock_filtered_slaves,
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
-        "paasta_tools.smartstack_tools.get_replication_for_services",
-        return_value={},
-        autospec=True,
-    ) as mock_get_replication_for_services:
-        expected = {"foo": {}, "bar": {}}
-        actual = smartstack_tools.get_smartstack_replication_for_attribute(
-            attribute="fake_attribute",
-            service=fake_service,
-            namespace=fake_namespace,
-            blacklist=[],
-            system_paasta_config=system_paasta_config,
-        )
-        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
-            blacklist=[], whitelist=None
-        )
-        assert actual == expected
-        assert mock_get_replication_for_services.call_count == 2
-
-        mock_get_replication_for_services.assert_any_call(
-            synapse_host="hostone",
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            services=["fake_service.fake_main"],
-        )
+    # Since Mesos support has been removed, this function now returns an empty dict
+    expected = {}
+    actual = smartstack_tools.get_smartstack_replication_for_attribute(
+        attribute="fake_attribute",
+        service=fake_service,
+        namespace=fake_namespace,
+        blacklist=[],
+        system_paasta_config=system_paasta_config,
+    )
+    assert actual == expected
 
 
 def test_get_replication_for_service():

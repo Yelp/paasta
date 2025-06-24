@@ -11,16 +11,12 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
-import a_sync
 import simplejson as json
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ResourceRequirements
 
 from paasta_tools import kubernetes_tools
-from paasta_tools import mesos_tools
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.mesos.exceptions import SlaveDoesNotExist
-from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -42,77 +38,6 @@ class TaskAllocationInfo(NamedTuple):
     config_sha: str
     mesos_container_id: str  # Because Mesos task info does not have docker id
     namespace: Optional[str]
-
-
-def get_container_info_from_mesos_task(
-    task: Task,
-) -> Tuple[Optional[str], Optional[float]]:
-    for status in task["statuses"]:
-        if status["state"] != "TASK_RUNNING":
-            continue
-        container_id = (
-            status.get("container_status", {}).get("container_id", {}).get("value")
-        )
-        time_start = status.get("timestamp")
-        return container_id, time_start
-    return None, None
-
-
-def get_paasta_service_instance_from_mesos_task(
-    task: Task,
-) -> Tuple[Optional[str], Optional[str]]:
-    try:
-        docker_params = task["container"].get("docker", {}).get("parameters", [])
-    except KeyError:
-        return None, None
-    service, instance = None, None
-    for param in docker_params:
-        if param["key"] == "label":
-            label = param["value"]
-            if label.startswith("paasta_service="):
-                service = label.split("=")[1]
-            if label.startswith("paasta_instance="):
-                instance = label.split("=")[1]
-    return service, instance
-
-
-async def get_pool_from_mesos_task(task: Task) -> Optional[str]:
-    try:
-        attributes = (await task.slave())["attributes"]
-        return attributes.get("pool", "default")
-    except SlaveDoesNotExist:
-        return None
-
-
-@a_sync.to_blocking
-async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
-    tasks = await mesos_tools.get_cached_list_of_running_tasks_from_frameworks()
-    info_list = []
-    for task in tasks:
-        mesos_container_id, start_time = get_container_info_from_mesos_task(task)
-        paasta_service, paasta_instance = get_paasta_service_instance_from_mesos_task(
-            task
-        )
-        paasta_pool = await get_pool_from_mesos_task(task)
-        info_list.append(
-            TaskAllocationInfo(
-                paasta_service=paasta_service,
-                paasta_instance=paasta_instance,
-                container_type=MAIN_CONTAINER_TYPE,
-                paasta_pool=paasta_pool,
-                resources=task["resources"],
-                start_time=start_time,
-                docker_id=None,
-                pod_name=None,
-                pod_ip=None,
-                host_ip=None,
-                git_sha=None,
-                config_sha=None,
-                mesos_container_id=mesos_container_id,
-                namespace=None,
-            )
-        )
-    return info_list
 
 
 def get_all_running_kubernetes_pods(
@@ -261,9 +186,7 @@ def get_task_allocation_info(
     namespace: str,
     kube_client: Optional[KubeClient],
 ) -> Iterable[TaskAllocationInfo]:
-    if scheduler == "mesos":
-        return get_mesos_task_allocation_info()
-    elif scheduler == "kubernetes":
+    if scheduler == "kubernetes":
         return get_kubernetes_task_allocation_info(namespace, kube_client)
     else:
         return []
@@ -276,7 +199,7 @@ def parse_args() -> argparse.Namespace:
         help="Scheduler to get task info from",
         dest="scheduler",
         default="kubernetes",
-        choices=["mesos", "kubernetes"],
+        choices=["kubernetes"],
     )
     parser.add_argument(
         "--additional-namespaces-exclude",

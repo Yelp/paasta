@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import inspect
 import re
 
 import mock
@@ -39,17 +38,7 @@ def test_fail_check_threshold():
     assert not metastatus_lib.check_threshold(80, 30)
 
 
-def test_get_mesos_cpu_status():
-    fake_metrics = {"master/cpus_total": 3, "master/cpus_used": 1}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"cpus": 1}}}]
-    }
-    total, used, available = metastatus_lib.get_mesos_cpu_status(
-        fake_metrics, fake_mesos_state
-    )
-    assert total == 3
-    assert used == 2
-    assert available == 1
+# test_get_mesos_cpu_status removed - function deleted with Mesos cleanup
 
 
 def test_get_kube_cpu_status():
@@ -139,25 +128,7 @@ def test_assert_bad_gpu_health():
     )
 
 
-def test_cpu_health_mesos_reports_zero():
-    status = (0, 1, 42)
-    failure_output, failure_health = metastatus_lib.assert_cpu_health(status)
-    assert failure_output == "Error reading total available cpu from mesos!"
-    assert failure_health is False
-
-
-def test_memory_health_mesos_reports_zero():
-    status = (0, 1, 42)
-    failure_output, failure_health = metastatus_lib.assert_memory_health(status)
-    assert failure_output == "Error reading total available memory from mesos!"
-    assert failure_health is False
-
-
-def test_disk_health_mesos_reports_zero():
-    status = (0, 1, 42)
-    failure_output, failure_health = metastatus_lib.assert_disk_health(status)
-    assert failure_output == "Error reading total available disk from mesos!"
-    assert failure_health is False
+# Mesos health check tests removed - functions deleted with Mesos cleanup
 
 
 def test_assert_kube_deployments():
@@ -196,42 +167,7 @@ def test_assert_nodes_health():
     assert ok
 
 
-def test_get_mesos_slaves_health_status():
-    fake_slave_info = {"master/slaves_active": 10, "master/slaves_inactive": 7}
-    active, inactive = metastatus_lib.get_mesos_slaves_health_status(fake_slave_info)
-    assert active == 10
-    assert inactive == 7
-
-
-def test_assert_mesos_tasks_running():
-    fake_tasks_info = {
-        "master/tasks_running": 20,
-        "master/tasks_staging": 10,
-        "master/tasks_starting": 10,
-    }
-    output, ok = metastatus_lib.assert_mesos_tasks_running(fake_tasks_info)
-    assert "Tasks: running: 20 staging: 10 starting: 10" in output
-    assert ok
-
-
-@patch("paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True)
-@patch("paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True)
-def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
-    mock_num_masters.return_value = 5
-    mock_quorum_size.return_value = 3
-    output, health = metastatus_lib.assert_quorum_size()
-    assert health
-    assert "Quorum: masters: 5 configured quorum: 3 " in output
-
-
-@patch("paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True)
-@patch("paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True)
-def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
-    mock_num_masters.return_value = 1
-    mock_quorum_size.return_value = 3
-    output, health = metastatus_lib.assert_quorum_size()
-    assert not health
-    assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
+# Mesos-related test functions removed - underlying functions deleted with Mesos cleanup
 
 
 def test_status_for_results():
@@ -264,19 +200,7 @@ def test_critical_events_in_outputs():
     ) == [("myservice_false", False)]
 
 
-def test_filter_mesos_state_metrics():
-    test_resource_dictionary = {
-        "cpus": 0,
-        "mem": 1,
-        "MEM": 2,
-        "garbage_data": 3,
-        "disk": 4,
-        "gpus": 5,
-    }
-    expected = {"cpus": 0, "mem": 1, "disk": 4, "gpus": 5}
-    assert (
-        metastatus_lib.filter_mesos_state_metrics(test_resource_dictionary) == expected
-    )
+# test_filter_mesos_state_metrics removed - function deleted with Mesos cleanup
 
 
 def test_filter_kube_resources():
@@ -292,21 +216,7 @@ def test_filter_kube_resources():
     assert metastatus_lib.filter_kube_resources(test_resource_dictionary) == expected
 
 
-def test_filter_slaves():
-    filters = {"foo": ["one", "two"], "bar": ["three", "four"]}
-    fns = [metastatus_lib.make_filter_slave_func(k, v) for k, v in filters.items()]
-
-    data = [
-        {"name": "aaa", "attributes": {"foo": "one", "bar": "three"}},
-        {"name": "bbb", "attributes": {"foo": "one"}},
-        {"name": "ccc", "attributes": {"foo": "wrong", "bar": "four"}},
-    ]
-
-    slaves = metastatus_lib.filter_slaves(data, fns)
-    names = [s["name"] for s in slaves]
-    assert "aaa" in names
-    assert "bbb" not in names
-    assert "ccc" not in names
+# test_filter_slaves removed - function deleted with Mesos cleanup
 
 
 def test_group_slaves_by_key_func():
@@ -333,195 +243,19 @@ def test_group_slaves_by_key_func():
         assert len(list(v)) == 1
 
 
-@patch("paasta_tools.metrics.metastatus_lib.group_slaves_by_key_func", autospec=True)
-@patch(
-    "paasta_tools.metrics.metastatus_lib.calculate_resource_utilization_for_slaves",
-    autospec=True,
-)
-@patch("paasta_tools.metrics.metastatus_lib.get_all_tasks_from_state", autospec=True)
-def test_get_resource_utilization_by_grouping(
-    mock_get_all_tasks_from_state,
-    mock_calculate_resource_utilization_for_slaves,
-    mock_group_slaves_by_key_func,
-):
-    mock_group_slaves_by_key_func.return_value = {
-        "somenametest-habitat": [{"id": "abcd", "hostname": "test.somewhere.www"}],
-        "somenametest-habitat-2": [{"id": "abcd", "hostname": "test2.somewhere.www"}],
-    }
-    mock_calculate_resource_utilization_for_slaves.return_value = {
-        "free": metastatus_lib.ResourceInfo(cpus=10, mem=10, disk=10),
-        "total": metastatus_lib.ResourceInfo(cpus=20, mem=20, disk=20),
-    }
-    state = {"frameworks": Mock(), "slaves": [{"id": "abcd"}]}
-    actual = metastatus_lib.get_resource_utilization_by_grouping(
-        grouping_func=mock.sentinel.grouping_func, mesos_state=state
-    )
-    mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)
-    assert sorted(actual.keys()) == sorted(
-        ["somenametest-habitat", "somenametest-habitat-2"]
-    )
-    for k, v in actual.items():
-        assert v["total"] == metastatus_lib.ResourceInfo(cpus=20, disk=20, mem=20)
-        assert v["free"] == metastatus_lib.ResourceInfo(cpus=10, disk=10, mem=10)
+# test_get_resource_utilization_by_grouping removed - function deleted with Mesos cleanup
 
 
-def test_get_resource_utilization_by_grouping_correctly_groups():
-    fake_state = {
-        "slaves": [
-            {
-                "id": "foo",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "reserved_resources": {},
-            },
-            {
-                "id": "bar",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "reserved_resources": {},
-            },
-        ],
-        "frameworks": [
-            {
-                "tasks": [
-                    {
-                        "state": "TASK_RUNNING",
-                        "resources": {"cpus": 1, "mem": 10, "disk": 10},
-                        "slave_id": "foo",
-                    },
-                    {
-                        "state": "TASK_RUNNING",
-                        "resources": {"cpus": 1, "mem": 10, "disk": 10},
-                        "slave_id": "bar",
-                    },
-                ]
-            }
-        ],
-    }
-
-    def grouping_func(x):
-        return x["id"]
-
-    free_cpus = metastatus_lib.get_resource_utilization_by_grouping(
-        mesos_state=fake_state, grouping_func=grouping_func
-    )["foo"]["free"].cpus
-    assert free_cpus == 9
+# test_get_resource_utilization_by_grouping_correctly_groups removed - function deleted with Mesos cleanup
 
 
-def test_get_resource_utilization_by_grouping_correctly_multi_groups():
-    fake_state = {
-        "slaves": [
-            {
-                "id": "foo1",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "attributes": {"one": "yes", "two": "yes"},
-                "reserved_resources": {},
-            },
-            {
-                "id": "bar1",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "attributes": {"one": "yes", "two": "no"},
-                "reserved_resources": {},
-            },
-            {
-                "id": "foo2",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "attributes": {"one": "no", "two": "yes"},
-                "reserved_resources": {},
-            },
-            {
-                "id": "bar2",
-                "resources": {"disk": 100, "cpus": 10, "mem": 50},
-                "attributes": {"one": "no", "two": "no"},
-                "reserved_resources": {},
-            },
-        ],
-        "frameworks": [
-            {
-                "tasks": [
-                    {
-                        "state": "TASK_RUNNING",
-                        "resources": {"cpus": 1, "mem": 10, "disk": 10},
-                        "slave_id": "foo1",
-                    },
-                    {
-                        "state": "TASK_RUNNING",
-                        "resources": {"cpus": 1, "mem": 10, "disk": 10},
-                        "slave_id": "bar1",
-                    },
-                ]
-            }
-        ],
-    }
-
-    grouping_func = metastatus_lib.key_func_for_attribute_multi(["one", "two"])
-    resp = metastatus_lib.get_resource_utilization_by_grouping(
-        mesos_state=fake_state, grouping_func=grouping_func
-    )
-    # resp should have 4 keys...
-    assert len(resp.keys()) == 4
-    # Each key should be a set with 2 items...
-    assert len(list(resp.keys())[0]) == 2
-    # Each item in the set should have 2 values (original key, value)
-    assert len(list(list(resp.keys())[0])[0]) == 2
+# test_get_resource_utilization_by_grouping_correctly_multi_groups removed - function deleted with Mesos cleanup
 
 
-def test_get_resource_utilization_per_slave():
-    tasks = [
-        {"resources": {"cpus": 10, "mem": 10, "disk": 10}, "state": "TASK_RUNNING"},
-        {"resources": {"cpus": 10, "mem": 10, "disk": 10}, "state": "TASK_RUNNING"},
-    ]
-    slaves = [
-        {
-            "id": "somenametest-slave",
-            "hostname": "test.somewhere.www",
-            "resources": {"cpus": 75, "disk": 250, "mem": 100},
-            "reserved_resources": {},
-            "attributes": {"habitat": "somenametest-habitat"},
-        },
-        {
-            "id": "somenametest-slave2",
-            "hostname": "test2.somewhere.www",
-            "resources": {"cpus": 500, "disk": 200, "mem": 750},
-            "reserved_resources": {"maintenance": {"cpus": 10, "disk": 0, "mem": 150}},
-            "attributes": {"habitat": "somenametest-habitat-2"},
-        },
-    ]
-    actual = metastatus_lib.calculate_resource_utilization_for_slaves(
-        slaves=slaves, tasks=tasks
-    )
-    assert sorted(actual.keys()) == sorted(["total", "free", "slave_count"])
-    assert actual["total"] == metastatus_lib.ResourceInfo(cpus=575, disk=450, mem=850)
-    assert actual["free"] == metastatus_lib.ResourceInfo(cpus=545, disk=430, mem=680)
-    assert actual["slave_count"] == 2
+# test_get_resource_utilization_per_slave removed - function deleted with Mesos cleanup
 
 
-def test_calculate_resource_utilization_for_slaves():
-    fake_slaves = [
-        {
-            "id": "somenametest-slave2",
-            "hostname": "test2.somewhere.www",
-            "resources": {"cpus": 500, "disk": 200, "mem": 750, "gpus": 5},
-            "reserved_resources": {},
-            "attributes": {"habitat": "somenametest-habitat-2"},
-        }
-    ]
-    tasks = [
-        {
-            "resources": {"cpus": 10, "mem": 10, "disk": 10, "gpus": 1},
-            "state": "TASK_RUNNING",
-        },
-        {
-            "resources": {"cpus": 10, "mem": 10, "disk": 10, "gpus": 2},
-            "state": "TASK_RUNNING",
-        },
-    ]
-    free = metastatus_lib.calculate_resource_utilization_for_slaves(
-        slaves=fake_slaves, tasks=tasks
-    )["free"]
-
-    assert free.cpus == 480
-    assert free.mem == 730
-    assert free.disk == 180
-    assert free.gpus == 2
+# test_calculate_resource_utilization_for_slaves removed - function deleted with Mesos cleanup
 
 
 def test_calculate_resource_utilization_for_kube_nodes():
@@ -699,17 +433,10 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
     assert actual == ["myhabitat", "10/10", "10/10", "10/10"]
 
 
-def test_key_func_for_attribute():
-    assert inspect.isfunction(metastatus_lib.key_func_for_attribute("habitat"))
+# test_key_func_for_attribute removed - function deleted with Mesos cleanup
 
 
-def test_get_mesos_memory_status():
-    metrics = {"master/mem_total": 100, "master/mem_used": 50}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"mem": 33}}}]
-    }
-    actual = metastatus_lib.get_mesos_memory_status(metrics, fake_mesos_state)
-    assert actual == (100, 83, 17)
+# test_get_mesos_memory_status removed - function deleted with Mesos cleanup
 
 
 def test_get_kube_memory_status():
@@ -726,13 +453,7 @@ def test_get_kube_memory_status():
     assert available == 1 * 1024
 
 
-def test_get_mesos_disk_status():
-    metrics = {"master/disk_total": 100, "master/disk_used": 50}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"disk": 33}}}]
-    }
-    actual = metastatus_lib.get_mesos_disk_status(metrics, fake_mesos_state)
-    assert actual == (100, 83, 17)
+# test_get_mesos_disk_status removed - function deleted with Mesos cleanup
 
 
 def test_get_kube_disk_status():
@@ -750,13 +471,7 @@ def test_get_kube_disk_status():
     assert available == 1 * 1024**2
 
 
-def test_get_mesos_gpu_status():
-    metrics = {"master/gpus_total": 10, "master/gpus_used": 5}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"gpus": 2}}}]
-    }
-    actual = metastatus_lib.get_mesos_gpu_status(metrics, fake_mesos_state)
-    assert actual == (10, 7, 3)
+# test_get_mesos_gpu_status removed - function deleted with Mesos cleanup
 
 
 def test_get_kube_gpu_status():
@@ -773,26 +488,7 @@ def test_get_kube_gpu_status():
     assert available == 1
 
 
-def test_reserved_maintenence_resources_no_maintenenance():
-    actual = metastatus_lib.reserved_maintenence_resources({})
-    assert all([actual[x] == 0 for x in ["cpus", "mem", "disk"]])
-
-
-def test_reserved_maintenence_resources():
-    actual = metastatus_lib.reserved_maintenence_resources(
-        {"maintenance": {"cpus": 5, "mem": 5, "disk": 5}}
-    )
-    assert all([actual[x] == 5 for x in ["cpus", "mem", "disk"]])
-
-
-def test_reserved_maintenence_resources_ignores_non_maintenance():
-    actual = metastatus_lib.reserved_maintenence_resources(
-        {
-            "maintenance": {"cpus": 5, "mem": 5, "disk": 5},
-            "myotherole": {"cpus": 5, "mem": 5, "disk": 5},
-        }
-    )
-    assert all([actual[x] == 5 for x in ["cpus", "mem", "disk"]])
+# test_reserved_maintenence_resources* functions removed - function deleted with Mesos cleanup
 
 
 def test_suffixed_number_value():

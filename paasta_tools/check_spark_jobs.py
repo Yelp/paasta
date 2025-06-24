@@ -11,7 +11,6 @@ from socket import getfqdn
 import pysensu_yelp
 import requests
 
-from paasta_tools import mesos_tools
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
@@ -91,27 +90,8 @@ def guess_service(properties):
 
 
 def get_matching_framework_info(min_hours):
-    frameworks = mesos_tools.get_all_frameworks(active_only=True)
-    matching_info = []
-    min_timedelta = datetime.timedelta(hours=min_hours)
-    for framework in frameworks:
-        if not framework.active:
-            continue
-        if framework.get("principal") != "spark":
-            continue
-        time_running = get_time_running(framework)
-        if time_running >= min_timedelta:
-            info = {
-                "id": framework.id,
-                "name": framework.name,
-                "webui_url": framework.get("webui_url"),
-                "service": guess_service(get_spark_properties(framework)),
-                "user": framework.user,
-                "time_running": str(time_running),
-            }
-            matching_info.append(info)
-
-    return matching_info
+    # Mesos support has been removed - Spark frameworks no longer run on Mesos
+    return []
 
 
 def format_framework(info):

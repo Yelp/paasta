@@ -33,7 +33,6 @@ from service_configuration_lib.spark_config import get_total_driver_memory_mb
 from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools import yaml_tools as yaml
-from paasta_tools.mesos_tools import mesos_services_running_here
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
@@ -95,7 +94,6 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
-MESOS_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
 EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE = {"paasta": "kubernetes", "spark": "spark"}
 KUBERNETES_NAMESPACE = "tron"
@@ -670,10 +668,7 @@ class TronActionConfig(InstanceConfig):
         error_msgs.extend(super().validate())
         # Tron is a little special, because it can *not* have a deploy group
         # But only if an action is running via ssh and not via paasta
-        if (
-            self.get_deploy_group() is None
-            and self.get_executor() in MESOS_EXECUTOR_NAMES
-        ):
+        if self.get_deploy_group() is None and self.get_executor() == "mesos":
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
@@ -1136,22 +1131,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
 
-    elif executor in MESOS_EXECUTOR_NAMES:
-        result["executor"] = "mesos"
-        constraint_labels = ["attribute", "operator", "value"]
-        result["constraints"] = [
-            dict(zip(constraint_labels, constraint))
-            for constraint in action_config.get_calculated_constraints()
-        ]
-        result["docker_parameters"] = [
-            {"key": param["key"], "value": param["value"]}
-            for param in action_config.format_docker_parameters()
-        ]
-        result["env"] = action_config.get_env()
-
-    # the following config is only valid for k8s/Mesos since we're not running SSH actions
+    # the following config is only valid for k8s since we're not running SSH actions
     # in a containerized fashion
-    if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
+    if executor in KUBERNETES_EXECUTOR_NAMES:
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
@@ -1438,10 +1420,8 @@ def get_tron_dashboard_for_cluster(cluster: str):
 
 
 def tron_jobs_running_here() -> List[Tuple[str, str, int]]:
-    return mesos_services_running_here(
-        framework_filter=lambda fw: fw["name"].startswith("tron"),
-        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
-    )
+    # Mesos support has been removed, so no Tron jobs are running via Mesos
+    return []
 
 
 def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:

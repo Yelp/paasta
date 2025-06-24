@@ -17,7 +17,6 @@ PaaSTA service instance status/start/stop etc.
 """
 import asyncio
 import logging
-import re
 import traceback
 from typing import Any
 from typing import Dict
@@ -29,13 +28,11 @@ import a_sync
 from pyramid.response import Response
 from pyramid.view import view_config
 
-import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
-from paasta_tools.mesos_tools import get_all_frameworks as get_all_mesos_frameworks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -94,34 +91,17 @@ def tron_instance_status(
     return status
 
 
-def legacy_remote_run_filter_frameworks(service, instance, frameworks=None):
-    if frameworks is None:
-        frameworks = get_all_mesos_frameworks(active_only=True)
-
-    prefix = f"paasta-remote {service}.{instance}"
-    return [f for f in frameworks if f.name.startswith(prefix)]
-
-
 def adhoc_instance_status(
     instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
 ) -> List[Dict[str, Any]]:
-    status = []
-    filtered = legacy_remote_run_filter_frameworks(service, instance)
-    filtered.sort(key=lambda x: x.name)
-    for f in filtered:
-        launch_time, run_id = re.match(
-            r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
-        ).groups()
-        status.append(
-            {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
-        )
-    return status
+    # Mesos support has been removed - adhoc instances no longer run on Mesos
+    return []
 
 
 async def _task_result_or_error(future):
     try:
         return {"value": await future}
-    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
+    except AttributeError:
         return {"error_message": "None"}
     except TimeoutError:
         return {"error_message": "Timed Out"}

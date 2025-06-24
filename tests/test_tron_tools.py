@@ -10,8 +10,8 @@ from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.tron_tools import KUBERNETES_EXECUTOR_NAMES
 from paasta_tools.tron_tools import MASTER_NAMESPACE
-from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.tron_tools import TronActionConfigDict
 from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
@@ -103,7 +103,7 @@ class TestTronActionConfig:
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
+    @pytest.mark.parametrize("executor", KUBERNETES_EXECUTOR_NAMES)
     def test_get_env(
         self, mock_read_soa_metadata, action_config, executor, monkeypatch
     ):
@@ -213,7 +213,7 @@ class TestTronActionConfig:
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() == "paasta"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
+    @pytest.mark.parametrize("executor", KUBERNETES_EXECUTOR_NAMES)
     def test_get_executor_paasta(self, executor, action_config):
         action_config.config_dict["executor"] = executor
         assert action_config.get_executor() == executor

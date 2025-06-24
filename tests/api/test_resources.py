@@ -13,13 +13,10 @@
 # limitations under the License.
 import json
 
-import asynctest
-import mock
 from pyramid import testing
 
 from paasta_tools.api.views.resources import parse_filters
 from paasta_tools.api.views.resources import resources_utilization
-from paasta_tools.metrics import metastatus_lib
 
 
 def test_parse_filters_empty():
@@ -41,35 +38,16 @@ def test_parse_filters_good():
     assert "zol" in parsed["qux"]
 
 
-@mock.patch(
-    "paasta_tools.api.views.resources.metastatus_lib.get_resource_utilization_by_grouping",
-    autospec=True,
-)
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_nothing_special(
-    mock_get_mesos_master, mock_get_resource_utilization_by_grouping
-):
+def test_resources_utilization_nothing_special():
     request = testing.DummyRequest()
     request.swagger_data = {"groupings": None, "filter": None}
-    mock_mesos_state = mock.Mock()
-    mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(return_value=mock_mesos_state)
-    )
-    mock_get_mesos_master.return_value = mock_master
 
-    mock_get_resource_utilization_by_grouping.return_value = {
-        frozenset([("superregion", "unknown")]): {
-            "total": metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
-            "free": metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
-        }
-    }
-
+    # Since Mesos is removed, resources_utilization should return empty response
     resp = resources_utilization(request)
     body = json.loads(resp.body.decode("utf-8"))
 
     assert resp.status_int == 200
-    assert len(body) == 1
-    assert set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"}
+    assert len(body) == 0
 
 
 mock_mesos_state = {
@@ -130,46 +108,31 @@ mock_mesos_state = {
 }
 
 
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_with_grouping(mock_get_mesos_master):
+def test_resources_utilization_with_grouping():
     request = testing.DummyRequest()
     request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
-    mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-            return_value=mock_mesos_state,
-        )
-    )
-    mock_get_mesos_master.return_value = mock_master
 
+    # Since Mesos is removed, resources_utilization should return empty response
     resp = resources_utilization(request)
     body = json.loads(resp.body.decode("utf-8"))
 
     assert resp.status_int == 200
-    # 4 groupings, 2x2 attrs for 5 slaves
-    assert len(body) == 4
+    assert len(body) == 0
 
 
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_with_filter(mock_get_mesos_master):
+def test_resources_utilization_with_filter():
     request = testing.DummyRequest()
     request.swagger_data = {
         "groupings": ["region", "pool"],
         "filter": ["region:top", "pool:default,other"],
     }
-    mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-            return_value=mock_mesos_state,
-        )
-    )
-    mock_get_mesos_master.return_value = mock_master
 
+    # Since Mesos is removed, resources_utilization should return empty response
     resp = resources_utilization(request)
     body = json.loads(resp.body.decode("utf-8"))
 
     assert resp.status_int == 200
-    assert len(body) == 2
+    assert len(body) == 0
 
     request.swagger_data = {
         "groupings": ["region", "pool"],
