@@ -1419,11 +1419,6 @@ def get_tron_dashboard_for_cluster(cluster: str):
     return dashboards["Tron"]
 
 
-def tron_jobs_running_here() -> List[Tuple[str, str, int]]:
-    # Mesos support has been removed, so no Tron jobs are running via Mesos
-    return []
-
-
 def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:
     """Parses tron mesos task ids, like schematizer.traffic_generator.28414.turnstyle.46da87d7-6092-4ed4-b926-ffa7b21c7785"""
     try:

@@ -15,7 +15,6 @@
 import sys
 
 from paasta_tools.kubernetes_tools import get_all_kubernetes_services_running_here
-from paasta_tools.tron_tools import tron_jobs_running_here
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
@@ -40,15 +39,12 @@ def broadcast_log_all_services_running_here(line: str, soa_dir=DEFAULT_SOA_DIR) 
 
 
 def get_all_services_running_here(cluster, soa_dir):
-    # Tron jobs no longer run via Mesos, so this will return an empty list
-    tron_services = tron_jobs_running_here()
-
     try:
         kubernetes_services = get_all_kubernetes_services_running_here()
     except Exception:
         kubernetes_services = []
 
-    return tron_services + kubernetes_services
+    return kubernetes_services
 
 
 def main() -> None:
