@@ -59,9 +59,6 @@ class AutoscalingOverride(ModelNormal):
     }
 
     validations = {
-        ('min_instances',): {
-            'inclusive_minimum': 1,
-        },
     }
 
     additional_properties_type = None
@@ -79,7 +76,8 @@ class AutoscalingOverride(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'min_instances': (int,),  # noqa: E501
+            'min_instances': (int, none_type,),  # noqa: E501
+            'max_instances': (int, none_type,),  # noqa: E501
             'expire_after': (float,),  # noqa: E501
         }
 
@@ -90,6 +88,7 @@ class AutoscalingOverride(ModelNormal):
 
     attribute_map = {
         'min_instances': 'min_instances',  # noqa: E501
+        'max_instances': 'max_instances',  # noqa: E501
         'expire_after': 'expire_after',  # noqa: E501
     }
 
@@ -105,11 +104,12 @@ class AutoscalingOverride(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, min_instances, expire_after, *args, **kwargs):  # noqa: E501
+    def __init__(self, min_instances, max_instances, expire_after, *args, **kwargs):  # noqa: E501
         """AutoscalingOverride - a model defined in OpenAPI
 
         Args:
-            min_instances (int): Minimum number of instances to run
+            min_instances (int, none_type): Minimum number of instances to run
+            max_instances (int, none_type): Maximum number of instances to run
             expire_after (float): Unix timestamp when this override is no longer valid
 
         Keyword Args:
@@ -169,6 +169,7 @@ class AutoscalingOverride(ModelNormal):
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
         self.min_instances = min_instances
+        self.max_instances = max_instances
         self.expire_after = expire_after
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \

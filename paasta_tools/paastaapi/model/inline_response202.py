@@ -78,7 +78,8 @@ class InlineResponse202(ModelNormal):
         return {
             'service': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
-            'min_instances': (int,),  # noqa: E501
+            'min_instances': (int, none_type,),  # noqa: E501
+            'max_instances': (int, none_type,),  # noqa: E501
             'expire_after': (float,),  # noqa: E501
             'status': (str,),  # noqa: E501
         }
@@ -92,6 +93,7 @@ class InlineResponse202(ModelNormal):
         'service': 'service',  # noqa: E501
         'instance': 'instance',  # noqa: E501
         'min_instances': 'min_instances',  # noqa: E501
+        'max_instances': 'max_instances',  # noqa: E501
         'expire_after': 'expire_after',  # noqa: E501
         'status': 'status',  # noqa: E501
     }
@@ -144,7 +146,8 @@ class InlineResponse202(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             service (str): Service name. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
-            min_instances (int): Minimum number of instances to run. [optional]  # noqa: E501
+            min_instances (int, none_type): Minimum number of instances to run. [optional]  # noqa: E501
+            max_instances (int, none_type): Maximum number of instances to run. [optional]  # noqa: E501
             expire_after (float): Unix timestamp after which the override is no longer valid. [optional]  # noqa: E501
             status (str): Status of the operation. [optional]  # noqa: E501
         """

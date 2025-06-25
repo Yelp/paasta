@@ -267,14 +267,19 @@ components:
       properties:
         min_instances:
           type: integer
+          nullable: true
           description: Minimum number of instances to run
-          minimum: 1
+        max_instances:
+          type: integer
+          nullable: true
+          description: Maximum number of instances to run
         expire_after:
           format: float
           type: number
           description: Unix timestamp when this override is no longer valid
       required:
         - min_instances
+        - max_instances
         - expire_after
     InstanceBounceStatus:
       properties:
@@ -1494,7 +1499,12 @@ paths:
                     description: Instance name
                   min_instances:
                     type: integer
+                    nullable: true
                     description: Minimum number of instances to run
+                  max_instances:
+                    type: integer
+                    nullable: true
+                    description: Maximum number of instances to run
                   expire_after:
                     format: float
                     type: number

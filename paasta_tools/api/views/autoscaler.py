@@ -136,7 +136,7 @@ def set_autoscaling_override(request):
     Required parameters:
     - service: The service name
     - instance: The instance name
-    - min_instances: The minimum number of instances to enforce
+    - min_instances AND/OR max_instances: The minimum and/or maximum number of instances to enforce
     - expires_after: unix timestamp after which the override is no longer valid
     """
     service = request.swagger_data.get("service")
@@ -156,23 +156,28 @@ def set_autoscaling_override(request):
 
     json_body = request.swagger_data.get("json_body", {})
     min_instances_override = json_body.get("min_instances")
-    expire_after = json_body.get("expire_after")
+    max_instances_override = json_body.get("max_instances")
+    expire_after = json_body["expire_after"]
 
-    if not isinstance(min_instances_override, int) or min_instances_override < 1:
-        raise ApiFailure("min_instances must be a positive integer", 400)
-
-    if not expire_after:
-        raise ApiFailure("expire_after is required", 400)
-
-    max_instances = instance_config.get_max_instances()
-    if max_instances is None:
-        raise ApiFailure(f"Autoscaling is not enabled for {service}.{instance}", 400)
-
-    if max_instances < min_instances_override:
+    # ideally we'd enforce this in our api spec - but since we're using both swagger and oapi, that's not quite so simple
+    if not min_instances_override and not max_instances_override:
         raise ApiFailure(
-            f"min_instances ({min_instances_override}) cannot be greater than max_instances ({max_instances})",
-            400,
+            "At least one of min_instances or max_instances must be provided", 400
         )
+
+    # we can't currently enforce this in the API spec since the generator seems to have issues generating a validator
+    # for a nullable integer field with a minimum value as we get errors like:
+    # `TypeError: '<' not supported between instances of 'NoneType' and 'int'`
+    # that said, unless someone is manually crafting requests, this should never happen
+    # since the CLI includes a check for this as well
+    if min_instances_override is not None and min_instances_override < 1:
+        raise ApiFailure("min_instances must be a positive integer", 400)
+    if max_instances_override is not None and max_instances_override < 1:
+        raise ApiFailure("max_instances must be a positive integer", 400)
+
+    # otherwise, we could have folks accidentally enable autoscaling (using cpu) for a non-autoscaled
+    if instance_config.is_autoscaling_enabled() is None:
+        raise ApiFailure(f"Autoscaling is not enabled for {service}.{instance}", 400)
 
     configmap, created = get_or_create_autoscaling_overrides_configmap()
     if created:
@@ -182,23 +187,54 @@ def set_autoscaling_override(request):
     if not configmap.data:
         configmap.data = {}
 
-    override_data = {
-        "min_instances": min_instances_override,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        # NOTE: we may want to also allow setting a max_instances override in the future, but if we do that
-        # we'd probably want to force folks to either set one or both and share the same expiration time
-        "expire_after": expire_after,
-    }
-
     service_instance = f"{service}.{instance}"
     existing_overrides = (
         json.loads(configmap.data[service_instance])
         if service_instance in configmap.data
         else {}
     )
-    merged_overrides = {**existing_overrides, **override_data}
+
+    # this is slightly funky as there's a hierarchy of what value to pick:
+    # 1. the override value provided in the request - as this should override any existing value
+    # 2. the existing override value in the configmap - this is used if we previously only set an override for min or
+    #    max instances and now want to set a value for the other
+    # 3. the value from the instance config - this is used as a final fallback since this means no override is present
+    min_instances = (
+        min_instances_override
+        or existing_overrides.get("min_instances")
+        or instance_config.get_min_instances()
+    )
+    max_instances = (
+        max_instances_override
+        or existing_overrides.get("max_instances")
+        or instance_config.get_max_instances()
+    )
+
+    # NOTE: the max_instances check is unnecessary here, but type-checkers can't see that the is_autoscaling_enabled()
+    # check above ensures that max_instances is not None
+    if max_instances is None or max_instances < min_instances:
+        raise ApiFailure(
+            f"min_instances ({min_instances_override}) cannot be greater than max_instances ({max_instances})",
+            400,
+        )
+
+    override_data = {
+        "min_instances": min_instances_override,
+        "max_instances": max_instances_override,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expire_after": expire_after,
+    }
+
+    # NOTE: we need to strip out null values from the incoming overrides since otherwise we'd remove existing overrides
+    # (since if only --set-min or --set-max is provided, the other will be sent as None)
+    merged_overrides = {
+        **existing_overrides,
+        **{k: v for k, v in override_data.items() if v is not None},
+    }
     serialized_overrides = json.dumps(merged_overrides)
 
+    # note: we can only append with patching - if we ever want to remove overrides outside of the cleanup cronjob,
+    # we would need to change this to use replace_namespaced_configmap
     patch_namespaced_configmap(
         name=AUTOSCALING_OVERRIDES_CONFIGMAP_NAME,
         namespace=AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE,
@@ -213,6 +249,7 @@ def set_autoscaling_override(request):
         "instance": instance,
         "cluster": cluster,
         "min_instances": min_instances_override,
+        "max_instances": max_instances_override,
         "expire_after": expire_after,
         "status": "SUCCESS",
     }

@@ -325,6 +325,7 @@ class DatastoreCredentialsConfig(TypedDict, total=False):
 
 class HpaOverride(TypedDict):
     min_instances: int
+    max_instances: int
     expire_after: str
 
 
@@ -899,6 +900,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         kube_client: KubeClient,
         namespace: str,
         min_instances_override: Optional[int] = None,
+        max_instances_override: Optional[int] = None,
     ) -> Optional[V2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
@@ -914,7 +916,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         min_replicas = min_instances_override or self.get_min_instances()
-        max_replicas = self.get_max_instances()
+        max_replicas = max_instances_override or self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
                 f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"
@@ -2015,7 +2017,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-    def get_min_instances(self) -> Optional[int]:
+    def get_min_instances(self) -> int:
         return self.config_dict.get(
             "min_instances",
             1,
@@ -4690,7 +4692,9 @@ def get_namespaced_configmap(
 
 def patch_namespaced_configmap(
     name: str,
-    body: Dict[str, str],
+    # NOTE: passing a dict *seems* to work - but we should likely switch to passing a ConfigMap since that seems to be
+    # the most supported option
+    body: Union[V1ConfigMap, Dict[str, Any]],
     *,
     namespace: str,
     kube_client: KubeClient,
