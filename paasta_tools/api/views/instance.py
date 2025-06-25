@@ -20,7 +20,6 @@ import logging
 import traceback
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -89,13 +88,6 @@ def tron_instance_status(
         status["action_command"] = action_run["command"]
 
     return status
-
-
-def adhoc_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> List[Dict[str, Any]]:
-    # Mesos support has been removed - adhoc instances no longer run on Mesos
-    return []
 
 
 async def _task_result_or_error(future):
@@ -174,11 +166,7 @@ def instance_status(request):
         instance_status["version"] = ""
         instance_status["git_sha"] = ""
     try:
-        if instance_type == "adhoc":
-            instance_status["adhoc"] = adhoc_instance_status(
-                instance_status, service, instance, verbose
-            )
-        elif pik.can_handle(instance_type):
+        if pik.can_handle(instance_type):
             instance_status.update(
                 pik.instance_status(
                     service=service,
