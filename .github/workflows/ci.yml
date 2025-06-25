@@ -72,10 +72,6 @@ jobs:
       - run: mkdir -p dist/
       - uses: actions/download-artifact@v4
         with:
-          name: deb-bionic
-          path: dist/
-      - uses: actions/download-artifact@v4
-        with:
           name: deb-jammy
           path: dist/
       - name: Release

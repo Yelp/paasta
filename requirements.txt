@@ -118,10 +118,10 @@ urllib3==1.26.18
 utaw==0.2.0
 venusian==1.1.0
 webcolors==1.7
-WebOb==1.8.7 # required by pyramid==2.0.2
+WebOb==1.8.7
 websocket-client==0.44.0
 ws4py==0.5.1
 wsgicors==0.7.0
 yarl==1.1.1
 zope.deprecation==4.2.0
-zope.interface==7.2 # required by pyramid==2.0.2
+zope.interface==7.2
