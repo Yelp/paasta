@@ -26,40 +26,6 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
-def test_load_smartstack_info_for_service(system_paasta_config):
-    with mock.patch(
-        "paasta_tools.smartstack_tools.long_running_service_tools.load_service_namespace_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute",
-        autospec=True,
-    ):
-        # just a smoke test for now.
-        smartstack_tools.load_smartstack_info_for_service(
-            service="service",
-            namespace="namespace",
-            soa_dir="fake",
-            blacklist=[],
-            system_paasta_config=system_paasta_config,
-        )
-
-
-def test_get_smartstack_replication_for_attribute(system_paasta_config):
-    fake_namespace = "fake_main"
-    fake_service = "fake_service"
-
-    # Since Mesos support has been removed, this function now returns an empty dict
-    expected = {}
-    actual = smartstack_tools.get_smartstack_replication_for_attribute(
-        attribute="fake_attribute",
-        service=fake_service,
-        namespace=fake_namespace,
-        blacklist=[],
-        system_paasta_config=system_paasta_config,
-    )
-    assert actual == expected
-
-
 def test_get_replication_for_service():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, "haproxy_snapshot.txt")

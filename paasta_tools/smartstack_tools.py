@@ -37,12 +37,9 @@ from mypy_extensions import TypedDict
 
 from paasta_tools import envoy_tools
 from paasta_tools import kubernetes_tools
-from paasta_tools import long_running_service_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -163,68 +160,6 @@ def get_multiple_backends(
             backends.append(cast(HaproxyBackend, line))
 
     return backends
-
-
-def load_smartstack_info_for_service(
-    service: str,
-    namespace: str,
-    blacklist: DeployBlacklist,
-    system_paasta_config: SystemPaastaConfig,
-    soa_dir: str = DEFAULT_SOA_DIR,
-) -> Dict[str, Dict[str, int]]:
-    """Retrieves number of available backends for given service
-
-    :param service: A service name
-    :param namespace: A Smartstack namespace
-    :param blacklist: A list of blacklisted location tuples in the form (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :param soa_dir: SOA dir
-    :returns: a dictionary of the form
-
-    ::
-
-        {
-          'location_type': {
-              'unique_location_name': {
-                  'service.instance': <# ofavailable backends>
-              },
-              'other_unique_location_name': ...
-          }
-        }
-
-    """
-    service_namespace_config = long_running_service_tools.load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir
-    )
-    discover_location_type = service_namespace_config.get_discover()
-    return get_smartstack_replication_for_attribute(
-        attribute=discover_location_type,
-        service=service,
-        namespace=namespace,
-        blacklist=blacklist,
-        system_paasta_config=system_paasta_config,
-    )
-
-
-def get_smartstack_replication_for_attribute(
-    attribute: str,
-    service: str,
-    namespace: str,
-    blacklist: DeployBlacklist,
-    system_paasta_config: SystemPaastaConfig,
-) -> Dict[str, Dict[str, int]]:
-    """Loads smartstack replication from a host with the specified attribute
-
-    :param attribute: a Mesos attribute
-    :param service: A service name, like 'example_service'
-    :param namespace: A particular smartstack namespace to inspect, like 'main'
-    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
-              (the dictionary will contain keys for unique all attribute values)
-    """
-    # Mesos support has been removed, so no replication info is available via Mesos slaves
-    return {}
 
 
 def get_replication_for_all_services(
