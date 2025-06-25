@@ -2923,7 +2923,7 @@ class TestKubernetesDeploymentConfig:
             assert len(ret) == 2
 
     def test_get_storage_class_name_default(self):
-        pv = kubernetes_tools.PersistentVolume()  # type: ignore  # PersistentVolume requires keys ('mode', 'size', 'container_path', 'storage_class_name') as per its TypedDict definition, but they are missing here; ignoring for test setup
+        pv = kubernetes_tools.PersistentVolume()  # type: ignore  # We will need to make this TypedDict non-total to remove this comment
         assert self.deployment.get_storage_class_name(pv) == "ebs"
 
     def test_get_storage_class_name_wrong(self):
