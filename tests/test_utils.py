@@ -3012,3 +3012,17 @@ def test_validate_pool_error(cluster, pool, system_paasta_config):
 )
 def test_get_git_sha_from_dockerurl(docker_url, long, expected):
     assert utils.get_git_sha_from_dockerurl(docker_url, long) == expected
+
+
+def test_suffixed_number_value():
+    assert utils.suffixed_number_value("5k") == 5 * 1000
+    assert utils.suffixed_number_value("5m") == 5 * 1000**-1
+    assert utils.suffixed_number_value("5M") == 5 * 1000**2
+    assert utils.suffixed_number_value("5G") == 5 * 1000**3
+    assert utils.suffixed_number_value("5T") == 5 * 1000**4
+    assert utils.suffixed_number_value("5P") == 5 * 1000**5
+    assert utils.suffixed_number_value("5Ki") == 5 * 1024
+    assert utils.suffixed_number_value("5Mi") == 5 * 1024**2
+    assert utils.suffixed_number_value("5Gi") == 5 * 1024**3
+    assert utils.suffixed_number_value("5Ti") == 5 * 1024**4
+    assert utils.suffixed_number_value("5Pi") == 5 * 1024**5
