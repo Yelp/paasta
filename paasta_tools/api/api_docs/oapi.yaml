@@ -1383,43 +1383,6 @@ paths:
           description: Service instance not found
         "500":
           description: Failure
-  /resources/utilization:
-    get:
-      operationId: resources
-      parameters:
-      - description: comma separated list of keys to group by
-        in: query
-        name: groupings
-        required: false
-        schema:
-          items:
-            type: string
-          type: array
-        style: simple
-      - description: List of slave filters in format 'filter=attr_name:value1,value2&filter=attr2:value3,value4'.
-          Matches attr_name=(value1 OR value2) AND attr2=(value3 OR value4)
-        explode: true
-        in: query
-        name: filter
-        required: false
-        style: form
-        schema:
-          items:
-            pattern: (.*):(.*,)*(.*)
-            type: string
-          type: array
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Resource'
-          description: Resources in the cluster, filtered and grouped by parameters
-        "400":
-          description: Poorly formated query parameters
-      summary: Get resources in the cluster
-      tags:
-      - resources
   /service_autoscaler/pause:
     delete:
       operationId: delete_service_autoscaler_pause
