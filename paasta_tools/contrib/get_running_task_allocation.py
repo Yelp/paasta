@@ -36,7 +36,6 @@ class TaskAllocationInfo(NamedTuple):
     host_ip: str
     git_sha: str
     config_sha: str
-    mesos_container_id: str  # Because Mesos task info does not have docker id
     namespace: Optional[str]
 
 
@@ -173,7 +172,6 @@ def get_kubernetes_task_allocation_info(
                     host_ip=info.get("host_ip"),
                     git_sha=info.get("git_sha"),
                     config_sha=info.get("config_sha"),
-                    mesos_container_id=None,
                     namespace=namespace,
                 )
             )
@@ -181,26 +179,8 @@ def get_kubernetes_task_allocation_info(
     return info_list
 
 
-def get_task_allocation_info(
-    scheduler: str,
-    namespace: str,
-    kube_client: Optional[KubeClient],
-) -> Iterable[TaskAllocationInfo]:
-    if scheduler == "kubernetes":
-        return get_kubernetes_task_allocation_info(namespace, kube_client)
-    else:
-        return []
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument(
-        "--scheduler",
-        help="Scheduler to get task info from",
-        dest="scheduler",
-        default="kubernetes",
-        choices=["kubernetes"],
-    )
     parser.add_argument(
         "--additional-namespaces-exclude",
         help="full names of namespaces to not fetch allocation info for those that don't match --namespace-prefix-exlude",
@@ -244,18 +224,15 @@ def main(args: argparse.Namespace) -> None:
         all_namespaces,
         args.additional_namespaces_exclude,
     ):
-        display_task_allocation_info(
-            cluster, args.scheduler, matching_namespace, kube_client
-        )
+        display_task_allocation_info(cluster, matching_namespace, kube_client)
 
 
 def display_task_allocation_info(
     cluster: str,
-    scheduler: str,
     namespace: str,
     kube_client: Optional[KubeClient],
 ) -> None:
-    info_list = get_task_allocation_info(scheduler, namespace, kube_client)
+    info_list = get_kubernetes_task_allocation_info(namespace, kube_client)
     timestamp = time.time()
     for info in info_list:
         info_dict = info._asdict()
