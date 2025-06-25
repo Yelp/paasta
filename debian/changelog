@@ -1,3 +1,12 @@
+paasta-tools (1.27.0) xenial; urgency=medium
+
+  * 1.27.0 tagged with 'make release'
+    Commit: Allow setting temporary max_instances overrides (#4078)
+    Just as setting temporary min_instances overrides is useful, so
+    would being able to do the same for max_instances.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Jun 2025 09:27:06 -0700
+
 paasta-tools (1.26.1) xenial; urgency=medium
 
   * 1.26.1 tagged with 'make release'
