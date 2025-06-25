@@ -23,7 +23,6 @@ from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
 from typing import Tuple
-from typing import TypeVar
 
 from humanize import naturalsize
 from kubernetes.client import V1Node
@@ -376,13 +375,11 @@ def assert_nodes_health(
 _KeyFuncRetT = Sequence[Tuple[str, str]]
 
 
-_GenericNodeT = TypeVar("_GenericNodeT", bound=V1Node)
+_NodeGroupingFunctionT = Callable[[V1Node], _KeyFuncRetT]
 
-_GenericNodeGroupingFunctionT = Callable[[_GenericNodeT], _KeyFuncRetT]
+_NodeFilterFunctionT = Callable[[V1Node], bool]
 
-_GenericNodeFilterFunctionT = Callable[[_GenericNodeT], bool]
-
-_GenericNodeSortFunctionT = Callable[[Sequence[_GenericNodeT]], Sequence[_GenericNodeT]]
+_NodeSortFunctionT = Callable[[Sequence[V1Node]], Sequence[V1Node]]
 
 
 def key_func_for_attribute_multi_kube(
@@ -405,10 +402,10 @@ def key_func_for_attribute_multi_kube(
 
 
 def group_slaves_by_key_func(
-    key_func: _GenericNodeGroupingFunctionT,
-    slaves: Sequence[_GenericNodeT],
-    sort_func: _GenericNodeSortFunctionT = None,
-) -> Mapping[_KeyFuncRetT, Sequence[_GenericNodeT]]:
+    key_func: _NodeGroupingFunctionT,
+    slaves: Sequence[V1Node],
+    sort_func: _NodeSortFunctionT = None,
+) -> Mapping[_KeyFuncRetT, Sequence[V1Node]]:
     """Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
@@ -418,7 +415,7 @@ def group_slaves_by_key_func(
     :param slaves: a list of slaves
     :returns: a dict of key: [slaves]
     """
-    sorted_slaves: Sequence[_GenericNodeT]
+    sorted_slaves: Sequence[V1Node]
     if sort_func is None:
         sorted_slaves = sorted(slaves, key=key_func)
     else:
@@ -511,8 +508,8 @@ def calculate_resource_utilization_for_kube_nodes(
 
 
 def filter_slaves(
-    slaves: Sequence[_GenericNodeT], filters: Sequence[_GenericNodeFilterFunctionT]
-) -> Sequence[_GenericNodeT]:
+    slaves: Sequence[V1Node], filters: Sequence[_NodeFilterFunctionT]
+) -> Sequence[V1Node]:
     """Filter slaves by attributes
 
     :param slaves: list of slaves to filter
@@ -526,12 +523,12 @@ def filter_slaves(
 
 
 def get_resource_utilization_by_grouping_kube(
-    grouping_func: _GenericNodeGroupingFunctionT,
+    grouping_func: _NodeGroupingFunctionT,
     kube_client: KubeClient,
     *,
     namespace: str,
-    filters: Sequence[_GenericNodeFilterFunctionT] = [],
-    sort_func: _GenericNodeSortFunctionT = None,
+    filters: Sequence[_NodeFilterFunctionT] = [],
+    sort_func: _NodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """Given a function used to group nodes, calculate resource utilization
     for each value of a given attribute.
