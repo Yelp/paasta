@@ -668,7 +668,7 @@ class TronActionConfig(InstanceConfig):
         error_msgs.extend(super().validate())
         # Tron is a little special, because it can *not* have a deploy group
         # But only if an action is running via ssh and not via paasta
-        if self.get_deploy_group() is None and self.get_executor() == "mesos":
+        if self.get_deploy_group() is None and self.get_executor() != "ssh":
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
