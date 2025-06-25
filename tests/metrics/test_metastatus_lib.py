@@ -38,9 +38,6 @@ def test_fail_check_threshold():
     assert not metastatus_lib.check_threshold(80, 30)
 
 
-# test_get_mesos_cpu_status removed - function deleted with Mesos cleanup
-
-
 def test_get_kube_cpu_status():
     fake_nodes = [
         V1Node(status=V1NodeStatus(allocatable={"cpu": "1"}, capacity={"cpu": "3"}))
@@ -128,9 +125,6 @@ def test_assert_bad_gpu_health():
     )
 
 
-# Mesos health check tests removed - functions deleted with Mesos cleanup
-
-
 def test_assert_kube_deployments():
     with mock.patch(
         "paasta_tools.metrics.metastatus_lib.list_all_deployments", autospec=True
@@ -167,9 +161,6 @@ def test_assert_nodes_health():
     assert ok
 
 
-# Mesos-related test functions removed - underlying functions deleted with Mesos cleanup
-
-
 def test_status_for_results():
     assert metastatus_lib.status_for_results(
         [
@@ -200,9 +191,6 @@ def test_critical_events_in_outputs():
     ) == [("myservice_false", False)]
 
 
-# test_filter_mesos_state_metrics removed - function deleted with Mesos cleanup
-
-
 def test_filter_kube_resources():
     test_resource_dictionary = {
         "cpu": 0,
@@ -214,9 +202,6 @@ def test_filter_kube_resources():
     }
     expected = {"cpu": 0, "memory": 1, "ephemeral-storage": 4, "nvidia.com/gpu": 5}
     assert metastatus_lib.filter_kube_resources(test_resource_dictionary) == expected
-
-
-# test_filter_slaves removed - function deleted with Mesos cleanup
 
 
 def test_group_slaves_by_key_func():
@@ -241,21 +226,6 @@ def test_group_slaves_by_key_func():
     for k, v in actual.items():
         print(k, v)
         assert len(list(v)) == 1
-
-
-# test_get_resource_utilization_by_grouping removed - function deleted with Mesos cleanup
-
-
-# test_get_resource_utilization_by_grouping_correctly_groups removed - function deleted with Mesos cleanup
-
-
-# test_get_resource_utilization_by_grouping_correctly_multi_groups removed - function deleted with Mesos cleanup
-
-
-# test_get_resource_utilization_per_slave removed - function deleted with Mesos cleanup
-
-
-# test_calculate_resource_utilization_for_slaves removed - function deleted with Mesos cleanup
 
 
 def test_calculate_resource_utilization_for_kube_nodes():
@@ -433,12 +403,6 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
     assert actual == ["myhabitat", "10/10", "10/10", "10/10"]
 
 
-# test_key_func_for_attribute removed - function deleted with Mesos cleanup
-
-
-# test_get_mesos_memory_status removed - function deleted with Mesos cleanup
-
-
 def test_get_kube_memory_status():
     fake_nodes = [
         V1Node(
@@ -451,9 +415,6 @@ def test_get_kube_memory_status():
     assert total == 4 * 1024
     assert used == 3 * 1024
     assert available == 1 * 1024
-
-
-# test_get_mesos_disk_status removed - function deleted with Mesos cleanup
 
 
 def test_get_kube_disk_status():
@@ -471,9 +432,6 @@ def test_get_kube_disk_status():
     assert available == 1 * 1024**2
 
 
-# test_get_mesos_gpu_status removed - function deleted with Mesos cleanup
-
-
 def test_get_kube_gpu_status():
     fake_nodes = [
         V1Node(
@@ -486,9 +444,6 @@ def test_get_kube_gpu_status():
     assert total == 4
     assert used == 3
     assert available == 1
-
-
-# test_reserved_maintenence_resources* functions removed - function deleted with Mesos cleanup
 
 
 def test_suffixed_number_value():
