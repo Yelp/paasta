@@ -72,8 +72,8 @@ def create_remote_refs(git_url, ref_mutator, force=False):
         determine_wants = ref_mutator
     # We know we don't need to push any objects.
 
-    def generate_pack_contents(have, want):
-        return []
+    def generate_pack_contents(have, want, ofs_delta=None):
+        return 0, []
 
     return client.send_pack(path, determine_wants, generate_pack_contents)
 

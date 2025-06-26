@@ -67,7 +67,7 @@ dev-api: .tox/py38-linux
 	.paasta/bin/tox -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.8 .paasta
+	test -d .paasta/bin/activate || virtualenv -p python3.10 .paasta
 	.paasta/bin/pip install -r requirements-bootstrap.txt
 	.paasta/bin/pip install -U tox==3.28.0
 	touch .paasta/bin/activate

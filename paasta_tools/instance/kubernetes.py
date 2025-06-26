@@ -641,7 +641,7 @@ async def kubernetes_status_v2(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         )
-        tasks.append(autoscaling_task)
+        tasks.append(autoscaling_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         autoscaling_task = None
 
@@ -653,7 +653,7 @@ async def kubernetes_status_v2(
             namespaces=relevant_namespaces,
         )
     )
-    tasks.append(pods_task)
+    tasks.append(pods_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
 
     service_namespace_config = kubernetes_tools.load_service_namespace_config(
         service=service,
@@ -674,9 +674,9 @@ async def kubernetes_status_v2(
             )
         )
         backends_task = asyncio.create_task(
-            get_backends_from_mesh_status(mesh_status_task)
+            get_backends_from_mesh_status(mesh_status_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
         )
-        tasks.extend([mesh_status_task, backends_task])
+        tasks.extend([mesh_status_task, backends_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         mesh_status_task = None
         backends_task = None
@@ -685,7 +685,7 @@ async def kubernetes_status_v2(
         pod_status_by_sha_and_readiness_task = asyncio.create_task(
             get_pod_status_tasks_by_sha_and_readiness(
                 pods_task,
-                backends_task,
+                backends_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
                 kube_client,
                 verbose,
             )
@@ -696,15 +696,15 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,
+                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
             )
         )
-        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])
+        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         pod_status_by_replicaset_task = asyncio.create_task(
             get_pod_status_tasks_by_replicaset(
                 pods_task,
-                backends_task,
+                backends_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
                 kube_client,
                 verbose,
             )
@@ -715,10 +715,10 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_replicaset_task=pod_status_by_replicaset_task,
+                pod_status_by_replicaset_task=pod_status_by_replicaset_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
             )
         )
-        tasks.extend([pod_status_by_replicaset_task, versions_task])
+        tasks.extend([pod_status_by_replicaset_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
 
     await asyncio.gather(*tasks, return_exceptions=True)
 

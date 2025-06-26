@@ -77,7 +77,8 @@ class AuthTweenFactory:
         method: str,
         service: Optional[str],
     ) -> AuthorizationOutcome:
-        """Check if API request is authorized
+        """
+        Check if API request is authorized
 
         :param str path: API path
         :param str token: authentication token

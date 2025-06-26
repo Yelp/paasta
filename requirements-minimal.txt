@@ -38,11 +38,11 @@ nats-py
 nulltype
 objgraph
 ply
-progressbar2 >= 3.10.0
+progressbar2>=4.3.2
 prometheus-client
 pymesos >= 0.2.0
-pyramid >= 1.8
 pyramid-swagger >= 2.3.0
+pyramid>=2.0.2
 pysensu-yelp >= 0.3.4
 PyStaticConfiguration
 python-crontab>=2.1.1
@@ -62,8 +62,6 @@ signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0
 syslogmp
-task-processing
-thriftpy2
 transitions
 typing-extensions
 tzlocal

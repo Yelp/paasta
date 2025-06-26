@@ -977,12 +977,12 @@ def run_docker_container(
             # First try to write the file as a string
             # This is for text like config files
             with open(temp_secret_filename, "w") as f:
-                f.write(secret_content)
+                f.write(secret_content)  # type: ignore  # TODO: make this type-safe rather than rely on exceptions
         except TypeError:
             # If that fails, try to write it as bytes
             # This is for binary files like TLS keys
             with open(temp_secret_filename, "wb") as fb:
-                fb.write(secret_content)
+                fb.write(secret_content)  # type: ignore  # TODO: make this type-safe rather than rely on exceptions
 
         # Append this to the list of volumes passed to docker run
         volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
