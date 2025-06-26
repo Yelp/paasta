@@ -1,3 +1,24 @@
+paasta-tools (1.28.0) xenial; urgency=medium
+
+  * 1.28.0 tagged with 'make release'
+    Commit: Upgrade paasta to python 3.10 (#4065)  * Upgrade paasta to
+    python 3.10  * upgrade precommit config file to 3.10  * Upgrade
+    github workflows to 3.10  * references to python3.8 in the codebase
+    has been upgraded to 3.10  * Upgrade debian files  * fix github
+    workflow  * lets see if this fixes k8s_itests  * use docker compose
+    v2  * upgrade dockerfile to py310 and fix the jammy test  * Update
+    noble dockerfile and fix the test  * Stop building for bionic as
+    python3.10 is not supported on it  * upgrade mypy & fix the issues,
+    upgrade api client patch  * attempt to fix general_itests  * update
+    dulwich  * our attempt to fix dulwich issue  * Use luisp"s behave
+    branch  * address some reviews  * fix requirements.txt  * Address
+    typeignore comments and requirements file  * use docker-compose for
+    k8s_itests  * upgrade pyaml for k8s_itests  * back to original  *
+    get rid of dependencies for k8s_itest  * update type ignore comments
+    * modify some type ignores and add show_error_codes
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 26 Jun 2025 10:19:59 -0700
+
 paasta-tools (1.27.0) xenial; urgency=medium
 
   * 1.27.0 tagged with 'make release'
