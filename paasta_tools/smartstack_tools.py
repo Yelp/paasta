@@ -28,7 +28,6 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
-from typing import TypeVar
 from typing import Union
 
 import requests
@@ -38,14 +37,9 @@ from mypy_extensions import TypedDict
 
 from paasta_tools import envoy_tools
 from paasta_tools import kubernetes_tools
-from paasta_tools import long_running_service_tools
-from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -166,91 +160,6 @@ def get_multiple_backends(
             backends.append(cast(HaproxyBackend, line))
 
     return backends
-
-
-def load_smartstack_info_for_service(
-    service: str,
-    namespace: str,
-    blacklist: DeployBlacklist,
-    system_paasta_config: SystemPaastaConfig,
-    soa_dir: str = DEFAULT_SOA_DIR,
-) -> Dict[str, Dict[str, int]]:
-    """Retrieves number of available backends for given service
-
-    :param service: A service name
-    :param namespace: A Smartstack namespace
-    :param blacklist: A list of blacklisted location tuples in the form (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :param soa_dir: SOA dir
-    :returns: a dictionary of the form
-
-    ::
-
-        {
-          'location_type': {
-              'unique_location_name': {
-                  'service.instance': <# ofavailable backends>
-              },
-              'other_unique_location_name': ...
-          }
-        }
-
-    """
-    service_namespace_config = long_running_service_tools.load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir
-    )
-    discover_location_type = service_namespace_config.get_discover()
-    return get_smartstack_replication_for_attribute(
-        attribute=discover_location_type,
-        service=service,
-        namespace=namespace,
-        blacklist=blacklist,
-        system_paasta_config=system_paasta_config,
-    )
-
-
-def get_smartstack_replication_for_attribute(
-    attribute: str,
-    service: str,
-    namespace: str,
-    blacklist: DeployBlacklist,
-    system_paasta_config: SystemPaastaConfig,
-) -> Dict[str, Dict[str, int]]:
-    """Loads smartstack replication from a host with the specified attribute
-
-    :param attribute: a Mesos attribute
-    :param service: A service name, like 'example_service'
-    :param namespace: A particular smartstack namespace to inspect, like 'main'
-    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
-    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
-    :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
-              (the dictionary will contain keys for unique all attribute values)
-    """
-    replication_info = {}
-    filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
-        blacklist=blacklist, whitelist=None
-    )
-    if not filtered_slaves:
-        raise NoSlavesAvailableError
-
-    attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves, attribute=attribute
-    )
-
-    full_name = compose_job_id(service, namespace)
-
-    for value, hosts in attribute_slave_dict.items():
-        # arbitrarily choose the first host with a given attribute to query for replication stats
-        synapse_host = hosts[0]["hostname"]
-        repl_info = get_replication_for_services(
-            synapse_host=synapse_host,
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            services=[full_name],
-        )
-        replication_info[value] = repl_info
-
-    return replication_info
 
 
 def get_replication_for_all_services(
@@ -406,11 +315,6 @@ def match_backends_and_pods(
             backend_pod_pairs.append((backend, None))
 
     return backend_pod_pairs
-
-
-_MesosSlaveDict = TypeVar(
-    "_MesosSlaveDict", bound=Dict
-)  # no type has been defined in mesos_tools for these yet.
 
 
 class DiscoveredHost(NamedTuple):
