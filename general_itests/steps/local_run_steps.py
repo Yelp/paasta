@@ -16,9 +16,11 @@ import os
 from behave import given
 from behave import then
 from behave import when
+from docker.errors import APIError
 from path import Path
 
 from paasta_tools.utils import _run
+from paasta_tools.utils import get_docker_client
 
 
 @given("a simple service to test")
@@ -86,3 +88,29 @@ def local_run_on_tron_action(context):
             "--build "
         )
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
+
+
+@given("Docker is available")
+def docker_is_available(context):
+    docker_client = get_docker_client()
+    assert docker_client.ping()
+    context.docker_client = docker_client
+
+
+@given("a running docker container with task id {task_id} and image {image_name}")
+def create_docker_container(context, task_id, image_name):
+    container_name = "paasta-itest-execute-in-containers"
+    image_name = os.getenv("DOCKER_REGISTRY", "docker-dev.yelpcorp.com/") + image_name
+    try:
+        context.docker_client.remove_container(container_name, force=True)
+    except APIError:
+        pass
+    context.docker_client.pull(image_name)
+    container = context.docker_client.create_container(
+        name=container_name,
+        image=image_name,
+        command="/bin/sleep infinity",
+        environment={"MESOS_TASK_ID": task_id},
+    )
+    context.docker_client.start(container=container.get("Id"))
+    context.running_container_id = container.get("Id")
