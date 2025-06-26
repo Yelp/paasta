@@ -59,6 +59,7 @@ from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_secrets_for_teams_enabled
+from paasta_tools.utils import is_using_unprivileged_containers
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -133,22 +134,28 @@ def perform_tcp_healthcheck(url, timeout):
         return (False, "%s (timeout %d seconds)" % (os.strerror(result), timeout))
 
 
-def execute_in_container(docker_client, container_id, command, timeout):
-    """Execute a command inside a Docker container
+def execute_in_container(docker_client, container_id, cmd, timeout):
+    container_info = docker_client.inspect_container(container_id)
+    exec_id = None
+    if (
+        container_info["ExecIDs"]
+        and len(container_info["ExecIDs"]) > 0
+        and not is_using_unprivileged_containers()
+    ):
+        for possible_exec_id in container_info["ExecIDs"]:
+            exec_info = docker_client.exec_inspect(possible_exec_id)["ProcessConfig"]
+            if exec_info["entrypoint"] == "/bin/sh" and exec_info["arguments"] == [
+                "-c",
+                cmd,
+            ]:
+                exec_id = possible_exec_id
+                break
 
-    :param docker_client: Docker client object
-    :param container_id: Docker container id
-    :param command: command to execute
-    :param timeout: timeout in seconds
-    :returns: tuple of (output, return_code)
-    """
-    try:
-        exec_result = docker_client.exec_create(container_id, command)
-        exec_output = docker_client.exec_start(exec_result["Id"])
-        exec_inspect = docker_client.exec_inspect(exec_result["Id"])
-        return (exec_output.decode("utf-8"), exec_inspect["ExitCode"])
-    except Exception as e:
-        return (str(e), 1)
+    if exec_id is None:
+        exec_id = docker_client.exec_create(container_id, ["/bin/sh", "-c", cmd])["Id"]
+    output = docker_client.exec_start(exec_id, stream=False)
+    return_code = docker_client.exec_inspect(exec_id)["ExitCode"]
+    return (output, return_code)
 
 
 def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
