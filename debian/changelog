@@ -1,3 +1,10 @@
+paasta-tools (1.28.1) xenial; urgency=medium
+
+  * 1.28.1 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/luisp/fix-docs-mistake"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 27 Jun 2025 09:41:49 -0700
+
 paasta-tools (1.28.0) xenial; urgency=medium
 
   * 1.28.0 tagged with 'make release'
