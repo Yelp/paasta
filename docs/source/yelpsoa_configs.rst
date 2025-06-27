@@ -535,9 +535,9 @@ instance MAY have:
     Example::
 
       autotune_limits:
-        cpu:
+        cpus:
           min: 0.1
-        memory:
+        mem:
           max: 1024
         disk:
           min: 1000
