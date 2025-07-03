@@ -1936,7 +1936,7 @@ def test_paasta_spark_run_with_pod_identity(
         {}
     )
     mock_load_system_paasta_config_spark_run.return_value.get_default_spark_iam_user.return_value = (
-        "/etc/boto_cfg/mrjob.yaml"
+        "/etc/boto_cfg/spark_driver.yaml"
     )
     mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
         {}
