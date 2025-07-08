@@ -23,11 +23,20 @@ file for it, and send the updated file to Tron.
 import argparse
 import logging
 import sys
+from typing import Dict
+from typing import List
 
 import ruamel.yaml as yaml
 
+from paasta_tools import spark_tools
 from paasta_tools import tron_tools
+from paasta_tools.kubernetes_tools import ensure_service_account
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
+from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import MASTER_NAMESPACE
+from paasta_tools.tron_tools import TronJobConfig
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -55,12 +64,54 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     parser.add_argument("--dry-run", action="store_true", default=False)
     parser.add_argument(
+        "--bulk-config-fetch",
+        dest="bulk_config_fetch",
+        action="store_true",
+        default=False,
+        help="Attempt to fetch all configs in bulk rather than one by one",
+    )
+    parser.add_argument(
         "--cluster",
         help="Cluster to read configs for. Defaults to the configuration in /etc/paasta",
         default=None,
     )
     args = parser.parse_args()
     return args
+
+
+def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
+    # NOTE: these are lru_cache'd so it should be fine to call these for every service
+    system_paasta_config = load_system_paasta_config()
+    kube_client = KubeClient()
+
+    for job in job_configs:
+        for action in job.get_actions():
+            if action.get_iam_role():
+                ensure_service_account(
+                    action.get_iam_role(),
+                    namespace=KUBERNETES_NAMESPACE,
+                    kube_client=kube_client,
+                )
+                # spark executors are special in that we want the SA to exist in two namespaces:
+                # the tron namespace - for the spark driver (which will be created by the ensure_service_account() above)
+                # and the spark namespace - for the spark executor (which we'll create below)
+                if (
+                    action.get_executor() == "spark"
+                    # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
+                    and action.get_spark_executor_iam_role()
+                ):
+                    # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
+                    spark_kube_client = KubeClient(
+                        config_file=system_paasta_config.get_spark_kubeconfig()
+                    )
+                    # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
+                    # this one is for the actual spark executors to use. if an iam_role is set, we'll use that, otherwise
+                    # there's an executor-specifc default role just like there is for the drivers :)
+                    ensure_service_account(
+                        action.get_spark_executor_iam_role(),
+                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                        kube_client=spark_kube_client,
+                    )
 
 
 def main():
@@ -119,6 +170,7 @@ def main():
     k8s_enabled_for_cluster = (
         yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
     )
+    new_configs: Dict[str, str] = {}  # service -> new_config
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
@@ -128,20 +180,60 @@ def main():
                 k8s_enabled=k8s_enabled_for_cluster,
                 dry_run=args.dry_run,
             )
+            new_configs[service] = new_config
             if args.dry_run:
                 log.info(f"Would update {service} to:")
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
-                if client.update_namespace(service, new_config):
-                    updated.append(service)
-                    log.debug(f"Updated {service}")
-                else:
-                    skipped.append(service)
-                    log.debug(f"Skipped {service}")
+                # PaaSTA will not necessarily have created the SAs we want to use
+                # ...so let's go ahead and create them!
+                job_configs = load_tron_service_config(
+                    service=service,
+                    cluster=args.cluster,
+                    load_deployments=False,
+                    soa_dir=args.soa_dir,
+                    # XXX: we can remove for_validation now that we've refactored how service account stuff works
+                    for_validation=False,
+                )
+                ensure_service_accounts(job_configs)
+                if not args.bulk_config_fetch:
+                    if client.update_namespace(service, new_config):
+                        updated.append(service)
+                        log.debug(f"Updated {service}")
+                    else:
+                        skipped.append(service)
+                        log.debug(f"Skipped {service}")
+
         except Exception:
-            log.exception(f"Update for {service} failed:")
+            if args.bulk_config_fetch:
+                # service account creation should be the only action that can throw if this flag is true,
+                # so we can safely assume that's what happened here in the log message
+                log.exception(
+                    f"Failed to create service account for {service} (will skip reconfiguring):"
+                )
+
+                # since service account creation failed, we want to skip reconfiguring this service
+                # as the new config will likely fail due to the missing service account - even though
+                # the rest of the config is valid
+                new_configs.pop(service, None)
+            else:
+                log.exception(f"Update for {service} failed:")
+
+            # NOTE: this happens for both ways of updating (bulk fetch and JIT fetch)
+            # since we need to print out what failed in either case
             failed.append(service)
+
+    if args.dry_run and args.bulk_config_fetch:
+        updated_namespaces = client.update_namespaces(new_configs)
+
+        if updated_namespaces:
+            updated = list(updated_namespaces.keys())
+            log.debug(f"Updated {updated}")
+
+        if updated_namespaces != new_configs.keys():
+            skipped = set(new_configs.keys()) - set(updated_namespaces.keys())
+            log.debug(f"Skipped {skipped}")
 
     skipped_report = skipped if args.verbose else len(skipped)
     log.info(

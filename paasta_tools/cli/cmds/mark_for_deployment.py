@@ -72,7 +72,6 @@ from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
@@ -1740,7 +1739,6 @@ def check_if_instance_is_done(
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
-    MarathonServiceConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -1983,7 +1981,7 @@ def compose_timeout_message(
 
 
 class NoSuchCluster(Exception):
-    """To be raised by wait_for_deployment() when a service has a marathon or
+    """To be raised by wait_for_deployment() when a service has a
     kubernetes config for a cluster that is not listed in /etc/paasta/api_endpoints.json.
     """
 

@@ -54,7 +54,7 @@ a particular app in a theoretical PaaS:
 +=============================================+=====================================+
 | ::                                          | ::                                  |
 |                                             |                                     |
-|   $ cat >marathon-cluster.yaml <<EOF        |                                     |
+|   $ cat >kubernetes-cluster.yaml <<EOF        |                                     |
 |   web:                                      |                                     |
 |     env:                                    |                                     |
 |       PRODUCTION: true                      |   $ paas config:set PRODUCTION=true |

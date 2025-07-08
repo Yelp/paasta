@@ -52,7 +52,7 @@ class TestMesosTaskParameters:
 
 
 class TestZKTaskStore:
-    @pytest.yield_fixture
+    @pytest.fixture
     def mock_zk_client(self):
         spec_zk_client = KazooClient()
         mock_zk_client = mock.Mock(spec=spec_zk_client)

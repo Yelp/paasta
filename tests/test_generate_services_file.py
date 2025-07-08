@@ -17,6 +17,7 @@ import mock
 import pytest
 
 from paasta_tools import generate_services_file
+from paasta_tools import utils
 
 
 MOCK_NAMESPACES = [
@@ -25,7 +26,7 @@ MOCK_NAMESPACES = [
 ]
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_namespaces():
     with mock.patch(
         "paasta_tools.generate_services_file.get_all_namespaces",
@@ -64,14 +65,14 @@ def test_main_yaml(mock_getfqdn, mock_parse_args, tmpdir, mock_namespaces):
         "  port: 1024\n"
     )
 
-    with mock.patch.object(generate_services_file, "datetime") as m:
-        m.now().isoformat.return_value = "$TIME"
+    with mock.patch.object(utils, "datetime") as m:
+        m.datetime.now().isoformat.return_value = "$TIME"
         generate_services_file.main()
     assert services_file.read() == expected_value
 
     # If the only difference is the timestamp, the file should not be regenerated.
-    with mock.patch.object(generate_services_file, "datetime") as m:
-        m.now().isoformat.return_value = "$TIME+1"
+    with mock.patch.object(utils, "datetime") as m:
+        m.datetime.now().isoformat.return_value = "$TIME+1"
         generate_services_file.main()
     assert services_file.read() == expected_value
 

@@ -30,7 +30,7 @@ a value of 'master', the key would be paasta_test:master instead, and the SHA
 would be the SHA at the tip of master.
 
 This is done for all services in the SOA configuration directory, across any
-service configuration files (filename is 'marathon-\*.yaml').
+service configuration files (filename is 'kubernetes-\*.yaml').
 
 Command line options:
 
@@ -82,7 +82,9 @@ DeploymentsDict = TypedDict(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Creates marathon jobs.")
+    parser = argparse.ArgumentParser(
+        description="Creates deployments.json for paasta services."
+    )
     parser.add_argument(
         "-d",
         "--soa-dir",
@@ -127,6 +129,10 @@ def get_deploy_group_mappings(
     mappings: Dict[str, V1_Mapping] = {}
     v2_mappings: V2_Mappings = {"deployments": {}, "controls": {}}
     git_url = get_git_url(service=service, soa_dir=soa_dir)
+
+    # Some pseudo-services like toolboxes explicitly have no git_url, and therefore no deployments
+    if git_url is None:
+        return mappings, v2_mappings
 
     # Most of the time of this function is in two parts:
     # 1. getting remote refs from git. (Mostly IO, just waiting for git to get back to us.)

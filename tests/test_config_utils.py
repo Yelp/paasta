@@ -2,9 +2,9 @@ import os
 
 import mock
 import pytest
-import yaml
 
 import paasta_tools.config_utils as config_utils
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
@@ -232,7 +232,7 @@ def test_auto_config_updater_validate(mock_validate_file, all_valid, updater):
     mock_validate_file.side_effect = [True, all_valid, True]
 
     updater.write_configs("foo", "kubernetes-norcal-devc", {"a": 2})
-    updater.write_configs("foo", "kubernetes-pnw-devc", {"a": 2})
+    updater.write_configs("foo", "eks-pnw-devc", {"a": 2})
     assert updater.validate() == all_valid
     assert mock_validate_file.call_count == 2
 

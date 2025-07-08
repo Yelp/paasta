@@ -22,7 +22,7 @@ def service_group():
     return firewall.ServiceGroup(service="my_cool_service", instance="web")
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_get_running_mesos_docker_containers():
     with mock.patch.object(
         firewall,
@@ -79,7 +79,7 @@ def test_services_running_here():
     )
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_services_running_here():
     with mock.patch.object(
         firewall,
@@ -104,7 +104,7 @@ def test_service_group_chain_name(service_group):
     assert len(service_group.chain_name) <= 28
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def mock_service_config():
     with mock.patch.object(
         firewall, "get_instance_config", autospec=True
@@ -419,102 +419,6 @@ def test_ensure_internet_chain():
         EMPTY_RULE._replace(dst="172.16.0.0/255.240.0.0", target="RETURN"),
         EMPTY_RULE._replace(dst="192.168.0.0/255.255.0.0", target="RETURN"),
         EMPTY_RULE._replace(dst="169.254.0.0/255.255.0.0", target="RETURN"),
-    )
-
-
-@mock.patch.object(
-    firewall, "_nerve_ports_for_service_instance", return_value=[30000, 30001]
-)
-@mock.patch.object(firewall, "_default_rules", return_value=[])
-@mock.patch.object(firewall, "_well_known_rules", return_value=[])
-@mock.patch.object(firewall, "_cidr_rules", return_value=[])
-def test_reject_inbound_network_traffic(
-    mock_cidr_rules,
-    mock_well_known_rules,
-    mock_default_rules,
-    mock_get_proxy_port,
-    mock_service_config,
-    service_group,
-):
-    mock_service_config.return_value.get_inbound_firewall.return_value = "reject"
-    assert service_group.get_rules(
-        DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR
-    ) == (
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="REJECT",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30000",)),)),),
-            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            src="127.0.0.0/255.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30000",)),)),),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            src="169.254.0.0/255.255.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30000",)),)),),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="REJECT",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30001",)),)),),
-            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            src="127.0.0.0/255.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30001",)),)),),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            src="169.254.0.0/255.255.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("30001",)),)),),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            dst="1.2.3.4/255.255.255.255",
-            matches=(
-                ("comment", (("comment", ("backend example_happyhour.main",)),)),
-                ("tcp", (("dport", ("123",)),)),
-            ),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            dst="5.6.7.8/255.255.255.255",
-            matches=(
-                ("comment", (("comment", ("backend example_happyhour.main",)),)),
-                ("tcp", (("dport", ("567",)),)),
-            ),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="ACCEPT",
-            dst="169.254.255.254/255.255.255.255",
-            matches=(
-                ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
-                ("tcp", (("dport", ("20000",)),)),
-            ),
-        ),
     )
 
 

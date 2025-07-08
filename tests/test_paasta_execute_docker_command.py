@@ -25,7 +25,7 @@ def test_execute_in_container():
     fake_return_code = 0
     fake_output = "fake_output"
     fake_command = "fake_cmd"
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.exec_start.return_value = fake_output
     mock_docker_client.exec_inspect.return_value = {"ExitCode": fake_return_code}
 
@@ -49,7 +49,7 @@ def test_execute_in_container_reuses_exec():
     fake_return_code = 0
     fake_output = "fake_output"
     fake_command = "fake_cmd"
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.inspect_container.return_value = {"ExecIDs": [fake_execid]}
     mock_docker_client.exec_start.return_value = fake_output
     mock_docker_client.exec_inspect.return_value = {
@@ -86,7 +86,7 @@ def test_execute_in_container_reuses_only_valid_exec():
         "ExitCode": fake_return_code,
         "ProcessConfig": {"entrypoint": "/bin/sh", "arguments": ["-c", fake_command]},
     }
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.inspect_container.return_value = {
         "ExecIDs": ["fake_other_exec", fake_execid, "fake_other_exec"]
     }

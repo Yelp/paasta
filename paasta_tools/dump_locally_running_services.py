@@ -32,7 +32,7 @@ from typing import Tuple
 
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_tools import get_puppet_services_running_here_for_nerve
+from paasta_tools.puppet_service_tools import get_puppet_services_running_here_for_nerve
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 

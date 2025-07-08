@@ -1,9 +1,11 @@
 import mock
 import pytest
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
+from paasta_tools.kubernetes.application.controller_wrappers import JobWrapper
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
@@ -267,7 +269,10 @@ def test_sync_horizontal_pod_autoscaler_do_not_create_hpa_bespoke(
 ):
     mock_client = mock.MagicMock()
     # Create
-    config_dict = {"max_instances": 3, "autoscaling": {"decision_policy": "bespoke"}}
+    config_dict = {
+        "max_instances": 3,
+        "autoscaling": {"metrics_providers": [{"decision_policy": "bespoke"}]},
+    }
     app = setup_app(config_dict, False)
 
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
@@ -310,4 +315,18 @@ def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
             namespace="faasta",
         ),
         pretty=True,
+    )
+
+
+def test_job_wrapper_deep_delete():
+    mock_client = mock.MagicMock()
+    mock_job_spec = mock.MagicMock()
+    mock_job_spec.metadata.name = "mock_job"
+    mock_job_spec.metadata.namespace = "mock_namespace"
+    job = JobWrapper(mock_job_spec)
+    job.deep_delete(mock_client)
+    mock_client.batches.delete_namespaced_job.assert_called_once_with(
+        "mock_job",
+        "mock_namespace",
+        body=V1DeleteOptions(propagation_policy="Foreground"),
     )

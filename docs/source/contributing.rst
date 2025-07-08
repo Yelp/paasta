@@ -22,14 +22,14 @@ You can run ``make itest`` to execute them.
 Example Cluster
 ^^^^^^^^^^^^^^^^^
 There is a docker compose configuration based on our itest containers that you
-can use to run the paasta code against a semi-realistic cluster whilst you are
+can use to run the PaaSTA code against a semi-realistic cluster whilst you are
 developing. More instructions `here <./installation/example_cluster.html>`_
 
 System Package Building / itests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA is distributed as a debian package. This package can be built and tested
-with ``make itest_xenial``. These tests make assertions about the
+with ``make itest_<os_codename>``. These tests make assertions about the
 packaging implementation.
 
 
@@ -71,12 +71,3 @@ it is a little tricky.
   * ``eval "$(.tox/py27/bin/register-python-argcomplete ./tox/py27/bin/paasta)"``
 
 * There is a simple integration test. See the itest/ folder.
-
-Upgrading Components
---------------------
-
-As things progress, there will come a time that you will have to upgrade
-PaaSTA components to new versions.
-
-* See `Upgrading Mesos <upgrading_mesos.html>`_ for how to upgrade Mesos safely.
-* See `Upgrading Marathon <upgrading_marathon.html>`_ for how to upgrade Marathon safely.

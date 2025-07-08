@@ -1703,7 +1703,7 @@ spec:
       - key: CriticalAddonsOnly
         operator: Exists
       - effect: NoSchedule
-        key: node-role.kubernetes.io/master
+        key: node-role.kubernetes.io/control-plane
         operator: Exists
       volumes:
       - name: lib-modules
@@ -1819,7 +1819,7 @@ function dind::up {
   else
     # FIXME: this may fail depending on k8s/kubeadm version
     # FIXME: check for taint & retry if it's there
-    "${kubectl}" --context "$ctx" taint nodes $(dind::master-name) node-role.kubernetes.io/master- || true
+    "${kubectl}" --context "$ctx" taint nodes $(dind::master-name) node-role.kubernetes.io/control-plane- || true
   fi
   case "${CNI_PLUGIN}" in
     bridge | ptp)
@@ -1852,7 +1852,7 @@ function dind::up {
       dind::retry "${kubectl}" --context "$ctx" apply -f ${kube_router_config}
       rm "${kube_router_config}"
       dind::retry "${kubectl}" --context "$ctx" -n kube-system delete ds kube-proxy
-      docker run --privileged --net=host k8s.gcr.io/kube-proxy-amd64:v1.10.2 kube-proxy --cleanup
+      docker run --privileged --net=host registry.k8s.io/kube-proxy-amd64:v1.10.2 kube-proxy --cleanup
       ;;
     *)
       echo "Unsupported CNI plugin '${CNI_PLUGIN}'" >&2

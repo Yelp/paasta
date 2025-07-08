@@ -65,12 +65,12 @@ def test_get_service_info():
         assert "Deployed to the following" in actual
         assert (
             "clusterA (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterA.yelp/")
+            % PaastaColors.cyan("http://fake_service.proxy.clusterA.paasta/")
             in actual
         )
         assert (
             "clusterB (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterB.yelp/")
+            % PaastaColors.cyan("http://fake_service.proxy.clusterB.paasta/")
             in actual
         )
         assert "Smartstack endpoint" in actual
@@ -78,8 +78,7 @@ def test_get_service_info():
         assert "tcp://bar:1234" in actual
         assert "Dashboard" in actual
         assert (
-            "%s (Sensu Alerts)"
-            % PaastaColors.cyan("https://uchiwa.yelpcorp.com/#/events?q=fake_service")
+            "%s (service load y/sl2)" % PaastaColors.cyan("http://y/fake_service_load")
             in actual
         )
         mock_get_team.assert_called_with(
@@ -135,12 +134,12 @@ def test_get_deployments_strings_default_case_with_smartstack():
         actual = info.get_deployments_strings("fake_service", "/fake/soa/dir")
         assert (
             " - clusterA (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterA.yelp/")
+            % PaastaColors.cyan("http://fake_service.proxy.clusterA.paasta/")
             in actual
         )
         assert (
             " - clusterB (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterB.yelp/")
+            % PaastaColors.cyan("http://fake_service.proxy.clusterB.paasta/")
             in actual
         )
 
@@ -156,14 +155,8 @@ def test_get_deployments_strings_protocol_tcp_case():
             {"mode": "tcp", "proxy_port": 8080}
         )
         actual = info.get_deployments_strings("unused", "/fake/soa/dir")
-        assert (
-            " - clusterA (%s)" % PaastaColors.cyan("tcp://paasta-clusterA.yelp:8080/")
-            in actual
-        )
-        assert (
-            " - clusterB (%s)" % PaastaColors.cyan("tcp://paasta-clusterB.yelp:8080/")
-            in actual
-        )
+        assert " - clusterA (N/A)" in actual
+        assert " - clusterB (N/A)" in actual
 
 
 def test_get_deployments_strings_non_listening_service():

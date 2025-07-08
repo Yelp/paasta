@@ -171,7 +171,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
         computed separately.
         """
         docker_volumes = self.get_volumes(
-            system_volumes=system_paasta_config.get_volumes()
+            system_volumes=system_paasta_config.get_volumes(),
         )
         task: TaskInfo = {
             "name": "",

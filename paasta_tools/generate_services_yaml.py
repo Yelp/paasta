@@ -14,7 +14,8 @@
 # limitations under the License.
 import argparse
 
-from paasta_tools.generate_services_file import write_yaml_file
+from paasta_tools.generate_services_file import generate_configuration
+from paasta_tools.utils import write_yaml_configuration_file
 
 
 def main(argv=None):
@@ -22,7 +23,7 @@ def main(argv=None):
     parser.add_argument("output_path")
     args = parser.parse_args(argv)
 
-    write_yaml_file(args.output_path)
+    write_yaml_configuration_file(args.output_path, generate_configuration())
 
 
 if __name__ == "__main__":

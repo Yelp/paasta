@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3.10
 import argparse
 import os
 import re
 
-import yaml
+from paasta_tools import yaml_tools as yaml
 
 
 def replace(s, values):

@@ -5,10 +5,10 @@ import tempfile
 
 import mock
 import pytest
-import yaml
 
 from paasta_tools import tron_tools
 from paasta_tools import utils
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
@@ -24,6 +24,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
             "volumes": [],
             "dockercfg_location": "/mock/dockercfg",
             "spark_k8s_role": "spark",
+            "enable_tron_tsc": True,
         }
     ),
     "/mock/system/configs",
@@ -39,6 +40,7 @@ MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
             "tron_k8s_cluster_overrides": {
                 "paasta-dev-test": "paasta-dev",
             },
+            "enable_tron_tsc": True,
         }
     ),
     "/mock/system/configs",
@@ -111,7 +113,9 @@ class TestTronActionConfig:
             "paasta_tools.utils.get_service_docker_registry",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
             env = action_config.get_env()
             assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
@@ -287,20 +291,10 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
 
-        mock_paasta_system_config = utils.SystemPaastaConfig(
-            config=utils.SystemPaastaConfigDict(
-                {
-                    "tron_k8s_cluster_overrides": {
-                        "paasta-dev-test": "paasta-dev",
-                    }
-                }
-            ),
-            directory="/mock/system/configs",
-        )
         with mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
-            return_value=mock_paasta_system_config,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
         ):
             action_config = job_config._get_action_config(
                 "normal", action_dict=action_dict
@@ -341,7 +335,11 @@ class TestTronJobConfig:
             cluster=expected_cluster,
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
     def test_get_action_config_load_deployments_false(
         self, mock_load_deployments, mock_load_system_paasta_config
@@ -362,9 +360,6 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, load_deployments=False, soa_dir=soa_dir
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
-        mock_load_system_paasta_config.return_value.get_tron_k8s_cluster_overrides.return_value = (
-            {}
-        )
 
         action_config = job_config._get_action_config("normal", action_dict)
 
@@ -530,7 +525,11 @@ class TestTronJobConfig:
         }
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_all_actions(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -552,7 +551,11 @@ class TestTronJobConfig:
         assert len(errors) == 3
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -572,7 +575,11 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_valid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -592,7 +599,11 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_invalid_action_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -616,7 +627,11 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_action_valid_deploy_group(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -637,8 +652,119 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
+    @mock.patch(
+        "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
+    )
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_validate_invalid_cpus_in_executor_spark_action(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_pipeline_deploy_groups,
+        mock_build_spark_config,
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "executor": "spark",
+                    "cpus": 1,
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch(
+        "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
+    )
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_validate_invalid_mem_in_executor_spark_action(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_pipeline_deploy_groups,
+        mock_build_spark_config,
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "executor": "spark",
+                    "mem": 4096,
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch(
+        "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
+    )
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_validate_valid_executor_spark_action(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_pipeline_deploy_groups,
+        mock_build_spark_config,
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "executor": "spark",
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 0
+
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -655,7 +781,11 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring_without_team(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -673,7 +803,11 @@ class TestTronJobConfig:
         assert job_config.get_monitoring()["team"] == "default_team"
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     def test_validate_monitoring_with_invalid_team(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -703,12 +837,15 @@ class TestTronJobConfig:
 
 
 class TestTronTools:
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
-    def test_load_tron_config(self, mock_system_paasta_config):
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_load_tron_config(self, mock_load_system_paasta_config):
         result = tron_tools.load_tron_config()
-        assert mock_system_paasta_config.return_value.get_tron_config.call_count == 1
         assert result == tron_tools.TronConfig(
-            mock_system_paasta_config.return_value.get_tron_config.return_value
+            mock_load_system_paasta_config().get_tron_config()
         )
 
     @mock.patch("paasta_tools.tron_tools.load_tron_config", autospec=True)
@@ -813,10 +950,17 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.load_system_paasta_config", autospec=True
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "kubernetes"
@@ -844,7 +988,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -871,12 +1020,15 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=True,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[
+                {"audience": "foo.bar.com", "container_path": "/var/foo/bar"}
+            ],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -891,6 +1043,18 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "idempotent": False,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
@@ -901,7 +1065,15 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
+            ],
+            "projected_sa_volumes": [
+                {"audience": "foo.bar.com", "container_path": "/var/foo/bar"},
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "node_selectors": {"yelp.com/pool": "special_pool"},
@@ -912,8 +1084,13 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "tron.yelp.com/idempotent-action": "false",
             },
-            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
+            },
             "cap_drop": CAPS_DROP,
             "cap_add": [],
             "secret_env": {},
@@ -927,7 +1104,37 @@ class TestTronTools:
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
 
-    def test_format_tron_action_dict_spark(self):
+    @mock.patch(
+        "paasta_tools.tron_tools.TronActionConfig.get_docker_registry", autospec=True
+    )
+    @mock.patch("paasta_tools.kubernetes_tools.kube_client", autospec=True)
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    @mock.patch("paasta_tools.tron_tools.get_k8s_url_for_cluster", autospec=True)
+    @mock.patch(
+        "service_configuration_lib.spark_config._get_k8s_docker_volumes_conf",
+        autospec=True,
+    )
+    @mock.patch(
+        "service_configuration_lib.spark_config.utils.load_spark_srv_conf",
+        autospec=True,
+    )
+    def test_format_tron_action_dict_spark(
+        self,
+        mock_load_spark_srv_conf,
+        mock_get_k8s_docker_volumes_conf,
+        mock_get_k8s_url_for_cluster,
+        mock_load_system_paasta_config,
+        mock_load_kube_config,
+        mock_kube_client,
+        mock_get_docker_registry,
+    ):
         action_dict = {
             "iam_role_provider": "aws",
             "iam_role": "arn:aws:iam::000000000000:role/some_role",
@@ -944,9 +1151,8 @@ class TestTronTools:
             "service": "my_service",
             "deploy_group": "prod",
             "executor": "spark",
-            "cpus": 2,
-            "mem": 1200,
             "disk": 42,
+            "idempotent": True,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
             "secret_volumes": [
@@ -958,6 +1164,11 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
@@ -970,111 +1181,57 @@ class TestTronTools:
             "desired_state": "start",
             "force_bounce": None,
         }
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            config_dict=TronActionConfigDict(action_dict),
-            branch_dict=utils.BranchDictV2(branch_dict),
-            cluster="test-cluster",
-        )
-
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.kube_client",
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools._spark_k8s_role",
-            autospec=True,
-            return_value="spark",
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.get_k8s_url_for_cluster",
-            autospec=True,
-            return_value="https://k8s.test-cluster.paasta:6443",
-        ), mock.patch(
-            "service_configuration_lib.spark_config._get_k8s_docker_volumes_conf",
-            autospec=True,
-            return_value={
-                "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/nail/tmp",
-                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/nail/tmp",
-                "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "false",
-                "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/etc/pki/spark",
-                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/etc/pki/spark",
-                "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "true",
-                "spark.kubernetes.executor.volumes.hostPath.2.mount.path": "/etc/passwd",
-                "spark.kubernetes.executor.volumes.hostPath.2.options.path": "/etc/passwd",
-                "spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly": "true",
-                "spark.kubernetes.executor.volumes.hostPath.3.mount.path": "/etc/group",
-                "spark.kubernetes.executor.volumes.hostPath.3.options.path": "/etc/group",
-                "spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly": "true",
-            },
-        ), mock.patch(
-            "service_configuration_lib.spark_config.utils.load_spark_srv_conf",
-            autospec=True,
-            return_value=(
-                {},
-                {
-                    "target_mem_cpu_ratio": 7,
-                    "resource_configs": {
-                        "recommended": {
-                            "cpu": 4,
-                            "mem": 28,
-                        },
-                        "medium": {
-                            "cpu": 8,
-                            "mem": 56,
-                        },
-                        "max": {
-                            "cpu": 12,
-                            "mem": 110,
-                        },
+        mock_get_k8s_docker_volumes_conf.return_value = {
+            "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/nail/bulkdata",
+            "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/nail/bulkdata",
+            "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+            "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/nail/tmp",
+            "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/nail/tmp",
+            "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+            "spark.kubernetes.executor.volumes.hostPath.2.mount.path": "/etc/pki/spark",
+            "spark.kubernetes.executor.volumes.hostPath.2.options.path": "/etc/pki/spark",
+            "spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly": "true",
+            "spark.kubernetes.executor.volumes.hostPath.3.mount.path": "/etc/passwd",
+            "spark.kubernetes.executor.volumes.hostPath.3.options.path": "/etc/passwd",
+            "spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly": "true",
+            "spark.kubernetes.executor.volumes.hostPath.4.mount.path": "/etc/group",
+            "spark.kubernetes.executor.volumes.hostPath.4.options.path": "/etc/group",
+            "spark.kubernetes.executor.volumes.hostPath.4.mount.readOnly": "true",
+        }
+        mock_load_spark_srv_conf.return_value = (
+            {},
+            {
+                "target_mem_cpu_ratio": 7,
+                "resource_configs": {
+                    "recommended": {
+                        "cpu": 4,
+                        "mem": 28,
                     },
-                    "cost_factor": {
-                        "test-cluster": {
-                            "test-pool": 100,
-                        },
-                        "spark-pnw-prod": {
-                            "batch": 0.041,
-                            "stable_batch": 0.142,
-                        },
+                    "medium": {
+                        "cpu": 8,
+                        "mem": 56,
                     },
-                    "adjust_executor_res_ratio_thresh": 99999,
-                    "default_resources_waiting_time_per_executor": 2,
-                    "default_clusterman_observed_scaling_time": 15,
-                    "high_cost_threshold_daily": 500,
-                    "preferred_spark_ui_port_start": 39091,
-                    "preferred_spark_ui_port_end": 39100,
-                    "defaults": {
-                        "spark.executor.cores": 4,
-                        "spark.executor.instances": 2,
-                        "spark.executor.memory": 28,
-                        "spark.task.cpus": 1,
-                        "spark.sql.shuffle.partitions": 128,
-                        "spark.dynamicAllocation.executorAllocationRatio": 0.8,
-                        "spark.dynamicAllocation.cachedExecutorIdleTimeout": "1500s",
-                        "spark.yelp.dra.minExecutorRatio": 0.25,
-                    },
-                    "mandatory_defaults": {
-                        "spark.kubernetes.allocation.batch.size": 512,
-                        "spark.kubernetes.decommission.script": "/opt/spark/kubernetes/dockerfiles/spark/decom.sh",
-                        "spark.logConf": "true",
+                    "max": {
+                        "cpu": 12,
+                        "mem": 110,
                     },
                 },
-                {
+                "cost_factor": {
+                    "test-cluster": {
+                        "test-pool": 100,
+                    },
+                    "spark-pnw-prod": {
+                        "batch": 0.041,
+                        "stable_batch": 0.142,
+                    },
+                },
+                "adjust_executor_res_ratio_thresh": 99999,
+                "default_resources_waiting_time_per_executor": 2,
+                "default_clusterman_observed_scaling_time": 15,
+                "high_cost_threshold_daily": 500,
+                "preferred_spark_ui_port_start": 39091,
+                "preferred_spark_ui_port_end": 39100,
+                "defaults": {
                     "spark.executor.cores": 4,
                     "spark.executor.instances": 2,
                     "spark.executor.memory": 28,
@@ -1084,32 +1241,70 @@ class TestTronTools:
                     "spark.dynamicAllocation.cachedExecutorIdleTimeout": "1500s",
                     "spark.yelp.dra.minExecutorRatio": 0.25,
                 },
-                {
+                "mandatory_defaults": {
                     "spark.kubernetes.allocation.batch.size": 512,
                     "spark.kubernetes.decommission.script": "/opt/spark/kubernetes/dockerfiles/spark/decom.sh",
                     "spark.logConf": "true",
                 },
-                {
-                    "test-cluster": {
-                        "test-pool": 100,
-                    },
-                    "spark-pnw-prod": {
-                        "batch": 0.041,
-                        "stable_batch": 0.142,
-                    },
+            },
+            {
+                "spark.executor.cores": 4,
+                "spark.executor.instances": 2,
+                "spark.executor.memory": 28,
+                "spark.task.cpus": 1,
+                "spark.sql.shuffle.partitions": 128,
+                "spark.dynamicAllocation.executorAllocationRatio": 0.8,
+                "spark.dynamicAllocation.cachedExecutorIdleTimeout": "1500s",
+                "spark.yelp.dra.minExecutorRatio": 0.25,
+            },
+            {
+                "spark.kubernetes.allocation.batch.size": 512,
+                "spark.kubernetes.decommission.script": "/opt/spark/kubernetes/dockerfiles/spark/decom.sh",
+                "spark.logConf": "true",
+            },
+            {
+                "test-cluster": {
+                    "test-pool": 100,
                 },
-            ),
+                "spark-pnw-prod": {
+                    "batch": 0.041,
+                    "stable_batch": 0.142,
+                },
+            },
+        )
+        mock_get_k8s_url_for_cluster.return_value = (
+            "https://k8s.test-cluster.paasta:6443"
+        )
+        mock_load_system_paasta_config.return_value = MOCK_SYSTEM_PAASTA_CONFIG
+        mock_get_docker_registry.return_value = "docker-registry.com:400"
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=TronActionConfigDict(action_dict),
+            branch_dict=utils.BranchDictV2(branch_dict),
+            cluster="test-cluster",
+        )
+
+        with mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._spark_k8s_role",
+            autospec=True,
+            return_value="spark",
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
         confs = result["command"].split(" ")
         spark_app_name = ""
-        spark_app_id = ""
         for s in confs:
             if s.startswith("spark.app.name"):
                 spark_app_name = s.split("=")[1]
-            if s.startswith("spark.app.id"):
-                spark_app_id = s.split("=")[1]
 
         expected = {
             "command": "timeout 12h spark-submit "
@@ -1118,7 +1313,6 @@ class TestTronTools:
             "--conf spark.executor.memory=1g "
             "--conf spark.executor.cores=2 "
             f"--conf spark.app.name={spark_app_name} "
-            f"--conf spark.app.id={spark_app_id} "
             "--conf spark.ui.port=39091 "
             "--conf spark.executor.instances=0 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
@@ -1131,7 +1325,7 @@ class TestTronTools:
             "--conf spark.executorEnv.PAASTA_INSTANCE_TYPE=spark "
             "--conf spark.executorEnv.SPARK_EXECUTOR_DIRS=/tmp "
             "--conf spark.kubernetes.pyspark.pythonVersion=3 "
-            "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
+            "--conf spark.kubernetes.container.image=docker-registry.com:400/$PAASTA_DOCKER_IMAGE "
             "--conf spark.kubernetes.namespace=paasta-spark "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_service=my_service "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_instance=my_job.do_something "
@@ -1139,30 +1333,33 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/service=my_service "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
+            "--conf spark.kubernetes.executor.annotation.paasta.yelp.com/service=my_service "
+            "--conf spark.kubernetes.executor.annotation.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/user=TRON "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=39091 "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/owner=core_ml "
-            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/tmp "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=false "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/etc/pki/spark "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/etc/pki/spark "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=true "
-            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/passwd "
-            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/bulkdata "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/bulkdata "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=false "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/pki/spark "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/pki/spark "
             "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
-            "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.path=/etc/group "
-            "--conf spark.kubernetes.executor.volumes.hostPath.3.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.3.options.path=/etc/passwd "
             "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.mount.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.mount.readOnly=true "
             "--conf spark.dynamicAllocation.enabled=true "
             "--conf spark.dynamicAllocation.shuffleTracking.enabled=true "
             "--conf spark.dynamicAllocation.executorAllocationRatio=0.8 "
             "--conf spark.dynamicAllocation.cachedExecutorIdleTimeout=1500s "
-            "--conf spark.dynamicAllocation.minExecutors=0 "
             "--conf spark.dynamicAllocation.maxExecutors=2 "
             "--conf spark.ui.prometheus.enabled=true "
             "--conf spark.metrics.conf.*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet "
@@ -1174,6 +1371,7 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.decommission.script=/opt/spark/kubernetes/dockerfiles/spark/decom.sh "
             "--conf spark.logConf=true "
+            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
             "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
@@ -1203,16 +1401,29 @@ class TestTronTools:
                 "PAASTA_CLUSTER": "test-cluster",
                 "PAASTA_DEPLOY_GROUP": "prod",
                 "PAASTA_DOCKER_IMAGE": "my_service:paasta-123abcde",
-                "PAASTA_RESOURCE_CPUS": "2",
-                "PAASTA_RESOURCE_MEM": "1200",
+                "PAASTA_RESOURCE_CPUS": "1",
+                "PAASTA_RESOURCE_MEM": "1126",
                 "PAASTA_RESOURCE_DISK": "42",
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
-                "STREAM_SUFFIX_LOGSPOUT": "spark",
+                "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
+                "AWS_DEFAULT_REGION": "us-west-2",
+                "AWS_SDK_UA_APP_ID": "my_service.my_job.do_something",
             },
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "stable",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "node_selectors": {"yelp.com/pool": "stable"},
             "cap_add": [],
             "cap_drop": [
@@ -1241,13 +1452,22 @@ class TestTronTools:
                 "paasta.yelp.com/prometheus_shard": "ml-compute",
                 "spark.yelp.com/user": "TRON",
                 "spark.yelp.com/driver_ui_port": "39091",
+                "tron.yelp.com/idempotent-action": "true",
             },
+            "idempotent": True,
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
                 "prometheus.io/port": "39091",
                 "prometheus.io/path": "/metrics/prometheus",
             },
             "extra_volumes": [
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
                 {
                     "container_path": "/etc/kubernetes/spark.conf",
@@ -1256,8 +1476,8 @@ class TestTronTools:
                 },
             ],
             "ports": [39091],
-            "cpus": 2,
-            "mem": 1200,
+            "cpus": 1,
+            "mem": 1126,
             "disk": 42,
             "docker_image": "docker-registry.com:400/my_service:paasta-123abcde",
         }
@@ -1269,7 +1489,6 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
-        assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
 
     def test_format_tron_action_dict_paasta_k8s_service_account(self):
         action_dict = {
@@ -1279,6 +1498,7 @@ class TestTronTools:
             "deploy_group": "prod",
             "pool": "default",
             "executor": "paasta",
+            "idempotent": True,
         }
         branch_dict = {
             "docker_image": "my_service:paasta-123abcde",
@@ -1301,12 +1521,13 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1319,6 +1540,7 @@ class TestTronTools:
             "disk": 1024,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
+            "idempotent": True,
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
                 "paasta.yelp.com/instance": "job_name.instance_name",
@@ -1326,12 +1548,26 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "tron.yelp.com/idempotent-action": "true",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "job_name.instance_name",
             },
             "node_selectors": {"yelp.com/pool": "default"},
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "default",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "secret_volumes": [],
@@ -1390,7 +1626,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1417,20 +1658,21 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools.create_or_find_service_account_name",
+            "paasta_tools.tron_tools.get_service_account_name",
             autospec=True,
             return_value="some--service--account",
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1444,6 +1686,7 @@ class TestTronTools:
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
+            "idempotent": False,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
             "labels": {
@@ -1453,9 +1696,12 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "tron.yelp.com/idempotent-action": "false",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": instance_name,
             },
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
@@ -1466,6 +1712,17 @@ class TestTronTools:
                 }
             ],
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_env": {
                 "SOME_SECRET": {
                     "secret_name": "tron-secret-my--service-secret--name",
@@ -1483,7 +1740,12 @@ class TestTronTools:
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1520,7 +1782,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
         }
         action_config = tron_tools.TronActionConfig(
@@ -1536,12 +1803,13 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result == {
@@ -1553,7 +1821,19 @@ class TestTronTools:
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
+            "idempotent": False,
             "env": mock.ANY,
+            "topology_spread_constraints": [
+                {
+                    "label_selector": {
+                        "app.kubernetes.io/managed-by": "tron",
+                        "paasta.yelp.com/pool": "special_pool",
+                    },
+                    "max_skew": 1,
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+            ],
             "secret_volumes": [
                 {
                     "secret_volume_name": "tron-secret-my--service-secret1",
@@ -1564,7 +1844,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "node_selectors": {"yelp.com/pool": "special_pool"},
@@ -1575,8 +1860,13 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "app.kubernetes.io/managed-by": "tron",
+                "tron.yelp.com/idempotent-action": "false",
             },
-            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+                "paasta.yelp.com/service": "my_service",
+                "paasta.yelp.com/instance": "my_job.do_something",
+            },
             "cap_drop": CAPS_DROP,
             "cap_add": [],
             "secret_env": {},
@@ -1623,7 +1913,11 @@ class TestTronTools:
             service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
     @mock.patch("paasta_tools.tron_tools.load_tron_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
@@ -1702,6 +1996,10 @@ fake_job:
             "paasta_tools.utils.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",
@@ -1718,7 +2016,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "211f7a9d1fdee382664ee0e25fe76e17"
+        assert hasher.hexdigest() == "5cf9985b6227ce18dc87376b687046f7"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
@@ -1752,6 +2050,10 @@ fake_job:
             "paasta_tools.utils.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",
@@ -1903,7 +2205,7 @@ fake_job:
         mock_glob.return_value = [
             "/home/service/tron-dev-cluster2.yaml",
             "/home/service/tron-prod.yaml",
-            "/home/service/marathon-other.yaml",
+            "/home/service/kubernetes-other.yaml",
         ]
         result = tron_tools.list_tron_clusters("foo")
         assert sorted(result) == ["dev-cluster2", "prod"]

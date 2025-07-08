@@ -1,0 +1,91 @@
+---
+# Kubernetes is the PaaSTA component that takes a command and keeps copies of it running.
+# You can see all the options for this file here:
+# http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml
+
+# In PaaSTA you can have different "instances" of the service that can run in different
+# modes. Out of Yelp convention, the "main" instance is the primary one and serves main
+# web traffic.
+main:
+  # In Prod, it is important to have enough capacity to serve our users. Having 3 copies
+  # of the service is a good start. Longer term the service might need more. Follow up
+  # and check out the autoscaling documentation:
+  # http://paasta.readthedocs.org/en/latest/autoscaling.html
+  # to learn how to have the "right" number of instances all the time.
+  instances: 3
+
+  deploy_group: everything
+
+  # cpus is a soft limit, and services can burst to use extra cpus on the servers
+  # if they are available. `paasta status` can give a snapshot of how much
+  # cpu a service is using or the signalfx graphs can give you a view of the cpu
+  # over time. Be honest about your cpu needs to keep the scheduler informed
+  # and neighbors happy.
+  cpus: .1
+  #
+  # Mem is hard limit and at Yelp we don't allow swap. The service will OOM and die
+  # if it goes over the limit. Luckily Kubernetes will restart the service ASAP if that
+  # happens. If it happens too much you will lose replication and get an alert. Again
+  # use the Signalfx graphs to keep an eye on it and give yourself headroom.
+  mem: 1000
+
+  # All the monitoring options in monitoring.yaml can be set on a per-instance basis too.
+  # You can even change the team responsible! Uncomment as necessary.
+  #monitoring:
+  #  page: true
+
+
+# A "canary" instance is useful to most people. The difference here is that it is in different
+# deploy_group that is deployed "earlier" in the jenkins pipeline. In real life you could make
+# the canary do whatever you want. It could have a special `cmd`, or run with different amounts
+# of ram/cpu, read a different config file, etc.
+canary:
+  instances: 1
+  deploy_group: canary
+  cpus: .1
+  mem: 1000
+  # This nerve_ns line configures the instance to "show up" in the "main" pool in SmartStack.
+  # This means that live traffic hitting the "main" pool will hit the canary. Most of the time
+  # this is what services want, but you should be aware of how this "works".
+  #
+  # For example, if you had 3 instances for main, and 1 instance for this canary, if you look
+  # at a HAProxy dashboard for Smartstack, you would see 4 backends!
+  nerve_ns: main
+
+  # All the monitoring options in monitoring.yaml can be set on a per-instance basis too.
+  # You can even change the team responsible! Uncomment as necessary.
+  #monitoring:
+  #  page: false
+  #  ticket: true
+  #  slack_channels: ['mychannel']
+
+
+# Some service authors want a *different* canary that is not in the main smartstack pool
+# that they can hit directly. You can totally do this, but you have to uncomment such
+# an instance below, and also add the new smartstack.yaml section to correspond with it.
+# non_traffic_receiving_canary:
+#  instances: 1
+#  deploy_group: prod.canary
+#  cpus: .1
+#  mem: 2000
+
+
+# Running "workers" in paasta is easy. There isn't really anything special about them except
+# they probably have a special `cmd`. Of course you could change the deploy group if you wanted
+# a canary worker. You can change instances, autoscale, etc.
+#worker:
+#  instances: 1
+#  deploy_group: prod.non_canary
+#  cpus: .1
+#  mem: 1000
+#  cmd: /code/virtualenv_run/bin/python /code/my_worker.py
+# # There are also more options for specifying command healthchecks
+# # if you need a special healthcheck command, but by default
+# # Mesos will watch the process (PID) and consider it healthy if
+# # it exists.
+
+
+# Worried about lots of duplication? You can use the YAML Anchor pattern to help with that:
+# https://en.wikipedia.org/wiki/YAML#Repeated_nodes
+# It is an advanced topic. If you do try it out, be sure to ask #paasta or add the paasta
+# review board group to the review.

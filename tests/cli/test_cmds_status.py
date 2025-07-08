@@ -26,28 +26,22 @@ from mock import Mock
 from mock import patch
 
 import paasta_tools.paastaapi.models as paastamodels
-from paasta_tools import marathon_tools
+from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
-from paasta_tools.cli.cmds.status import create_autoscaling_info_table
-from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
-from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
-from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_flink_job_name
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
-from paasta_tools.cli.cmds.status import marathon_app_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status
@@ -55,7 +49,6 @@ from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
-from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
@@ -348,6 +341,7 @@ def test_status_calls_sergeants(
     args.registration = None
     args.service_instance = None
     args.new = False
+    args.all_namespaces = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -363,6 +357,7 @@ def test_status_calls_sergeants(
         lock=mock.ANY,
         verbose=False,
         new=False,
+        all_namespaces=False,
     )
 
 
@@ -398,6 +393,7 @@ class StatusArgs:
         service_instance=None,
         new=False,
         old=False,
+        all_namespaces=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -410,6 +406,7 @@ class StatusArgs:
         self.service_instance = service_instance
         self.new = new
         self.old = old
+        self.all_namespaces = all_namespaces
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -898,6 +895,7 @@ def test_status_with_registration(
         verbose=False,
         service_instance=None,
         new=False,
+        all_namespaces=True,  # Bonus all_namespaces test
     )
     return_value = paasta_status(args)
 
@@ -916,34 +914,8 @@ def test_status_with_registration(
         lock=mock.ANY,
         verbose=args.verbose,
         new=False,
+        all_namespaces=True,
     )
-
-
-@pytest.fixture
-def mock_marathon_status(include_envoy=True):
-    kwargs = dict(
-        desired_state="start",
-        desired_app_id="abc.def",
-        app_id="fake_app_id",
-        app_count=1,
-        running_instance_count=2,
-        expected_instance_count=2,
-        deploy_status="Running",
-        bounce_method="crossover",
-        app_statuses=[],
-        mesos=paastamodels.MarathonMesosStatus(
-            running_task_count=2,
-            running_tasks=[],
-            non_running_tasks=[],
-        ),
-    )
-    if include_envoy:
-        kwargs["envoy"] = paastamodels.EnvoyStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
-    return paastamodels.InstanceStatusMarathon(**kwargs)
 
 
 @pytest.fixture
@@ -1671,14 +1643,14 @@ def mock_flink_status() -> Mapping[str, Any]:
 
 
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-def test_paasta_status_on_api_endpoint_marathon(
-    mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
+def test_paasta_status_on_api_endpoint_kubernetes_v2(
+    mock_get_paasta_oapi_client, system_paasta_config, mock_kubernetes_status_v2
 ):
     fake_status_obj = paastamodels.InstanceStatus(
         git_sha="fake_git_sha",
         instance="fake_instance",
         service="fake_service",
-        marathon=mock_marathon_status,
+        kubernetes_v2=mock_kubernetes_status_v2,
     )
 
     mock_api = mock_get_paasta_oapi_client.return_value
@@ -1741,32 +1713,6 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         )
 
         assert mock_format_kubernetes_replicaset_table.called
-
-
-class TestPrintMarathonStatus:
-    def test_error(self, mock_marathon_status):
-        mock_marathon_status.error_message = "Things went wrong"
-        output = []
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            marathon_status=mock_marathon_status,
-        )
-
-        assert return_value == 1
-        assert output == ["Things went wrong"]
-
-    def test_successful_return_value(self, mock_marathon_status):
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=[],
-            marathon_status=mock_marathon_status,
-        )
-        assert return_value == 0
 
 
 @pytest.fixture
@@ -1875,8 +1821,10 @@ class TestGetInstanceState:
         assert remove_ansi_escape_sequences(instance_state) == "Running"
 
     def test_bouncing(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is after current version
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha="config111",
             ready_replicas=0,
@@ -1887,9 +1835,29 @@ class TestGetInstanceState:
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111, config111"
 
-    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+    def test_bouncing_ordering(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
         new_version = paastamodels.KubernetesVersion(
-            create_timestamp=1.0,
+            # ensure creation is _before_ current version
+            create_timestamp=old_version.create_timestamp - 1000,
+            git_sha="bbb111",
+            config_sha="config111",
+            ready_replicas=0,
+        )
+        mock_kubernetes_status_v2.versions.append(new_version)
+
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        instance_state = remove_ansi_escape_sequences(instance_state)
+        assert instance_state != "Bouncing to bbb111, config111"
+        assert (
+            instance_state
+            == f"Bouncing to {old_version.git_sha[:8]}, {old_version.config_sha}"
+        )
+
+    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+        old_version = mock_kubernetes_status_v2.versions[0]
+        new_version = paastamodels.KubernetesVersion(
+            create_timestamp=old_version.create_timestamp + 1000,
             git_sha="bbb111",
             config_sha=mock_kubernetes_status_v2.versions[0].config_sha,
             ready_replicas=0,
@@ -2215,9 +2183,6 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
-    @patch(
-        "paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True
-    )
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2226,18 +2191,21 @@ class TestPrintKubernetesStatus:
     )
     @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_output(
         self,
+        mock_datetime,
         mock_bouncing_status,
         mock_desired_state,
         mock_kubernetes_app_deploy_status_human,
         mock_naturaltime,
         mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
+        specific_datetime = datetime.datetime(2019, 7, 12, 13, 31)
+        mock_datetime.fromtimestamp.return_value = specific_datetime
         mock_desired_state.return_value = "Started"
         mock_kubernetes_app_deploy_status_human.return_value = "Running"
         mock_naturaltime.return_value = "a month ago"
@@ -2298,13 +2266,13 @@ class TestPrintKubernetesStatus:
         expected_output += [
             f"      Pods:",
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
-            f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_3   fake_host3        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
+            f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
             f"        {PaastaColors.grey('  Disk quota exceeded')}",
             f"      ReplicaSets:",
             f"        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
-            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
+            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
         assert expected_output == output
@@ -2466,16 +2434,16 @@ class TestPrintKafkaStatus:
         expected_output = [
             f"    Kafka View Url: {status['kafka_view_url']}",
             f"    Zookeeper: {status['zookeeper']}",
-            f"    State: testing",
+            "    State: testing",
             f"    Ready: {str(status['cluster_ready']).lower()}",
             f"    Health: {PaastaColors.red('unhealthy')}",
             f"     Reason: {status['health']['message']}",
             f"     Offline Partitions: {status['health']['offline_partitions']}",
             f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
-            f"    Brokers:",
-            f"     Id  Phase    Started",
-            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
-            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+            "    Brokers:",
+            "     Id  Phase    Started",
+            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
+            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 
@@ -2483,16 +2451,25 @@ class TestPrintKafkaStatus:
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink(
         self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
+        # Fixtures
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_get_paasta_oapi_client.return_value = None
+
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2504,19 +2481,27 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+        assert output == [
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        ]
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_client(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_get_paasta_oapi_client.return_value = None
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2537,14 +2522,18 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_config(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
         output = []
@@ -2562,14 +2551,18 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_overview(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
@@ -2588,8 +2581,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_jobs(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2615,8 +2610,10 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_job_details(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
@@ -2648,12 +2645,15 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_successful_return_value(
         self,
+        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2661,6 +2661,7 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_load_flink_instance_config.return_value = flink_instance_config
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -2675,13 +2676,16 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
@@ -2690,6 +2694,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+        mock_load_flink_instance_config.return_value = flink_instance_config
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2702,7 +2707,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(metadata) + [
+        expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2716,14 +2721,21 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_jobmanager(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2742,9 +2754,30 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Flink Pool: flink",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -2757,14 +2790,21 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_taskmanagers(
         self,
+        mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+        flink_instance_config.config_dict["spot"] = "flink"
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
@@ -2772,6 +2812,7 @@ class TestPrintFlinkStatus:
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
         mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
@@ -2785,9 +2826,30 @@ class TestPrintFlinkStatus:
             flink=mock_flink_status,
             verbose=1,
         )
+
         status = mock_flink_status["status"]
         expected_output = [
             f"    Config SHA: 00000",
+            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            f"    Flink Pool: flink-spot",
+            f"    Owner: fake_owner",
+            f"    Flink Runbook: fake_runbook_url",
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -2797,24 +2859,31 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     def test_output_1_verbose(
         self,
-        mock_get_paasta_oapi_client,
-        mock_naturaltime,
         mock_load_system_paasta_config,
+        mock_naturaltime,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
         mock_flink_status,
         system_paasta_config,
+        flink_instance_config,
     ):
+        # Mock ecosystem lookup
+        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
         mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         print_flink_status(
             cluster="fake_cluster",
@@ -2830,7 +2899,22 @@ class TestPrintFlinkStatus:
         job_start_time = str(
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
-        expected_output = _get_base_status_verbose_1(metadata) + [
+        expected_output = _get_flink_base_status_verbose_1(metadata) + [
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Log Commands:",
+            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            f"{OUTPUT_HORIZONTAL_RULE}",
+            f"    Flink Monitoring:",
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
@@ -2881,7 +2965,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
     )
 
 
-def _get_base_status_verbose_0(metadata):
+def _get_flink_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
         f"    Flink version: {config_obj.flink_version}",
@@ -2889,9 +2973,14 @@ def _get_base_status_verbose_0(metadata):
     ]
 
 
-def _get_base_status_verbose_1(metadata):
+def _get_flink_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
+        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+        f"    Flink Pool: flink",
+        f"    Owner: fake_owner",
+        f"    Flink Runbook: fake_runbook_url",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
@@ -2908,135 +2997,6 @@ def _formatted_table_to_dict(formatted_table):
     return dict(zip(headers, fields))
 
 
-def test_create_autoscaling_info_table():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=0.6,
-        target_instances=3,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    assert output[0] == "Autoscaling Info:"
-
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-    assert table_headings_to_values == {
-        "Current instances": "2",
-        "Max instances": "5",
-        "Min instances": "1",
-        "Current utilization": "60.0%",
-        "Target instances": "3",
-    }
-
-
-def test_create_autoscaling_info_table_errors():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=None,
-        target_instances=None,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-
-    assert table_headings_to_values["Current utilization"] == "Exception"
-    assert table_headings_to_values["Target instances"] == "Exception"
-
-
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestMarathonAppStatusHuman:
-    @pytest.fixture
-    def mock_app_status(self):
-        return Struct(
-            tasks_running=5,
-            tasks_healthy=4,
-            tasks_staged=3,
-            tasks_total=12,
-            create_timestamp=1565731681,
-            deploy_status="Deploying",
-            dashboard_url="http://paasta.party",
-            backoff_seconds=2,
-            unused_offer_reason_counts=None,
-            tasks=[],
-        )
-
-    def test_marathon_app_status_human(self, mock_naturaltime, mock_app_status):
-        output = marathon_app_status_human("app_id", mock_app_status)
-        uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-
-        assert uncolored_output == [
-            f"Dashboard: {mock_app_status.dashboard_url}",
-            f"  5 running, 4 healthy, 3 staged out of 12",
-            f"  App created: 2019-08-13 21:28:01 ({mock_naturaltime.return_value})",
-            f"  Status: Deploying",
-        ]
-
-    def test_no_dashboard_url(self, mock_naturaltime, mock_app_status):
-        mock_app_status.dashboard_url = None
-        output = marathon_app_status_human("app_id", mock_app_status)
-        assert remove_ansi_escape_sequences(output[0]) == "App ID: app_id"
-
-    @patch("paasta_tools.cli.cmds.status.format_marathon_task_table", autospec=True)
-    def test_tasks_list(
-        self, mock_format_marathon_task_table, mock_naturaltime, mock_app_status
-    ):
-        mock_app_status.tasks = [Struct()]
-        mock_format_marathon_task_table.return_value = ["task table 1", "task table 2"]
-        output = marathon_app_status_human("app_id", mock_app_status)
-
-        expected_task_table_lines = ["  Tasks:", "    task table 1", "    task table 2"]
-        assert output[-3:] == expected_task_table_lines
-
-    def test_unused_offers(self, mock_naturaltime, mock_app_status):
-        mock_app_status.unused_offer_reason_counts = {"reason1": 5, "reason2": 3}
-        output = marathon_app_status_human("app_id", mock_app_status)
-        expected_lines = ["  Possibly stalled for:", "    reason1: 5", "    reason2: 3"]
-        assert output[-3:] == expected_lines
-
-
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestFormatMarathonTaskTable:
-    @pytest.fixture
-    def mock_marathon_task(self):
-        return paastamodels.MarathonTask(
-            id="abc123",
-            host="paasta.cloud",
-            port=4321,
-            deployed_timestamp=1565648600.0,
-            is_healthy=True,
-        )
-
-    def test_format_marathon_task_table(self, mock_naturaltime, mock_marathon_task):
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict == {
-            "Mesos Task ID": "abc123",
-            "Host deployed to": "paasta.cloud:4321",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
-            "Health": PaastaColors.green("Healthy"),
-        }
-
-    def test_no_host(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.host = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Host deployed to"] == "Unknown"
-
-    def test_unhealthy(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = False
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.red("Unhealthy")
-
-    def test_no_health(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.grey("N/A")
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestFormatKubernetesPodTable:
     @pytest.fixture
@@ -3063,33 +3023,41 @@ class TestFormatKubernetesPodTable:
             config_sha=None,
         )
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_pod_table(
         self,
+        mock_datetime,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict == {
             "Pod ID": "abc123",
             "Host deployed to": "paasta.cloud",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Deployed at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Health": PaastaColors.green("Healthy"),
         }
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_replicaset_table(
         self,
+        mock_datetime,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_replicaset,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
         replicaset_table_dict = _formatted_table_to_dict(output)
         assert replicaset_table_dict == {
             "ReplicaSet Name": "abc123",
             "Ready / Desired": PaastaColors.green("3/3"),
-            "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Created at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Service git SHA": "def456",
             "Config hash": "Unknown",
         }
@@ -3097,7 +3065,6 @@ class TestFormatKubernetesPodTable:
     def test_no_host(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.host = None
@@ -3110,7 +3077,6 @@ class TestFormatKubernetesPodTable:
     def test_unhealthy(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
         phase,
         ready,
@@ -3125,7 +3091,6 @@ class TestFormatKubernetesPodTable:
     def test_evicted(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.phase = "Failed"
@@ -3138,7 +3103,6 @@ class TestFormatKubernetesPodTable:
     def test_no_health(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.phase = None
@@ -3148,60 +3112,6 @@ class TestFormatKubernetesPodTable:
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
 
 
-@patch("paasta_tools.cli.cmds.status.create_mesos_running_tasks_table", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.status.create_mesos_non_running_tasks_table", autospec=True
-)
-@patch("paasta_tools.cli.cmds.status.marathon_mesos_status_summary", autospec=True)
-def test_marathon_mesos_status_human(
-    mock_marathon_mesos_status_summary,
-    mock_create_mesos_non_running_tasks_table,
-    mock_create_mesos_running_tasks_table,
-):
-    mock_create_mesos_running_tasks_table.return_value = [
-        "running task 1",
-        "running task 2",
-    ]
-    mock_create_mesos_non_running_tasks_table.return_value = ["non-running task 1"]
-
-    running_tasks = [
-        paastamodels.MarathonMesosRunningTask(),
-        paastamodels.MarathonMesosRunningTask(),
-    ]
-    non_running_tasks = [paastamodels.MarathonMesosNonrunningTask()]
-    mesos_status = paastamodels.MarathonMesosStatus(
-        running_task_count=2,
-        running_tasks=running_tasks,
-        non_running_tasks=non_running_tasks,
-    )
-    output = marathon_mesos_status_human(
-        mesos_status,
-        expected_instance_count=2,
-    )
-
-    assert output == [
-        mock_marathon_mesos_status_summary.return_value,
-        "  Running Tasks:",
-        "    running task 1",
-        "    running task 2",
-        PaastaColors.grey("  Non-running Tasks:"),
-        "    non-running task 1",
-    ]
-    mock_marathon_mesos_status_summary.assert_called_once_with(2, 2)
-    mock_create_mesos_running_tasks_table.assert_called_once_with(running_tasks)
-    mock_create_mesos_non_running_tasks_table.assert_called_once_with(non_running_tasks)
-
-
-def test_marathon_mesos_status_summary():
-    status_summary = marathon_mesos_status_summary(
-        mesos_task_count=3, expected_instance_count=2
-    )
-    expected_status = PaastaColors.green("Healthy")
-    expected_count = PaastaColors.green(f"(3/2)")
-    assert f"{expected_status} - {expected_count}" in status_summary
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestCreateMesosRunningTasksTable:
     @pytest.fixture
@@ -3217,114 +3127,6 @@ class TestCreateMesosRunningTasksTable:
             deployed_timestamp=1565567511.0,
             tail_lines=Struct(),
         )
-
-    def test_create_mesos_running_tasks_table(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_format_tail_lines_for_mesos_task.return_value = [
-            "tail line 1",
-            "tail line 2",
-        ]
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output[:2])
-        assert running_tasks_dict == {
-            "Mesos Task ID": mock_running_task.id,
-            "Host deployed to": mock_running_task.hostname,
-            "Ram": "1/2MB",
-            "CPU": "0.8%",
-            "Deployed at what localtime": f"2019-08-11T23:51 ({mock_naturaltime.return_value})",
-        }
-        assert output[2:] == ["tail line 1", "tail line 2"]
-        mock_format_tail_lines_for_mesos_task.assert_called_once_with(
-            mock_running_task.tail_lines, mock_running_task.id
-        )
-
-    def test_error_messages(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.mem_limit = paastamodels.FloatAndError(
-            error_message="Couldn't get memory"
-        )
-        mock_running_task.rss = paastamodels.IntegerAndError(value=1)
-        mock_running_task.cpu_shares = paastamodels.FloatAndError(
-            error_message="Couldn't get CPU"
-        )
-
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["Ram"] == "Couldn't get memory"
-        assert running_tasks_dict["CPU"] == "Couldn't get CPU"
-
-    def test_undefined_cpu(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.cpu_shares.value = 0
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["CPU"] == "Undef"
-
-    def test_high_cpu(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.cpu_shares.value = 0.1
-        mock_running_task.cpu_used_seconds.value = 28
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["CPU"] == PaastaColors.red("93.3%")
-
-    def test_tasks_are_none(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        assert len(create_mesos_running_tasks_table(None)) == 1  # just the header
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-def test_create_mesos_non_running_tasks_table(
-    mock_naturaltime, mock_format_tail_lines_for_mesos_task
-):
-    mock_format_tail_lines_for_mesos_task.return_value = ["tail line 1", "tail line 2"]
-    mock_non_running_task = Struct(
-        id="task_id",
-        hostname="paasta.restaurant",
-        deployed_timestamp=1564642800.0,
-        state="Not running",
-        tail_lines=Struct(),
-    )
-    output = create_mesos_non_running_tasks_table([mock_non_running_task])
-    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-    task_dict = _formatted_table_to_dict(uncolored_output)
-    assert task_dict == {
-        "Mesos Task ID": mock_non_running_task.id,
-        "Host deployed to": mock_non_running_task.hostname,
-        "Deployed at what localtime": f"2019-08-01T07:00 ({mock_naturaltime.return_value})",
-        "Status": mock_non_running_task.state,
-    }
-    assert uncolored_output[2:] == ["tail line 1", "tail line 2"]
-    mock_format_tail_lines_for_mesos_task.assert_called_once_with(
-        mock_non_running_task.tail_lines, mock_non_running_task.id
-    )
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
-def test_create_mesos_non_running_tasks_table_handles_none_deployed_timestamp(
-    mock_format_tail_lines_for_mesos_task,
-):
-    mock_non_running_task = Struct(
-        id="task_id",
-        hostname="paasta.restaurant",
-        deployed_timestamp=None,
-        state="Not running",
-        tail_lines=Struct(),
-    )
-    output = create_mesos_non_running_tasks_table([mock_non_running_task])
-    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-    task_dict = _formatted_table_to_dict(uncolored_output)
-    assert task_dict["Deployed at what localtime"] == "Unknown"
-
-
-def test_create_mesos_non_running_tasks_table_handles_nones():
-    assert len(create_mesos_non_running_tasks_table(None)) == 1  # just the header
 
 
 @patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)
@@ -3433,7 +3235,7 @@ class TestBuildSmartstackBackendsTable:
 
 
 def test_get_desired_state_human():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -3446,7 +3248,7 @@ def test_get_desired_state_human():
 
 
 def test_get_desired_state_human_started_with_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -3459,7 +3261,7 @@ def test_get_desired_state_human_started_with_instances():
 
 
 def test_get_desired_state_human_with_0_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",

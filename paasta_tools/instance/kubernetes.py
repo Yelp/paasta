@@ -30,11 +30,9 @@ from paasta_tools import envoy_tools
 from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
-from paasta_tools import vitesscluster_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
@@ -42,6 +40,9 @@ from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.long_running_service_tools import (
+    get_expected_instance_count_for_namespace,
+)
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
@@ -54,7 +55,6 @@ INSTANCE_TYPES_CR = {
     "flinkeks",
     "cassandracluster",
     "kafkacluster",
-    "vitesscluster",
 }
 INSTANCE_TYPES_K8S = {
     "cassandracluster",
@@ -69,8 +69,8 @@ INSTANCE_TYPE_CR_ID = dict(
     flinkeks=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
-    vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
+    nrtsearchserviceeks=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
 
@@ -294,7 +294,11 @@ async def get_backends_from_mesh_status(
 ) -> Set[str]:
     status = await mesh_status_task
     if status.get("locations"):
-        backends = {be["address"] for be in status["locations"][0].get("backends", [])}
+        backends = {
+            be["address"]
+            for location in status["locations"]
+            for be in location.get("backends", [])
+        }
     else:
         backends = set()
 
@@ -325,13 +329,11 @@ async def mesh_status(
         job_config
     )
 
-    expected_smartstack_count = (
-        marathon_tools.get_expected_instance_count_for_namespace(
-            service=service,
-            namespace=job_config.get_nerve_namespace(),
-            cluster=settings.cluster,
-            instance_type_class=KubernetesDeploymentConfig,
-        )
+    expected_smartstack_count = get_expected_instance_count_for_namespace(
+        service=service,
+        namespace=job_config.get_nerve_namespace(),
+        cluster=settings.cluster,
+        instance_type_class=KubernetesDeploymentConfig,
     )
     expected_count_per_location = int(
         expected_smartstack_count / len(node_hostname_by_location)
@@ -605,6 +607,7 @@ async def kubernetes_status_v2(
     include_envoy: bool,
     instance_type: str,
     settings: Any,
+    all_namespaces: bool = False,
 ) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
     config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
@@ -619,9 +622,12 @@ async def kubernetes_status_v2(
     if kube_client is None:
         return status
 
-    relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
-        service, instance, kube_client, job_config
-    )
+    if all_namespaces:
+        relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
+            service, instance, kube_client, job_config
+        )
+    else:
+        relevant_namespaces = {job_config.get_kubernetes_namespace()}
 
     tasks: List["asyncio.Future[Dict[str, Any]]"] = []
 
@@ -635,7 +641,7 @@ async def kubernetes_status_v2(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         )
-        tasks.append(autoscaling_task)
+        tasks.append(autoscaling_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         autoscaling_task = None
 
@@ -647,7 +653,7 @@ async def kubernetes_status_v2(
             namespaces=relevant_namespaces,
         )
     )
-    tasks.append(pods_task)
+    tasks.append(pods_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
 
     service_namespace_config = kubernetes_tools.load_service_namespace_config(
         service=service,
@@ -668,9 +674,9 @@ async def kubernetes_status_v2(
             )
         )
         backends_task = asyncio.create_task(
-            get_backends_from_mesh_status(mesh_status_task)
+            get_backends_from_mesh_status(mesh_status_task)  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
         )
-        tasks.extend([mesh_status_task, backends_task])
+        tasks.extend([mesh_status_task, backends_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         mesh_status_task = None
         backends_task = None
@@ -679,7 +685,7 @@ async def kubernetes_status_v2(
         pod_status_by_sha_and_readiness_task = asyncio.create_task(
             get_pod_status_tasks_by_sha_and_readiness(
                 pods_task,
-                backends_task,
+                backends_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
                 kube_client,
                 verbose,
             )
@@ -690,15 +696,15 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,
+                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
             )
         )
-        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])
+        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
     else:
         pod_status_by_replicaset_task = asyncio.create_task(
             get_pod_status_tasks_by_replicaset(
                 pods_task,
-                backends_task,
+                backends_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
                 kube_client,
                 verbose,
             )
@@ -709,10 +715,10 @@ async def kubernetes_status_v2(
                 service=service,
                 instance=instance,
                 namespaces=relevant_namespaces,
-                pod_status_by_replicaset_task=pod_status_by_replicaset_task,
+                pod_status_by_replicaset_task=pod_status_by_replicaset_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
             )
         )
-        tasks.extend([pod_status_by_replicaset_task, versions_task])
+        tasks.extend([pod_status_by_replicaset_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
 
     await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -1239,6 +1245,7 @@ def instance_status(
     use_new: bool,
     instance_type: str,
     settings: Any,
+    all_namespaces: bool,
 ) -> Mapping[str, Any]:
     status = {}
 
@@ -1266,6 +1273,7 @@ def instance_status(
                 verbose=verbose,
                 include_envoy=include_envoy,
                 settings=settings,
+                all_namespaces=all_namespaces,
             )
         else:
             status["kubernetes"] = kubernetes_status(

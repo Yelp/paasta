@@ -34,6 +34,8 @@ from docker import errors
 from mypy_extensions import TypedDict
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
+from paasta_tools.cli.authentication import get_service_auth_token
+from paasta_tools.cli.authentication import get_sso_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -528,6 +530,29 @@ def add_subparser(subparsers):
             "Same as the -v / --volume parameter to docker run: hostPath:containerPath[:mode]"
         ),
     )
+    service_auth_group = list_parser.add_mutually_exclusive_group()
+    service_auth_group.add_argument(
+        "--use-service-auth-token",
+        help=(
+            "Acquire service authentication token for the underlying instance,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+    service_auth_group.add_argument(
+        "--use-sso-service-auth-token",
+        help=(
+            "Acquire service authentication token from SSO provider,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_sso_service_auth_token",
+        required=False,
+        default=False,
+    )
 
     list_parser.set_defaults(command=paasta_local_run)
 
@@ -664,24 +689,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         # Kubernetes instances remove PAASTA_CLUSTER, so we need to re-add it ourselves
         "PAASTA_CLUSTER": instance_config.get_cluster(),
     }
-
-    if framework == "marathon":
-        fake_taskid = uuid.uuid4()
-        env["MESOS_SANDBOX"] = "/mnt/mesos/sandbox"
-        env["MESOS_CONTAINER_NAME"] = "localrun-%s" % fake_taskid
-        env["MESOS_TASK_ID"] = str(fake_taskid)
-        env["MARATHON_PORT"] = str(port0)
-        env["MARATHON_PORT0"] = str(port0)
-        env["MARATHON_PORTS"] = str(port0)
-        env["MARATHON_PORT_%d" % instance_config.get_container_port()] = str(port0)
-        env["MARATHON_APP_VERSION"] = "simulated_marathon_app_version"
-        env["MARATHON_APP_RESOURCE_CPUS"] = str(instance_config.get_cpus())
-        env["MARATHON_APP_DOCKER_IMAGE"] = docker_image
-        env["MARATHON_APP_RESOURCE_MEM"] = str(instance_config.get_mem())
-        env["MARATHON_APP_RESOURCE_DISK"] = str(instance_config.get_disk())
-        env["MARATHON_APP_LABELS"] = ""
-        env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
-        env["MARATHON_HOST"] = hostname
 
     return env
 
@@ -835,6 +842,8 @@ def run_docker_container(
     assume_role_arn="",
     use_okta_role=False,
     assume_role_aws_account: Optional[str] = None,
+    use_service_auth_token: bool = False,
+    use_sso_service_auth_token: bool = False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -924,6 +933,11 @@ def run_docker_container(
         )
         environment.update(aws_creds)
 
+    if use_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
+    elif use_sso_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
+
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
     )
@@ -963,12 +977,12 @@ def run_docker_container(
             # First try to write the file as a string
             # This is for text like config files
             with open(temp_secret_filename, "w") as f:
-                f.write(secret_content)
+                f.write(secret_content)  # type: ignore  # TODO: make this type-safe rather than rely on exceptions
         except TypeError:
             # If that fails, try to write it as bytes
             # This is for binary files like TLS keys
             with open(temp_secret_filename, "wb") as fb:
-                fb.write(secret_content)
+                fb.write(secret_content)  # type: ignore  # TODO: make this type-safe rather than rely on exceptions
 
         # Append this to the list of volumes passed to docker run
         volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
@@ -1211,7 +1225,9 @@ def configure_and_run_docker_container(
     if pull_image:
         docker_pull_image(docker_url)
 
-    for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
+    for volume in instance_config.get_volumes(
+        system_paasta_config.get_volumes(),
+    ):
         if os.path.exists(volume["hostPath"]):
             volumes.append(
                 "{}:{}:{}".format(
@@ -1269,6 +1285,8 @@ def configure_and_run_docker_container(
         assume_role_arn=args.assume_role_arn,
         assume_role_aws_account=assume_role_aws_account,
         use_okta_role=args.use_okta_role,
+        use_service_auth_token=args.use_service_auth_token,
+        use_sso_service_auth_token=args.use_sso_service_auth_token,
     )
 
 

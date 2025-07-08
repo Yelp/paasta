@@ -28,6 +28,7 @@ from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.utils import DEFAULT_SPARK_DRIVER_POOL
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
@@ -36,10 +37,8 @@ from paasta_tools.utils import SystemPaastaConfigDict
 def test_get_git_url_provided_by_serviceyaml():
     service = "giiiiiiiiiiit"
     expected = "git@some_random_host:foobar"
-    with (
-        mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        )
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration", autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {"git_url": expected}
         assert utils.get_git_url(service) == expected
@@ -51,10 +50,8 @@ def test_get_git_url_provided_by_serviceyaml():
 def test_get_git_url_default():
     service = "giiiiiiiiiiit"
     expected = "git@github.yelpcorp.com:services/%s" % service
-    with (
-        mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        )
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration", autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {}
         assert utils.get_git_url(service) == expected
@@ -431,6 +428,30 @@ def test_SystemPaastaConfig_get_tron_default_pool_override():
     assert actual == expected
 
 
+@pytest.mark.parametrize(
+    argnames=["paasta_config", "expected_pool"],
+    argvalues=[
+        pytest.param({}, DEFAULT_SPARK_DRIVER_POOL, id="default"),
+        pytest.param(
+            {"default_spark_driver_pool_override": "spam-stable"},
+            "spam-stable",
+            id="spam",
+        ),
+    ],
+)
+def test_SystemPaastaConfig_get_default_spark_driver_pool_override(
+    paasta_config, expected_pool
+):
+    fake_config = utils.SystemPaastaConfig(
+        paasta_config,
+        "/some/fake/dir",
+    )
+
+    actual_pool = fake_config.get_default_spark_driver_pool_override()
+
+    assert actual_pool == expected_pool
+
+
 def test_SystemPaastaConfig_get_hacheck_sidecar_volumes():
     fake_config = utils.SystemPaastaConfig(
         {
@@ -557,7 +578,7 @@ def test_SystemPaastaConfig_get_metrics_provider():
 def test_SystemPaastaConfig_get_cluster_fqdn_format_default():
     fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
     actual = fake_config.get_cluster_fqdn_format()
-    expected = "paasta-{cluster:s}.yelp"
+    expected = "{cluster:s}.paasta"
     assert actual == expected
 
 
@@ -570,31 +591,36 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     assert actual == expected
 
 
-def test_SystemPaastaConfig_get_deployd_number_workers():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_number_workers": 3}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_number_workers()
-    expected = 3
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_big_bounce_deadline():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_big_bounce_deadline": 305}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_big_bounce_deadline()
-    expected = 305
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_log_level():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_log_level": "DEBUG"}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_log_level()
-    expected = "DEBUG"
-    assert actual == expected
+def test_SystemPaastaConfig_get_ecosystem_for_cluster():
+    with mock.patch(
+        "paasta_tools.utils.convert_location_type", autospec=True
+    ) as mock_convert_location_type:
+        # Mock convert_location_type to return the expected ecosystem
+        mock_convert_location_type.return_value = ["devc"]
+        # Create a mock SystemPaastaConfig with predefined cluster data
+        fake_system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                {
+                    "kube_clusters": {
+                        "fake-cluster": {
+                            "server": "https://k8s.test.paasta:1234",
+                            "certificate-authority-data": "test-cert",
+                            "aws_region": "us-west-2",
+                            "aws_account": "test",
+                            "yelp_region": "uswest2-devc",
+                            "aws_account_id": "123456789012",
+                        }
+                    }
+                }
+            ),
+            "/fake/path",
+        )
+        # Test with existing cluster
+        ecosystem = fake_system_paasta_config.get_ecosystem_for_cluster("fake-cluster")
+        assert ecosystem == "devc"
+        mock_convert_location_type.assert_called_once_with(
+            location="uswest2-devc", source_type="region", desired_type="ecosystem"
+        )
 
 
 @pytest.mark.parametrize(
@@ -629,7 +655,7 @@ def test_SystemPaastaConfig_get_git_config(config, expected_git, expected_primar
     assert actual_repo["deploy_server"] == expected_primary
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def umask_022():
     old_umask = os.umask(0o022)
     yield
@@ -814,8 +840,8 @@ def test_remove_ansi_escape_sequences():
 def test_missing_cluster_configs_are_ignored():
     fake_soa_dir = "/nail/etc/services"
     fake_cluster_configs = [
-        "/nail/etc/services/service1/marathon-cluster1.yaml",
-        "/nail/etc/services/service2/marathon-cluster2.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster1.yaml",
+        "/nail/etc/services/service2/kubernetes-cluster2.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -839,8 +865,8 @@ def test_missing_cluster_configs_are_ignored():
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = "/nail/etc/services"
     fake_soa_cluster_configs = [
-        ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
+        ["cluster1", "/nail/etc/services/service1/kubernetes-cluster1.yaml"],
+        ["cluster2", "/nail/etc/services/service1/kubernetes-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -856,8 +882,8 @@ def test_list_clusters_with_service():
     fake_soa_dir = "/nail/etc/services"
     fake_service = "fake_service"
     fake_soa_cluster_configs = [
-        ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
+        ["cluster1", "/nail/etc/services/service1/kubernetes-cluster1.yaml"],
+        ["cluster2", "/nail/etc/services/service1/kubernetes-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -873,10 +899,10 @@ def test_list_clusters_ignores_bogus_clusters():
     fake_soa_dir = "/nail/etc/services"
     fake_service = "fake_service"
     fake_cluster_configs = [
-        "/nail/etc/services/service1/marathon-cluster1.yaml",
-        "/nail/etc/services/service1/marathon-PROD.yaml",
-        "/nail/etc/services/service1/marathon-cluster2.yaml",
-        "/nail/etc/services/service1/marathon-SHARED.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster1.yaml",
+        "/nail/etc/services/service1/kubernetes-PROD.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster2.yaml",
+        "/nail/etc/services/service1/kubernetes-SHARED.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -1178,21 +1204,21 @@ def test_load_service_instance_auto_configs_no_aliases(
     instance_type_enabled,
 ):
     mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
-        "marathon": instance_type_enabled,
+        "kubernetes": instance_type_enabled,
     }
     mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
         {}
     )
     result = utils.load_service_instance_auto_configs(
         service="fake_service",
-        instance_type="marathon",
+        instance_type="kubernetes",
         cluster="fake",
         soa_dir="fake_dir",
     )
     if instance_type_enabled:
         mock_read_extra_service_information.assert_called_with(
             "fake_service",
-            f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/kubernetes-fake",
             soa_dir="fake_dir",
             deepcopy=False,
         )
@@ -1371,7 +1397,7 @@ def test_run_returns_when_popen_fails():
     with mock.patch(
         "paasta_tools.utils.Popen", autospec=True, side_effect=fake_exception
     ):
-        return_code, output = utils._run("nonexistant command", timeout=10)
+        return_code, output = utils._run("nonexistent command", timeout=10)
     assert return_code == 1234
     assert "fake error" in output
 
@@ -1419,6 +1445,19 @@ class TestInstanceConfig:
                 branch_dict=None,
             ).get_monitoring()
             == fake_info
+        )
+
+    def test_get_monitoring_runbook(self):
+        fake_info: utils.MonitoringDict = {"runbook": "fake_runbook"}
+        assert (
+            utils.InstanceConfig(
+                service="",
+                cluster="",
+                instance="",
+                config_dict={"monitoring": fake_info},
+                branch_dict=None,
+            ).get_runbook()
+            == "fake_runbook"
         )
 
     def test_get_cpus_in_config(self):
@@ -1836,6 +1875,7 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "4096",
+            "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
         }
 
     def test_get_env_image_version(self):
@@ -1868,6 +1908,7 @@ class TestInstanceConfig:
                 "PAASTA_RESOURCE_CPUS": "1",
                 "PAASTA_RESOURCE_DISK": "1024",
                 "PAASTA_RESOURCE_MEM": "4096",
+                "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
             }
 
     def test_get_env_handles_non_strings_and_returns_strings(self):
@@ -1887,6 +1928,7 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "4096",
+            "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
         }
 
     def test_get_env_with_config(self):
@@ -1924,6 +1966,7 @@ class TestInstanceConfig:
                 "PAASTA_RESOURCE_DISK": "1024",
                 "PAASTA_RESOURCE_MEM": "4096",
                 "PAASTA_GIT_SHA": "somethin",
+                "AWS_SDK_UA_APP_ID": ".",
             }
 
     def test_get_args_default_no_cmd(self):
@@ -2058,7 +2101,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2076,7 +2120,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2098,7 +2143,8 @@ class TestInstanceConfig:
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
                     {"containerPath": "/c", "hostPath": "/c", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2122,7 +2168,8 @@ class TestInstanceConfig:
             config_dict={
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RW"}
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2142,7 +2189,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2164,7 +2212,8 @@ class TestInstanceConfig:
             config_dict={
                 "extra_volumes": [
                     {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"}
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2174,6 +2223,23 @@ class TestInstanceConfig:
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
             {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
+        ]
+
+    def test_get_volumes_with_bulkdata(self):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"uses_bulkdata": True},
+            branch_dict=None,
+        )
+        system_volumes: List[utils.DockerVolume] = []
+        assert fake_conf.get_volumes(system_volumes) == [
+            {
+                "hostPath": "/nail/bulkdata",
+                "containerPath": "/nail/bulkdata",
+                "mode": "RO",
+            },
         ]
 
     def test_get_docker_url_no_error(self):
@@ -2337,8 +2403,8 @@ def test_deploy_blacklist_to_constraints():
     assert actual == expected_constraints
 
 
-def test_validate_service_instance_valid_marathon():
-    mock_marathon_instances = [("service1", "main"), ("service1", "main2")]
+def test_validate_service_instance_valid_kubernetes():
+    mock_kubernetes_instances = [("service1", "main"), ("service1", "main2")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2346,18 +2412,18 @@ def test_validate_service_instance_valid_marathon():
     with mock.patch(
         "paasta_tools.utils.get_service_instance_list",
         autospec=True,
-        side_effect=[mock_marathon_instances],
+        side_effect=[mock_kubernetes_instances],
     ):
         assert (
             utils.validate_service_instance(
                 my_service, my_instance, fake_cluster, fake_soa_dir
             )
-            == "marathon"
+            == "paasta_native"  # the first entry in utils.INSTANCE_TYPES
         )
 
 
 def test_validate_service_instance_invalid():
-    mock_marathon_instances = [("service1", "main1"), ("service1", "main2")]
+    mock_kubernetes_instances = [("service1", "main1"), ("service1", "main2")]
     mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
@@ -2368,8 +2434,8 @@ def test_validate_service_instance_invalid():
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
+    mock_nrtsearcheks_instances = [("service1", "nrtsearcheks")]
     mock_monkrelaycluster_instances = [("service1", "monkrelays")]
-    mock_vitesscluster_instances = [("service1", "vitesscluster")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2378,7 +2444,7 @@ def test_validate_service_instance_invalid():
         "paasta_tools.utils.get_service_instance_list",
         autospec=True,
         side_effect=[
-            mock_marathon_instances,
+            mock_kubernetes_instances,
             mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
@@ -2389,8 +2455,8 @@ def test_validate_service_instance_invalid():
             mock_cassandracluster_instances,
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
+            mock_nrtsearcheks_instances,
             mock_monkrelaycluster_instances,
-            mock_vitesscluster_instances,
         ],
     ):
         with raises(
@@ -2915,3 +2981,34 @@ def test_validate_pool_error(cluster, pool, system_paasta_config):
         pool,
         system_paasta_config,
     )
+
+
+@pytest.mark.parametrize(
+    "docker_url,long,expected",
+    (
+        (
+            "registry.localhost:443/services-whatever:paasta-aaaabbbbccccdddd",
+            False,
+            "aaaabbbb",
+        ),
+        (
+            "registry.localhost:443/services-whatever:paasta-aaaabbbbccccdddd",
+            True,
+            "aaaabbbbccccdddd",
+        ),
+        (
+            "registry.localhost:443/services-whatever:foobar-aaaabbbbccccdddd",
+            False,
+            "aaaabbbb",
+        ),
+        (
+            "registry.localhost:443/services-whatever:foobar-aaaabbbbccccdddd",
+            True,
+            "aaaabbbbccccdddd",
+        ),
+        ("registry.localhost:443/toolbox-something-something:1.2.3", False, "1.2.3"),
+        ("registry.localhost:443/toolbox-something-something:1.2.3", True, "1.2.3"),
+    ),
+)
+def test_get_git_sha_from_dockerurl(docker_url, long, expected):
+    assert utils.get_git_sha_from_dockerurl(docker_url, long) == expected

@@ -107,7 +107,7 @@ If you didn't run ``setup_kubernetes_job`` to deploy ``compute-infra-test-servic
 
 1. Using ``launch.json`` file
 
-   1. From the ``Run and Debug`` tab in VS Code, press on ``paasta playground``. This will run all PaaSTA components.
+   1. From the ``Run and Debug`` tab in VS Code, press on ``PaaSTA playground``. This will run all PaaSTA components.
 
 
 2. Using make targets

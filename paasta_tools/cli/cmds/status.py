@@ -63,16 +63,16 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
+from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.marathon_tools import MarathonDeployStatus
-from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
+from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -107,7 +107,6 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     AdhocJobConfig,
-    MarathonServiceConfig,
     TronActionConfig,
 ]
 
@@ -120,7 +119,6 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     AdhocJobConfig,
-    MarathonServiceConfig,
 ]
 
 InstanceStatusWriter = Callable[
@@ -135,7 +133,10 @@ InstanceStatusWriter = Callable[
     int,
 ]
 
-EKS_DEPLOYMENT_CONFIGS = [EksDeploymentConfig, FlinkEksDeploymentConfig]
+EKS_DEPLOYMENT_CONFIGS = [
+    EksDeploymentConfig,
+    FlinkEksDeploymentConfig,
+]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
 
@@ -166,6 +167,14 @@ def add_subparser(
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
+    )
+    status_parser.add_argument(
+        "-A",
+        "--all-namespaces",
+        dest="all_namespaces",
+        action="store_true",
+        default=False,
+        help="Search all PaaSTA-managed namespaces for possible running versions (Will search only your currently-configured namespace by default). Useful if you are moving your instance(s) to a new namespace",
     )
 
     version = status_parser.add_mutually_exclusive_group()
@@ -289,6 +298,7 @@ def paasta_status_on_api_endpoint(
     verbose: int,
     new: bool = False,
     is_eks: bool = False,
+    all_namespaces: bool = False,
 ) -> int:
     output = [
         "",
@@ -307,6 +317,7 @@ def paasta_status_on_api_endpoint(
             instance=instance,
             verbose=verbose,
             new=new,
+            all_namespaces=all_namespaces,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
@@ -398,75 +409,6 @@ def print_adhoc_status(
     return 0
 
 
-def print_marathon_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    marathon_status,
-    verbose: int = 0,
-) -> int:
-    if marathon_status.error_message:
-        output.append(marathon_status.error_message)
-        return 1
-
-    bouncing_status = bouncing_status_human(
-        marathon_status.app_count, marathon_status.bounce_method
-    )
-    desired_state = desired_state_human(
-        marathon_status.desired_state, marathon_status.expected_instance_count
-    )
-    output.append(f"    Desired state:      {bouncing_status} and {desired_state}")
-
-    job_status_human = status_marathon_job_human(
-        service=service,
-        instance=instance,
-        deploy_status=marathon_status.deploy_status,
-        desired_app_id=marathon_status.desired_app_id,
-        app_count=marathon_status.app_count,
-        running_instances=marathon_status.running_instance_count,
-        normal_instance_count=marathon_status.expected_instance_count,
-    )
-    output.append(f"    {job_status_human}")
-
-    if marathon_status.autoscaling_info:
-        autoscaling_info_table = create_autoscaling_info_table(
-            marathon_status.autoscaling_info
-        )
-        output.extend([f"      {line}" for line in autoscaling_info_table])
-
-    for app_status in marathon_status.app_statuses:
-        app_status_human = marathon_app_status_human(
-            marathon_status.desired_app_id, app_status
-        )
-        output.extend([f"      {line}" for line in app_status_human])
-
-    mesos_status_human = marathon_mesos_status_human(
-        marathon_status.mesos, marathon_status.expected_instance_count
-    )
-    output.extend([f"    {line}" for line in mesos_status_human])
-
-    smartstack = marathon_status.smartstack
-    if smartstack is not None:
-        smartstack_status_human = get_smartstack_status_human(
-            smartstack.registration,
-            smartstack.expected_backends_per_location,
-            smartstack.locations,
-        )
-        output.extend([f"    {line}" for line in smartstack_status_human])
-
-    envoy = marathon_status.envoy
-    if envoy is not None:
-        envoy_status_human = get_envoy_status_human(
-            envoy.registration,
-            envoy.expected_backends_per_location,
-            envoy.locations,
-        )
-        output.extend([f"    {line}" for line in envoy_status_human])
-
-    return 0
-
-
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
@@ -499,230 +441,6 @@ def create_autoscaling_info_table(autoscaling_info):
     table = [f"  {line}" for line in format_table([headers, row])]
     output.extend(table)
     return output
-
-
-def marathon_mesos_status_human(
-    mesos_status,
-    expected_instance_count,
-):
-    if mesos_status.error_message:
-        return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
-
-    output = []
-    output.append(
-        marathon_mesos_status_summary(
-            mesos_status.get("running_task_count", 0), expected_instance_count
-        )
-    )
-
-    running_tasks = mesos_status.running_tasks
-    non_running_tasks = mesos_status.non_running_tasks
-    if running_tasks or non_running_tasks:
-        output.append("  Running Tasks:")
-        running_tasks_table = create_mesos_running_tasks_table(running_tasks)
-        output.extend([f"    {line}" for line in running_tasks_table])
-
-        output.append(PaastaColors.grey("  Non-running Tasks:"))
-        non_running_tasks_table = create_mesos_non_running_tasks_table(
-            non_running_tasks
-        )
-        output.extend([f"    {line}" for line in non_running_tasks_table])
-
-    return output
-
-
-def create_mesos_running_tasks_table(running_tasks):
-    rows = []
-    table_header = [
-        "Mesos Task ID",
-        "Host deployed to",
-        "Ram",
-        "CPU",
-        "Deployed at what localtime",
-    ]
-    rows.append(table_header)
-    for task in running_tasks or []:
-        mem_string = get_mesos_task_memory_string(task)
-        cpu_string = get_mesos_task_cpu_string(task)
-        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-        deployed_at_string = "{} ({})".format(
-            deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
-        )
-
-        rows.append(
-            [task.id, task.hostname, mem_string, cpu_string, deployed_at_string]
-        )
-        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
-
-    return format_table(rows)
-
-
-def get_mesos_task_memory_string(task):
-    if task.rss.value is None or task.mem_limit.value is None:
-        return task.rss.error_message or task.mem_limit.error_message
-    elif task.mem_limit.value == 0:
-        return "Undef"
-    else:
-        mem_percent = 100 * task.rss.value / task.mem_limit.value
-        mem_string = "%d/%dMB" % (
-            (task.rss.value / 1024 / 1024),
-            (task.mem_limit.value / 1024 / 1024),
-        )
-        if mem_percent > 90:
-            return PaastaColors.red(mem_string)
-        else:
-            return mem_string
-
-
-def get_mesos_task_cpu_string(task):
-    if task.cpu_shares.value is None or task.cpu_used_seconds.value is None:
-        return task.cpu_shares.error_message
-    else:
-        # The total time a task has been allocated is the total time the task has
-        # been running multiplied by the "shares" a task has.
-        # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-        allocated_seconds = task.cpu_shares.value * task.duration_seconds
-        if allocated_seconds == 0:
-            return "Undef"
-        else:
-            cpu_percent = round(
-                100 * (task.cpu_used_seconds.value / allocated_seconds), 1
-            )
-            cpu_string = "%s%%" % cpu_percent
-            if cpu_percent > 90:
-                return PaastaColors.red(cpu_string)
-            else:
-                return cpu_string
-
-
-def create_mesos_non_running_tasks_table(non_running_tasks):
-    rows = []
-    table_header = [
-        "Mesos Task ID",
-        "Host deployed to",
-        "Deployed at what localtime",
-        "Status",
-    ]
-    rows.append(table_header)
-
-    for task in non_running_tasks or []:
-        if task.deployed_timestamp is None:
-            deployed_at_string = "Unknown"
-        else:
-            deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-            deployed_at_string = "{} ({})".format(
-                deployed_at.strftime("%Y-%m-%dT%H:%M"),
-                humanize.naturaltime(deployed_at),
-            )
-
-        rows.append([task.id, task.hostname, deployed_at_string, task.state])
-        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
-
-    table = format_table(rows)
-    return [PaastaColors.grey(formatted_row) for formatted_row in table]
-
-
-def marathon_mesos_status_summary(mesos_task_count, expected_instance_count) -> str:
-    if mesos_task_count >= expected_instance_count:
-        status = PaastaColors.green("Healthy")
-        count_str = PaastaColors.green(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    elif mesos_task_count == 0:
-        status = PaastaColors.red("Critical")
-        count_str = PaastaColors.red(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    else:
-        status = PaastaColors.yellow("Warning")
-        count_str = PaastaColors.yellow(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    running_string = PaastaColors.bold("TASK_RUNNING")
-    return f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
-
-
-def marathon_app_status_human(app_id, app_status) -> List[str]:
-    output = []
-
-    if app_status.dashboard_url:
-        output.append(f"Dashboard: {PaastaColors.blue(app_status.dashboard_url)}")
-    else:
-        output.append(f"App ID: {PaastaColors.blue(app_id)}")
-
-    output.append(
-        "  "
-        + " ".join(
-            [
-                f"{app_status.tasks_running} running,",
-                f"{app_status.tasks_healthy} healthy,",
-                f"{app_status.tasks_staged} staged",
-                f"out of {app_status.tasks_total}",
-            ]
-        )
-    )
-
-    create_datetime = datetime.fromtimestamp(app_status.create_timestamp)
-    output.append(
-        "  App created: {} ({})".format(
-            create_datetime, humanize.naturaltime(create_datetime)
-        )
-    )
-
-    deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
-    deploy_status_human = marathon_app_deploy_status_human(
-        deploy_status, app_status.backoff_seconds
-    )
-    output.append(f"  Status: {deploy_status_human}")
-
-    if "tasks" in app_status and app_status.tasks:
-        output.append("  Tasks:")
-        tasks_table = format_marathon_task_table(app_status.tasks)
-        output.extend([f"    {line}" for line in tasks_table])
-
-    if app_status.unused_offer_reason_counts is not None:
-        output.append("  Possibly stalled for:")
-        output.extend(
-            [
-                f"    {reason}: {count}"
-                for reason, count in app_status.unused_offer_reason_counts.items()
-            ]
-        )
-
-    return output
-
-
-def format_marathon_task_table(tasks):
-    rows = [
-        ("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")
-    ]
-    for task in tasks:
-        local_deployed_datetime = datetime.fromtimestamp(task.deployed_timestamp)
-        if task.host is not None:
-            hostname = f"{task.host}:{task.port}"
-        else:
-            hostname = "Unknown"
-
-        if task.is_healthy is None:
-            health_check_status = PaastaColors.grey("N/A")
-        elif task.is_healthy:
-            health_check_status = PaastaColors.green("Healthy")
-        else:
-            health_check_status = PaastaColors.red("Unhealthy")
-
-        rows.append(
-            (
-                task.id,
-                hostname,
-                "{} ({})".format(
-                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
-                    humanize.naturaltime(local_deployed_datetime),
-                ),
-                health_check_status,
-            )
-        )
-
-    return format_table(rows)
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
@@ -999,8 +717,11 @@ def should_job_info_be_shown(cluster_state):
 
 
 def get_pod_uptime(pod_deployed_timestamp: str):
-    pod_creation_time = datetime.strptime(pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ")
-    pod_uptime = datetime.utcnow() - pod_creation_time
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    pod_creation_time = datetime.strptime(
+        pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc)
+    pod_uptime = datetime.now(timezone.utc) - pod_creation_time
     pod_uptime_total_seconds = pod_uptime.total_seconds()
     pod_uptime_days = divmod(pod_uptime_total_seconds, 86400)
     pod_uptime_hours = divmod(pod_uptime_days[1], 3600)
@@ -1010,7 +731,7 @@ def get_pod_uptime(pod_deployed_timestamp: str):
 
 
 def append_pod_status(pod_status, output: List[str]):
-    output.append(f"    Pods:")
+    output.append("    Pods:")
     rows: List[Union[str, Tuple[str, str, str, str]]] = [
         ("Pod Name", "Host", "Phase", "Uptime")
     ]
@@ -1045,12 +766,20 @@ def append_pod_status(pod_status, output: List[str]):
     output.extend([f"      {line}" for line in pods_table])
 
 
+OUTPUT_HORIZONTAL_RULE = (
+    "=================================================================="
+)
+
+
 def _print_flink_status_from_job_manager(
     service: str,
     instance: str,
+    cluster: str,
     output: List[str],
     flink: Mapping[str, Any],
     client: PaastaOApiClient,
+    system_paasta_config: "SystemPaastaConfig",
+    flink_instance_config: FlinkDeploymentConfig,
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -1058,6 +787,7 @@ def _print_flink_status_from_job_manager(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    # Print Flink Config SHA
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
@@ -1067,9 +797,32 @@ def _print_flink_status_from_job_manager(
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
         config_sha = config_sha[6:]
-
     output.append(f"    Config SHA: {config_sha}")
 
+    if verbose:
+        # Print Flink repo links
+        output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+        output.append(
+            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+        )
+
+        # Print Flink Pool information
+        flink_pool = flink_instance_config.get_pool()
+        output.append(f"    Flink Pool: {flink_pool}")
+
+        # Print ownership information
+        flink_monitoring_team = flink_instance_config.get_team() or get_team(
+            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+        )
+        output.append(f"    Owner: {flink_monitoring_team}")
+
+        # Print rb information
+        flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
+            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
+        )
+        output.append(f"    Flink Runbook: {flink_rb_for_instance}")
+
+    # Print Flink Version
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
@@ -1087,17 +840,67 @@ def _print_flink_status_from_job_manager(
         else:
             output.append(f"    Flink version: {flink_config.flink_version}")
 
+        # Print Flink Dashboard URL
         # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
         dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
         output.append(f"    URL: {dashboard_url}/")
 
+    if verbose:
+        # Print Flink config link resources
+        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+        output.append(
+            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+        )
+        output.append(
+            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+        )
+
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+        # Print Flink Log Commands
+        output.append(f"    Flink Log Commands:")
+        output.append(
+            f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
+        )
+        output.append(
+            f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER"
+        )
+        output.append(
+            f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER"
+        )
+        output.append(
+            f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
+        )
+
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+        # Print Flink Metrics Links
+        output.append(f"    Flink Monitoring:")
+        output.append(
+            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+        )
+        output.append(
+            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+        )
+        output.append(
+            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+        )
+
+        # Print Flink Costs Link
+        output.append(
+            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
+        )
+
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+    # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
 
+    # Print Flink Cluster Pod Info
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
-
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -1124,7 +927,7 @@ def _print_flink_status_from_job_manager(
         # So that paasta status -v and kubectl get pods show the same consistent result.
         if verbose and len(status["pod_status"]) > 0:
             append_pod_status(status["pod_status"], output)
-        output.append(f"    No other information available in non-running state")
+        output.append("    No other information available in non-running state")
         return 0
 
     if status["state"] == "running":
@@ -1134,7 +937,7 @@ def _print_flink_status_from_job_manager(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
 
@@ -1159,7 +962,7 @@ def _print_flink_status_from_job_manager(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
 
@@ -1170,7 +973,7 @@ def _print_flink_status_from_job_manager(
     try:
         jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
     except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))
         return 1
 
@@ -1186,7 +989,7 @@ def _print_flink_status_from_job_manager(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
-    output.append(f"    Jobs:")
+    output.append("    Jobs:")
     if verbose > 1:
         output.append(
             f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
@@ -1269,8 +1072,22 @@ def print_flink_status(
         )
         return 1
 
+    flink_instance_config = load_flink_instance_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+    )
+
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service,
+        instance,
+        cluster,
+        output,
+        flink,
+        client,
+        system_paasta_config,
+        flink_instance_config,
+        verbose,
     )
 
 
@@ -1295,9 +1112,21 @@ def print_flinkeks_status(
             )
         )
         return 1
-
+    flink_eks_instance_config = load_flinkeks_instance_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+    )
     return _print_flink_status_from_job_manager(
-        service, instance, output, flink, client, verbose
+        service,
+        instance,
+        cluster,
+        output,
+        flink,
+        client,
+        system_paasta_config,
+        flink_eks_instance_config,
+        verbose,
     )
 
 
@@ -1377,7 +1206,9 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
             else:
                 return PaastaColors.green("Running")
         else:
-            versions = sorted(status.versions, key=lambda x: x.create_timestamp)
+            versions = sorted(
+                status.versions, key=lambda x: x.create_timestamp, reverse=True
+            )
             git_shas = {r.git_sha for r in versions}
             config_shas = {r.config_sha for r in versions}
             bouncing_to = []
@@ -1593,10 +1424,10 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         #   This logic likely needs refining
         main_container = get_main_container(pod)
         if main_container:
-            # K8s API is returning timestamps in YST, so we use now() instead of utcnow()
+            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
             warming_up = (
                 pod.create_timestamp + main_container.healthcheck_grace_period
-                > datetime.now().timestamp()
+                > datetime.now(timezone.utc).timestamp()
             )
             if pod.mesh_ready is False:
                 if main_container.state != "running":
@@ -1698,14 +1529,17 @@ def create_replica_table(
                 )
             if state == ReplicaState.WARMING_UP:
                 if verbose > 0:
-                    warmup_duration = datetime.now().timestamp() - pod.create_timestamp
+                    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+                    warmup_duration = (
+                        datetime.now(timezone.utc).timestamp() - pod.create_timestamp
+                    )
                     humanized_duration = humanize.naturaldelta(
                         timedelta(seconds=warmup_duration)
                     )
                     grace_period_remaining = (
                         pod.create_timestamp
                         + main_container.healthcheck_grace_period
-                        - datetime.now().timestamp()
+                        - datetime.now(timezone.utc).timestamp()
                     )
                     humanized_remaining = humanize.naturaldelta(
                         timedelta(seconds=grace_period_remaining)
@@ -2070,6 +1904,7 @@ def node_property_to_str(prop: Dict[str, Any], verbose: int) -> str:
         parsed_time = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
             tzinfo=timezone.utc
         )
+        # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
         now = datetime.now(timezone.utc)
         return (
             humanize.naturaldelta(
@@ -2105,7 +1940,7 @@ def print_kafka_status(
     desired_state = annotations.get(paasta_prefixed("desired_state"))
     if desired_state is None:
         raise ValueError(
-            f"expected desired state in kafka annotation, but received none"
+            "expected desired state in kafka annotation, but received none"
         )
     output.append(f"    State: {desired_state}")
 
@@ -2131,7 +1966,7 @@ def print_kafka_status(
             )
 
     brokers = status["brokers"]
-    output.append(f"    Brokers:")
+    output.append("    Brokers:")
 
     if verbose:
         headers = ["Id", "Phase", "IP", "Pod Name", "Started"]
@@ -2144,10 +1979,11 @@ def print_kafka_status(
             PaastaColors.green if broker["phase"] == "Running" else PaastaColors.red
         )
 
+        # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
         start_time = datetime.strptime(
             broker["deployed_timestamp"], "%Y-%m-%dT%H:%M:%SZ"
-        )
-        delta = datetime.utcnow() - start_time
+        ).replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - start_time
         formatted_start_time = f"{str(start_time)} ({humanize.naturaltime(delta)})"
 
         if verbose:
@@ -2186,6 +2022,7 @@ def report_status_for_cluster(
     lock: Lock,
     verbose: int = 0,
     new: bool = False,
+    all_namespaces: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -2239,6 +2076,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
+                all_namespaces=all_namespaces,
                 is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
@@ -2462,6 +2300,7 @@ def paasta_status(args) -> int:
                             lock=lock,
                             verbose=args.verbose,
                             new=new,
+                            all_namespaces=args.all_namespaces,
                         ),
                     )
                 )
@@ -2545,69 +2384,6 @@ def _backend_report(
     return f"{status} - in {system_name} with {count} total backends {up_string} in this namespace."
 
 
-def marathon_app_deploy_status_human(status, backoff_seconds=None):
-    status_string = MarathonDeployStatus.tostring(status)
-
-    if status == MarathonDeployStatus.Waiting:
-        deploy_status = (
-            "%s (new tasks waiting for capacity to become available)"
-            % PaastaColors.red(status_string)
-        )
-    elif status == MarathonDeployStatus.Delayed:
-        deploy_status = (
-            "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-                PaastaColors.red(status_string), backoff_seconds
-            )
-        )
-    elif status == MarathonDeployStatus.Deploying:
-        deploy_status = PaastaColors.yellow(status_string)
-    elif status == MarathonDeployStatus.Stopped:
-        deploy_status = PaastaColors.grey(status_string)
-    elif status == MarathonDeployStatus.Running:
-        deploy_status = PaastaColors.bold(status_string)
-    else:
-        deploy_status = status_string
-
-    return deploy_status
-
-
-def status_marathon_job_human(
-    service: str,
-    instance: str,
-    deploy_status: str,
-    desired_app_id: str,
-    app_count: int,
-    running_instances: int,
-    normal_instance_count: int,
-) -> str:
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-
-    if app_count >= 0:
-        if running_instances >= normal_instance_count:
-            status = PaastaColors.green("Healthy")
-            instance_count = PaastaColors.green(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        elif running_instances == 0:
-            status = PaastaColors.yellow("Critical")
-            instance_count = PaastaColors.red(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        else:
-            status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.yellow(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        return "Marathon:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status
-        )
-    else:
-        status = PaastaColors.yellow("Warning")
-        return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
-            status, name, desired_app_id
-        )
-
-
 def _use_new_paasta_status(args, system_paasta_config) -> bool:
     if args.new:
         return True
@@ -2625,7 +2401,6 @@ def _use_new_paasta_status(args, system_paasta_config) -> bool:
 # Add other custom status writers here
 # See `print_tron_status` for reference
 INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
-    marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
     kubernetes_v2=print_kubernetes_status_v2,
     eks=print_kubernetes_status,

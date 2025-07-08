@@ -373,3 +373,101 @@ def test_host_passes_whitelist():
         fake_slave_attributes, None
     )
     assert slave_passes
+
+
+def test_get_all_namespaces_for_service():
+    name = "vvvvvv"
+    soa_dir = "^_^"
+    t1_dict = {"hollo": "werld", "smark": "stact"}
+    t2_dict = {"vataman": "witir", "sin": "chaps"}
+    fake_smartstack = {"smartstack": {"t1": t1_dict, "t2": t2_dict}}
+    expected = [("vvvvvv.t2", t2_dict), ("vvvvvv.t1", t1_dict)]
+    expected_short = [("t2", t2_dict), ("t1", t1_dict)]
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration",
+        autospec=True,
+        return_value=fake_smartstack,
+    ) as read_service_configuration_patch:
+        actual = long_running_service_tools.get_all_namespaces_for_service(
+            name, soa_dir
+        )
+        read_service_configuration_patch.assert_any_call(name, soa_dir)
+        assert sorted(expected) == sorted(actual)
+
+        actual_short = long_running_service_tools.get_all_namespaces_for_service(
+            name, soa_dir, False
+        )
+        read_service_configuration_patch.assert_any_call(name, soa_dir)
+        assert sorted(expected_short) == sorted(actual_short)
+
+
+def test_get_all_namespaces():
+    soa_dir = "carbon"
+    namespaces = [
+        [("aluminum", {"hydrogen": 1}), ("potassium", {"helium": 2})],
+        [("uranium", {"lithium": 3}), ("gold", {"boron": 5})],
+    ]
+    expected = [
+        ("uranium", {"lithium": 3}),
+        ("gold", {"boron": 5}),
+        ("aluminum", {"hydrogen": 1}),
+        ("potassium", {"helium": 2}),
+    ]
+    with mock.patch(
+        "os.path.abspath", autospec=True, return_value="oxygen"
+    ) as abspath_patch, mock.patch(
+        "os.listdir", autospec=True, return_value=["rid1", "rid2"]
+    ) as listdir_patch, mock.patch(
+        "paasta_tools.long_running_service_tools.get_all_namespaces_for_service",
+        autospec=True,
+        side_effect=lambda a, b: namespaces.pop(),
+    ) as get_namespaces_patch:
+        actual = long_running_service_tools.get_all_namespaces(soa_dir)
+        assert expected == actual
+        abspath_patch.assert_called_once_with(soa_dir)
+        listdir_patch.assert_called_once_with("oxygen")
+        get_namespaces_patch.assert_any_call("rid1", soa_dir)
+        get_namespaces_patch.assert_any_call("rid2", soa_dir)
+        assert get_namespaces_patch.call_count == 2
+
+
+def test_get_expected_instance_count_for_namespace():
+    service = "red"
+    namespace = "rojo"
+    soa_dir = "que_esta"
+    fake_job_configs = [
+        long_running_service_tools.LongRunningServiceConfig(
+            service=service,
+            cluster="fake_cluster",
+            instance="blue",
+            config_dict={"nerve_ns": "rojo", "instances": 11},
+            branch_dict=None,
+        ),
+        long_running_service_tools.LongRunningServiceConfig(
+            service=service,
+            cluster="fake_cluster",
+            instance="green",
+            config_dict={"nerve_ns": "amarillo"},
+            branch_dict=None,
+        ),
+    ]
+
+    with mock.patch(
+        "paasta_tools.long_running_service_tools.PaastaServiceConfigLoader",
+        autospec=True,
+        return_value=mock.Mock(
+            instance_configs=mock.Mock(return_value=fake_job_configs)
+        ),
+    ) as fake_pscl:
+        actual = long_running_service_tools.get_expected_instance_count_for_namespace(
+            service,
+            namespace,
+            cluster="fake_cluster",
+            soa_dir=soa_dir,
+            instance_type_class=long_running_service_tools.LongRunningServiceConfig,
+        )
+        assert actual == 11
+        fake_pscl.return_value.instance_configs.assert_called_once_with(
+            cluster="fake_cluster",
+            instance_type_class=long_running_service_tools.LongRunningServiceConfig,
+        )

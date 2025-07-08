@@ -4,17 +4,21 @@ from abc import abstractmethod
 from typing import Optional
 from typing import Union
 
-from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
+from kubernetes.client import V1Job
+from kubernetes.client import V1PodDisruptionBudget
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import ensure_service_account
+from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -120,6 +124,26 @@ class Application(ABC):
         """
         self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
 
+    def update_dependency_api_objects(self, kube_client: KubeClient) -> None:
+        """
+        Update related Kubernetes API objects that should be updated before the main object,
+        such as service accounts.
+        :param kube_client:
+        """
+        self.ensure_service_account(kube_client)
+
+    def ensure_service_account(self, kube_client: KubeClient) -> None:
+        """
+        Ensure that the service account for this application exists
+        :param kube_client:
+        """
+        if self.soa_config.get_iam_role():
+            ensure_service_account(
+                iam_role=self.soa_config.get_iam_role(),
+                namespace=self.soa_config.get_namespace(),
+                kube_client=kube_client,
+            )
+
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
             kube_client.policy.delete_namespaced_pod_disruption_budget(
@@ -147,7 +171,7 @@ class Application(ABC):
 
     def ensure_pod_disruption_budget(
         self, kube_client: KubeClient, namespace: str
-    ) -> V1beta1PodDisruptionBudget:
+    ) -> V1PodDisruptionBudget:
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (
@@ -196,6 +220,15 @@ class Application(ABC):
 
 
 class DeploymentWrapper(Application):
+    def __init__(
+        self,
+        item: Union[V1Deployment, V1StatefulSet],
+        logging=logging.getLogger(__name__),
+        hpa_override: Optional[HpaOverride] = None,
+    ) -> None:
+        super().__init__(item, logging)
+        self.hpa_override = hpa_override
+
     def deep_delete(
         self, kube_client: KubeClient, propagation_policy="Foreground"
     ) -> None:
@@ -267,6 +300,12 @@ class DeploymentWrapper(Application):
             cluster=self.soa_config.cluster,
             kube_client=kube_client,
             namespace=self.item.metadata.namespace,
+            min_instances_override=(
+                self.hpa_override.get("min_instances") if self.hpa_override else None
+            ),
+            max_instances_override=(
+                self.hpa_override.get("max_instances") if self.hpa_override else None
+            ),
         )
 
         hpa_exists = self.exists_hpa(kube_client)
@@ -390,14 +429,64 @@ class StatefulSetWrapper(Application):
         )
 
 
+class JobWrapper(Application):
+    def __init__(
+        self,
+        item: V1Job,
+        logging=logging.getLogger(__name__),
+    ):
+        item.spec.replicas = None  # avoid causing errors in parent class
+        super().__init__(item, logging)
+
+    def deep_delete(self, kube_client: KubeClient) -> None:
+        """Remove resources related to the job"""
+        delete_options = V1DeleteOptions(propagation_policy="Foreground")
+        try:
+            kube_client.batches.delete_namespaced_job(
+                self.item.metadata.name,
+                self.item.metadata.namespace,
+                body=delete_options,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                # Job does not exist, nothing to delete but
+                # we can consider this a success.
+                self.logging.debug(
+                    "not deleting nonexistent job/{} from namespace/{}".format(
+                        self.item.metadata.name,
+                        self.item.metadata.namespace,
+                    )
+                )
+            else:
+                raise
+        else:
+            self.logging.info(
+                "deleted job/{} from namespace/{}".format(
+                    self.item.metadata.name,
+                    self.item.metadata.namespace,
+                )
+            )
+
+    def create(self, kube_client: KubeClient):
+        """Create and start Kubernetes Job"""
+        create_job(
+            kube_client=kube_client,
+            formatted_job=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+
+
 def get_application_wrapper(
-    formatted_application: Union[V1Deployment, V1StatefulSet]
+    formatted_application: Union[V1Deployment, V1StatefulSet, V1Job],
+    hpa_override: Optional[HpaOverride] = None,
 ) -> Application:
     app: Application
     if isinstance(formatted_application, V1Deployment):
-        app = DeploymentWrapper(formatted_application)
+        app = DeploymentWrapper(formatted_application, hpa_override=hpa_override)
     elif isinstance(formatted_application, V1StatefulSet):
         app = StatefulSetWrapper(formatted_application)
+    elif isinstance(formatted_application, V1Job):
+        app = JobWrapper(formatted_application)
     else:
         raise Exception("Unknown kubernetes object to update")
 

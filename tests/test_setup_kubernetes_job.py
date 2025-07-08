@@ -1,4 +1,5 @@
 from typing import List
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -10,6 +11,7 @@ from pytest import raises
 
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes.application.controller_wrappers import Application
+from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -117,7 +119,11 @@ def test_main(mock_kube_deploy_config, eks_flag):
         "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
     ) as mock_ensure_namespace, mock.patch(
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
-    ) as mock_setup_kube_deployments:
+    ) as mock_setup_kube_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.get_hpa_overrides",
+        autospec=True,
+        return_value={},
+    ) as mock_get_hpa_overrides:
         mock_setup_kube_deployments.return_value = True
         mock_metrics_interface = mock_get_metrics_interface.return_value
         mock_parse_args.return_value.eks = eks_flag
@@ -136,6 +142,7 @@ def test_main(mock_kube_deploy_config, eks_flag):
             service_instance_configs_list=mock_service_instance_configs_list.return_value,
             metrics_interface=mock_metrics_interface,
             eks=mock_parse_args.return_value.eks,
+            hpa_overrides=mock_get_hpa_overrides.return_value,
         )
         mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
@@ -362,7 +369,7 @@ def test_create_application_object(eks_flag, mock_service_config):
             eks=eks_flag,
         )
 
-        mock_deployment_wrapper.assert_called_with(mock_deploy)
+        mock_deployment_wrapper.assert_called_with(mock_deploy, hpa_override=None)
 
         mock_deploy = mock.MagicMock(spec=V1StatefulSet)
         service_config.format_kubernetes_app.return_value = mock_deploy
@@ -437,7 +444,11 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
     fake_update_related_api_objects = mock.MagicMock()
 
     def simple_create_application_object(
-        cluster, soa_dir, service_instance_config, eks
+        cluster,
+        soa_dir,
+        service_instance_config,
+        eks,
+        hpa_override,
     ):
         fake_app = mock.MagicMock(spec=Application)
         fake_app.kube_deployment = KubeDeployment(
@@ -461,7 +472,7 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
             branch_dict=None,
             soa_dir=soa_dir,
         )
-        fake_app.__str__ = lambda app: "fake_app"
+        fake_app.__str__ = lambda app: "fake_app"  # type: ignore
         return True, fake_app
 
     with mock.patch(
@@ -911,7 +922,7 @@ def test_setup_kube_deployments_skip_malformed_apps(
         fake_app.create = mock.Mock(
             side_effect=[Exception("Kaboom!"), mock.Mock(create=mock.Mock())]
         )
-        fake_app.__str__ = mock.Mock(return_value="fake_app")
+        fake_app.__str__ = mock.Mock(return_value="fake_app")  # type: ignore
         mock_create_application_object.return_value = (True, fake_app)
 
         setup_kube_deployments(
@@ -1006,6 +1017,7 @@ def test_setup_kube_deployments_does_git_sha_changes_first():
             soa_dir: str,
             service_instance_config: KubernetesDeploymentConfig,
             eks: bool = False,
+            hpa_override: Optional[HpaOverride] = None,
         ):
             if service_instance_config.instance == "garage":
                 return (True, garage_app)

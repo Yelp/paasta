@@ -6,11 +6,14 @@ import re
 import shlex
 import socket
 import sys
+from configparser import ConfigParser
 from typing import Any
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -23,12 +26,14 @@ from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
+from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
@@ -36,6 +41,7 @@ from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
+from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
@@ -72,14 +78,20 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
-DEFAULT_AWS_PROFILE = "default"
-
 DEPRECATED_OPTS = {
     "j": "spark.jars",
     "jars": "spark.jars",
 }
 
 SPARK_COMMANDS = {"pyspark", "spark-submit"}
+
+# config looks as follows:
+# [default]
+# aws_access_key_id = ...
+# aws_secret_access_key = ...
+SPARK_DRIVER_IAM_USER = (
+    "/nail/etc/spark_driver_k8s_role_assumer/spark_driver_k8s_role_assumer.ini"
+)
 
 log = logging.getLogger(__name__)
 
@@ -150,6 +162,11 @@ def add_subparser(subparsers):
         "--force-use-eks",
         help=argparse.SUPPRESS,
         action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--get-eks-token-via-iam-user",
+        help="Use IAM user to get EKS token for long running spark-run jobs",
+        action="store_true",
     )
 
     group = list_parser.add_mutually_exclusive_group()
@@ -240,9 +257,9 @@ def add_subparser(subparsers):
             "default_pool"
         )
     except PaastaNotConfiguredError:
-        default_spark_cluster = "pnw-devc"
+        default_spark_cluster = "pnw-devc-spark"
         default_spark_pool = "batch"
-        valid_clusters = ["spark-pnw-prod", "pnw-devc"]
+        valid_clusters = ["pnw-devc-spark", "pnw-prod-spark"]
 
     list_parser.add_argument(
         "-c",
@@ -339,6 +356,39 @@ def add_subparser(subparsers):
         default=None,
     )
 
+    list_parser.add_argument(
+        "--use-service-auth-token",
+        help=(
+            "Acquire service authentication token for the underlying instance,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+
+    list_parser.add_argument(
+        "--uses-bulkdata",
+        help="Mount /nail/bulkdata in the container",
+        action="store_true",
+        default=False,
+    )
+
+    list_parser.add_argument(
+        "--jira-ticket",
+        help=(
+            "The top level jira ticket used to track the project that this spark-job is related to. "
+            "eg: --jira-ticket=PROJ-123. "
+            "Must be passed for all adhoc jobs. "
+            "See https://yelpwiki.yelpcorp.com/spaces/AML/pages/402885641. "
+        ),
+        type=str,
+        required=False,
+        dest="jira_ticket",
+        default=None,
+    )
+
     aws_group = list_parser.add_argument_group(
         title="AWS credentials options",
         description="If --aws-credentials-yaml is specified, it overrides all "
@@ -361,7 +411,6 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default=DEFAULT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -373,7 +422,10 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--assume-aws-role",
-        help="Takes an AWS IAM role ARN and attempts to create a session",
+        help=(
+            "Takes an AWS IAM role ARN and attempts to create a session using "
+            "spark_role_assumer"
+        ),
     )
 
     aws_group.add_argument(
@@ -384,6 +436,41 @@ def add_subparser(subparsers):
         ),
         type=int,
         default=43200,
+    )
+
+    aws_group.add_argument(
+        "--use-web-identity",
+        help=(
+            "If the current environment contains AWS_ROLE_ARN and "
+            "AWS_WEB_IDENTITY_TOKEN_FILE, creates a session to use. These "
+            "ENV vars must be present, and will be in the context of a pod-"
+            "identity enabled pod."
+        ),
+        action="store_true",
+        default=False,
+    )
+
+    aws_group.add_argument(
+        "--force-pod-identity",
+        help=(
+            "Normally the spark executor will use the pod identity defined "
+            "for the relevant instance in yelpsoa-configs. If the instance "
+            "isn't setup there yet, you can override the IAM role arn here."
+            " However, it must already be set for a different instance of "
+            "the service. Must be used with --executor-pod-identity."
+        ),
+        default=None,
+    )
+
+    aws_group.add_argument(
+        "--executor-pod-identity",
+        help=(
+            "Launch the executor pod with pod-identity derived from "
+            "the iam_role settings attached to the instance settings in "
+            "SOA configs. See also --force-pod-identity."
+        ),
+        action="store_true",
+        default=False,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -589,9 +676,37 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+    if args.get_eks_token_via_iam_user:
+        with open(SPARK_DRIVER_IAM_USER) as f:
+            config = ConfigParser()
+            config.read_file(f)
+
+        # these env variables are consumed by a script specified in the spark kubeconfig - and which will result in a tightly-scoped IAM identity being used for EKS cluster access
+        spark_env["GET_EKS_TOKEN_AWS_ACCESS_KEY_ID"] = config["default"][
+            "aws_access_key_id"
+        ]
+        spark_env["GET_EKS_TOKEN_AWS_SECRET_ACCESS_KEY"] = config["default"][
+            "aws_secret_access_key"
+        ]
+
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_iam_user_kubeconfig()
+    else:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
+
+
+def get_all_iam_roles_for_service(
+    service: str,
+    cluster: str,
+) -> Set[str]:
+    tron_instance_configs = load_tron_instance_configs(service, cluster)
+    roles = set()
+    for action in tron_instance_configs:
+        role = action.get_iam_role()
+        if role:
+            roles.add(role)
+    return roles
 
 
 def _parse_user_spark_args(
@@ -763,11 +878,12 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
+    if pod_template_path:
+        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    volumes.append(
-        f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
-    )
+    # NOTE: we mount a directory here since the kubeconfig we're transitioning to requires a helper script that will co-exist in the same directory
+    kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
+    volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -781,6 +897,9 @@ def configure_and_run_docker_container(
         )
     )  # type:ignore
     environment.update(extra_driver_envs)
+
+    if args.use_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
@@ -1019,7 +1138,10 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         return None
 
     # iam_role / aws_profile
-    if "iam_role" in action_dict and action_dict.get("iam_role_provider", "") != "aws":
+    if (
+        "iam_role" in action_dict
+        and action_dict.get("iam_role_provider", "aws") != "aws"
+    ):
         print(
             PaastaColors.red("Invalid Tronfig: iam_role_provider should be 'aws'"),
             file=sys.stderr,
@@ -1043,16 +1165,15 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if field_name == "spark_args":
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
-            # Befutify for printing
+            # Beautify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
-            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
+            if field_name == "iam_role" and args.aws_profile is not None:
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
-                        "since --aws-profile is provided"
+                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` is provided. "
+                        f"We are giving higher priority to `--aws-profile` in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
@@ -1060,7 +1181,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if hasattr(args, arg_name):
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name} : {value}"
                     ),
                 )
             setattr(args, arg_name, value)
@@ -1070,6 +1191,12 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
 
 def paasta_spark_run(args: argparse.Namespace) -> int:
+    if args.get_eks_token_via_iam_user and os.getuid() != 0:
+        print("Re-executing paasta spark-run with sudo..", file=sys.stderr)
+        # argv[0] is treated as command name, so prepending "sudo"
+        os.execvp("sudo", ["sudo"] + sys.argv)
+        return  # will not reach unless above function is mocked
+
     driver_envs_from_tronfig: Dict[str, str] = dict()
     if args.tronfig is not None:
         if args.job_id is None:
@@ -1139,6 +1266,10 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
             load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
+        # If the spark job has uses_bulkdata set then propagate it to the instance_config
+        # If not, then whatever the instance_config has will be used
+        if args.uses_bulkdata:
+            instance_config.config_dict["uses_bulkdata"] = args.uses_bulkdata
     except NoConfigurationForServiceError as e:
         print(str(e), file=sys.stderr)
         return 1
@@ -1162,18 +1293,70 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         )
         return 1
 
+    service_account_name = None
+    iam_role = instance_config.get_iam_role()
+    if args.executor_pod_identity and not (iam_role or args.force_pod_identity):
+        print(
+            "--executor-pod-identity set but no iam_role settings found.",
+            file=sys.stderr,
+        )
+        return 1
+    if args.executor_pod_identity:
+        if args.force_pod_identity:
+            if args.yelpsoa_config_root != DEFAULT_SOA_DIR:
+                print(
+                    "--force-pod-identity cannot be used with --yelpsoa-config-root",
+                    file=sys.stderr,
+                )
+                return 1
+
+            allowed_iam_roles = get_all_iam_roles_for_service(
+                args.service, args.cluster
+            )
+            if args.force_pod_identity not in allowed_iam_roles:
+                print(
+                    f"{args.force_pod_identity} is not an allowed role for this service. "
+                    f"Allowed roles are: {allowed_iam_roles}.",
+                    file=sys.stderr,
+                )
+                return 1
+
+            service_account_name = get_service_account_name(args.force_pod_identity)
+        else:
+            service_account_name = get_service_account_name(iam_role)
+        if (
+            not args.aws_credentials_yaml
+            and not args.aws_profile
+            and not args.assume_aws_role
+        ):
+            args.aws_credentials_yaml = (
+                system_paasta_config.get_default_spark_iam_user()
+            )
+        log.info(f"Running executor with service account {service_account_name}")
+
     aws_creds = get_aws_credentials(
         service=args.service,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
         session_duration=args.aws_role_duration,
+        use_web_identity=args.use_web_identity,
     )
+
+    # If executor pods use a service account, they don't need static aws creds
+    # but the driver still does
+    if service_account_name:
+        executor_aws_creds = None
+    else:
+        executor_aws_creds = aws_creds
+
     docker_image_digest = get_docker_image(args, instance_config)
     if docker_image_digest is None:
         return 1
 
-    volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
+    volumes = instance_config.get_volumes(
+        system_paasta_config.get_volumes(),
+    )
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
     user_spark_opts = _parse_user_spark_args(args.spark_args)
@@ -1207,12 +1390,14 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         paasta_pool=args.pool,
         paasta_service=args.service,
         paasta_instance=paasta_instance,
-        extra_volumes=volumes,
-        aws_creds=aws_creds,
+        extra_volumes=cast(List[Mapping[str, str]], volumes),
+        aws_creds=executor_aws_creds,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=True,
         k8s_server_address=k8s_server_address,
+        service_account_name=service_account_name,
+        jira_ticket=args.jira_ticket,
     )
 
     return configure_and_run_docker_container(

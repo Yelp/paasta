@@ -20,6 +20,7 @@ from queue import Empty
 import isodate
 import mock
 import pytest
+import pytz
 from pytest import raises
 
 from paasta_tools.cli.cli import parse_args
@@ -373,59 +374,6 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     )
 
 
-def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
-    service = "fake_service"
-    levels = []
-    components = []
-    clusters = []
-    instances = []
-    line = format_log_line(
-        "fake_level",
-        clusters,
-        service,
-        "fake_instance",
-        "marathon",
-        line="fake message with service name %s" % service,
-    )
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.format_job_id", autospec=True
-    ) as format_job_id_patch:
-        format_job_id_patch.return_value = service
-        assert logs.marathon_log_line_passes_filter(
-            line, levels, service, components, clusters, instances
-        )
-
-
-def test_marathon_log_line_passes_filter_false_when_service_name_missing():
-    service = "fake_service"
-    levels = []
-    components = []
-    clusters = []
-    instances = []
-    line = format_log_line(
-        "fake_level",
-        clusters,
-        service,
-        "fake_instance",
-        "marathon",
-        "fake message without service name",
-    )
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.format_job_id", autospec=True
-    ) as format_job_id_patch:
-        format_job_id_patch.return_value = service
-        assert not logs.marathon_log_line_passes_filter(
-            line, levels, service, components, clusters, instances
-        )
-
-
-def test_marathon_log_line_passes_filter_fails_invalid_json():
-    assert not logs.marathon_log_line_passes_filter(
-        "{ abcd }", None, None, None, None, None
-    )
-
-
 def test_extract_utc_timestamp_from_log_line_ok():
     fake_timestamp = "2015-07-22T10:38:46-07:00"
     fake_utc_timestamp = isodate.parse_datetime("2015-07-22T17:38:46.000000")
@@ -442,34 +390,6 @@ def test_extract_utc_timestamp_from_log_line_when_missing_date():
 def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     line = "Jul 22 10:39:08 this is a fake invalid syslog message"
     assert not logs.extract_utc_timestamp_from_log_line(line)
-
-
-def test_parse_marathon_log_line_fail():
-    assert "" == logs.parse_marathon_log_line("fake timestamp", None, None)
-
-
-def test_parse_marathon_log_line_ok():
-    fake_timestamp = "2015-07-22T10:38:46-07:00"
-    fake_utc_timestamp = "2015-07-22T17:38:46.000000"
-    fake_service = "fake_service"
-
-    line = "%s this is a fake syslog test message" % fake_timestamp
-    clusters = ["fake_cluster"]
-    expected = json.dumps(
-        {
-            "timestamp": fake_utc_timestamp,
-            "component": "marathon",
-            "cluster": clusters[0],
-            "service": fake_service,
-            "instance": "ALL",
-            "level": "event",
-            "message": line,
-        }
-    )
-
-    assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(
-        expected
-    )
 
 
 def test_prettify_timestamp():
@@ -567,7 +487,7 @@ def test_prettify_log_line_valid_json_strip_headers():
 
 def test_scribereader_run_code_over_scribe_envs():
     clusters = ["fake_cluster1", "fake_cluster2"]
-    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
+    components = ["build", "deploy", "monitoring", "stdout", "stderr"]
 
     callback = mock.MagicMock()
 
@@ -585,7 +505,7 @@ def test_scribereader_run_code_over_scribe_envs():
         )
 
         # See comment in test_scribereader_print_last_n_logs for where this figure comes from
-        assert callback.call_count == 10
+        assert callback.call_count == 6
 
 
 def test_scribereader_print_last_n_logs():
@@ -593,7 +513,7 @@ def test_scribereader_print_last_n_logs():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["main"]
-    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
+    components = ["build", "deploy", "monitoring", "stdout", "stderr"]
 
     with mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
@@ -626,17 +546,14 @@ def test_scribereader_print_last_n_logs():
             strip_headers=False,
         )
 
-        # one call per component per environment except marathon which runs 1/env/cluster
+        # one call per component per environment
         # Defaults:
         #    env1, env2                = 2
-        # marathon:
-        #    env1: cluster1 cluster2   = 2
-        #    env2: cluster1 cluster2   = 2
         # stdout:
         #    env1, env2                = 2
         # stderr:
         #    env1, env2                = 2
-        assert mock_scribereader.get_stream_tailer.call_count == 10
+        assert mock_scribereader.get_stream_tailer.call_count == 6
 
 
 def test_scribereader_print_logs_by_time():
@@ -644,7 +561,7 @@ def test_scribereader_print_logs_by_time():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["main"]
-    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
+    components = ["build", "deploy", "monitoring", "stdout", "stderr"]
 
     with mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
@@ -682,7 +599,7 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_reader.call_count == 10
+        assert mock_scribereader.get_stream_reader.call_count == 6
 
         start_time, end_time = logs.generate_start_end_time("3d", "2d")
         logs.ScribeLogReader(cluster_map={}).print_logs_by_time(
@@ -699,7 +616,7 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_reader.call_count == 10 * 2
+        assert mock_scribereader.get_stream_reader.call_count == 6 * 2
 
 
 def test_tail_paasta_logs_ctrl_c_in_queue_get():
@@ -937,44 +854,6 @@ def test_tail_paasta_logs_empty_pods():
         assert print_log_patch.call_count == 0
 
 
-def test_tail_paasta_logs_marathon():
-    service = "fake_service"
-    clusters = ["fake_cluster"]
-    instances = ["fake_instance"]
-    levels = ["fake_level1", "fake_level2"]
-    components = ["marathon"]
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
-        autospec=True,
-    ) as determine_scribereader_envs_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.print_log", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.Queue", autospec=True
-    ) as queue_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.Process", autospec=True
-    ) as process_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.parse_marathon_log_line", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.marathon_log_line_passes_filter", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ):
-        determine_scribereader_envs_patch.return_value = ["env1"]
-        fake_queue = mock.MagicMock(spec_set=Queue())
-        # Prevent tail_paasta_logs from reading from queue forever by simulating a Ctrl-C
-        fake_queue.get.side_effect = KeyboardInterrupt
-        queue_patch.return_value = fake_queue
-
-        logs.ScribeLogReader(cluster_map={"env1": "env1"}).tail_logs(
-            service, levels, components, clusters, instances
-        )
-        assert process_patch.call_count == 1
-
-
 def test_determine_scribereader_envs():
     cluster = "fake_cluster"
     components = ["build", "monitoring"]
@@ -1006,28 +885,145 @@ def test_determine_scribereader_additional_envs():
         assert "fake_scribe_env" in actual and "fake_scribe_env2" in actual
 
 
+def test_vector_logs_read_logs_empty_clusters():
+    service = "fake_service"
+    levels = ["fake_level1", "fake_level2"]
+    components = ["deploy", "monitoring"]
+    clusters = []
+    instances = ["fake_instance"]
+    pods = ["fake_pod"]
+    start_time, end_time = logs.generate_start_end_time()
+
+    with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ), pytest.raises(IndexError) as e:
+        logs.VectorLogsReader(cluster_map={}, nats_endpoint_map={}).print_logs_by_time(
+            service,
+            start_time,
+            end_time,
+            levels,
+            components,
+            clusters,
+            instances,
+            pods,
+            False,
+            False,
+        )
+    assert e.type == IndexError
+
+
+def test_vector_logs_print_logs_by_time():
+    service = "fake_service"
+    levels = ["debug"]
+    clusters = ["fake_cluster1"]
+    instances = ["main"]
+    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ) as mock_s3_logs, mock.patch(
+        "paasta_tools.cli.cmds.logs.print_log", autospec=True
+    ) as print_log_patch:
+        fake_iter = mock.MagicMock()
+        fake_iter.__iter__.return_value = [
+            b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 1",
+                                           "timestamp":"2016-06-08T06:31:52.706609135Z"}""",
+            b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 2",
+                                           "timestamp":"2016-06-08T06:41:52.706609135Z"}""",
+            b"""{"cluster":"fake_cluster2","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 3",
+                                           "timestamp":"2016-06-08T06:51:52.706609135Z"}""",
+        ]
+        reader_mock = mock_s3_logs.return_value.get_log_reader
+        reader_mock.return_value = fake_iter
+
+        start_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T06:00"))
+        end_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T07:00"))
+
+        logs.VectorLogsReader(cluster_map={}, nats_endpoint_map={}).print_logs_by_time(
+            service,
+            start_time,
+            end_time,
+            levels,
+            components,
+            clusters,
+            instances,
+            pods=None,
+            raw_mode=False,
+            strip_headers=False,
+        )
+
+        assert reader_mock.call_count == 1
+        assert print_log_patch.call_count == 2
+
+
 def test_prefix():
     actual = logs.prefix("TEST STRING", "deploy")
     assert "TEST STRING" in actual
 
 
 def test_get_log_reader():
+    components = {"stdout", "stderr"}
     mock_system_paasta_config = mock.Mock(
         autospec="paasta_tools.utils.SystemPaastaConfig"
     )
-    mock_system_paasta_config.get_log_reader.return_value = {
-        "driver": "scribereader",
-        "options": {"cluster_map": {}},
-    }
+    mock_system_paasta_config.get_log_readers.return_value = [
+        {
+            "driver": "scribereader",
+            "options": {"cluster_map": {}},
+            "components": ["build", "deploy"],
+        },
+        {
+            "driver": "vector-logs",
+            "options": {"cluster_map": {}, "nats_endpoint_map": {}},
+            "components": ["stdout", "stderr"],
+        },
+    ]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ):
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
-        actual = logs.get_log_reader()
-        assert isinstance(actual, logs.ScribeLogReader)
+        actual = logs.get_log_reader(components)
+        assert isinstance(actual, logs.LogReader)
+
+
+def test_get_log_reader_invalid():
+    components = {"stdout", "build"}
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers.return_value = [
+        {
+            "driver": "scribereader",
+            "options": {"cluster_map": {}},
+            "components": ["build", "deploy"],
+        },
+        {
+            "driver": "vector-logs",
+            "options": {"cluster_map": {}},
+            "components": ["stdout", "stderr"],
+        },
+    ]
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ), pytest.raises(
+        SystemExit
+    ) as wrapped_e:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        logs.get_log_reader(components)
+
+    assert wrapped_e.type == SystemExit
 
 
 def test_generate_start_end_time():

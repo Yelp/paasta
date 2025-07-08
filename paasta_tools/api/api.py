@@ -24,14 +24,14 @@ import sys
 import manhole
 import requests_cache
 import service_configuration_lib
-import yaml
 from pyramid.config import Configurator
 from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
+from paasta_tools import yaml_tools as yaml
 from paasta_tools.api import settings
+from paasta_tools.api.tweens import auth
 from paasta_tools.api.tweens import profiling
 from paasta_tools.api.tweens import request_logger
 from paasta_tools.utils import load_system_paasta_config
@@ -80,6 +80,18 @@ def parse_paasta_api_args():
         default=4,
         help="Number of gunicorn workers to run",
     )
+    parser.add_argument(
+        "--auth-endpoint",
+        type=str,
+        default="",
+        help="External API authorization endpoint",
+    )
+    parser.add_argument(
+        "--auth-enforce",
+        action="store_true",
+        default=False,
+        help="Enforce API authorization",
+    )
     args = parser.parse_args()
     return args
 
@@ -106,6 +118,7 @@ def make_app(global_config=None):
 
     config.include("pyramid_swagger")
     config.include(request_logger)
+    config.include(auth)
 
     config.add_route(
         "flink.service.instance.jobs", "/v1/flink/{service}/{instance}/jobs"
@@ -176,11 +189,32 @@ def make_app(global_config=None):
         "/v1/service_autoscaler/pause",
         request_method="GET",
     )
-    config.add_route("version", "/v1/version")
     config.add_route(
-        "marathon_dashboard", "/v1/marathon_dashboard", request_method="GET"
+        "service_autoscaler.autoscaling_override.post",
+        "/v1/service_autoscaler/{service}/{instance}/autoscaling_override",
+        request_method="POST",
     )
-    config.add_route("metastatus", "/v1/metastatus")
+    config.add_route(
+        "remote_run.start",
+        "/v1/remote_run/{service}/{instance}/start",
+        request_method="POST",
+    )
+    config.add_route(
+        "remote_run.stop",
+        "/v1/remote_run/{service}/{instance}/stop",
+        request_method="POST",
+    )
+    config.add_route(
+        "remote_run.poll",
+        "/v1/remote_run/{service}/{instance}/poll",
+        request_method="GET",
+    )
+    config.add_route(
+        "remote_run.token",
+        "/v1/remote_run/{service}/{instance}/token",
+        request_method="GET",
+    )
+    config.add_route("version", "/v1/version")
     config.add_route("deploy_queue.list", "/v1/deploy_queue")
     config.scan()
     return CORS(
@@ -218,17 +252,6 @@ def setup_paasta_api():
         settings.cluster = os.environ.get("PAASTA_API_CLUSTER")
     else:
         settings.cluster = settings.system_paasta_config.get_cluster()
-
-    settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(settings.system_paasta_config)
-    )
-
-    settings.marathon_servers = marathon_tools.get_marathon_servers(
-        system_paasta_config=settings.system_paasta_config
-    )
-    settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_servers=settings.marathon_servers, cached=False
-    )
 
     try:
         settings.kubernetes_client = kubernetes_tools.KubeClient()
@@ -272,6 +295,11 @@ def main(argv=None):
 
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
+
+    if args.auth_endpoint:
+        os.environ["PAASTA_API_AUTH_ENDPOINT"] = args.auth_endpoint
+        if args.auth_enforce:
+            os.environ["PAASTA_API_AUTH_ENFORCE"] = "1"
 
     gunicorn_args = [
         "gunicorn",

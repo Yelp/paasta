@@ -45,8 +45,8 @@ def main():
             api.main("dev-mode")
     else:
         os.execl(
-            ".tox/py38-linux/bin/python",
-            ".tox/py38-linux/bin/python",
+            ".tox/py310-linux/bin/python",
+            ".tox/py310-linux/bin/python",
             "-m",
             "paasta_tools.api.api",
             *["-D", "-c", cluster, str(port)],
