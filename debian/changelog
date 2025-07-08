@@ -1,3 +1,11 @@
+paasta-tools (1.28.2) xenial; urgency=medium
+
+  * 1.28.2 tagged with 'make release'
+    Commit: Reject additional properties on autotune_limits to prevent
+    them from breaking validation in the autotune jobs. (#4000)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 08 Jul 2025 14:49:46 -0700
+
 paasta-tools (1.28.1) xenial; urgency=medium
 
   * 1.28.1 tagged with 'make release'
