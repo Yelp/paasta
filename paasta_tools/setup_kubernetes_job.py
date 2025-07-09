@@ -390,7 +390,7 @@ def setup_kube_deployments(
     ]
 
     def sort_key(ok_app: Tuple[bool, Optional[Application]]) -> int:
-        """This will return 1 if the desired deployment_version matches an existing deployment_version, and 0
+        """This will return 1 if the desired deployment_version matches an existing deployment_version, 2 if the deployment is unhealthy and 0
         otherwise. This will cause applications that need a new deployment_version to be handled first.
         This prioritizes "real" bounces (developers pushing new service versions) over things that are likely to be big
         bounces (config-only changes).
