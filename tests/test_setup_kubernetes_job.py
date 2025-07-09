@@ -1,4 +1,5 @@
 from typing import List
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -10,6 +11,7 @@ from pytest import raises
 
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes.application.controller_wrappers import Application
+from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -20,6 +22,7 @@ from paasta_tools.setup_kubernetes_job import get_service_instances_with_valid_n
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -934,4 +937,107 @@ def test_setup_kube_deployments_skip_malformed_apps(
         assert len(mock_log_obj.exception.call_args_list) == 1
         assert mock_log_obj.exception.call_args_list[0] == mock.call(
             "Error while processing: fake_app"
+        )
+
+
+def test_setup_kube_deployments_does_git_sha_changes_first():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_job.create_application_object",
+        autospec=True,
+    ) as mock_create_application_object, mock.patch(
+        "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments", autospec=True
+    ) as mock_list_all_paasta_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
+        mock_client = mock.Mock()
+        mock_kube_deploy_config_fm = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="fake_cluster",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_kube_deploy_config_garage = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="garage",
+            cluster="fake_cluster",
+            config_dict={},
+            branch_dict=None,
+        )
+
+        mock_list_all_paasta_deployments.return_value = [
+            KubeDeployment(
+                service="kurupt",
+                instance="garage",
+                git_sha="1",
+                namespace="paasta",
+                image_version="extrastuff-1",
+                config_sha="1",
+                replicas=1,
+            ),
+            KubeDeployment(
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                namespace="paasta",
+                image_version="extrastuff-1",
+                config_sha="1",
+                replicas=1,
+            ),
+        ]
+
+        mock_service_instance_configs_list = [
+            (True, mock_kube_deploy_config_garage),
+            (True, mock_kube_deploy_config_fm),
+        ]
+
+        garage_app = mock.Mock(
+            kube_deployment=mock.Mock(
+                git_sha="1",
+                service="kurupt",
+                instance="garage",
+                image_version="extrastuff-1",
+                namespace="paasta",
+                deployment_version=DeploymentVersion("1", "extrastuff-1"),
+            ),
+        )
+        fm_app = mock.Mock(
+            kube_deployment=mock.Mock(
+                git_sha="2",
+                service="kurupt",
+                instance="fm",
+                image_version="extrastuff-1",
+                namespace="paasta",
+                deployment_version=DeploymentVersion("2", "extrastuff-1"),
+            ),
+        )
+
+        def fake_create_application_object(
+            cluster: str,
+            soa_dir: str,
+            service_instance_config: KubernetesDeploymentConfig,
+            eks: bool = False,
+            hpa_override: Optional[HpaOverride] = None,
+        ):
+            if service_instance_config.instance == "garage":
+                return (True, garage_app)
+            elif service_instance_config.instance == "fm":
+                return (True, fm_app)
+            raise ValueError("expecting instance of 'fm' or 'garage'")
+
+        mock_create_application_object.side_effect = fake_create_application_object
+
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instance_configs_list=mock_service_instance_configs_list,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            rate_limit=1,
+        )
+
+        # With rate_limit == 1, only the app with a different `git_sha` should be bounced.
+        assert garage_app.update.call_count == 0
+        assert fm_app.update.call_count == 1
+        mock_log_obj.info.assert_any_call(
+            "Not doing any further updates as we reached the limit (1)"
         )
