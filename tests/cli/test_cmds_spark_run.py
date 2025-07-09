@@ -1974,7 +1974,7 @@ def test_paasta_spark_run_with_pod_identity(
         service="test-service",
         aws_credentials_yaml="/path/to/creds"
         if aws_creds_provided
-        else "/etc/boto_cfg/mrjob.yaml",
+        else "/etc/boto_cfg/spark_driver.yaml",
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
