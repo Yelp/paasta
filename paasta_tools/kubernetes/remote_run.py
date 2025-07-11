@@ -20,6 +20,7 @@ from typing import Sequence
 from typing import TypedDict
 
 from kubernetes.client import AuthenticationV1TokenRequest
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Job
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1Pod
@@ -28,7 +29,6 @@ from kubernetes.client import V1Role
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1ServiceAccount
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
@@ -495,7 +495,7 @@ def bind_role_to_service_account(
             name=role,
         ),
         subjects=[
-            V1Subject(
+            RbacV1Subject(
                 kind="ServiceAccount",
                 name=service_account,
             ),
