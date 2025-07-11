@@ -17,13 +17,13 @@ from unittest.mock import patch
 
 import pytest
 from kubernetes.client import AuthenticationV1TokenRequest
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PolicyRule
 from kubernetes.client import V1Role
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1ServiceAccount
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
@@ -406,7 +406,7 @@ def test_bind_role_to_service_account():
                 name="somerole",
             ),
             subjects=[
-                V1Subject(
+                RbacV1Subject(
                     kind="ServiceAccount",
                     name="somesa",
                 ),

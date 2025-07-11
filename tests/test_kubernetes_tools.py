@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from kubernetes import client as kube_client
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
@@ -62,7 +63,6 @@ from kubernetes.client import V1ServiceAccountList
 from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
@@ -3591,14 +3591,37 @@ def test_max_unavailable(instances, bmf):
     assert type(res) is int
 
 
-def test_pod_disruption_budget_for_service_instance():
+@pytest.mark.parametrize(
+    "unhealthy_eviction_enabled,expected_policy",
+    (
+        (False, None),
+        (True, "AlwaysAllow"),
+    ),
+)
+def test_pod_disruption_budget_for_service_instance(
+    unhealthy_eviction_enabled, expected_policy
+):
     mock_namespace = "paasta"
-    x = pod_disruption_budget_for_service_instance(
-        service="foo_1",
-        instance="bar_1",
-        max_unavailable="10%",
-        namespace=mock_namespace,
-    )
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "enable_unhealthy_pod_eviction": unhealthy_eviction_enabled,
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ):
+        x = pod_disruption_budget_for_service_instance(
+            service="foo_1",
+            instance="bar_1",
+            max_unavailable="10%",
+            namespace=mock_namespace,
+        )
 
     assert x.metadata.name == "foo--1-bar--1"
     assert x.metadata.namespace == "paasta"
@@ -3607,6 +3630,7 @@ def test_pod_disruption_budget_for_service_instance():
         "paasta.yelp.com/service": "foo_1",
         "paasta.yelp.com/instance": "bar_1",
     }
+    assert x.spec.unhealthy_pod_eviction_policy == expected_policy
 
 
 def test_create_pod_disruption_budget():
@@ -4772,7 +4796,7 @@ def test_ensure_service_account_with_k8s_role_new():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -4825,7 +4849,7 @@ def test_ensure_service_account_existing():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -4886,7 +4910,7 @@ def test_ensure_service_account_existing_different_role():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5010,7 +5034,7 @@ def test_ensure_service_account_caps_with_k8s():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
