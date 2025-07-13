@@ -28,7 +28,6 @@ from typing import Tuple
 import argcomplete
 
 import paasta_tools
-from paasta_tools.cli import cmds
 
 
 def load_method(module_name, method_name):
@@ -177,9 +176,10 @@ def get_argparser(commands=None):
     # Build a list of subcommands to add them in alphabetical order later
     command_choices: List[Tuple[str, Any]] = []
     if commands is None:
-        for command in sorted(modules_in_pkg(cmds)):
+        for cli_command_name, module_name in sorted(PAASTA_SUBCOMMANDS.items()):
+            # cli_command_name is the user-facing command, module_name is the python module filename
             command_choices.append(
-                (command, (add_subparser, [command, subparsers], {}))
+                (cli_command_name, (add_subparser, [module_name, subparsers], {}))
             )
     elif commands:
         for command in commands:
