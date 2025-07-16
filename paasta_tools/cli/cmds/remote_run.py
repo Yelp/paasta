@@ -82,7 +82,6 @@ def paasta_remote_run_copy(
     args: argparse.Namespace,
     system_paasta_config: SystemPaastaConfig,
 ) -> int:
-    # paasta remote-run copy --service ... --instance ... -c pnw-prod /tmp/output.txt .
     client = get_paasta_oapi_client_with_auth(
         cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
         system_paasta_config=system_paasta_config,
