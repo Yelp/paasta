@@ -114,7 +114,7 @@ def paasta_remote_run_copy(
     if args.to_pod:
         kubectl_cp_template = KUBECTL_CP_TO_CMD_TEMPLATE
         exec_command = f"scp -A {args.copy_file_source} {poll_response.pod_address}:{args.copy_file_dest}"
-        if not args.copy_file_dest.startswith("/tmp") and args.toolbox:
+        if not args.copy_file_dest.startswith("/tmp") and not args.toolbox:
             args.copy_file_dest = os.path.join("/tmp/", args.copy_file_dest)
     else:
         kubectl_cp_template = KUBECTL_CP_FROM_CMD_TEMPLATE
