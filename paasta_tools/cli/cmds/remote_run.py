@@ -113,11 +113,13 @@ def paasta_remote_run_copy(
         return 1
 
     if args.to_pod:
-        template_to_use = KUBECTL_CP_TO_CMD_TEMPLATE
-        if not args.copy_file_dest.startswith("/tmp"):
+        kubectl_cp_template = KUBECTL_CP_TO_CMD_TEMPLATE
+        exec_command = f"scp -A {args.copy_file_source} {poll_response.pod_address}:{args.copy_file_dest}"
+        if not args.copy_file_dest.startswith("/tmp") and args.toolbox:
             args.copy_file_dest = os.path.join("/tmp/", args.copy_file_dest)
     else:
-        template_to_use = KUBECTL_CP_FROM_CMD_TEMPLATE
+        kubectl_cp_template = KUBECTL_CP_FROM_CMD_TEMPLATE
+        exec_command = f"scp -A {poll_response.pod_address}:{args.copy_file_source} {args.copy_file_dest}"
 
     # Kubectl cp doesnt like directories as a destination
     if os.path.isdir(args.copy_file_dest):
@@ -126,7 +128,6 @@ def paasta_remote_run_copy(
         )
 
     if args.toolbox:
-        exec_command = f"scp -A {poll_response.pod_address}:{args.copy_file_source} {args.copy_file_dest}"
         run_interactive_cli(exec_command)
     else:
         token_response = client.remote_run.remote_run_token(
@@ -135,7 +136,7 @@ def paasta_remote_run_copy(
         kubectl_wrapper = f"kubectl-eks-{args.cluster}"
         if not shutil.which(kubectl_wrapper):
             kubectl_wrapper = f"kubectl-{args.cluster}"
-        cp_command = template_to_use.format(
+        cp_command = kubectl_cp_template.format(
             kubectl_wrapper=kubectl_wrapper,
             namespace=poll_response.namespace,
             pod=poll_response.pod_name,
@@ -148,7 +149,7 @@ def paasta_remote_run_copy(
             print("Error copying file from remote-run pod: ", file=sys.stderr)
             print(call.stderr.decode("utf-8"), file=sys.stderr)
             return 1
-        print(f"{args.copy_file_source} successfully copied to {args.copy_file_dest}")
+    print(f"{args.copy_file_source} successfully copied to {args.copy_file_dest}")
 
     return 0
 
