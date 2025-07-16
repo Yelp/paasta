@@ -88,6 +88,7 @@ def remote_run_start(
     recreate: bool,
     max_duration: int,
     is_toolbox: bool,
+    command: Optional[str] = None,
 ) -> RemoteRunOutcome:
     """Trigger remote-run job
 
@@ -99,6 +100,7 @@ def remote_run_start(
     :param bool recreate: whether to recreate remote-run job if existing
     :param int max_duration: maximum allowed duration for the remote-ruh job
     :param bool is_toolbox: requested job is for a toolbox container
+    :param str command: command override to execute in the job container
     :return: outcome of the operation, and resulting Kubernetes pod information
     """
     kube_client = KubeClient()
@@ -110,8 +112,10 @@ def remote_run_start(
         else load_eks_service_config(service, instance, cluster)
     )
 
-    # Set to interactive mode
-    if interactive and not is_toolbox:
+    # Set override command, or sleep for interactive mode
+    if command and not is_toolbox:
+        deployment_config.config_dict["cmd"] = command
+    elif interactive and not is_toolbox:
         deployment_config.config_dict["cmd"] = f"sleep {max_duration}"
 
     # Create the app with a new name
@@ -449,7 +453,7 @@ def create_pod_scoped_role(
     role_name = f"remote-run-role-{pod_name_hash}"
     policy = V1PolicyRule(
         verbs=["create", "get"],
-        resources=["pods", "pods/exec"],
+        resources=["pods", "pods/exec", "pods/log"],
         resource_names=[pod_name],
         api_groups=[""],
     )
