@@ -839,20 +839,13 @@ Routing and Reliability
  * ``retries``: Number of HAProxy connection failure `retries <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#retries>`_,
    defaults to 1.
 
- * ``allredisp``: If set, haproxy will redispatch (choose a different server) on
-   every connection retry. It only makes sense to set this option if you have a
-   low connection timeout, and a number of retries > 1. This is useful for when
-   machines crash or network partitions occur because your service doesn’t waste
-   any retries on the dead server, and immediately redispatches to other
-   functional backends. For example, for a latency sensitive service you may
-   want to set ``timeout_connect_ms`` to 100ms, with 3-5 retries and
-   ``allredisp`` set to ``true``.
-
- * ``timeout_connect_ms``: HAProxy `server connect timeout
-   <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20connect>`_
+ * ``timeout_connect_ms``: Envoy `cluster connect_timeout
+   <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto.html#envoy-v3-api-field-config-cluster-v3-cluster-connect-timeout>`_
    in milliseconds, defaults to 200.
- * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
+ * ``timeout_server_ms``: Envoy `route timeout <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-timeout>`_
    in milliseconds, defaults to 1000.
+ * ``idle_timeout``: Envoy `route idle_timeout <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-idle-timeout>`_
+   in seconds, defaults to 60.
  * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
     Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
