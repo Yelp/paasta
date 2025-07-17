@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.metrics.metastatus_lib
    paasta_tools.metrics.metrics_lib

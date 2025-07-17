@@ -836,7 +836,7 @@ You can control your healthchecks with the following keys.
 Routing and Reliability
 ```````````````````````
 
- * ``retries``: Number of HAProxy connection failure `retries <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#retries>`_,
+ * ``retries``: Number of `retries <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-retrypolicy-num-retries>`_ (only applies to `connection failures <https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#config-http-filters-router-x-envoy-retry-on?highlight=connect-failure:~:text=not%20been%20sent).-,connect%2Dfailure,-Envoy%20will%20attempt>`_),
    defaults to 1.
 
  * ``timeout_connect_ms``: Envoy `cluster connect_timeout
@@ -846,7 +846,7 @@ Routing and Reliability
    in milliseconds, defaults to 1000.
  * ``idle_timeout``: Envoy `route idle_timeout <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-idle-timeout>`_
    in seconds, defaults to 60.
- * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
+ * ``lb_policy``: Envoy `lb_policy <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy>`_
     Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
    specific endpoints. This is useful for when there is a long running endpoint

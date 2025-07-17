@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.autoscaling.autoscaling_service_lib
    paasta_tools.autoscaling.forecasting
