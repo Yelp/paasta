@@ -39,6 +39,9 @@ from paasta_tools.utils import SystemPaastaConfig
 KUBECTL_EXEC_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
+KUBECTL_LOGS_CMD_TEMPLATE = (
+    "{kubectl_wrapper} --token {token} logs -n {namespace} -f {pod}"
+)
 KUBECTL_CP_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} -n {namespace} cp {filename} {pod}:/tmp/"
 )
@@ -96,6 +99,7 @@ def paasta_remote_run_start(
                 recreate=args.recreate,
                 max_duration=args.max_duration,
                 toolbox=args.toolbox,
+                command=args.cmd or "",
             ),
         )
     except ApiException as e:
@@ -132,7 +136,7 @@ def paasta_remote_run_start(
         print(f"{status_prefix}Timed out while waiting for job to start")
         return 1
 
-    if not args.interactive and not args.toolbox:
+    if not (args.interactive or args.toolbox or args.follow):
         print("Successfully started remote-run job")
         return 0
 
@@ -151,7 +155,9 @@ def paasta_remote_run_start(
         kubectl_wrapper = f"kubectl-eks-{args.cluster}"
         if not shutil.which(kubectl_wrapper):
             kubectl_wrapper = f"kubectl-{args.cluster}"
-        exec_command = KUBECTL_EXEC_CMD_TEMPLATE.format(
+        exec_command = (
+            KUBECTL_LOGS_CMD_TEMPLATE if args.follow else KUBECTL_EXEC_CMD_TEMPLATE
+        ).format(
             kubectl_wrapper=kubectl_wrapper,
             namespace=poll_response.namespace,
             pod=poll_response.pod_name,
@@ -249,7 +255,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         description="Starts or connects to a remote-run-job",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    start_parser.add_argument(
+    cmd_or_interactive = start_parser.add_mutually_exclusive_group()
+    cmd_or_interactive.add_argument(
         "-I",
         "--interactive",
         help=(
@@ -258,6 +265,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         ),
         action="store_true",
         default=False,
+    )
+    cmd_or_interactive.add_argument(
+        "-C",
+        "--cmd",
+        help=(
+            "Run container with particular command, rather than the one specified in soa-configs"
+        ),
+        required=False,
+        default=None,
     )
     start_parser.add_argument(
         "-m",
@@ -268,6 +284,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         ),
         type=int,
         default=1800,
+    )
+    start_parser.add_argument(
+        "-f",
+        "--follow",
+        help="Attach to and follow container output",
+        action="store_true",
+        default=False,
     )
     start_parser.add_argument(
         "-r",

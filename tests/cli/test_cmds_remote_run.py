@@ -46,6 +46,8 @@ def test_paasta_remote_run_start(
         max_duration=100,
         timeout=600,
         toolbox=False,
+        follow=False,
+        cmd=None,
     )
     mock_time.time.return_value = 0
     mock_shutil.which.return_value = True
@@ -71,6 +73,7 @@ def test_paasta_remote_run_start(
             recreate=False,
             max_duration=100,
             toolbox=False,
+            command="",
         ),
     )
     mock_client.remote_run.remote_run_poll.assert_has_calls(

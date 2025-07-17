@@ -1,1 +1,1 @@
-.tox/py38-linux/bin/activate
+.tox/py310-linux/bin/activate
