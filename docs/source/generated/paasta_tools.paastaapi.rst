@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.paastaapi.api
    paasta_tools.paastaapi.apis
@@ -15,6 +16,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.paastaapi.api_client
    paasta_tools.paastaapi.configuration

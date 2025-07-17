@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.cli.cmds.autoscale
    paasta_tools.cli.cmds.check
