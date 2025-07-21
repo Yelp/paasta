@@ -44,7 +44,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import load_system_paasta_config
-
+from paasta_tools.utils import NoConfigurationForServiceError
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
@@ -79,6 +79,29 @@ def _format_remote_run_job_name(
     return limit_size_with_hash(f"remote-run-{user}-{job.metadata.name}")
 
 
+def load_eks_or_adhoc_deployment_config(
+    service: str, instance: str, cluster: str, is_toolbox: bool = False, user: str = ""
+) -> EksDeploymentConfig:
+    try:
+        deployment_config = (
+            generate_toolbox_deployment(service, cluster, user)
+            if is_toolbox
+            else load_eks_service_config(service, instance, cluster)
+        )
+    except NoConfigurationForServiceError:
+        # Perhaps they are trying to use an adhoc instance
+        deployment_config = load_adhoc_job_config(service, instance, cluster)
+        deployment_config = EksDeploymentConfig(
+            service,
+            cluster,
+            instance,
+            config_dict=deployment_config.config_dict,
+            branch_dict=deployment_config.branch_dict,
+        )
+        deployment_config.config_filename_prefix = "adhoc"
+    return deployment_config
+
+
 def remote_run_start(
     service: str,
     instance: str,
@@ -106,10 +129,8 @@ def remote_run_start(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
 
     # Set override command, or sleep for interactive mode
@@ -182,10 +203,8 @@ def remote_run_ready(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
     namespace = deployment_config.get_namespace()
 
@@ -229,10 +248,8 @@ def remote_run_stop(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
 
     # Rebuild the job metadata
@@ -267,7 +284,7 @@ def remote_run_token(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
     # Rebuild the job metadata
