@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.api.tweens.auth
    paasta_tools.api.tweens.profiling

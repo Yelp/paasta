@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.cli.cmds
    paasta_tools.cli.fsm
@@ -13,6 +14,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.cli.authentication
    paasta_tools.cli.cli

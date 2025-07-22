@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.contrib.bounce_log_latency_parser
    paasta_tools.contrib.check_orphans

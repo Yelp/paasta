@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.kubernetes.application
    paasta_tools.kubernetes.bin
@@ -13,6 +14,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.kubernetes.remote_run
 

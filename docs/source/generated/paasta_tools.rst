@@ -5,6 +5,7 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.api
    paasta_tools.autoscaling
@@ -24,6 +25,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.adhoc_tools
    paasta_tools.apply_external_resources
