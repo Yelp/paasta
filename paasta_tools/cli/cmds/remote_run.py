@@ -108,7 +108,7 @@ def paasta_remote_run_copy(
         toolbox=args.toolbox,
     )
     if poll_response.status != 200:
-        print(f"Unable to find running remote-run pod")
+        print(f"Unable to find running remote-run pod: have you started one with `paasta remote-run start`?")
         return 1
 
     if args.to_pod:
