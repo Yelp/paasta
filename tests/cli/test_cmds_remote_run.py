@@ -151,4 +151,4 @@ def test_paasta_remote_run_copy(mock_load_eks, mock_subprocess, mock_get_client,
     paasta_remote_run_copy(mock_args, mock_config)
     command_str = " ".join(mock_subprocess.run.call_args_list[0][0][0])
     assert command_str.startswith("kubectl-")
-    assert "-n svcfoo cp source.txt foobar-123:dest.txt" in command_str
+    assert "-n svcfoo cp source.txt foobar-123:/tmp/dest.txt" in command_str

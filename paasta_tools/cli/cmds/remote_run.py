@@ -48,12 +48,9 @@ KUBECTL_CP_TO_CMD_TEMPLATE = (
 )
 KUBECTL_CP_FROM_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} -n {namespace} cp {pod}:{source} {dest}"
-
+)
 KUBECTL_LOGS_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} logs -n {namespace} -f {pod}"
-)
-KUBECTL_CP_CMD_TEMPLATE = (
-    "{kubectl_wrapper} --token {token} -n {namespace} cp {filename} {pod}:/tmp/"
 )
 
 
@@ -114,17 +111,21 @@ def paasta_remote_run_copy(
         toolbox=args.toolbox,
     )
     if poll_response.status != 200:
-        print(f"Unable to find running remote-run pod: have you started one with `paasta remote-run start`?")
+        print(
+            f"Unable to find running remote-run pod: have you started one with `paasta remote-run start`?"
+        )
         return 1
 
     if args.to_pod:
-        kubectl_cp_template = KUBECTL_CP_TO_CMD_TEMPLATE
+        # Create the toolbox copy command
         exec_command = f"scp -A {args.copy_file_source} {poll_response.pod_address}:{args.copy_file_dest}"
+        # Pick the correct template and force /tmp/ for non-toolbox
+        kubectl_cp_template = KUBECTL_CP_TO_CMD_TEMPLATE
         if not args.copy_file_dest.startswith("/tmp") and not args.toolbox:
             args.copy_file_dest = os.path.join("/tmp/", args.copy_file_dest)
     else:
-        kubectl_cp_template = KUBECTL_CP_FROM_CMD_TEMPLATE
         exec_command = f"scp -A {poll_response.pod_address}:{args.copy_file_source} {args.copy_file_dest}"
+        kubectl_cp_template = KUBECTL_CP_FROM_CMD_TEMPLATE
 
     # Kubectl cp doesnt like directories as a destination
     if os.path.isdir(args.copy_file_dest):
