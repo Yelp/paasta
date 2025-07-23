@@ -130,7 +130,7 @@ def paasta_remote_run_copy(
     # Kubectl cp doesnt like directories as a destination
     if os.path.isdir(args.copy_file_dest):
         args.copy_file_dest = os.path.join(
-            args.copy_file_dest, os.path.split(args.copy_file_source)[1]
+            args.copy_file_dest, os.path.basename(args.copy_file_source)
         )
 
     if args.toolbox:
