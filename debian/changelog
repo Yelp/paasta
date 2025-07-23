@@ -1,3 +1,15 @@
+paasta-tools (1.30.0) xenial; urgency=medium
+
+  * 1.30.0 tagged with 'make release'
+    Commit: Remote run copy file (#4096)  Support copying files from
+    remote run jobs and also adding additional files if the job is
+    already running.  Example:
+    https://fluffy.yelpcorp.com/i/CXvf9mq5HdkZJ93bbm2fwsfqwMPFflbh.html
+    Toolbox example:
+    https://fluffy.yelpcorp.com/i/46FPk43js5W0NrHBPbTqFbjC0K25gpp6.html
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 23 Jul 2025 14:02:00 -0700
+
 paasta-tools (1.29.0) xenial; urgency=medium
 
   * 1.29.0 tagged with 'make release'
