@@ -66,8 +66,8 @@ class RemoteRunOutcome(TypedDict, total=False):
     namespace: str
 
 
-def _format_remote_run_job_name(
-    job: V1Job,
+def format_remote_run_job_name(
+    job_name: str,
     user: str,
 ) -> str:
     """Format name for remote run job
@@ -76,7 +76,7 @@ def _format_remote_run_job_name(
     :param str user: the user requesting the remote-run
     :return: job name
     """
-    return limit_size_with_hash(f"remote-run-{user}-{job.metadata.name}")
+    return limit_size_with_hash(f"remote-run-{user}-{job_name}")
 
 
 def load_eks_or_adhoc_deployment_config(
@@ -150,7 +150,7 @@ def remote_run_start(
         deadline_seconds=max_duration,
         keep_routable_ip=is_toolbox,
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
     app_wrapper = get_application_wrapper(formatted_job)
     app_wrapper.soa_config = deployment_config
@@ -261,7 +261,7 @@ def remote_run_stop(
     formatted_job = deployment_config.format_kubernetes_job(
         job_label=REMOTE_RUN_JOB_LABEL
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
 
     # Stop the job
@@ -296,7 +296,7 @@ def remote_run_token(
     formatted_job = deployment_config.format_kubernetes_job(
         job_label=REMOTE_RUN_JOB_LABEL
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
 
     # Find pod and create exec token for it
     pod = find_job_pod(kube_client, namespace, job_name)

@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,8 @@ from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import run_interactive_cli
+from paasta_tools.kubernetes.remote_run import format_remote_run_job_name
+from paasta_tools.kubernetes.remote_run import load_eks_or_adhoc_deployment_config
 from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
@@ -39,11 +42,14 @@ from paasta_tools.utils import SystemPaastaConfig
 KUBECTL_EXEC_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
 )
+KUBECTL_CP_TO_CMD_TEMPLATE = (
+    "{kubectl_wrapper} --token {token} -n {namespace} cp {source} {pod}:{dest}"
+)
+KUBECTL_CP_FROM_CMD_TEMPLATE = (
+    "{kubectl_wrapper} --token {token} -n {namespace} cp {pod}:{source} {dest}"
+)
 KUBECTL_LOGS_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} logs -n {namespace} -f {pod}"
-)
-KUBECTL_CP_CMD_TEMPLATE = (
-    "{kubectl_wrapper} --token {token} -n {namespace} cp {filename} {pod}:/tmp/"
 )
 
 
@@ -62,6 +68,13 @@ def _list_services_and_toolboxes() -> List[str]:
     )
 
 
+def _get_kubectl_wrapper(cluster: str) -> str:
+    kubectl_wrapper = f"kubectl-eks-{cluster}"
+    if not shutil.which(kubectl_wrapper):
+        kubectl_wrapper = f"kubectl-{cluster}"
+    return kubectl_wrapper
+
+
 def parse_error(body: str) -> str:
     try:
         body_object = json.loads(body)
@@ -72,6 +85,81 @@ def parse_error(body: str) -> str:
         or body_object.get("message")
         or json.dumps(body_object, indent=4)
     )
+
+
+def paasta_remote_run_copy(
+    args: argparse.Namespace,
+    system_paasta_config: SystemPaastaConfig,
+) -> int:
+    client = get_paasta_oapi_client_with_auth(
+        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        print("Cannot get a paasta-api client")
+        return 1
+
+    # Create the config and extract the job name
+    user = get_username()
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        args.service, args.instance, args.cluster, args.is_toolbox, user
+    )
+    deployment_name = deployment_config.get_sanitised_deployment_name()
+    job_name = format_remote_run_job_name(deployment_name, user)
+
+    poll_response = client.remote_run.remote_run_poll(
+        service=args.service,
+        instance=args.instance,
+        job_name=job_name,
+        user=user,
+        toolbox=args.toolbox,
+    )
+    if poll_response.status != 200:
+        print(
+            f"Unable to find running remote-run pod: have you started one with `paasta remote-run start`?"
+        )
+        return 1
+
+    if args.to_pod:
+        # Create the toolbox copy command
+        exec_command = f"scp -A {args.copy_file_source} {poll_response.pod_address}:{args.copy_file_dest}"
+        # Pick the correct template and force /tmp/ for non-toolbox
+        kubectl_cp_template = KUBECTL_CP_TO_CMD_TEMPLATE
+        if not args.copy_file_dest.startswith("/tmp") and not args.toolbox:
+            args.copy_file_dest = os.path.join("/tmp/", args.copy_file_dest)
+    else:
+        exec_command = f"scp -A {poll_response.pod_address}:{args.copy_file_source} {args.copy_file_dest}"
+        kubectl_cp_template = KUBECTL_CP_FROM_CMD_TEMPLATE
+
+    # Kubectl cp doesnt like directories as a destination
+    if os.path.isdir(args.copy_file_dest):
+        args.copy_file_dest = os.path.join(
+            args.copy_file_dest, os.path.basename(args.copy_file_source)
+        )
+
+    if args.toolbox:
+        cp_command = exec_command.split(" ")
+    else:
+        token_response = client.remote_run.remote_run_token(
+            args.service, args.instance, user
+        )
+        kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
+        cp_command = kubectl_cp_template.format(
+            kubectl_wrapper=kubectl_wrapper,
+            namespace=poll_response.namespace,
+            pod=poll_response.pod_name,
+            source=args.copy_file_source,
+            dest=args.copy_file_dest,
+            token=token_response.token,
+        ).split(" ")
+    call = subprocess.run(cp_command, capture_output=True)
+    if call.returncode != 0:
+        print("Error copying file from remote-run pod: ", file=sys.stderr)
+        print(call.stderr.decode("utf-8"), file=sys.stderr)
+        return 1
+    print(f"{args.copy_file_source} successfully copied to {args.copy_file_dest}")
+
+    return 0
 
 
 def paasta_remote_run_start(
@@ -87,7 +175,6 @@ def paasta_remote_run_start(
     if not client:
         print("Cannot get a paasta-api client")
         return 1
-
     user = get_username()
     try:
         start_response = client.remote_run.remote_run_start(
@@ -152,9 +239,7 @@ def paasta_remote_run_start(
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
         )
-        kubectl_wrapper = f"kubectl-eks-{args.cluster}"
-        if not shutil.which(kubectl_wrapper):
-            kubectl_wrapper = f"kubectl-{args.cluster}"
+        kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
         exec_command = (
             KUBECTL_LOGS_CMD_TEMPLATE if args.follow else KUBECTL_EXEC_CMD_TEMPLATE
         ).format(
@@ -166,11 +251,12 @@ def paasta_remote_run_start(
 
     if args.copy_file:
         for filename in args.copy_file:
-            cp_command = KUBECTL_CP_CMD_TEMPLATE.format(
+            cp_command = KUBECTL_CP_TO_CMD_TEMPLATE.format(
                 kubectl_wrapper=kubectl_wrapper,
                 namespace=poll_response.namespace,
                 pod=poll_response.pod_name,
-                filename=filename,
+                source=filename,
+                dest=os.path.join("/tmp", filename),
                 token=token_response.token,
             ).split(" ")
             call = subprocess.run(cp_command, capture_output=True)
@@ -318,8 +404,31 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         description="Stop your remote-run job if it exists",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    copy_parser = subparsers.add_parser(
+        "copy",
+        help="Copy a file from a running remote-run job",
+        description="Copy a file from a running remote-run job",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    copy_parser.add_argument(
+        "copy_file_source",
+        help="Location of the file within the pod",
+        type=str,
+    )
+    copy_parser.add_argument(
+        "copy_file_dest",
+        help="Location on the local host to copy the file to",
+        type=str,
+    )
+    copy_parser.add_argument(
+        "--to-pod",
+        help="Copy a file to the pod instead of from the pod",
+        action="store_true",
+        default=False,
+    )
     add_common_args_to_parser(start_parser)
     add_common_args_to_parser(stop_parser)
+    add_common_args_to_parser(copy_parser)
     remote_run_parser.set_defaults(command=paasta_remote_run)
 
 
@@ -329,4 +438,6 @@ def paasta_remote_run(args: argparse.Namespace) -> int:
         return paasta_remote_run_start(args, system_paasta_config)
     elif args.remote_run_command == "stop":
         return paasta_remote_run_stop(args, system_paasta_config)
+    elif args.remote_run_command == "copy":
+        return paasta_remote_run_copy(args, system_paasta_config)
     raise ValueError(f"Unsupported subcommand: {args.remote_run_command}")
