@@ -80,8 +80,13 @@ def _format_remote_run_job_name(
 
 
 def load_eks_or_adhoc_deployment_config(
-    service: str, instance: str, cluster: str, is_toolbox: bool = False, user: str = ""
+    service: str,
+    instance: str,
+    cluster: str,
+    is_toolbox: bool = False,
+    user: Optional[str] = None,
 ) -> EksDeploymentConfig:
+    assert user or not is_toolbox, "User required for toolbox deployment"
     try:
         deployment_config = (
             generate_toolbox_deployment(service, cluster, user)
