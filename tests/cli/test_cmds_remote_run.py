@@ -131,7 +131,10 @@ def test_paasta_remote_run_stop(mock_get_client, _):
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.remote_run.subprocess", autospec=True)
-@patch("paasta_tools.cli.cmds.remote_run.load_eks_service_config", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.remote_run.load_eks_or_adhoc_deployment_config",
+    autospec=True,
+)
 def test_paasta_remote_run_copy(mock_load_eks, mock_subprocess, mock_get_client, _):
     mock_args = MagicMock(
         service="foo",
