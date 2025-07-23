@@ -69,6 +69,13 @@ def _list_services_and_toolboxes() -> List[str]:
     )
 
 
+def _get_kubectl_wrapper(cluster: str) -> str:
+    kubectl_wrapper = f"kubectl-eks-{cluster}"
+    if not shutil.which(kubectl_wrapper):
+        kubectl_wrapper = f"kubectl-{cluster}"
+    return kubectl_wrapper
+
+
 def parse_error(body: str) -> str:
     try:
         body_object = json.loads(body)
@@ -134,14 +141,12 @@ def paasta_remote_run_copy(
         )
 
     if args.toolbox:
-        run_interactive_cli(exec_command)
+        cp_command = exec_command.split(" ")
     else:
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
         )
-        kubectl_wrapper = f"kubectl-eks-{args.cluster}"
-        if not shutil.which(kubectl_wrapper):
-            kubectl_wrapper = f"kubectl-{args.cluster}"
+        kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
         cp_command = kubectl_cp_template.format(
             kubectl_wrapper=kubectl_wrapper,
             namespace=poll_response.namespace,
@@ -150,11 +155,11 @@ def paasta_remote_run_copy(
             dest=args.copy_file_dest,
             token=token_response.token,
         ).split(" ")
-        call = subprocess.run(cp_command, capture_output=True)
-        if call.returncode != 0:
-            print("Error copying file from remote-run pod: ", file=sys.stderr)
-            print(call.stderr.decode("utf-8"), file=sys.stderr)
-            return 1
+    call = subprocess.run(cp_command, capture_output=True)
+    if call.returncode != 0:
+        print("Error copying file from remote-run pod: ", file=sys.stderr)
+        print(call.stderr.decode("utf-8"), file=sys.stderr)
+        return 1
     print(f"{args.copy_file_source} successfully copied to {args.copy_file_dest}")
 
     return 0
@@ -237,9 +242,7 @@ def paasta_remote_run_start(
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
         )
-        kubectl_wrapper = f"kubectl-eks-{args.cluster}"
-        if not shutil.which(kubectl_wrapper):
-            kubectl_wrapper = f"kubectl-{args.cluster}"
+        kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
         exec_command = (
             KUBECTL_LOGS_CMD_TEMPLATE if args.follow else KUBECTL_EXEC_CMD_TEMPLATE
         ).format(
