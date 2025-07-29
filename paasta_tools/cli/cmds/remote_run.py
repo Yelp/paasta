@@ -102,7 +102,7 @@ def paasta_remote_run_copy(
     # Create the config and extract the job name
     user = get_username()
     deployment_config = load_eks_or_adhoc_deployment_config(
-        args.service, args.instance, args.cluster, args.is_toolbox, user
+        args.service, args.instance, args.cluster, args.toolbox, user
     )
     deployment_name = deployment_config.get_sanitised_deployment_name()
     job_name = format_remote_run_job_name(deployment_name, user)
