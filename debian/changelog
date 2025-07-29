@@ -1,3 +1,10 @@
+paasta-tools (1.30.1) xenial; urgency=medium
+
+  * 1.30.1 tagged with 'make release'
+    Commit: remote-run: fix toolbox property name (#4100)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 29 Jul 2025 08:17:21 -0700
+
 paasta-tools (1.30.0) xenial; urgency=medium
 
   * 1.30.0 tagged with 'make release'
