@@ -1,3 +1,12 @@
+paasta-tools (1.30.2) xenial; urgency=medium
+
+  * 1.30.2 tagged with 'make release'
+    Commit: remote-run: some minor fixes (#4101)  * support having IAM
+    roles in remote-run jobs * do not attach liveness and readiness
+    probes to jobs
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 01 Aug 2025 05:57:04 -0700
+
 paasta-tools (1.30.1) xenial; urgency=medium
 
   * 1.30.1 tagged with 'make release'
