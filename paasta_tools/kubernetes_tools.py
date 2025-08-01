@@ -1461,6 +1461,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_namespace_config: ServiceNamespaceConfig,
         include_sidecars: bool = True,
         include_liveness_probe: bool = True,
+        include_readiness_probe: bool = True,
     ) -> Sequence[V1Container]:
         ports = [self.get_container_port()]
         # MONK-1130
@@ -1491,7 +1492,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 if include_liveness_probe
                 else None
             ),
-            readiness_probe=self.get_readiness_probe(service_namespace_config),
+            readiness_probe=(
+                self.get_readiness_probe(service_namespace_config)
+                if include_readiness_probe
+                else None
+            ),
             ports=[V1ContainerPort(container_port=port) for port in ports],
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
@@ -2171,6 +2176,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 include_sidecars=include_sidecars,
                 force_no_routable_ip=not keep_routable_ip,
                 include_liveness_probe=False,
+                include_readiness_probe=False,
             )
             pod_template.metadata.labels.update(additional_labels)
             complete_config = V1Job(
@@ -2311,6 +2317,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         include_sidecars: bool = True,
         force_no_routable_ip: bool = False,
         include_liveness_probe: bool = True,
+        include_readiness_probe: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2349,6 +2356,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 service_namespace_config=service_namespace_config,
                 include_sidecars=include_sidecars,
                 include_liveness_probe=include_liveness_probe,
+                include_readiness_probe=include_readiness_probe,
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),

@@ -1531,6 +1531,7 @@ class TestKubernetesDeploymentConfig:
                 include_sidecars=False,
                 force_no_routable_ip=True,
                 include_liveness_probe=False,
+                include_readiness_probe=False,
             )
             assert job.metadata.labels == {
                 "paasta.yelp.com/owner": "whatever",
