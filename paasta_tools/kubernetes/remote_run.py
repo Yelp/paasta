@@ -154,6 +154,7 @@ def remote_run_start(
     formatted_job.metadata.name = job_name
     app_wrapper = get_application_wrapper(formatted_job)
     app_wrapper.soa_config = deployment_config
+    app_wrapper.ensure_service_account(kube_client)
 
     # Launch pod
     logger.info(f"Starting {job_name}")
