@@ -1,3 +1,10 @@
+paasta-tools (1.30.3) xenial; urgency=medium
+
+  * 1.30.3 tagged with 'make release'
+    Commit: fs_group is supposed to be an int (#4103)
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 04 Aug 2025 06:21:11 -0700
+
 paasta-tools (1.30.2) xenial; urgency=medium
 
   * 1.30.2 tagged with 'make release'
