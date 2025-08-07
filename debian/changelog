@@ -1,3 +1,10 @@
+paasta-tools (1.30.4) xenial; urgency=medium
+
+  * 1.30.4 tagged with 'make release'
+    Commit: remote-run: fix --copy-file for abs paths (#4104)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 07 Aug 2025 08:07:33 -0700
+
 paasta-tools (1.30.3) xenial; urgency=medium
 
   * 1.30.3 tagged with 'make release'
