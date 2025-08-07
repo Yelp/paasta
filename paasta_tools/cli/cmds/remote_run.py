@@ -256,7 +256,7 @@ def paasta_remote_run_start(
                 namespace=poll_response.namespace,
                 pod=poll_response.pod_name,
                 source=filename,
-                dest=os.path.join("/tmp", filename),
+                dest=os.path.join("/tmp", os.path.basename(filename)),
                 token=token_response.token,
             ).split(" ")
             call = subprocess.run(cp_command, capture_output=True)
