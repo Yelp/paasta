@@ -2066,6 +2066,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_tron_tsc: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
+    enable_unhealthy_pod_eviction: bool
 
 
 def load_system_paasta_config(
@@ -2846,6 +2847,15 @@ class SystemPaastaConfig:
         else:
             # NOTE: this should never happen unless we've gotten bad data
             return None
+
+    def get_enable_unhealthy_pod_eviction(self) -> bool:
+        """
+        Feature toggle to enable PDBs to evict unhealthy pods.
+
+        Defaults to False (meaning unhealthy pods will not be evicted) as we have legacy clusters where this is
+        unsupported.
+        """
+        return self.config_dict.get("enable_unhealthy_pod_eviction", False)
 
 
 def _run(
