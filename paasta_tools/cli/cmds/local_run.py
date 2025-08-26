@@ -315,7 +315,7 @@ def add_subparser(subparsers):
             "Additionally, 'local-run' can healthcheck a service per the configured healthcheck.\n\n"
             "Alternatively, 'local-run' can be used with --pull, which will pull the currently "
             "deployed docker image and use it, instead of building one.\n\n"
-            "NOTE: while we've tried to make 'local-run' match the real PaaSTA environment, "
+            "While we've tried to make 'local-run' match the real PaaSTA environment, "
             "there are some differences/limitations: e.g., certain features like `boto_keys` "
             "are not supported."
         ),
