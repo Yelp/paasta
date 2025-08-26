@@ -1960,6 +1960,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
+    check_autoscaler_max_instances_page_default: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
     cluster: str
@@ -2846,6 +2847,11 @@ class SystemPaastaConfig:
         else:
             # NOTE: this should never happen unless we've gotten bad data
             return None
+
+    def get_check_autoscaler_max_instances_page_default(self) -> bool:
+        return self.config_dict.get(
+            "check_autoscaler_max_instances_page_default", False
+        )
 
 
 def _run(

@@ -52,7 +52,11 @@ async def check_max_instances(
     instance_type_class: Type[KubernetesDeploymentConfig],
     system_paasta_config: SystemPaastaConfig,
     dry_run: bool = False,
-):
+) -> None:
+    page_default = (
+        system_paasta_config.get_check_autoscaler_max_instances_page_default()
+    )
+
     kube_client = KubeClient()
     for service in list_services(soa_dir=soa_dir):
         service_config = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
@@ -86,6 +90,10 @@ async def check_max_instances(
                 )
                 continue
 
+            max_instances_suggestion = ""
+            alert_threshold_suggestion = ""
+            disable_paging_suggestion = ""
+
             if (
                 autoscaling_status["min_instances"]
                 == autoscaling_status["max_instances"]
@@ -99,6 +107,11 @@ async def check_max_instances(
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
             ):
+                max_instances_suggestion = f"\nYou may want to bump max_instances to at least {autoscaling_status['desired_replicas']}."
+                alert_threshold_suggestion = (
+                    "\nTo make this alert quieter, adjust"
+                    " autoscaling.metrics_providers[n].max_instances_alert_threshold in yelpsoa-configs."
+                )
 
                 metrics_provider_configs = job_config.get_autoscaling_params()[
                     "metrics_providers"
@@ -164,20 +177,38 @@ async def check_max_instances(
                 output = f"{service}.{instance} is below max_instances."
 
             monitoring_overrides = job_config.get_monitoring()
-            monitoring_overrides.update(
-                {
-                    "page": False,  # TODO: remove this line once this alert has been deployed for a little while.
-                    "runbook": "y/check-autoscaler-max-instances",
-                    "realert_every": 60,  # The check runs once a minute, so this would realert every hour.
-                    "tip": (
-                        "The autoscaler wants to scale up to handle additional load"
-                        " because your service is overloaded, but cannot scale any"
-                        " higher because of max_instances. You may want to bump"
-                        " max_instances. To make this alert quieter, adjust"
-                        " autoscaling.metrics_providers[n].max_instances_alert_threshold in yelpsoa-configs."
-                    ),
-                }
+
+            disable_paging_suggestion = "\n".join(
+                [
+                    "",
+                    "To disable/enable paging, set",
+                    "",
+                    f"{instance}:",
+                    f"  ...",
+                    f"  monitoring:" f"    check_overrides:",
+                    f"      check_autoscaler_max_instances.{service}.{instance}:"
+                    f"        page: false  # or true to enable",
+                    "",
+                    f"in eks-{cluster}.yaml.",
+                ]
             )
+
+            monitoring_defaults = {
+                "page": page_default,  # This will be re-overridden in send_event if the user has specified it in check_overrides.
+                "runbook": "y/check-autoscaler-max-instances",
+                "realert_every": 60,  # The check runs once a minute, so this would realert every hour.
+                "tip": (
+                    "The autoscaler wants to scale up to handle additional load"
+                    " because your service is overloaded, but cannot scale any"
+                    " higher because of max_instances."
+                    f"{max_instances_suggestion}"
+                    f"{alert_threshold_suggestion}"
+                    f"{disable_paging_suggestion}"
+                ),
+            }
+            monitoring_overrides = (
+                monitoring_defaults | monitoring_overrides
+            )  # combine, with preference to overrides
             send_event(
                 service,
                 check_name=f"check_autoscaler_max_instances.{service}.{instance}",
