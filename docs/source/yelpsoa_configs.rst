@@ -552,6 +552,7 @@ instance MAY have:
 
   * ``boto_keys``: A list of boto_cfg keys to be made available in the container's environment. Use of this option is discouraged in favor of using IAM roles, but it is still necessary for some legacy services.
     If specified, only the listed boto_cfg keys will be made available in the container's environment. Otherwise, the status-quo behavior will be used.
+    See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
     NOTE: this key is ignored for ``paasta local-run``.
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
