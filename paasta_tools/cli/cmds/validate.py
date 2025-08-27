@@ -504,23 +504,32 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
     for cluster in list_tron_clusters(service, soa_dir):
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
-        elif verbose:
-            # service config has been validated and cron schedules should be safe to parse
-
-            # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
-            service_config = load_tron_service_config(
-                service=service, cluster=cluster, soa_dir=soa_dir
-            )
-            for config in service_config:
-                cron_expression = config.get_cron_expression()
-                if cron_expression:
-                    print_upcoming_runs(config, cron_expression)
-
+        # service config has been validated and cron schedules should be safe to parse
+        # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
+        service_config = load_tron_service_config(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        )
+        for config in service_config:
+            cron_expression = config.get_cron_expression()
+            if cron_expression:
+                try:
+                    upcoming_runs = get_upcoming_runs(config, cron_expression)
+                    if verbose:
+                        print(info_message(f"Upcoming runs for {config.get_name()}:"))
+                        for run in upcoming_runs:
+                            print(f"\t{run}")
+                except Exception as e:
+                    print(
+                        failure(
+                            f"Invalid schedule ({cron_expression}) for {config.get_name()}: {e}",
+                            "http://tron.readthedocs.io/en/latest/jobs.html#job-scheduling",
+                        )
+                    )
+                    returncode = False
     return returncode
 
 
-def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
-    print(info_message(f"Upcoming runs for {config.get_name()}:"))
+def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
 
     config_tz = config.get_time_zone() or DEFAULT_TZ
 
@@ -528,9 +537,7 @@ def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
         cron_schedule=cron_expression,
         starting_from=pytz.timezone(config_tz).localize(datetime.today()),
     )
-
-    for run in next_cron_runs:
-        print(f"\t{run}")
+    return next_cron_runs
 
 
 def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
@@ -1009,4 +1016,5 @@ def paasta_validate(args):
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
     if not paasta_validate_soa_configs(service, service_path, args.verbose):
+        print("Invalid configs found. Please try again.")
         return 1
