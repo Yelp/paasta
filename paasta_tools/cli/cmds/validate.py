@@ -529,7 +529,7 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
     return returncode
 
 
-def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> List[str]:
+def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> List[datetime]:
 
     config_tz = config.get_time_zone() or DEFAULT_TZ
 
@@ -881,7 +881,7 @@ def check_secrets_for_instance(
 
 def list_upcoming_runs(
     cron_schedule: str, starting_from: datetime, num_runs: int = 5
-) -> List[str]:
+) -> List[datetime]:
     iter = croniter(cron_schedule, starting_from)
     return [iter.get_next(datetime) for _ in range(num_runs)]
 
