@@ -522,7 +522,7 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
                     print(
                         failure(
                             f"Invalid schedule ({cron_expression}) for {config.get_name()}: {e}",
-                            "http://tron.readthedocs.io/en/latest/jobs.html#job-scheduling",
+                            "http://crontab.guru",
                         )
                     )
                     returncode = False
