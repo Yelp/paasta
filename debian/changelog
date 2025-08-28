@@ -1,3 +1,12 @@
+paasta-tools (1.30.5) xenial; urgency=medium
+
+  * 1.30.5 tagged with 'make release'
+    Commit: Merge pull request #4109 from Yelp/jfong/TRON-2481-run-
+    croniter-validate  TRON-2481: Attempt to generate next run dates as
+    part of validation
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 28 Aug 2025 15:42:37 -0700
+
 paasta-tools (1.30.4) xenial; urgency=medium
 
   * 1.30.4 tagged with 'make release'
