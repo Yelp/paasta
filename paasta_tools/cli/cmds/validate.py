@@ -529,7 +529,7 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
     return returncode
 
 
-def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
+def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> List[str]:
 
     config_tz = config.get_time_zone() or DEFAULT_TZ
 
