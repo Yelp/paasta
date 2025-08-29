@@ -202,6 +202,37 @@ def _load_sensu_team_data():
     return team_data
 
 
+def get_check_specific_overrides(overrides, check_name):
+    """
+    Given a monitoring dict like:
+    {
+        "team": "myteam",
+        "check_every": "1m",
+        "check_overrides": {
+            "check_autoscaler_max_instances": {
+                "team": "otherteam",
+            },
+        },
+    }
+
+    and a check_name of "check_autoscaler_max_instances", this function will
+    return
+
+    {
+        "team": "otherteam",
+        "check_every": "1m",
+    }
+
+    This allows you to override settings for specific checks, rather than for all checks for a service.
+    """
+    check_overrides = overrides.get("check_overrides", {})
+    check_specific_overrides = check_overrides.get(check_name, {})
+    combined = overrides.copy()
+    combined.update(check_specific_overrides)
+    combined.pop("check_overrides", None)
+    return combined
+
+
 def send_event(
     service,
     check_name,
@@ -228,6 +259,9 @@ def send_event(
     :param system_paasta_config: A SystemPaastaConfig object representing the system
     :param dry_run: Print the Sensu event instead of emitting it
     """
+
+    overrides = get_check_specific_overrides(overrides, check_name)
+
     # This function assumes the input is a string like "mumble.main"
     team = get_team(overrides, service, soa_dir)
     if not team:

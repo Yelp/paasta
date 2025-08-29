@@ -1215,3 +1215,33 @@ def test_send_replication_event_if_under_replication_critical(instance_config):
                 instance_config.cluster,
             )
         ) in send_event_kwargs["description"]
+
+
+def test_send_event_respects_check_overrides():
+    with mock.patch(
+        "paasta_tools.monitoring_tools.pysensu_yelp.send_event",
+        autospec=True,
+    ) as mock_pysensu_yelp_send_event:
+        monitoring_tools.send_event(
+            service="fake_service",
+            check_name="fake_check_name",
+            overrides={
+                "page": True,
+                "team": "fake_team",
+                "check_overrides": {
+                    "fake_check_name": {"page": False},
+                },
+            },
+            status="42",
+            output="The http port is not open",
+            soa_dir="/fake/soa/dir",
+            cluster="fake_cluster",
+            system_paasta_config=mock.Mock(
+                get_cluster=mock.Mock(return_value="fake_cluster"),
+                sensu_host=mock.Mock(return_value="fake_sensu_host"),
+                sensu_port=mock.Mock(return_value=12345),
+            ),
+            dry_run=False,
+        )
+        _, kwargs = mock_pysensu_yelp_send_event.call_args
+        assert kwargs["page"] is False
