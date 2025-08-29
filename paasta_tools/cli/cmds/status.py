@@ -123,12 +123,15 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
 
 InstanceStatusWriter = Callable[
     [
-        Arg(str, "cluster"),
-        Arg(str, "service"),
-        Arg(str, "instance"),
-        Arg(List[str], "output"),
+        Arg(
+            str,
+            "cluster",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        Arg(str, "service"),  # noqa: F821  # flake8 false-positive
+        Arg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        Arg(List[str], "output"),  # noqa: F821  # flake8 false-positive
         Arg(Any),
-        Arg(int, "verbose"),
+        Arg(int, "verbose"),  # noqa: F821  # flake8 false-positive
     ],
     int,
 ]

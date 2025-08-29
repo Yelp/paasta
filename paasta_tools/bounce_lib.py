@@ -42,11 +42,14 @@ BounceMethodResult = TypedDict(
 
 BounceMethod = Callable[
     [
-        Arg(BounceMethodConfigDict, "new_config"),
-        Arg(bool, "new_app_running"),
-        Arg(Collection, "happy_new_tasks"),
-        Arg(Sequence, "old_non_draining_tasks"),
-        DefaultArg(float, "margin_factor"),
+        Arg(
+            BounceMethodConfigDict,
+            "new_config",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        Arg(bool, "new_app_running"),  # noqa: F821  # flake8 false-positive
+        Arg(Collection, "happy_new_tasks"),  # noqa: F821  # flake8 false-positive
+        Arg(Sequence, "old_non_draining_tasks"),  # noqa: F821  # flake8 false-positive
+        DefaultArg(float, "margin_factor"),  # noqa: F821  # flake8 false-positive
     ],
     BounceMethodResult,
 ]
