@@ -3,9 +3,11 @@ import functools
 import time
 import weakref
 from collections import defaultdict
+from typing import Any
 from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
+from typing import Coroutine
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -97,7 +99,8 @@ async def aiter_to_list(
 def async_timeout(
     seconds: int = 10,
 ) -> Callable[
-    [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
+    [Callable[..., Coroutine[Any, Any, T]]],
+    Callable[..., Coroutine[Any, Any, T]],  # wrapped  # inner
 ]:
     def outer(wrapped):
         @functools.wraps(wrapped)
