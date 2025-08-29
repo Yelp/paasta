@@ -1,4 +1,5 @@
 import asyncio
+from asyncio.tasks import Task
 from collections import defaultdict
 from enum import Enum
 from typing import Any
@@ -1156,7 +1157,7 @@ async def kubernetes_status(
 
     # this task is necessary for mesh_status, but most other use cases want
     # just the list of pods
-    pods_task = asyncio.create_task(
+    pods_task: Task[Sequence[V1Pod]] = asyncio.create_task(
         kubernetes_tools.pods_for_service_instance(
             service=job_config.service,
             instance=job_config.instance,

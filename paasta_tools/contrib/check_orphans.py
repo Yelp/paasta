@@ -56,7 +56,7 @@ def get_zk_data(ignored_services: Set[str]) -> SmartstackData:
     zk = KazooClient(hosts=zk_hosts)
     zk.start()
 
-    logger.debug(f"pulling smartstack data from zookeeper")
+    logger.debug("pulling smartstack data from zookeeper")
     zk_data = {}
     services = zk.get_children(PREFIX)
     for service in services:

@@ -45,7 +45,7 @@ repos:
         args: ['--target-version', 'py310']
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/PyCQA/flake8
-    rev: 3.7.7
+    rev: 7.3.0
     hooks:
     -   id: flake8
         args: ['--ignore', 'E231']

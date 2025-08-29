@@ -26,6 +26,7 @@ from typing import Mapping
 from typing import Optional
 
 import a_sync
+from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.view import view_config
 
@@ -139,7 +140,10 @@ def no_configuration_for_service_message(cluster, service, instance):
 @view_config(
     route_name="service.instance.status", request_method="GET", renderer="json"
 )
-def instance_status(request):
+def instance_status(
+    request: Request,
+) -> dict[str, Any]:  # godspeed to anyone typing the retval here
+    # NOTE: swagger_data is populated by pyramid_swagger
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
@@ -353,7 +357,10 @@ def get_deployment_version(
     request_method="GET",
     renderer="json",
 )
-def instance_mesh_status(request):
+def instance_mesh_status(
+    request: Request,
+) -> dict[str, Any]:  # godspeed to anyone typing the retval here
+    # NOTE: swagger_data is populated by pyramid_swagger
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     include_envoy = request.swagger_data.get("include_envoy")

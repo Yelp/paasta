@@ -124,7 +124,7 @@ def paasta_mesh_status_on_api_endpoint(
             [PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")],
         )
     except Exception as e:
-        output = [PaastaColors.red(f"Exception when talking to the API:")]
+        output = [PaastaColors.red("Exception when talking to the API:")]
         output.extend(str(e).split("\n"))
         return 1, output
 

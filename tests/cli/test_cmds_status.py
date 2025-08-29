@@ -2264,14 +2264,14 @@ class TestPrintKubernetesStatus:
             f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]
         expected_output += [
-            f"      Pods:",
-            f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
+            "      Pods:",
+            "        Pod ID  Host deployed to  Deployed at what localtime      Health",
             f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
             f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
             f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
             f"        {PaastaColors.grey('  Disk quota exceeded')}",
-            f"      ReplicaSets:",
-            f"        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
+            "      ReplicaSets:",
+            "        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
             f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
@@ -2292,17 +2292,17 @@ class TestPrintCassandraStatus:
         assert return_value == 0
 
         expected_output = [
-            f"    Cassandra cluster:",
+            "    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
-            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
-            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
-            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
-            f"            ",
-            f"            IP             StartTime   InspectedAt  Error",
+            "        Nodes:",
+            "            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
+            "            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
+            "            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
+            "            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
+            "            ",
+            "            IP             StartTime   InspectedAt  Error",
             f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
-            f"            ",
+            "            ",
         ]
         assert expected_output == output
 
@@ -2341,17 +2341,17 @@ class TestPrintCassandraStatus:
         )
 
         expected_output = [
-            f"    Cassandra cluster:",
+            "    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
+            "        Nodes:",
+            "            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
             f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     {startTimes[0]}                  {inspectTimes[0]}  No        Yes          No       No",
             f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTimes[1]}  {inspectTimes[1]}  No        Yes          No       No",
             f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTimes[2]}  {inspectTimes[2]}  No        Yes          No       No",
-            f"            ",
-            f"            IP             StartTime             InspectedAt           Error",
+            "            ",
+            "            IP             StartTime             InspectedAt           Error",
             f"            10.93.180.201  {startTimes[3]}  {inspectTimes[3]}  {PaastaColors.red('oops')}",
-            f"            ",
+            "            ",
         ]
         assert expected_output == output
 
@@ -2369,12 +2369,12 @@ class TestPrintCassandraStatus:
 
         nodes = mock_cassandra_status["status"]["nodes"]
         expected_output = [
-            f"    Cassandra cluster:",
+            "    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
+            "        Nodes:",
         ]
         for node in nodes:
-            expected_output.append(f"            Node:")
+            expected_output.append("            Node:")
             for prop in node.get("properties"):
                 typ = prop.get("type")
                 value = prop.get("value")
@@ -2547,7 +2547,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red(f"Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception when talking to the API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2577,7 +2577,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red(f"Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception when talking to the API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2606,7 +2606,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red(f"Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception when talking to the API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2641,7 +2641,7 @@ class TestPrintFlinkStatus:
         assert return_value == 1
 
         # and output that an error has occurred
-        assert PaastaColors.red(f"Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception when talking to the API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2709,11 +2709,11 @@ class TestPrintFlinkStatus:
         metadata = mock_flink_status["metadata"]
         expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
-            f"    Pods: 3 running, 0 evicted, 0 other",
-            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
-            f"    1 taskmanagers, 3/4 slots available",
-            f"    Jobs:",
-            f"      Job Name       State       Started",
+            "    Pods: 3 running, 0 evicted, 0 other",
+            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            "    1 taskmanagers, 3/4 slots available",
+            "    Jobs:",
+            "      Job Name       State       Started",
             f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
@@ -2757,29 +2757,29 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         expected_output = [
-            f"    Config SHA: 00000",
-            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            f"    Flink Pool: flink",
-            f"    Owner: fake_owner",
-            f"    Flink Runbook: fake_runbook_url",
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            "    Config SHA: 00000",
+            "    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            "    Flink Pool: flink",
+            "    Owner: fake_owner",
+            "    Flink Runbook: fake_runbook_url",
+            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Log Commands:",
-            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            "    Flink Log Commands:",
+            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Monitoring:",
-            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            "    Flink Monitoring:",
+            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
-            f"    Pods: 3 running, 0 evicted, 0 other",
+            "    Pods: 3 running, 0 evicted, 0 other",
         ]
         append_pod_status(status["pod_status"], expected_output)
         expected_output.append(
@@ -2829,29 +2829,29 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         expected_output = [
-            f"    Config SHA: 00000",
-            f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            f"    Flink Pool: flink-spot",
-            f"    Owner: fake_owner",
-            f"    Flink Runbook: fake_runbook_url",
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            "    Config SHA: 00000",
+            "    Repo(git): https://github.yelpcorp.com/services/fake_service",
+            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+            "    Flink Pool: flink-spot",
+            "    Owner: fake_owner",
+            "    Flink Runbook: fake_runbook_url",
+            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Log Commands:",
-            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            "    Flink Log Commands:",
+            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Monitoring:",
-            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            "    Flink Monitoring:",
+            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
-            f"    Pods: 1 running, 0 evicted, 0 other",
+            "    Pods: 1 running, 0 evicted, 0 other",
         ]
         append_pod_status(status["pod_status"], expected_output)
         expected_output.append(
@@ -2900,27 +2900,27 @@ class TestPrintFlinkStatus:
             datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
         expected_output = _get_flink_base_status_verbose_1(metadata) + [
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Log Commands:",
-            f"      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            f"      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            f"      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            f"      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+            "    Flink Log Commands:",
+            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
             f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    Flink Monitoring:",
-            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
+            "    Flink Monitoring:",
+            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+            "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
-            f"    Pods: 3 running, 0 evicted, 0 other",
-            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
-            f"    1 taskmanagers, 3/4 slots available",
-            f"    Jobs:",
-            f"      Job Name       State       Started",
+            "    Pods: 3 running, 0 evicted, 0 other",
+            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            "    1 taskmanagers, 3/4 slots available",
+            "    Jobs:",
+            "      Job Name       State       Started",
             f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
         ]
         append_pod_status(status["pod_status"], expected_output)
@@ -2967,7 +2967,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
 
 def _get_flink_base_status_verbose_0(metadata):
     return [
-        f"    Config SHA: 00000",
+        "    Config SHA: 00000",
         f"    Flink version: {config_obj.flink_version}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
@@ -2975,12 +2975,12 @@ def _get_flink_base_status_verbose_0(metadata):
 
 def _get_flink_base_status_verbose_1(metadata):
     return [
-        f"    Config SHA: 00000",
-        f"    Repo(git): https://github.yelpcorp.com/services/fake_service",
-        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-        f"    Flink Pool: flink",
-        f"    Owner: fake_owner",
-        f"    Flink Runbook: fake_runbook_url",
+        "    Config SHA: 00000",
+        "    Repo(git): https://github.yelpcorp.com/services/fake_service",
+        "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+        "    Flink Pool: flink",
+        "    Owner: fake_owner",
+        "    Flink Runbook: fake_runbook_url",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
