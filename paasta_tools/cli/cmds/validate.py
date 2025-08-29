@@ -573,7 +573,7 @@ def validate_paasta_objects(service_path):
         errors = "\n".join(messages)
         print(failure((f"There were failures validating {service}: {errors}"), ""))
     else:
-        print(success(f"All PaaSTA Instances for are valid for all clusters"))
+        print(success("All PaaSTA Instances for are valid for all clusters"))
 
     return returncode
 
@@ -741,7 +741,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                             and configured_provider_count > 1
                         ):
                             raise AutoscalingValidationError(
-                                f"cannot use bespoke autoscaling with HPA autoscaling"
+                                "cannot use bespoke autoscaling with HPA autoscaling"
                             )
                         if metrics_provider["type"] in seen_provider_types:
                             raise AutoscalingValidationError(
@@ -808,7 +808,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                             ):
                                 link = "y/override-cpu-autotune"
                                 raise AutoscalingValidationError(
-                                    f"CPU override detected for a CPU-autoscaled instance; "
+                                    "CPU override detected for a CPU-autoscaled instance; "
                                     "see the following link for next steps:"
                                 )
                     except AutoscalingValidationError as e:

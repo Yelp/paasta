@@ -124,7 +124,7 @@ def format_framework(info):
 def format_message_for_service(service, frameworks):
     output = f"Found the following long-running Spark frameworks associated with service {service}.\n"
     output += (
-        f"Please check why they are still running and terminate if appropriate.\n\n"
+        "Please check why they are still running and terminate if appropriate.\n\n"
     )
     output += "\n".join(format_framework(f) for f in frameworks)
     return output
