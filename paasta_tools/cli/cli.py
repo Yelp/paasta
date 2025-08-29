@@ -68,7 +68,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
 def list_external_commands():
     p = subprocess.check_output(["/bin/bash", "-p", "-c", "compgen -A command paasta-"])
     lines = p.decode("utf-8").strip().split("\n")
-    return {l.replace("paasta-", "", 1) for l in lines}
+    return {line.replace("paasta-", "", 1) for line in lines}
 
 
 def calling_external_command():
