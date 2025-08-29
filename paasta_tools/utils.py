@@ -53,6 +53,7 @@ from typing import Collection
 from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
+from typing import Generic
 from typing import IO
 from typing import Iterable
 from typing import Iterator
@@ -4139,7 +4140,7 @@ def timeout(
     return decorate
 
 
-class _Timeout:
+class _Timeout(Generic[_TimeoutFuncRetType]):
     def __init__(
         self,
         function: Callable[..., _TimeoutFuncRetType],

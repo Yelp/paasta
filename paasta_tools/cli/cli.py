@@ -132,10 +132,10 @@ PAASTA_SUBCOMMANDS = {
 }
 
 
-def get_argparser(commands=None):
+def get_argparser(commands: list[str] | None = None) -> argparse.ArgumentParser:
     """Create and return argument parser for a set of subcommands.
 
-    :param commands: Union[None, List[str]] If `commands` argument is `None`,
+    :param commands: list[str] | None: If `commands` argument is `None`,
     add full parsers for all subcommands, if `commands` is empty list -
     add thin parsers for all subcommands, otherwise - add full parsers for
     subcommands in the argument.
