@@ -1291,7 +1291,7 @@ def test_validate_cpu_autotune_override(
             ),
         )
     ]
-    mock_get_file_contents.return_value = f"""
+    mock_get_file_contents.return_value = """
 ---
 fake_instance1:
   mem: 2

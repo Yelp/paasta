@@ -178,7 +178,7 @@ def add_subparser(subparsers) -> None:
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
-        help=f"Define a different soa config directory. Defaults to %(default)s.",
+        help="Define a different soa config directory. Defaults to %(default)s.",
     )
 
     status_parser.add_argument(

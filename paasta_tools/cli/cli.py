@@ -170,7 +170,7 @@ def get_argparser(commands: list[str] | None = None) -> argparse.ArgumentParser:
 
     # Adding a separate help subparser allows us to respond to "help" without --help
     help_parser = subparsers.add_parser(
-        "help", help=f"run `paasta <subcommand> -h` for help"
+        "help", help="run `paasta <subcommand> -h` for help"
     )
     help_parser.set_defaults(command=None)
 
