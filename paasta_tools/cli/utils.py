@@ -598,42 +598,54 @@ def get_jenkins_build_output_url():
 
 InstanceListerSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(Optional[str], "cluster"),
-        NamedArg(str, "instance_type"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(Optional[str], "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "instance_type"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     List[Tuple[str, str]],
 ]
 
 InstanceLoaderSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(str, "instance"),
-        NamedArg(str, "cluster"),
-        NamedArg(bool, "load_deployments"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(bool, "load_deployments"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     InstanceConfig,
 ]
 
 LongRunningServiceListerSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(Optional[str], "cluster"),
-        NamedArg(str, "instance_type"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(Optional[str], "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "instance_type"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     List[Tuple[str, str]],
 ]
 
 LongRunningServiceLoaderSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(str, "instance"),
-        NamedArg(str, "cluster"),
-        NamedArg(bool, "load_deployments"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(bool, "load_deployments"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     LongRunningServiceConfig,
 ]
