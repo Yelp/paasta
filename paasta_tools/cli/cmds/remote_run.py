@@ -369,7 +369,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
             "automatically stopped (capped by the API backend)"
         ),
         type=int,
-        default=1800,
+        default=7200,
     )
     start_parser.add_argument(
         "-f",
