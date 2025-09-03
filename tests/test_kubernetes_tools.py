@@ -1897,6 +1897,218 @@ class TestKubernetesDeploymentConfig:
         assert ret == expected
 
     @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "metrics_providers,expected_labels",
+        [
+            # No metrics providers
+            ([], {}),
+            # Single providers
+            ([METRICS_PROVIDER_UWSGI], {}),
+            (
+                [METRICS_PROVIDER_PISCINA],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_GUNICORN],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            ([METRICS_PROVIDER_CPU], {}),
+            ([METRICS_PROVIDER_UWSGI_V2], {}),
+            # Two provider combinations
+            (
+                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_PISCINA],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_GUNICORN],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_GUNICORN],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            ([METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_CPU], {}),
+            (
+                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_CPU],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_GUNICORN, METRICS_PROVIDER_CPU],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            # Three provider combinations
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            (
+                [
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            # All providers
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                    METRICS_PROVIDER_UWSGI_V2,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+        ],
+    )
+    def test_get_pod_template_spec_multiple_metrics_providers(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_pod_anti_affinity,
+        mock_get_termination_grace_period,
+        mock_load_service_namespace_config,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_kubernetes_containers,
+        mock_get_volumes,
+        metrics_providers: List[str],
+        expected_labels: Dict[str, str],
+    ):
+        """Test get_pod_template_spec with multiple metrics providers in all combinations."""
+        mock_service_namespace_config = mock.Mock()
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+        mock_service_namespace_config.is_in_smartstack.return_value = True
+        mock_get_node_affinity.return_value = None
+        mock_get_pod_anti_affinity.return_value = None
+        mock_create_pod_topology_spread_constraints.return_value = []
+        mock_get_termination_grace_period.return_value = None
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            True
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+
+        # Deployment config with multiple metrics providers
+        mock_config_dict = KubernetesDeploymentConfigDict(
+            min_instances=1,
+            max_instances=3,
+            autoscaling={
+                "metrics_providers": [
+                    {"type": provider} for provider in metrics_providers
+                ]
+            },
+            deploy_group="fake_group",
+        )
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict=mock_config_dict,
+            branch_dict=None,
+        )
+
+        ret = deployment.get_pod_template_spec(
+            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+        )
+
+        # Each metric provider has its own set of labels. We expect to see all of them.
+        actual_labels = ret.metadata.labels
+        for expected_label, expected_value in expected_labels.items():
+            assert actual_labels.get(expected_label) == expected_value, (
+                f"Expected label {expected_label}={expected_value}, "
+                f"but got {actual_labels.get(expected_label)}"
+            )
+
+        # Deploy group label is only set when specific metrics providers are used
+        deploy_group_providers = {
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+        }
+        if any(provider in deploy_group_providers for provider in metrics_providers):
+            assert actual_labels.get("paasta.yelp.com/deploy_group") == "fake_group"
+
+        # Autoscaled label is always set
+        assert actual_labels.get("paasta.yelp.com/autoscaled") == "true"
+
+    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
         autospec=True,
     )
