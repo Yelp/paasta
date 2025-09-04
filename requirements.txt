@@ -111,7 +111,7 @@ syslogmp==0.2.2
 text-unidecode==1.3
 transitions==0.6.9
 translationstring==1.3
-typing-extensions==4.15.0
+typing-extensions==4.13.2
 tzlocal==1.2
 url-normalize==1.4.2
 urllib3==1.26.18
