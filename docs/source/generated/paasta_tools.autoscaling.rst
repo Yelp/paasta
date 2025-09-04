@@ -8,7 +8,6 @@ Submodules
    :maxdepth: 4
 
    paasta_tools.autoscaling.autoscaling_service_lib
-   paasta_tools.autoscaling.forecasting
    paasta_tools.autoscaling.max_all_k8s_services
    paasta_tools.autoscaling.pause_service_autoscaler
    paasta_tools.autoscaling.utils
