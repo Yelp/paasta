@@ -1,8 +1,6 @@
 from typing import Optional
 
-from kubernetes.client.models.v2beta2_object_metric_status import (
-    V2beta2ObjectMetricStatus,
-)
+from kubernetes.client import V2beta2ObjectMetricStatus
 from mypy_extensions import TypedDict
 
 
