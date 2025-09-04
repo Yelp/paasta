@@ -25,9 +25,13 @@ import shutil
 import socket
 import subprocess
 from collections import defaultdict
+from datetime import datetime
+from datetime import timezone
 from shlex import quote
+from typing import Any
 from typing import Callable
 from typing import Collection
+from typing import Dict
 from typing import Generator
 from typing import Iterable
 from typing import List
@@ -37,6 +41,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import ephemeral_port_reserve
 from mypy_extensions import NamedArg
@@ -67,6 +72,7 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import format_table
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
@@ -1116,3 +1122,53 @@ def run_interactive_cli(
         f"exec {cmd}"
     )
     pty.spawn([shell, "-c", wrapped_cmd])
+
+
+def get_pod_uptime(pod_deployed_timestamp: str) -> str:
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    pod_creation_time = datetime.strptime(
+        pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ"
+    ).replace(tzinfo=timezone.utc)
+    pod_uptime = datetime.now(timezone.utc) - pod_creation_time
+    pod_uptime_total_seconds = pod_uptime.total_seconds()
+    pod_uptime_days = divmod(pod_uptime_total_seconds, 86400)
+    pod_uptime_hours = divmod(pod_uptime_days[1], 3600)
+    pod_uptime_minutes = divmod(pod_uptime_hours[1], 60)
+    pod_uptime_seconds = divmod(pod_uptime_minutes[1], 1)
+    return f"{int(pod_uptime_days[0])}d{int(pod_uptime_hours[0])}h{int(pod_uptime_minutes[0])}m{int(pod_uptime_seconds[0])}s"
+
+
+def append_pod_status(pod_status: List[Dict[str, Any]], output: List[str]) -> None:
+    output.append("    Pods:")
+    rows: List[Union[str, Tuple[str, str, str, str]]] = [
+        ("Pod Name", "Host", "Phase", "Uptime")
+    ]
+    for pod in pod_status:
+        color_fn = (
+            PaastaColors.green
+            if pod["phase"] == "Running" and pod["container_state"] == "Running"
+            else PaastaColors.red
+            # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
+            if pod["phase"] == "Failed"
+            or pod["container_state_reason"] == "CrashLoopBackOff"
+            else PaastaColors.yellow
+        )
+
+        rows.append(
+            (
+                pod["name"],
+                pod["host"],
+                color_fn(pod["phase"]),
+                get_pod_uptime(pod["deployed_timestamp"]),
+            )
+        )
+        if "reason" in pod and pod["reason"] != "":
+            rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
+        if "container_state" in pod and pod["container_state"] != "Running":
+            rows.append(
+                PaastaColors.grey(
+                    f"  {pod['container_state']}: {pod['container_state_reason']}"
+                )
+            )
+    pods_table = format_table(rows)
+    output.extend([f"      {line}" for line in pods_table])
