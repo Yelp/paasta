@@ -1073,6 +1073,17 @@ Here is a list of options that PaaSTA will pass through:
    This alert sends an email to ``notification_email`` and post notifications
    to ``irc_channels``. It does not page. Defaults to **true**.
 
+ * ``check_overrides``: Check-specific overrides. This is a dictionary of
+    check name to overrides, where the overrides are a dictionary with the same
+    keys allowed as monitoring.yaml.
+
+    For example: ::
+
+      # monitoring.yaml
+      team: myteam   # For most alerts, myteam will be notified.
+      check_overrides:
+        check_autoscaler_max_instances:
+          team: otherteam  # For the check_autoscaler_max_instances alert, otherteam will be notified.
 
 Monitoring Examples
 ^^^^^^^^^^^^^^^^^^^
