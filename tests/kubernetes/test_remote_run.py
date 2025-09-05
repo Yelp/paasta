@@ -46,7 +46,7 @@ from paasta_tools.kubernetes.remote_run import RemoteRunError
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
+def test_remote_run_start(mock_client, mock_load_config, mock_wrapper_getter):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_load_config.return_value.config_dict = {}
@@ -72,8 +72,47 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
         deadline_seconds=1000,
         keep_routable_ip=False,
     )
-    mock_wrapper.assert_called_once_with(mock_job)
-    mock_wrapper.return_value.create.assert_called_once_with(mock_client)
+    mock_wrapper_getter.assert_called_once_with(mock_job)
+    mock_wrapper = mock_wrapper_getter.return_value
+    mock_wrapper.ensure_service_account.assert_called_once_with(mock_client)
+    mock_wrapper.create.assert_called_once_with(mock_client)
+
+
+@patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
+@patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
+def test_remote_run_start_command(mock_client, mock_load_config, mock_wrapper_getter):
+    mock_client = mock_client.return_value
+    mock_load_config.return_value.get_namespace.return_value = "namespace"
+    mock_load_config.return_value.config_dict = {}
+    mock_job = mock_load_config.return_value.format_kubernetes_job.return_value
+    mock_job.metadata.name = "somejobwithcommand"
+    assert remote_run_start(
+        "foo",
+        "bar",
+        "dev",
+        "someuser",
+        interactive=False,
+        recreate=False,
+        max_duration=1000,
+        is_toolbox=False,
+        command="python -m this --and that",
+    ) == {
+        "status": 200,
+        "message": "Remote run sandbox started",
+        "job_name": "remote-run-someuser-somejobwithcommand",
+    }
+    assert mock_load_config.return_value.config_dict == {
+        "cmd": "python -m this --and that"
+    }
+    mock_load_config.return_value.format_kubernetes_job.assert_called_once_with(
+        job_label="remote-run",
+        deadline_seconds=1000,
+        keep_routable_ip=False,
+    )
+    mock_wrapper_getter.assert_called_once_with(mock_job)
+    mock_wrapper = mock_wrapper_getter.return_value
+    mock_wrapper.create.assert_called_once_with(mock_client)
 
 
 @patch("paasta_tools.kubernetes.remote_run.remote_run_stop", autospec=True)
@@ -81,7 +120,7 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper):
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_start_recreate(
-    mock_client, mock_load_config, mock_wrapper, mock_stop
+    mock_client, mock_load_config, mock_wrapper_getter, mock_stop
 ):
     def _create_mock_job(name: str):
         mock_job = MagicMock()
@@ -96,7 +135,10 @@ def test_remote_run_start_recreate(
         _create_mock_job("somejob"),
         _create_mock_job("somejob"),
     ]
-    mock_wrapper.return_value.create.side_effect = [ApiException(status=409), None]
+    mock_wrapper_getter.return_value.create.side_effect = [
+        ApiException(status=409),
+        None,
+    ]
     assert remote_run_start(
         "foo",
         "bar",
@@ -119,7 +161,7 @@ def test_remote_run_start_recreate(
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.generate_toolbox_deployment", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_start_toolbox(mock_client, mock_gen_config, mock_wrapper):
+def test_remote_run_start_toolbox(mock_client, mock_gen_config, mock_wrapper_getter):
     mock_client = mock_client.return_value
     mock_gen_config.return_value.get_namespace.return_value = "remote-run-toolbox"
     mock_gen_config.return_value.config_dict = {}
@@ -145,8 +187,9 @@ def test_remote_run_start_toolbox(mock_client, mock_gen_config, mock_wrapper):
         deadline_seconds=1000,
         keep_routable_ip=True,
     )
-    mock_wrapper.assert_called_once_with(mock_job)
-    mock_wrapper.return_value.create.assert_called_once_with(mock_client)
+    mock_wrapper_getter.assert_called_once_with(mock_job)
+    mock_wrapper = mock_wrapper_getter.return_value
+    mock_wrapper.create.assert_called_once_with(mock_client)
 
 
 @patch("paasta_tools.kubernetes.remote_run.find_job_pod", autospec=True)
@@ -203,7 +246,7 @@ def test_remote_run_ready(
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
+def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper_getter):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_job = mock_load_config.return_value.format_kubernetes_job.return_value
@@ -213,8 +256,9 @@ def test_remote_run_stop(mock_client, mock_load_config, mock_wrapper):
         "message": "Job successfully removed",
     }
     assert mock_job.metadata.name == "remote-run-someuser-somejob"
-    mock_wrapper.assert_called_once_with(mock_job)
-    mock_wrapper.return_value.deep_delete.assert_called_once_with(mock_client)
+    mock_wrapper_getter.assert_called_once_with(mock_job)
+    mock_wrapper = mock_wrapper_getter.return_value
+    mock_wrapper.deep_delete.assert_called_once_with(mock_client)
 
 
 @patch("paasta_tools.kubernetes.remote_run.create_temp_exec_token", autospec=True)
@@ -374,7 +418,7 @@ def test_create_pod_scoped_role():
             rules=[
                 V1PolicyRule(
                     verbs=["create", "get"],
-                    resources=["pods", "pods/exec"],
+                    resources=["pods", "pods/exec", "pods/log"],
                     resource_names=["somepod"],
                     api_groups=[""],
                 )

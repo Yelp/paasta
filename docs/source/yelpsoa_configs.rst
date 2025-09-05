@@ -264,7 +264,7 @@ documentation on `node affinities
       pod_management_policy: Parallel
 
 
-``kubernetes-[clustername].yaml``
+``eks-[clustername].yaml``
 -------------------------------
 
 **Note:** All values in this file except the following will cause PaaSTA to
@@ -547,6 +547,13 @@ instance MAY have:
 
   * ``enable_aws_lb_readiness_gate``: A boolean indicating whether to enable injecting AWS Load Balancer readiness gates for this instance. Defaults to ``false``.
     This is only applicable to a very small subset of services at Yelp - please chat with #paasta before enabling this.
+
+  * ``iam_role``: The IAM role to be used by this service. If not specified, no IAM role will be used for Pod Identity.
+
+  * ``boto_keys``: A list of boto_cfg keys to be made available in the container's environment. Use of this option is discouraged in favor of using IAM roles, but it is still necessary for some legacy services.
+    If specified, only the listed boto_cfg keys will be made available in the container's environment. Otherwise, the status-quo behavior will be used.
+    See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
+    NOTE: this key is ignored for ``paasta local-run``.
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
@@ -836,24 +843,17 @@ You can control your healthchecks with the following keys.
 Routing and Reliability
 ```````````````````````
 
- * ``retries``: Number of HAProxy connection failure `retries <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#retries>`_,
+ * ``retries``: Number of `retries <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-retrypolicy-num-retries>`_ (only applies to `connection failures <https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#config-http-filters-router-x-envoy-retry-on?highlight=connect-failure:~:text=not%20been%20sent).-,connect%2Dfailure,-Envoy%20will%20attempt>`_),
    defaults to 1.
 
- * ``allredisp``: If set, haproxy will redispatch (choose a different server) on
-   every connection retry. It only makes sense to set this option if you have a
-   low connection timeout, and a number of retries > 1. This is useful for when
-   machines crash or network partitions occur because your service doesn’t waste
-   any retries on the dead server, and immediately redispatches to other
-   functional backends. For example, for a latency sensitive service you may
-   want to set ``timeout_connect_ms`` to 100ms, with 3-5 retries and
-   ``allredisp`` set to ``true``.
-
- * ``timeout_connect_ms``: HAProxy `server connect timeout
-   <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20connect>`_
+ * ``timeout_connect_ms``: Envoy `cluster connect_timeout
+   <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto.html#envoy-v3-api-field-config-cluster-v3-cluster-connect-timeout>`_
    in milliseconds, defaults to 200.
- * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
+ * ``timeout_server_ms``: Envoy `route timeout <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-timeout>`_
    in milliseconds, defaults to 1000.
- * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
+ * ``idle_timeout``: Envoy `route idle_timeout <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-idle-timeout>`_
+   in seconds, defaults to 60.
+ * ``lb_policy``: Envoy `lb_policy <https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy>`_
     Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
    specific endpoints. This is useful for when there is a long running endpoint

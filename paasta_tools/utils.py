@@ -2166,7 +2166,7 @@ class SystemPaastaConfig:
 
     def get_default_spark_iam_user(self) -> str:
         return self.config_dict.get(
-            "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
+            "default_spark_iam_user", "/etc/boto_cfg/spark_driver.yaml"
         )
 
     def get_default_spark_driver_pool_override(self) -> str:

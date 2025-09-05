@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods
    paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources

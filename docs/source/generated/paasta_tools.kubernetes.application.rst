@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.kubernetes.application.controller_wrappers
    paasta_tools.kubernetes.application.tools

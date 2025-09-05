@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.paastaapi.api.autoscaler_api
    paasta_tools.paastaapi.api.default_api

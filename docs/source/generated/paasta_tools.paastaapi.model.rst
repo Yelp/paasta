@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    paasta_tools.paastaapi.model.adhoc_launch_history
    paasta_tools.paastaapi.model.autoscaler_count_msg
