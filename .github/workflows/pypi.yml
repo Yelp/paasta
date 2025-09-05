@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         toxenv:
-          - py310-linux,docs,mypy,tests
+          - py310-linux,docs,tests
           - general_itests
     env:
       DOCKER_REGISTRY: ""

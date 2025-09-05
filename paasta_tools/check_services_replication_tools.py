@@ -56,10 +56,16 @@ log = logging.getLogger(__name__)
 
 CheckServiceReplication = Callable[
     [
-        Arg(InstanceConfig_T, "instance_config"),
-        Arg(Dict[str, Dict[str, List[V1Pod]]], "pods_by_service_instance"),
-        Arg(Any, "replication_checker"),
-        NamedArg(bool, "dry_run"),
+        Arg(
+            InstanceConfig_T,
+            "instance_config",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        Arg(
+            Dict[str, Dict[str, List[V1Pod]]],
+            "pods_by_service_instance",  # noqa: F821  # flake8 false-positive
+        ),
+        Arg(Any, "replication_checker"),  # noqa: F821  # flake8 false-positive
+        NamedArg(bool, "dry_run"),  # noqa: F821  # flake8 false-positive
     ],
     Optional[bool],
 ]

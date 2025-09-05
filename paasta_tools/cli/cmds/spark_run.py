@@ -902,15 +902,15 @@ def configure_and_run_docker_container(
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
-    webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
+    webui_url_msg = PaastaColors.green("\nSpark monitoring URL: ") + f"{webui_url}\n"
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
-        print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
+        print(PaastaColors.green("\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         grafana_url = get_grafana_url(spark_conf)
         dashboard_url_msg = (
-            PaastaColors.green(f"\nGrafana dashboard: ") + f"{grafana_url}\n"
+            PaastaColors.green("\nGrafana dashboard: ") + f"{grafana_url}\n"
         )
         print(webui_url_msg)
         print(dashboard_url_msg)

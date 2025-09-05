@@ -68,7 +68,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
 def list_external_commands():
     p = subprocess.check_output(["/bin/bash", "-p", "-c", "compgen -A command paasta-"])
     lines = p.decode("utf-8").strip().split("\n")
-    return {l.replace("paasta-", "", 1) for l in lines}
+    return {line.replace("paasta-", "", 1) for line in lines}
 
 
 def calling_external_command():
@@ -132,10 +132,10 @@ PAASTA_SUBCOMMANDS = {
 }
 
 
-def get_argparser(commands=None):
+def get_argparser(commands: list[str] | None = None) -> argparse.ArgumentParser:
     """Create and return argument parser for a set of subcommands.
 
-    :param commands: Union[None, List[str]] If `commands` argument is `None`,
+    :param commands: list[str] | None: If `commands` argument is `None`,
     add full parsers for all subcommands, if `commands` is empty list -
     add thin parsers for all subcommands, otherwise - add full parsers for
     subcommands in the argument.
@@ -170,7 +170,7 @@ def get_argparser(commands=None):
 
     # Adding a separate help subparser allows us to respond to "help" without --help
     help_parser = subparsers.add_parser(
-        "help", help=f"run `paasta <subcommand> -h` for help"
+        "help", help="run `paasta <subcommand> -h` for help"
     )
     help_parser.set_defaults(command=None)
 

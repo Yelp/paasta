@@ -8,6 +8,7 @@ from inspect import currentframe
 from types import TracebackType
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Optional
 from typing import Type
@@ -110,10 +111,18 @@ class MeteoriteMetrics(BaseMetrics):
             )
 
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
-        return yelp_meteorite.create_timer(self.base_name + "." + name, **kwargs)
+        # yelp_meteorite returns an EmptyMetric object if the timer is misconfigured
+        # ...but that doesn't have the same interface ;_;
+        return cast(
+            Timer, yelp_meteorite.create_timer(self.base_name + "." + name, **kwargs)
+        )
 
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
-        return yelp_meteorite.create_gauge(self.base_name + "." + name, **kwargs)
+        # yelp_meteorite returns an EmptyMetric object if the gauge is misconfigured
+        # ...but that doesn't have the same interface ;_;
+        return cast(
+            Gauge, yelp_meteorite.create_gauge(self.base_name + "." + name, **kwargs)
+        )
 
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
         return yelp_meteorite.create_counter(self.base_name + "." + name, **kwargs)
@@ -163,7 +172,7 @@ class Gauge(GaugeProtocol):
         log.debug(f"gauge {self.name} set to {value}")
 
 
-class Counter(GaugeProtocol):
+class Counter(CounterProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
         self.counter = 0
