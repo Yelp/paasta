@@ -1,3 +1,15 @@
+paasta-tools (1.30.9) xenial; urgency=medium
+
+  * 1.30.9 tagged with 'make release'
+    Commit: Merge pull request #4111 from Yelp/luisp/run-mypy-with-tests
+    it"s always bothered me that these have to be run explicitly with
+    tox -e mypy OR push to GH.  Additionally, I needed to upgrade mypy
+    to use the "new" list[...]/dict[..., ...]/etc type syntax.  And
+    finally: I deleted some Mesos-related code that the new mypy was
+    flagging since I didn"t want to deal with fixing dead code :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Sep 2025 12:37:18 -0700
+
 paasta-tools (1.30.8) xenial; urgency=medium
 
   * 1.30.8 tagged with 'make release'
