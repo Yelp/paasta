@@ -37,6 +37,7 @@
                 "enum": [
                     "http",
                     "https",
+                    "http2",
                     "tcp"
                 ]
             },
@@ -117,6 +118,7 @@
                 "enum": [
                     "http",
                     "https",
+                    "http2",
                     "tcp"
                 ]
             },
