@@ -1,3 +1,13 @@
+paasta-tools (1.30.8) xenial; urgency=medium
+
+  * 1.30.8 tagged with 'make release'
+    Commit: Have setup_kubernetes_job prioritize services whose git_shas
+    are changing (#3577)  Have setup_kubernetes_job prioritize services
+    whose git_shas or image_versions are changing, so that real bounces
+    take priority over big bounces.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Sep 2025 07:52:31 -0700
+
 paasta-tools (1.30.7) xenial; urgency=medium
 
   * 1.30.7 tagged with 'make release'
