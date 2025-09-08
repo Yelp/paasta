@@ -1,3 +1,13 @@
+paasta-tools (1.30.7) xenial; urgency=medium
+
+  * 1.30.7 tagged with 'make release'
+    Commit: Updated mode: http2 support (#4004)  * Updated mode: http2
+    support  * update URL scheme handling in case of http2 mode.  * Add
+    http2 handling for healthcheck mode  * condition for http is not
+    required.
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 08 Sep 2025 02:09:38 -0700
+
 paasta-tools (1.30.5) xenial; urgency=medium
 
   * 1.30.5 tagged with 'make release'
