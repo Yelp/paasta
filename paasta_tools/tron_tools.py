@@ -1289,7 +1289,7 @@ def load_tron_service_config_no_cache(
 def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
-    config = read_yaml_file(os.path.join(tronfig_folder, f"MASTER.yaml"))
+    config = read_yaml_file(os.path.join(tronfig_folder, "MASTER.yaml"))
     master_config = format_master_config(
         config,
         system_paasta_config.get_volumes(),

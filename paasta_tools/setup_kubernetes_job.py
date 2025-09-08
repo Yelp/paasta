@@ -242,7 +242,7 @@ def get_kubernetes_deployment_config(
             service_instance_configs_list.append((True, None))
         except NoConfigurationForServiceError:
             error_msg = (
-                f"Could not read kubernetes configuration file for %s.%s in cluster %s"
+                "Could not read kubernetes configuration file for %s.%s in cluster %s"
                 % (service_instance[0], service_instance[1], cluster)
             )
             log.error(error_msg)

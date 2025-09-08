@@ -1157,7 +1157,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
-        self.update_slack_status(f"Deploy aborted, but it will still try to converge.")
+        self.update_slack_status("Deploy aborted, but it will still try to converge.")
         self.send_manual_rollback_instructions()
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy errored")
@@ -1317,7 +1317,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         inactive_button_texts = {
             "forward": f"Continue Forward to {version_short_str} :arrow_forward:",
             "complete": f"Complete deploy to {version_short_str} :white_check_mark:",
-            "snooze": f"Reset countdown",
+            "snooze": "Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }

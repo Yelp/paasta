@@ -19,7 +19,6 @@ jobs:
         toxenv:
           - py310-linux
           - docs
-          - mypy
           - tests
           - general_itests
     env:

@@ -440,7 +440,7 @@ def test_bind_role_to_service_account():
         namespace="namespace",
         body=V1RoleBinding(
             metadata=V1ObjectMeta(
-                name=f"remote-run-binding-somerole",
+                name="remote-run-binding-somerole",
                 namespace="namespace",
                 labels={"paasta.yelp.com/pod_owner": "someuser"},
             ),
@@ -480,7 +480,7 @@ def test_get_remote_run_jobs():
     get_remote_run_jobs(mock_client, "namespace")
     mock_client.batches.list_namespaced_job.assert_called_once_with(
         "namespace",
-        label_selector=f"paasta.yelp.com/job_type=remote-run",
+        label_selector="paasta.yelp.com/job_type=remote-run",
     )
 
 

@@ -1926,7 +1926,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_datastore_credentials_secret_hash():
                 volume_mounts.append(
                     V1VolumeMount(
-                        mount_path=f"/datastore",
+                        mount_path="/datastore",
                         name=self.get_datastore_secret_volume_name(),
                         read_only=True,
                     )

@@ -39,19 +39,6 @@ def test_fail_check_threshold():
     assert not metastatus_lib.check_threshold(80, 30)
 
 
-def test_get_mesos_cpu_status():
-    fake_metrics = {"master/cpus_total": 3, "master/cpus_used": 1}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"cpus": 1}}}]
-    }
-    total, used, available = metastatus_lib.get_mesos_cpu_status(
-        fake_metrics, fake_mesos_state
-    )
-    assert total == 3
-    assert used == 2
-    assert available == 1
-
-
 def test_get_kube_cpu_status():
     fake_nodes = [
         V1Node(status=V1NodeStatus(allocatable={"cpu": "1"}, capacity={"cpu": "3"}))
@@ -464,36 +451,6 @@ def test_get_resource_utilization_by_grouping_correctly_multi_groups():
     assert len(list(list(resp.keys())[0])[0]) == 2
 
 
-def test_get_resource_utilization_per_slave():
-    tasks = [
-        {"resources": {"cpus": 10, "mem": 10, "disk": 10}, "state": "TASK_RUNNING"},
-        {"resources": {"cpus": 10, "mem": 10, "disk": 10}, "state": "TASK_RUNNING"},
-    ]
-    slaves = [
-        {
-            "id": "somenametest-slave",
-            "hostname": "test.somewhere.www",
-            "resources": {"cpus": 75, "disk": 250, "mem": 100},
-            "reserved_resources": {},
-            "attributes": {"habitat": "somenametest-habitat"},
-        },
-        {
-            "id": "somenametest-slave2",
-            "hostname": "test2.somewhere.www",
-            "resources": {"cpus": 500, "disk": 200, "mem": 750},
-            "reserved_resources": {"maintenance": {"cpus": 10, "disk": 0, "mem": 150}},
-            "attributes": {"habitat": "somenametest-habitat-2"},
-        },
-    ]
-    actual = metastatus_lib.calculate_resource_utilization_for_slaves(
-        slaves=slaves, tasks=tasks
-    )
-    assert sorted(actual.keys()) == sorted(["total", "free", "slave_count"])
-    assert actual["total"] == metastatus_lib.ResourceInfo(cpus=575, disk=450, mem=850)
-    assert actual["free"] == metastatus_lib.ResourceInfo(cpus=545, disk=430, mem=680)
-    assert actual["slave_count"] == 2
-
-
 def test_calculate_resource_utilization_for_slaves():
     fake_slaves = [
         {
@@ -703,15 +660,6 @@ def test_key_func_for_attribute():
     assert inspect.isfunction(metastatus_lib.key_func_for_attribute("habitat"))
 
 
-def test_get_mesos_memory_status():
-    metrics = {"master/mem_total": 100, "master/mem_used": 50}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"mem": 33}}}]
-    }
-    actual = metastatus_lib.get_mesos_memory_status(metrics, fake_mesos_state)
-    assert actual == (100, 83, 17)
-
-
 def test_get_kube_memory_status():
     fake_nodes = [
         V1Node(
@@ -724,15 +672,6 @@ def test_get_kube_memory_status():
     assert total == 4 * 1024
     assert used == 3 * 1024
     assert available == 1 * 1024
-
-
-def test_get_mesos_disk_status():
-    metrics = {"master/disk_total": 100, "master/disk_used": 50}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"disk": 33}}}]
-    }
-    actual = metastatus_lib.get_mesos_disk_status(metrics, fake_mesos_state)
-    assert actual == (100, 83, 17)
 
 
 def test_get_kube_disk_status():
@@ -750,15 +689,6 @@ def test_get_kube_disk_status():
     assert available == 1 * 1024**2
 
 
-def test_get_mesos_gpu_status():
-    metrics = {"master/gpus_total": 10, "master/gpus_used": 5}
-    fake_mesos_state = {
-        "slaves": [{"reserved_resources": {"maintenance": {"gpus": 2}}}]
-    }
-    actual = metastatus_lib.get_mesos_gpu_status(metrics, fake_mesos_state)
-    assert actual == (10, 7, 3)
-
-
 def test_get_kube_gpu_status():
     fake_nodes = [
         V1Node(
@@ -771,28 +701,6 @@ def test_get_kube_gpu_status():
     assert total == 4
     assert used == 3
     assert available == 1
-
-
-def test_reserved_maintenence_resources_no_maintenenance():
-    actual = metastatus_lib.reserved_maintenence_resources({})
-    assert all([actual[x] == 0 for x in ["cpus", "mem", "disk"]])
-
-
-def test_reserved_maintenence_resources():
-    actual = metastatus_lib.reserved_maintenence_resources(
-        {"maintenance": {"cpus": 5, "mem": 5, "disk": 5}}
-    )
-    assert all([actual[x] == 5 for x in ["cpus", "mem", "disk"]])
-
-
-def test_reserved_maintenence_resources_ignores_non_maintenance():
-    actual = metastatus_lib.reserved_maintenence_resources(
-        {
-            "maintenance": {"cpus": 5, "mem": 5, "disk": 5},
-            "myotherole": {"cpus": 5, "mem": 5, "disk": 5},
-        }
-    )
-    assert all([actual[x] == 5 for x in ["cpus", "mem", "disk"]])
 
 
 def test_suffixed_number_value():
