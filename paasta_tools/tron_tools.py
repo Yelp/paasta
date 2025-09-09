@@ -23,6 +23,7 @@ from string import Formatter
 from typing import cast
 from typing import List
 from typing import Mapping
+from typing import Sequence
 from typing import Tuple
 from typing import Union
 
@@ -70,6 +71,25 @@ from paasta_tools.kubernetes_tools import (
     limit_size_with_hash,
     raw_selectors_to_requirements,
     to_node_label,
+    V1EnvVar,
+    V1ResourceRequirements,
+    V1SecurityContext,
+    V1Capabilities,
+    V1Container,
+    V1EnvVarSource,
+    V1ObjectFieldSelector,
+    V1PodTemplateSpec,
+    V1Job,
+    V1JobSpec,
+    V1Affinity,
+    V1ObjectMeta,
+    V1PodSpec,
+    AwsEbsVolume,
+    paasta_prefixed,
+    JOB_TYPE_LABEL_NAME,
+    CAPS_DROP,
+    get_git_sha_from_dockerurl,
+    load_service_namespace_config,
 )
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -77,6 +97,7 @@ from paasta_tools.secret_tools import is_shared_secret_from_secret_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 
 from paasta_tools import monitoring_tools
@@ -723,6 +744,357 @@ class TronActionConfig(InstanceConfig):
             soa_dir=self.soa_dir,
         )
         return projected_volumes if projected_volumes else None
+
+    def get_kubernetes_service_account_name(self) -> Optional[str]:
+        return self.config_dict.get("service_account_name", None)
+
+    def get_kubernetes_secret_env_vars(
+        self,
+        secret_env_vars: Mapping[str, str],
+        shared_secret_env_vars: Mapping[str, str],
+    ) -> Sequence[V1EnvVar]:
+        ret = []
+        for k, v in secret_env_vars.items():
+            secret = get_secret_name_from_ref(v)
+            ret.append(
+                V1EnvVar(
+                    name=k,
+                    value_from=V1EnvVarSource(
+                        secret_key_ref=V1SecretKeySelector(
+                            name=get_paasta_secret_name(
+                                self.get_namespace(), self.get_service(), secret
+                            ),
+                            key=secret,
+                            optional=False,
+                        )
+                    ),
+                )
+            )
+        for k, v in shared_secret_env_vars.items():
+            secret = get_secret_name_from_ref(v)
+            ret.append(
+                V1EnvVar(
+                    name=k,
+                    value_from=V1EnvVarSource(
+                        secret_key_ref=V1SecretKeySelector(
+                            name=get_paasta_secret_name(
+                                self.get_namespace(), SHARED_SECRET_SERVICE, secret
+                            ),
+                            key=secret,
+                            optional=False,
+                        )
+                    ),
+                )
+            )
+        return ret
+
+    def get_env_vars_that_use_secrets(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """Returns two dictionaries of environment variable name->value; the first is vars that use non-shared
+        secrets, and the second is vars that use shared secrets.
+
+        The values of the dictionaries are the secret refs as formatted in yelpsoa-configs, e.g. "SECRET(foo)"
+        or "SHARED_SECRET(bar)". These can be decoded with get_secret_name_from_ref.
+        """
+        secret_env_vars = {}
+        shared_secret_env_vars = {}
+        for k, v in self.get_env().items():
+            if is_secret_ref(v):
+                if is_shared_secret(v):
+                    shared_secret_env_vars[k] = v
+                else:
+                    secret_env_vars[k] = v
+        return secret_env_vars, shared_secret_env_vars
+
+    def get_kubernetes_environment(self) -> List[V1EnvVar]:
+        kubernetes_env = [
+            V1EnvVar(
+                name="PAASTA_POD_IP",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="status.podIP")
+                ),
+            ),
+            V1EnvVar(
+                # this is used by some functions of operator-sdk
+                # it uses this environment variable to get the pods
+                name="POD_NAME",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="metadata.name")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_HOST",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_CLUSTER",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path="metadata.labels['"
+                        + paasta_prefixed("cluster")
+                        + "']"
+                    )
+                ),
+            ),
+        ]
+        return kubernetes_env
+
+    def get_container_env(self) -> Sequence[V1EnvVar]:
+        secret_env_vars, shared_secret_env_vars = self.get_env_vars_that_use_secrets()
+
+        user_env = [
+            V1EnvVar(name=name, value=value)
+            for name, value in self.get_env().items()
+            if name
+            not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys())
+        ]
+        user_env += self.get_kubernetes_secret_env_vars(
+            secret_env_vars=secret_env_vars,
+            shared_secret_env_vars=shared_secret_env_vars,
+        )
+        return user_env + self.get_kubernetes_environment()  # type: ignore
+
+    def get_resource_requirements(self) -> V1ResourceRequirements:
+        limits = {
+            "cpu": self.get_cpus() + self.get_cpu_burst_add(),
+            "memory": f"{self.get_mem()}Mi",
+            "ephemeral-storage": f"{self.get_disk()}Mi",
+        }
+        requests = {
+            "cpu": self.get_cpus(),
+            "memory": f"{self.get_mem()}Mi",
+            "ephemeral-storage": f"{self.get_disk()}Mi",
+        }
+        return V1ResourceRequirements(limits=limits, requests=requests)
+
+    def get_sanitised_instance_name(self) -> str:
+        return sanitise_kubernetes_name(self.get_action_name())
+
+    def get_security_context(self) -> Optional[V1SecurityContext]:
+        cap_add = self.config_dict.get("cap_add", None)
+        context_kwargs = (
+            # passing parameter like this to avoid all services to bounce
+            # when this change is released
+            {"privileged": self.config_dict["privileged"]}
+            if "privileged" in self.config_dict
+            else {}
+        )
+        if cap_add is None:
+            return V1SecurityContext(
+                capabilities=V1Capabilities(drop=CAPS_DROP),
+                **context_kwargs,
+            )
+        else:
+            return V1SecurityContext(
+                # XXX: we should probably generally work in sets, but V1Capabilities is typed as accepting
+                # lists of string only
+                capabilities=V1Capabilities(
+                    add=cap_add,
+                    # NOTE: this is necessary as containerd differs in behavior from dockershim: in dockershim
+                    # dropped capabilities were overriden if the same capability was added - but in containerd
+                    # the dropped capabilities appear to have higher priority.
+                    # WARNING: this must be sorted - otherwise the order of the capabilities will be different
+                    # on every setup_kubernetes_job run and cause unnecessary redeployments
+                    drop=sorted(list(set(CAPS_DROP) - set(cap_add))),
+                ),
+                **context_kwargs,
+            )
+
+    def get_kubernetes_container(
+        self,
+        docker_volumes: Sequence[DockerVolume],
+        system_paasta_config: SystemPaastaConfig,
+        aws_ebs_volumes: Sequence[AwsEbsVolume],
+        secret_volumes: Sequence[TronSecretVolume],
+    ) -> V1Container:
+        service_container = V1Container(
+            image=self.get_docker_url(),
+            command=self.get_cmd(),
+            args=self.get_args(),
+            env=self.get_container_env(),
+            resources=self.get_resource_requirements(),
+            name=self.get_sanitised_instance_name(),
+            security_context=self.get_security_context(),
+            volume_mounts=[],  # TODO
+            # volume_mounts=self.get_volume_mounts(
+            #    docker_volumes=docker_volumes,
+            #    aws_ebs_volumes=aws_ebs_volumes,
+            #    persistent_volumes=self.get_persistent_volumes(),
+            #    secret_volumes=secret_volumes,
+            #    projected_sa_volumes=self.get_projected_sa_volumes(),
+            # ),
+        )
+        return service_container
+
+    def get_pod_template_spec(
+        self,
+        git_sha: str,
+        system_paasta_config: SystemPaastaConfig,
+        restart_on_failure: bool = False,
+        include_sidecars: bool = False,
+        force_no_routable_ip: bool = False,
+        include_liveness_probe: bool = False,
+        include_readiness_probe: bool = False,
+    ) -> V1PodTemplateSpec:
+        service_namespace_config = load_service_namespace_config(
+            service=self.service, namespace=self.get_nerve_namespace()
+        )
+        docker_volumes = self.get_volumes(
+            system_volumes=system_paasta_config.get_volumes(),
+        )
+
+        hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
+        annotations: KubePodAnnotations = {
+            # "smartstack_registrations": json.dumps(self.get_registrations()),
+            "paasta.yelp.com/routable_ip": "false"
+        }
+
+        pod_spec_kwargs = {}
+        pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())
+        pod_spec_kwargs.update(
+            service_account_name=self.get_kubernetes_service_account_name(),
+            containers=[
+                self.get_kubernetes_container(
+                    docker_volumes=docker_volumes,
+                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                    secret_volumes=self.get_secret_volumes(),
+                    system_paasta_config=system_paasta_config,
+                )
+            ],
+            share_process_namespace=True,
+            node_selector=self.get_node_selectors(),
+            restart_policy="Never",
+            volumes=[],  # TODO
+            # volumes=self.get_pod_volumes(
+            #    docker_volumes=docker_volumes + hacheck_sidecar_volumes,
+            #    aws_ebs_volumes=self.get_aws_ebs_volumes(),
+            #    secret_volumes=self.get_secret_volumes(),
+            #    projected_sa_volumes=self.get_projected_sa_volumes(),
+            # ),
+        )
+        # need to check if there are node selectors/affinities. if there are none
+        # and we create an empty affinity object, k8s will deselect all nodes.
+        node_affinity = self.get_node_affinities(
+            # system_paasta_config.get_pool_node_affinities()
+        )  # TODO
+        if node_affinity is not None:
+            node_affinity = node_affinity[0]
+            pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
+
+        fs_group = None
+        if self.get_iam_role_provider() == "aws":
+            annotations["iam.amazonaws.com/role"] = ""
+            iam_role = self.get_iam_role()
+            if iam_role:
+                pod_spec_kwargs["service_account_name"] = get_service_account_name(
+                    iam_role
+                )
+                if fs_group is None:
+                    # We need some reasoable default for group id of a process
+                    # running inside the container. Seems like most of such
+                    # programs run as `nobody`, let's use that as a default.
+                    #
+                    # PAASTA-16919: This should be removed when
+                    # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
+                    # is fixed.
+                    fs_group = 65534
+        else:
+            annotations["iam.amazonaws.com/role"] = self.get_iam_role()
+
+        if fs_group is not None:
+            pod_spec_kwargs["security_context"] = V1PodSecurityContext(
+                fs_group=fs_group
+            )
+
+        # Default Pod labels
+        labels: KubePodLabels = {
+            "yelp.com/paasta_service": self.get_service(),
+            "yelp.com/paasta_instance": self.get_instance(),
+            "yelp.com/paasta_git_sha": git_sha,
+            # NOTE: we can't use the paasta_prefixed() helper here
+            # since mypy expects TypedDict keys to be string literals
+            "paasta.yelp.com/service": self.get_service(),
+            "paasta.yelp.com/instance": self.get_instance(),
+            "paasta.yelp.com/git_sha": git_sha,
+            "paasta.yelp.com/pool": self.get_pool(),
+            "paasta.yelp.com/cluster": self.cluster,
+            "yelp.com/owner": "compute_infra_platform_experience",
+            "paasta.yelp.com/managed": "true",
+        }
+
+        image_version = self.get_image_version()
+        if image_version is not None:
+            labels["paasta.yelp.com/image_version"] = image_version
+
+        return V1PodTemplateSpec(
+            metadata=V1ObjectMeta(
+                labels=labels,
+                annotations=annotations,
+            ),
+            spec=V1PodSpec(**pod_spec_kwargs),
+        )
+
+    def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
+        return V1ObjectMeta(
+            name=self.get_sanitised_instance_name(),
+            namespace=self.get_namespace(),
+            labels={
+                "yelp.com/owner": "qlo",  # TODO
+                "yelp.com/paasta_service": self.get_service(),
+                "yelp.com/paasta_instance": self.get_instance(),
+                "yelp.com/paasta_git_sha": git_sha,
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+                paasta_prefixed("git_sha"): git_sha,
+                paasta_prefixed("cluster"): self.cluster,
+                paasta_prefixed("autoscaled"): "false",
+                paasta_prefixed("paasta.yelp.com/pool"): self.get_pool(),
+                paasta_prefixed("managed"): "true",
+            },
+        )
+
+    def format_kubernetes_job(
+        self,
+        job_label: str,
+        deadline_seconds: int = 3600,
+        keep_routable_ip=False,
+    ) -> V1Job:
+        additional_labels = {paasta_prefixed(JOB_TYPE_LABEL_NAME): job_label}
+        try:
+            docker_url = self.get_docker_url()
+            git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
+            system_paasta_config = load_system_paasta_config()
+            image_version = self.get_image_version()
+            if image_version is not None:
+                additional_labels[paasta_prefixed("image_version")] = image_version
+            pod_template = self.get_pod_template_spec(
+                git_sha=git_sha,
+                system_paasta_config=system_paasta_config,
+                restart_on_failure=False,
+                include_sidecars=False,
+                force_no_routable_ip=True,
+                include_liveness_probe=False,
+                include_readiness_probe=False,
+            )
+            pod_template.metadata.labels.update(additional_labels)
+            complete_config = V1Job(
+                api_version="batch/v1",
+                kind="Job",
+                metadata=self.get_kubernetes_metadata(git_sha),
+                spec=V1JobSpec(
+                    active_deadline_seconds=deadline_seconds,
+                    ttl_seconds_after_finished=0,  # remove job resource after completion
+                    template=pod_template,
+                ),
+            )
+            complete_config.metadata.labels.update(additional_labels)
+        except Exception as e:
+            raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
+        log.debug(
+            f"Complete configuration for job instance is: {complete_config}",
+        )
+        return complete_config
 
 
 class TronJobConfig:
