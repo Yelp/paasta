@@ -39,9 +39,9 @@ from paasta_tools.cli.cmds.local_run import perform_tcp_healthcheck
 from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
@@ -706,7 +706,7 @@ def test_configure_and_run_docker_container_respects_docker_sha(
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
     ) as mock_get_default_interactive_config, mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.instance_config.get_service_docker_registry",
         autospec=True,
         return_value="fake_registry",
     ):

@@ -3,8 +3,8 @@ import pytest
 
 from paasta_tools import firewall
 from paasta_tools import iptables
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import NoConfigurationForServiceError
 
 
 EMPTY_RULE = iptables.Rule(

@@ -35,13 +35,13 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
+from paasta_tools.instance_config import NoConfigurationForServiceError
+from paasta_tools.utils import validate_service_instance
 from paasta_tools.mesos_tools import get_all_frameworks as get_all_mesos_frameworks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentVersion
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import TimeoutError
-from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
 

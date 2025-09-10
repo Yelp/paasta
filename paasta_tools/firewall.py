@@ -11,10 +11,10 @@ from contextlib import contextmanager
 
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
 from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import timed_flock
 
 

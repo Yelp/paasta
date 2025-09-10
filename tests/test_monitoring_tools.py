@@ -68,138 +68,6 @@ class TestMonitoring_Tools:
     service = "fake_service"
     soa_dir = "/fake/soa/dir"
 
-    def test_get_team(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "team", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_runbook(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_runbook(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "runbook", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_tip(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_tip(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "tip", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_notification_email(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_notification_email(
-                self.overrides, self.service, self.soa_dir
-            )
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "notification_email", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_page(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_page(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "page", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_alert_after(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_alert_after(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "alert_after", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_realert_every(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_defaults = mock.Mock()
-            monitoring_tools.get_realert_every(
-                self.overrides, self.service, self.soa_dir, monitoring_defaults
-            )
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "realert_every",
-                self.overrides,
-                self.service,
-                self.soa_dir,
-                monitoring_defaults,
-            )
-
-    def test_get_check_every(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_check_every(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "check_every", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_irc_channels(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_irc_channels(
-                self.overrides, self.service, self.soa_dir
-            )
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "irc_channels", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_slack_channels(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_slack_channels(
-                self.overrides, self.service, self.soa_dir
-            )
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "slack_channels", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_dependencies(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_dependencies(
-                self.overrides, self.service, self.soa_dir
-            )
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "dependencies", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_ticket(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_ticket(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "ticket", self.overrides, self.service, self.soa_dir
-            )
-
-    def test_get_project(self):
-        with mock.patch(
-            "paasta_tools.monitoring_tools.__get_monitoring_config_value", autospec=True
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_project(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                "project", self.overrides, self.service, self.soa_dir
-            )
-
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = "monitor_test_team"
         with mock.patch(
@@ -216,16 +84,10 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
-            actual = monitoring_tools.get_team(
-                self.overrides, self.service, self.soa_dir
-            )
+            actual = monitoring_tools.read_merged_monitoring_config(
+                self.service, self.soa_dir, self.overrides
+            ).get("team")
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
-            read_monitoring_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
 
     def test_get_monitoring_config_value_with_service_config(self):
         expected = "general_test_team"
@@ -243,16 +105,10 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
-            actual = monitoring_tools.get_team(
-                self.overrides, self.service, self.soa_dir
-            )
+            actual = monitoring_tools.read_merged_monitoring_config(
+                self.service, self.soa_dir, self.overrides
+            ).get("team")
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
-            read_monitoring_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
 
     def test_get_monitoring_config_value_with_defaults(self):
         expected = None
@@ -270,20 +126,14 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
-            actual = monitoring_tools.get_team(
-                self.overrides, self.service, self.soa_dir
-            )
+            actual = monitoring_tools.read_merged_monitoring_config(
+                self.service, self.soa_dir, self.overrides
+            ).get("team")
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
-            read_monitoring_patch.assert_called_once_with(
-                self.service, soa_dir=self.soa_dir
-            )
 
     def test_send_event(self):
         fake_service = "fake_service"
-        fake_monitoring_overrides = {}
+        fake_check_defaults = {}
         fake_check_name = "fake_check_name"
         fake_status = "42"
         fake_output = "The http port is not open"
@@ -297,7 +147,7 @@ class TestMonitoring_Tools:
         fake_sensu_host = "fake_sensu_host"
         fake_sensu_port = 12345
         expected_runbook = "http://y/paasta-troubleshooting"
-        expected_check_name = fake_check_name
+        expected_check_name = f"{fake_check_name}.{fake_service}"
         expected_kwargs = {
             "name": expected_check_name,
             "runbook": expected_runbook,
@@ -323,55 +173,31 @@ class TestMonitoring_Tools:
             "component": None,
             "description": None,
         }
+
+        fake_merged_config = {
+            "team": fake_team,
+            "tip": fake_tip,
+            "notification_email": fake_notification_email,
+            "irc_channels": fake_irc,
+            "slack_channels": fake_slack,
+            "ticket": False,
+            "project": None,
+            "page": True,
+            "priority": None,
+            "tags": [],
+            "component": None,
+            "description": None,
+        }
+
         with mock.patch(
-            "paasta_tools.monitoring_tools.get_team",
-            return_value=fake_team,
-            autospec=True,
-        ) as get_team_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_tip",
-            return_value=fake_tip,
-            autospec=True,
-        ) as get_tip_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_notification_email",
-            return_value=fake_notification_email,
-            autospec=True,
-        ) as get_notification_email_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_irc_channels",
-            return_value=fake_irc,
-            autospec=True,
-        ) as get_irc_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_slack_channels",
-            return_value=fake_slack,
-            autospec=True,
-        ) as get_slack_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_ticket",
-            return_value=False,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_project",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_page", return_value=True, autospec=True
-        ) as get_page_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_priority",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_tags", return_value=[], autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_component",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_description",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
             "pysensu_yelp.send_event", autospec=True
         ) as pysensu_yelp_send_event_patch, mock.patch(
             "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        ) as load_system_paasta_config_patch, mock.patch(
+            "paasta_tools.monitoring_tools.read_merged_monitoring_config",
+            return_value=fake_merged_config,
+            autospec=True,
+        ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value=self.fake_cluster
             )
@@ -383,38 +209,22 @@ class TestMonitoring_Tools:
             )
 
             monitoring_tools.send_event(
-                fake_service,
-                fake_check_name,
-                fake_monitoring_overrides,
-                fake_status,
-                fake_output,
-                fake_soa_dir,
+                service=fake_service,
+                instance=None,
+                check_name=fake_check_name,
+                instance_config=None,
+                check_defaults=fake_check_defaults,
+                status=fake_status,
+                output=fake_output,
+                soa_dir=fake_soa_dir,
             )
 
-            get_team_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
-            get_tip_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
-            get_notification_email_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
-            get_irc_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
-            get_slack_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
-            get_page_patch.assert_called_once_with(
-                fake_monitoring_overrides, fake_service, fake_soa_dir
-            )
             pysensu_yelp_send_event_patch.assert_called_once_with(**expected_kwargs)
             load_system_paasta_config_patch.return_value.get_cluster.assert_called_once_with()
 
     def test_send_event_sensu_host_is_None(self):
         fake_service = "fake_service"
-        fake_monitoring_overrides = {}
+        fake_check_defaults = {}
         fake_check_name = "fake_check_name"
         fake_status = "42"
         fake_output = "The http port is not open"
@@ -423,19 +233,7 @@ class TestMonitoring_Tools:
         fake_sensu_port = 12345
 
         with mock.patch(
-            "paasta_tools.monitoring_tools.get_team", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_tip", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_notification_email", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_irc_channels", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_ticket", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_project", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_page", autospec=True
+            "paasta_tools.monitoring_tools.read_merged_monitoring_config", autospec=True
         ), mock.patch(
             "pysensu_yelp.send_event", autospec=True
         ) as pysensu_yelp_send_event_patch, mock.patch(
@@ -449,12 +247,14 @@ class TestMonitoring_Tools:
             )
 
             monitoring_tools.send_event(
-                fake_service,
-                fake_check_name,
-                fake_monitoring_overrides,
-                fake_status,
-                fake_output,
-                fake_soa_dir,
+                service=fake_service,
+                instance=None,
+                check_name=fake_check_name,
+                instance_config=None,
+                check_defaults=fake_check_defaults,
+                status=fake_status,
+                output=fake_output,
+                soa_dir=fake_soa_dir,
             )
 
             assert pysensu_yelp_send_event_patch.call_count == 0
@@ -514,16 +314,12 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
     expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
+        f"check_paasta_services_replication"
     )
     with mock.patch(
         "paasta_tools.monitoring_tools.send_event", autospec=True
     ) as send_event_patch, mock.patch(
         "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
@@ -534,9 +330,10 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
         )
         send_event_patch.assert_called_once_with(
             service=instance_config.service,
+            instance=instance_config.instance,
             check_name=expected_check_name,
-            overrides={
-                "fake_key": "fake_value",
+            instance_config=instance_config,
+            check_defaults={
                 "runbook": mock.ANY,
                 "tip": mock.ANY,
                 "alert_after": "2m",
@@ -560,16 +357,12 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
     expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
+        "check_paasta_services_replication"
     )
     with mock.patch(
         "paasta_tools.monitoring_tools.send_event", autospec=True
     ) as send_event_patch, mock.patch(
         "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
@@ -580,9 +373,10 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
         )
         send_event_patch.assert_called_once_with(
             service=instance_config.service,
+            instance=instance_config.instance,
             check_name=expected_check_name,
-            overrides={
-                "fake_key": "fake_value",
+            instance_config=instance_config,
+            check_defaults={
                 "runbook": mock.ANY,
                 "tip": mock.ANY,
                 "alert_after": "2m",
@@ -603,43 +397,27 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
     fake_status = "999999"
     fake_output = "YOU DID IT"
     fake_description = "SOME CONTEXT"
-    instance_config.get_monitoring.return_value = {"alert_after": "666m"}
+    instance_config.get_monitoring.return_value = {
+        "alert_after": "666m",
+        "team": "fake_team",
+    }
     expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
+        "check_paasta_services_replication"
     )
     with mock.patch(
-        "paasta_tools.monitoring_tools.send_event", autospec=True
-    ) as send_event_patch, mock.patch(
+        "paasta_tools.monitoring_tools.pysensu_yelp.send_event", autospec=True
+    ) as pysensu_yelp_send_event_patch, mock.patch(
         "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
             status=fake_status,
             output=fake_output,
             description=fake_description,
-            dry_run=True,
+            dry_run=False,
         )
-        send_event_patch.call_count == 1
-        send_event_patch.assert_called_once_with(
-            service=instance_config.service,
-            check_name=expected_check_name,
-            overrides={
-                "runbook": mock.ANY,
-                "tip": mock.ANY,
-                "alert_after": "666m",
-                "check_every": "1m",
-                "description": fake_description,
-            },
-            status=fake_status,
-            output=fake_output,
-            soa_dir=instance_config.soa_dir,
-            cluster=instance_config.cluster,
-            dry_run=True,
-        )
+        _, kwargs = pysensu_yelp_send_event_patch.call_args
+        assert kwargs["alert_after"] == "666m"
 
 
 @pytest.fixture
@@ -686,6 +464,7 @@ def test_check_replication_for_instance_ok_when_expecting_zero(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
 
 
@@ -712,6 +491,7 @@ def test_check_replication_for_instance_crit_when_absent(instance_config):
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
 
 
@@ -744,6 +524,7 @@ def test_check_replication_for_instance_crit_when_zero_replication(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -788,6 +569,7 @@ def test_check_replication_for_instance_crit_when_low_replication(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -832,6 +614,7 @@ def test_check_replication_for_instance_ok_with_enough_replication(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -868,6 +651,7 @@ def test_check_replication_for_instance_ok_with_enough_replication_multilocation
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -905,6 +689,7 @@ def test_check_replication_for_instance_crit_when_low_replication_multilocation(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -949,6 +734,7 @@ def test_check_replication_for_instance_crit_when_zero_replication_multilocation
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -993,6 +779,7 @@ def test_check_replication_for_instance_crit_when_missing_replication_multilocat
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -1027,6 +814,7 @@ def test_check_replication_for_instance_crit_when_no_smartstack_info(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -1149,6 +937,7 @@ def test_send_replication_event_if_under_replication_handles_0_expected(
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
@@ -1175,6 +964,7 @@ def test_send_replication_event_if_under_replication_good(instance_config):
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
@@ -1201,6 +991,7 @@ def test_send_replication_event_if_under_replication_critical(instance_config):
             output=mock.ANY,
             description=mock.ANY,
             dry_run=True,
+            alert_after=mock.ANY,
         )
         _, send_event_kwargs = mock_send_event.call_args
         assert (
@@ -1218,19 +1009,25 @@ def test_send_replication_event_if_under_replication_critical(instance_config):
 
 
 def test_send_event_respects_check_overrides():
+    fake_instance_config = mock.Mock()
+    fake_instance_config.get_monitoring.return_value = {
+        "check_overrides": {
+            "fake_check_name": {"page": False},
+        },
+        "team": "fake_team",
+    }
+
     with mock.patch(
         "paasta_tools.monitoring_tools.pysensu_yelp.send_event",
         autospec=True,
     ) as mock_pysensu_yelp_send_event:
         monitoring_tools.send_event(
             service="fake_service",
+            instance="fake_instance",
             check_name="fake_check_name",
-            overrides={
-                "page": True,
-                "team": "fake_team",
-                "check_overrides": {
-                    "fake_check_name": {"page": False},
-                },
+            instance_config=fake_instance_config,
+            check_defaults={
+                "page": True,  # Default is to page, but override says not to
             },
             status="42",
             output="The http port is not open",

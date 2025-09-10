@@ -138,6 +138,8 @@ from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.instance_config import CAPS_DROP
+from paasta_tools.instance_config import load_service_instance_config
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -158,7 +160,6 @@ from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -169,7 +170,6 @@ from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import KubeContainerResourceRequest
-from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors

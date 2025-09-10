@@ -9,12 +9,12 @@ import pytest
 from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.instance_config import CAPS_DROP
+from paasta_tools.instance_config import InvalidInstanceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.tron_tools import TronActionConfigDict
-from paasta_tools.utils import CAPS_DROP
-from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
 MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
@@ -225,6 +225,15 @@ class TestTronJobConfig:
         with mock.patch(
             "paasta_tools.monitoring_tools.read_monitoring_config",
             mock.Mock(return_value={"team": "default_team"}),
+            autospec=None,
+        ) as f:
+            yield f
+
+    @pytest.fixture(autouse=True)
+    def mock__cached_read_service_configuration(self):
+        with mock.patch(
+            "paasta_tools.monitoring_tools._cached_read_service_configuration",
+            mock.Mock(return_value={}),
             autospec=None,
         ) as f:
             yield f
@@ -524,7 +533,7 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop"},
         }
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -550,7 +559,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 3
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -574,7 +583,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -598,7 +607,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -626,7 +635,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -655,7 +664,7 @@ class TestTronJobConfig:
     @mock.patch(
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -691,7 +700,7 @@ class TestTronJobConfig:
     @mock.patch(
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -727,7 +736,7 @@ class TestTronJobConfig:
     @mock.patch(
         "paasta_tools.tron_tools.TronActionConfig.build_spark_config", autospec=True
     )
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -759,7 +768,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -780,7 +789,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -802,7 +811,7 @@ class TestTronJobConfig:
         assert errors == []
         assert job_config.get_monitoring()["team"] == "default_team"
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.instance_config.get_pipeline_deploy_groups", autospec=True)
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
         autospec=True,
@@ -1016,7 +1025,7 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(
@@ -1286,7 +1295,7 @@ class TestTronTools:
         )
 
         with mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(
@@ -1517,7 +1526,7 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(
@@ -1654,7 +1663,7 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(
@@ -1799,7 +1808,7 @@ class TestTronTools:
         )
 
         with mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(

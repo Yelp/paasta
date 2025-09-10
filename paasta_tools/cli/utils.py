@@ -51,6 +51,8 @@ from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.utils import validate_service_instance
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -70,7 +72,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -78,7 +79,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import validate_service_instance
 
 
 log = logging.getLogger(__name__)

@@ -67,12 +67,14 @@ def test_notify_service_owners():
     ) as mock_send_event:
         notify_service_owners(service_map, "/soa_dir", False)
         mock_send_event.assert_called_with(
-            "service1",
-            "pod-eviction.service1",
-            mock.ANY,
-            Status.CRITICAL,
-            check_output,
-            "/soa_dir",
+            service="service1",
+            instance=None,
+            check_name="pod-eviction",
+            instance_config=None,
+            check_defaults=mock.ANY,
+            status=Status.CRITICAL,
+            output=check_output,
+            soa_dir="/soa_dir",
         )
 
 

@@ -153,7 +153,7 @@ def test_log_event():
     "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
+@mock.patch("paasta_tools.instance_config.InstanceConfig", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
 )
@@ -266,7 +266,7 @@ def test_paasta_start_or_stop(
     "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
+@mock.patch("paasta_tools.instance_config.InstanceConfig", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
 )
@@ -348,7 +348,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
+@mock.patch("paasta_tools.instance_config.InstanceConfig", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
 )
@@ -550,7 +550,7 @@ def test_cluster_list_defaults_to_all():
     "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
+@mock.patch("paasta_tools.instance_config.InstanceConfig", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
 )

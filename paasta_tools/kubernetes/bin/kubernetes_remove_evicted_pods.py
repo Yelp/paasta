@@ -81,14 +81,14 @@ def notify_service_owners(
     soa_dir: str,
     dry_run: bool,
 ) -> None:
-    check_overrides = {
+    check_defaults = {
         "page": False,
         "alert_after": "0m",
         "realert_every": 1,
         "tip": "Pods can be Evicted if they go over the allowed quota for a given resource. Check the Eviction message to figure out which resource quota was breached",
     }
     for service in services.keys():
-        check_name = f"pod-eviction.{service}"
+        check_name = f"pod-eviction"
         check_output = "The following pods have been evicted and will be removed from the cluster:\n"
         for pod in services[service]:
             check_output += f"- {pod.podname}: {pod.eviction_msg}\n"
@@ -97,12 +97,14 @@ def notify_service_owners(
         else:
             log.info(f"Notifying owners for service {service}")
             send_event(
-                service,
-                check_name,
-                check_overrides,
-                Status.CRITICAL,
-                check_output,
-                soa_dir,
+                service=service,
+                instance=None,
+                check_name=check_name,
+                check_defaults=check_defaults,
+                instance_config=None,
+                status=Status.CRITICAL,
+                output=check_output,
+                soa_dir=soa_dir,
             )
 
 

@@ -157,13 +157,13 @@ def test_check_docker_check_file_not_found(mock_is_file_in_dir, capfd):
 
 
 @patch("paasta_tools.cli.cmds.check.is_file_in_dir", autospec=True)
-@patch("paasta_tools.cli.cmds.check.get_team", autospec=True)
-def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capfd):
+@patch("paasta_tools.cli.cmds.check.read_merged_monitoring_config", autospec=True)
+def test_check_sensu_check_pass(mock_read_merged_monitoring_config, mock_is_file_in_dir, capfd):
     # monitoring.yaml exists and team is found
 
     mock_is_file_in_dir.return_value = "/fake/path"
     team = "team-service-infra"
-    mock_get_team.return_value = team
+    mock_read_merged_monitoring_config.return_value = {"team": team}
     expected_output = "{}\n{}\n".format(
         PaastaCheckMessages.SENSU_MONITORING_FOUND,
         PaastaCheckMessages.sensu_team_found(team),
@@ -173,18 +173,15 @@ def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capfd):
 
     output, _ = capfd.readouterr()
     assert output == expected_output
-    mock_get_team.assert_called_once_with(
-        service="fake_service", overrides={}, soa_dir="path"
-    )
 
 
 @patch("paasta_tools.cli.cmds.check.is_file_in_dir", autospec=True)
-@patch("paasta_tools.cli.cmds.check.get_team", autospec=True)
-def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capfd):
+@patch("paasta_tools.cli.cmds.check.read_merged_monitoring_config", autospec=True)
+def test_check_sensu_team_missing(mock_read_merged_monitoring_config, mock_is_file_in_dir, capfd):
     # monitoring.yaml exists but team is not found
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    mock_get_team.return_value = None
+    mock_read_merged_monitoring_config.return_value = {}
     expected_output = "{}\n{}\n".format(
         PaastaCheckMessages.SENSU_MONITORING_FOUND,
         PaastaCheckMessages.SENSU_TEAM_MISSING,

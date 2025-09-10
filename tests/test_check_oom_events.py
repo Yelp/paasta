@@ -85,7 +85,7 @@ def mock_scribe_env_to_locations():
 
 def test_compose_sensu_status_ok(instance_config):
     assert compose_sensu_status(
-        instance=instance_config,
+        instance_config=instance_config,
         oom_events=[],
         is_check_enabled=True,
         alert_threshold=1,
@@ -98,7 +98,7 @@ def test_compose_sensu_status_ok(instance_config):
 
 def test_compose_sensu_status_unknown(instance_config):
     assert compose_sensu_status(
-        instance=instance_config,
+        instance_config=instance_config,
         oom_events=[],
         is_check_enabled=False,
         alert_threshold=1,
@@ -108,7 +108,7 @@ def test_compose_sensu_status_unknown(instance_config):
 
 def test_compose_sensu_status_not_ok(instance_config):
     assert compose_sensu_status(
-        instance=instance_config,
+        instance_config=instance_config,
         oom_events={"container_id1", "container_id2", "container_id3"},
         is_check_enabled=True,
         alert_threshold=2,
@@ -123,7 +123,7 @@ def test_compose_sensu_status_not_ok(instance_config):
 def test_compose_sensu_status_below_threshold(instance_config):
     assert (
         compose_sensu_status(
-            instance=instance_config,
+            instance_config=instance_config,
             oom_events={"container_id1", "container_id2", "container_id3"},
             is_check_enabled=True,
             alert_threshold=5,

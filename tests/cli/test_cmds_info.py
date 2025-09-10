@@ -21,10 +21,8 @@ from paasta_tools.utils import NoDeploymentsAvailable
 
 def test_get_service_info():
     with mock.patch(
-        "paasta_tools.cli.cmds.info.get_team", autospec=True
-    ) as mock_get_team, mock.patch(
-        "paasta_tools.cli.cmds.info.get_runbook", autospec=True
-    ) as mock_get_runbook, mock.patch(
+        "paasta_tools.monitoring_tools.read_monitoring_config", autospec=True,
+    ) as mock_read_monitoring_config, mock.patch(
         "paasta_tools.cli.cmds.info.read_service_configuration", autospec=True
     ) as mock_read_service_configuration, mock.patch(
         "service_configuration_lib.read_service_configuration", autospec=True
@@ -35,8 +33,12 @@ def test_get_service_info():
     ) as mock_get_actual_deployments, mock.patch(
         "paasta_tools.cli.cmds.info.get_smartstack_endpoints", autospec=True
     ) as mock_get_smartstack_endpoints:
-        mock_get_team.return_value = "fake_team"
-        mock_get_runbook.return_value = "fake_runbook"
+        # mock_read_merged_monitoring_config.return_value = {
+        # }
+        mock_read_monitoring_config.return_value = {
+            "team": "fake_team",
+            "runbook": "fake_runbook",
+        }
         mock_read_service_configuration.return_value = {
             "description": "a fake service that does stuff",
             "external_link": "http://bla",
@@ -80,12 +82,6 @@ def test_get_service_info():
         assert (
             "%s (service load y/sl2)" % PaastaColors.cyan("http://y/fake_service_load")
             in actual
-        )
-        mock_get_team.assert_called_with(
-            service="fake_service", overrides={}, soa_dir="/fake/soa/dir"
-        )
-        mock_get_runbook.assert_called_with(
-            service="fake_service", overrides={}, soa_dir="/fake/soa/dir"
         )
 
 

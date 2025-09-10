@@ -9,6 +9,7 @@ from kubernetes.client import V1StatefulSet
 from pytest import raises
 
 from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -20,7 +21,6 @@ from paasta_tools.setup_kubernetes_job import get_service_instances_with_valid_n
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
 

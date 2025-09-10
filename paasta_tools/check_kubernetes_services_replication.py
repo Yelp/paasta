@@ -57,6 +57,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
     instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     expected_count: int,
     pods_by_service_instance: Dict[str, Dict[str, List[V1Pod]]],
+    alert_after: str,
     dry_run: bool = False,
 ) -> None:
     si_pods = pods_by_service_instance.get(instance_config.service, {}).get(
@@ -72,6 +73,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
         expected_count=expected_count,
         num_available=num_healthy_tasks,
         dry_run=dry_run,
+        alert_after=alert_after,
     )
 
 
@@ -103,6 +105,7 @@ def check_kubernetes_pod_replication(
         and instance_config.get_instances() == 1
     ):
         default_alert_after = "20m"
+
     if "monitoring" not in instance_config.config_dict:
         instance_config.config_dict["monitoring"] = {}
     instance_config.config_dict["monitoring"][
@@ -119,6 +122,7 @@ def check_kubernetes_pod_replication(
             expected_count=expected_count,
             replication_checker=replication_checker,
             dry_run=dry_run,
+            alert_after=default_alert_after,
         )
         return is_well_replicated
     else:
@@ -127,6 +131,7 @@ def check_kubernetes_pod_replication(
             expected_count=expected_count,
             pods_by_service_instance=pods_by_service_instance,
             dry_run=dry_run,
+            alert_after=default_alert_after,
         )
         return None
 

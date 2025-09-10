@@ -24,15 +24,19 @@ import abc
 import json
 import logging
 import os
+from typing import Any
 from typing import Dict
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import TypedDict
+from typing import Union
 
 import pysensu_yelp
 import service_configuration_lib
 
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
@@ -40,11 +44,36 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import time_cache
 
+if TYPE_CHECKING:
+    from paasta_tools.long_running_service_tools import (
+        LongRunningServiceConfig,
+    )  # noqa: F401
+    from paasta_tools.instance_config import InstanceConfig  # noqa: F401
+
+
+class MonitoringDict(TypedDict, total=False):
+    alert_after: Union[str, float]
+    check_every: str
+    check_oom_events: bool
+    component: str
+    description: str
+    notification_email: Union[str, bool]
+    page: bool
+    priority: str
+    project: str
+    realert_every: float
+    runbook: str
+    slack_channels: Union[str, List[str]]
+    tags: List[str]
+    team: str
+    ticket: bool
+    tip: str
+
 
 class ReplicationChecker(abc.ABC):
     @abc.abstractmethod
     def get_replication_for_instance(
-        self, instance_config: LongRunningServiceConfig
+        self, instance_config: "LongRunningServiceConfig"
     ) -> Dict[str, Dict[str, Dict[str, int]]]:
         ...
 
@@ -60,120 +89,11 @@ DEFAULT_REPLICATION_RUNBOOK = "y/unhealthy-paasta-instances"
 log = logging.getLogger(__name__)
 
 
-def monitoring_defaults(key):
-    defaults = {
-        "runbook": 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
-        "https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml",
-        "tip": "Please set a `tip` field in your monitoring.yaml. Docs: "
-        "https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml",
-        "ticket": False,
-        "project": None,
-        "realert_every": -1,
-        "tags": [],
-    }
-    return defaults.get(key, None)
-
-
-def get_team(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("team", overrides, service, soa_dir)
-
-
-def get_runbook(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("runbook", overrides, service, soa_dir)
-
-
-def get_tip(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("tip", overrides, service, soa_dir)
-
-
-def get_notification_email(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value(
-        "notification_email", overrides, service, soa_dir
-    )
-
-
-def get_page(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("page", overrides, service, soa_dir)
-
-
-def get_alert_after(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("alert_after", overrides, service, soa_dir)
-
-
-def get_realert_every(
-    overrides, service, soa_dir=DEFAULT_SOA_DIR, monitoring_defaults=monitoring_defaults
-):
-    return __get_monitoring_config_value(
-        "realert_every",
-        overrides=overrides,
-        service=service,
-        soa_dir=soa_dir,
-        monitoring_defaults=monitoring_defaults,
-    )
-
-
-def get_check_every(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("check_every", overrides, service, soa_dir)
-
-
-def get_irc_channels(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("irc_channels", overrides, service, soa_dir)
-
-
-def get_slack_channels(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("slack_channels", overrides, service, soa_dir)
-
-
-def get_dependencies(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("dependencies", overrides, service, soa_dir)
-
-
-def get_ticket(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("ticket", overrides, service, soa_dir)
-
-
-def get_project(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("project", overrides, service, soa_dir)
-
-
-def get_priority(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("priority", overrides, service, soa_dir)
-
-
-def get_tags(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("tags", overrides, service, soa_dir)
-
-
-def get_component(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("component", overrides, service, soa_dir)
-
-
-def get_description(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value("description", overrides, service, soa_dir)
-
-
 # Our typical usage pattern is that we call all the different get_* functions back to back. Applying a small amount of
 # cache here helps cut down on the number of times we re-parse service.yaml.
 _cached_read_service_configuration = time_cache(ttl=5)(
     service_configuration_lib.read_service_configuration
 )
-
-
-def __get_monitoring_config_value(
-    key,
-    overrides,
-    service,
-    soa_dir=DEFAULT_SOA_DIR,
-    monitoring_defaults=monitoring_defaults,
-):
-    general_config = _cached_read_service_configuration(service, soa_dir=soa_dir)
-    monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
-    service_default = general_config.get(key, monitoring_defaults(key))
-    service_default = general_config.get("monitoring", {key: service_default}).get(
-        key, service_default
-    )
-    service_default = monitor_config.get(key, service_default)
-    return overrides.get(key, service_default)
 
 
 def get_sensu_team_data(team):
@@ -202,7 +122,9 @@ def _load_sensu_team_data():
     return team_data
 
 
-def get_check_specific_overrides(overrides, check_name):
+def get_check_specific_overrides(
+    overrides: Mapping[str, Any], check_name: str
+) -> Dict[str, Any]:
     """
     Given a monitoring dict like:
     {
@@ -227,30 +149,136 @@ def get_check_specific_overrides(overrides, check_name):
     """
     check_overrides = overrides.get("check_overrides", {})
     check_specific_overrides = check_overrides.get(check_name, {})
-    combined = overrides.copy()
+    combined = dict(overrides)
     combined.update(check_specific_overrides)
     combined.pop("check_overrides", None)
     return combined
 
 
-def send_event(
-    service,
-    check_name,
-    overrides,
-    status,
-    output,
-    soa_dir,
-    ttl=None,
-    cluster=None,
-    system_paasta_config=None,
-    dry_run=False,
+def compose_check_name(
+    check_name: str,
+    service: str,
+    instance: Optional[str],
+) -> str:
+    if instance:
+        return f"{check_name}.{service}.{instance}"
+    return f"{check_name}.{service}"
+
+
+def read_merged_monitoring_config(
+    service: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    instance_overrides: Optional[MonitoringDict] = None,
+) -> MonitoringDict:
+
+    service_yaml = _cached_read_service_configuration(
+        service,
+        soa_dir=soa_dir,
+    )
+    service_yaml_filtered = {
+        k: v
+        for k, v in service_yaml.items()
+        if k in MonitoringDict.__annotations__.keys()
+    }
+
+    service_yaml_monitoring = service_yaml.get("monitoring", {})
+    monitoring_yaml = read_monitoring_config(service, soa_dir=soa_dir)
+
+    monitoring_config: MonitoringDict = {}
+    monitoring_config.update(service_yaml_filtered)  # type: ignore
+    monitoring_config.update(service_yaml_monitoring)
+    monitoring_config.update(monitoring_yaml)
+    if instance_overrides:
+        monitoring_config.update(instance_overrides)
+
+    return monitoring_config
+
+
+def get_sensu_params(
+    service: str,
+    instance: Optional[str],
+    check_name: str,
+    instance_config: Optional["InstanceConfig"],
+    check_defaults: Dict[str, Any],
+    status: int,
+    output: str,
+    soa_dir: str,
+    ttl: Optional[int] = None,
+    cluster: Optional[str] = None,
+    system_paasta_config: Optional[Any] = None,
 ):
+    # Things that can be overridden by the check or yelpsoa-configs
+    global_defaults = {
+        "name": compose_check_name(check_name, service, instance),
+        "status": status,
+        "output": output,
+        "runbook": "http://y/paasta-troubleshooting",
+        "tip": (
+            "Please set a `tip` field in your monitoring.yaml. Docs: "
+            "https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml"
+        ),
+        "ticket": False,
+        "project": None,
+        "realert_every": -1,
+        "tags": [],
+        "alert_after": "5m",
+        "check_every": "1m",
+        "ttl": ttl,
+    }
+
+    # Things that we don't want people overriding in yelpsoa-configs.
+    global_overrides = {
+        "source": "paasta-%s" % cluster,
+        "sensu_host": system_paasta_config.get_sensu_host(),
+        "sensu_port": system_paasta_config.get_sensu_port(),
+    }
+
+    if instance_config is not None:
+        service_monitoring_config = instance_config.get_monitoring()
+    else:
+        service_monitoring_config = read_merged_monitoring_config(
+            service, soa_dir=soa_dir
+        )
+
+    check_specific_overrides = get_check_specific_overrides(
+        service_monitoring_config, check_name
+    )
+
+    # Build result_dict by merging dictionaries in order of precedence
+    # Things below override things above
+    result_dict = {}
+    result_dict.update(global_defaults)
+    result_dict.update(check_defaults)
+    result_dict.update(check_specific_overrides)
+    result_dict.update(global_overrides)
+
+    if isinstance(result_dict["alert_after"], int):
+        result_dict["alert_after"] = f"{result_dict['alert_after']}s"
+
+    return result_dict
+
+
+def send_event(
+    service: str,
+    instance: Optional[str],
+    check_name: str,
+    instance_config: Optional["InstanceConfig"],
+    check_defaults: Dict[str, Any],
+    status: int,
+    output: str,
+    soa_dir: str,
+    ttl: Optional[int] = None,
+    cluster: Optional[str] = None,
+    system_paasta_config: Optional[Any] = None,
+    dry_run: bool = False,
+) -> None:
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param service: The service name the event is about
-    :param check_name: The name of the check as it appears in Sensu
-    :param overrides: A dictionary containing overrides for monitoring options
-                      (e.g. notification_email, ticket, page)
+    :param service: The service name the event is about.
+    :param instance: The instance name the event is about (optional; set to None if the check applies to the whole service).
+    :param check_name: The name of the check as it appears in Sensu. This will be composed with service.instance or service.
+    :param instance_config: InstanceConfig for the instance. Set to None if instance=None.
+    :param overrides: Should be instance_config.get_monitoring().
     :param status: The status to emit for this event
     :param output: The output to emit for this event
     :param soa_dir: The service directory to read monitoring information from
@@ -260,13 +288,6 @@ def send_event(
     :param dry_run: Print the Sensu event instead of emitting it
     """
 
-    overrides = get_check_specific_overrides(overrides, check_name)
-
-    # This function assumes the input is a string like "mumble.main"
-    team = get_team(overrides, service, soa_dir)
-    if not team:
-        return
-
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     if cluster is None:
@@ -275,36 +296,22 @@ def send_event(
         except PaastaNotConfiguredError:
             cluster = "localhost"
 
-    alert_after = overrides.get("alert_after", "5m")
-    result_dict = {
-        "name": check_name,
-        "runbook": overrides.get("runbook", "http://y/paasta-troubleshooting"),
-        "status": status,
-        "output": output,
-        "team": team,
-        "page": get_page(overrides, service, soa_dir),
-        "tip": get_tip(overrides, service, soa_dir),
-        "notification_email": get_notification_email(overrides, service, soa_dir),
-        "check_every": overrides.get("check_every", "1m"),
-        "realert_every": overrides.get(
-            "realert_every", monitoring_defaults("realert_every")
-        ),
-        "alert_after": f"{alert_after}s"
-        if isinstance(alert_after, int)
-        else alert_after,
-        "irc_channels": get_irc_channels(overrides, service, soa_dir),
-        "slack_channels": get_slack_channels(overrides, service, soa_dir),
-        "ticket": get_ticket(overrides, service, soa_dir),
-        "project": get_project(overrides, service, soa_dir),
-        "priority": get_priority(overrides, service, soa_dir),
-        "source": "paasta-%s" % cluster,
-        "tags": get_tags(overrides, service, soa_dir),
-        "ttl": ttl,
-        "sensu_host": system_paasta_config.get_sensu_host(),
-        "sensu_port": system_paasta_config.get_sensu_port(),
-        "component": get_component(overrides, service, soa_dir),
-        "description": get_description(overrides, service, soa_dir),
-    }
+    result_dict = get_sensu_params(
+        service=service,
+        instance=instance,
+        check_name=check_name,
+        instance_config=instance_config,
+        check_defaults=check_defaults,
+        status=status,
+        output=output,
+        soa_dir=soa_dir,
+        ttl=ttl,
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+    )
+
+    if not result_dict.get("team"):
+        return
 
     if dry_run:
         if status == pysensu_yelp.Status.OK:
@@ -320,7 +327,7 @@ def send_event(
 
 
 @time_cache(ttl=5)
-def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):
+def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR) -> MonitoringDict:
     """Read a service's monitoring.yaml file.
 
     :param service: The service name
@@ -347,43 +354,33 @@ def send_replication_event(
     output,
     description,
     dry_run=False,
+    alert_after: Optional[str] = None,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param instance_config: an instance of LongRunningServiceConfig
+    :param instance_config: an instance of "LongRunningServiceConfig"
     :param status: The status to emit for this event
     :param output: The output to emit for this event
     :param dry_run: Print the event instead of emitting it
     """
     # This function assumes the input is a string like "mumble.main"
-    monitoring_overrides = instance_config.get_monitoring()
-    if "alert_after" not in monitoring_overrides:
-        monitoring_overrides["alert_after"] = "2m"
-    monitoring_overrides["check_every"] = "1m"
-    monitoring_overrides["runbook"] = __get_monitoring_config_value(
-        "runbook",
-        monitoring_overrides,
-        instance_config.service,
-        soa_dir=instance_config.soa_dir,
-        monitoring_defaults=lambda _: DEFAULT_REPLICATION_RUNBOOK,
-    )
-    monitoring_overrides["tip"] = __get_monitoring_config_value(
-        "tip",
-        monitoring_overrides,
-        instance_config.service,
-        soa_dir=instance_config.soa_dir,
-        monitoring_defaults=lambda _: (
+    check_defaults = {
+        "alert_after": alert_after if alert_after is not None else "2m",
+        "check_every": "1m",
+        "runbook": DEFAULT_REPLICATION_RUNBOOK,
+        "tip": (
             f"Check the instance with: `paasta status -s {instance_config.service} "
             f"-i {instance_config.instance} -c {instance_config.cluster} -vv`"
         ),
-    )
-    monitoring_overrides["description"] = description
+        "description": description,
+    }
 
-    check_name = "check_paasta_services_replication.%s" % instance_config.job_id
     send_event(
         service=instance_config.service,
-        check_name=check_name,
-        overrides=monitoring_overrides,
+        instance=instance_config.instance,
+        check_name="check_paasta_services_replication",
+        instance_config=instance_config,
+        check_defaults=check_defaults,
         status=status,
         output=output,
         soa_dir=instance_config.soa_dir,
@@ -402,7 +399,7 @@ def send_replication_event(
 
 def emit_replication_metrics(
     replication_infos: Mapping[str, Mapping[str, Mapping[str, int]]],
-    instance_config: LongRunningServiceConfig,
+    instance_config: "LongRunningServiceConfig",
     expected_count: int,
     dry_run: bool = False,
 ) -> None:
@@ -455,16 +452,17 @@ def emit_replication_metrics(
 
 
 def check_replication_for_instance(
-    instance_config: LongRunningServiceConfig,
+    instance_config: "LongRunningServiceConfig",
     expected_count: int,
     replication_checker: ReplicationChecker,
     dry_run: bool = False,
+    alert_after: Optional[str] = None,
 ) -> bool:
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
     the corresponding yelpsoa config.
 
-    :param instance_config: an instance of LongRunningServiceConfig
+    :param instance_config: an instance of "LongRunningServiceConfig"
     :param replication_checker: an instance of ReplicationChecker
     :param dry_run: Print Sensu event and metrics instead of emitting them
     """
@@ -597,12 +595,13 @@ def check_replication_for_instance(
         output=output,
         description=description,
         dry_run=dry_run,
+        alert_after=alert_after,
     )
     return not service_is_under_replicated
 
 
 def check_under_replication(
-    instance_config: LongRunningServiceConfig,
+    instance_config: "LongRunningServiceConfig",
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
@@ -662,11 +661,12 @@ def check_under_replication(
 
 
 def send_replication_event_if_under_replication(
-    instance_config: LongRunningServiceConfig,
+    instance_config: "LongRunningServiceConfig",
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
     dry_run: bool = False,
+    alert_after: Optional[str] = None,
 ):
     under_replicated, output, description = check_under_replication(
         instance_config, expected_count, num_available, sub_component
@@ -683,4 +683,5 @@ def send_replication_event_if_under_replication(
         output=output,
         description=description,
         dry_run=dry_run,
+        alert_after=alert_after,
     )

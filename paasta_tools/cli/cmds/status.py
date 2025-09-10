@@ -66,14 +66,13 @@ from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
+from paasta_tools.instance_config import InstanceConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.monitoring_tools import get_runbook
-from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
@@ -89,7 +88,6 @@ from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_deployment_version_from_dockerurl
 from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -811,15 +809,11 @@ def _print_flink_status_from_job_manager(
         output.append(f"    Flink Pool: {flink_pool}")
 
         # Print ownership information
-        flink_monitoring_team = flink_instance_config.get_team() or get_team(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
+        flink_monitoring_team = flink_instance_config.get_team()
         output.append(f"    Owner: {flink_monitoring_team}")
 
         # Print rb information
-        flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
+        flink_rb_for_instance = flink_instance_config.get_runbook()
         output.append(f"    Flink Runbook: {flink_rb_for_instance}")
 
     # Print Flink Version
@@ -2169,15 +2163,7 @@ def get_filters(
     if args.owner:
         owners = args.owner.split(",")
 
-        filters.append(
-            # If the instance owner is None, check the service owner, else check the instance owner
-            lambda conf: get_team(
-                overrides={}, service=conf.get_service(), soa_dir=args.soa_dir
-            )
-            in owners
-            if conf.get_team() is None
-            else conf.get_team() in owners
-        )
+        filters.append(lambda conf: (conf.get_team() in owners))
 
     return filters
 

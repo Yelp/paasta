@@ -16,12 +16,20 @@ import argparse
 import json
 import sys
 import time
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 from pysensu_yelp import Status
 
 from paasta_tools import monitoring_tools
 from paasta_tools.cli.cmds.logs import scribe_env_to_locations
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.instance_config import InstanceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -36,11 +44,7 @@ except ImportError:
 OOM_EVENTS_STREAM = "tmp_paasta_oom_events"
 
 
-def compose_check_name_for_service_instance(check_name, service, instance):
-    return f"{check_name}.{service}.{instance}"
-
-
-def parse_args(args):
+def parse_args(args: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Check the %s stream and report to Sensu if"
@@ -92,7 +96,11 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
+def read_oom_events_from_scribe(
+    cluster: str,
+    superregion: str,
+    num_lines: int = 1000,
+) -> Iterator[Dict[str, Any]]:
     """Read the latest 'num_lines' lines from OOM_EVENTS_STREAM and iterate over them."""
     # paasta configs incls a map for cluster -> env that is expected by scribe
     log_reader_config = load_system_paasta_config().get_log_reader()
@@ -126,13 +134,17 @@ def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
             raise e
 
 
-def latest_oom_events(cluster, superregion, interval=60):
+def latest_oom_events(
+    cluster: str,
+    superregion: str,
+    interval: int = 60,
+) -> Dict[Tuple[str, str], Set[str]]:
     """
     :returns: {(service, instance): [OOMEvent, OOMEvent,...] }
               if the number of events > 0
     """
     start_timestamp = int(time.time()) - interval
-    res = {}
+    res: Dict[Tuple[str, str], Set] = {}
     for e in read_oom_events_from_scribe(cluster, superregion):
         if e["timestamp"] > start_timestamp:
             key = (e["service"], e["instance"])
@@ -141,15 +153,19 @@ def latest_oom_events(cluster, superregion, interval=60):
 
 
 def compose_sensu_status(
-    instance, oom_events, is_check_enabled, alert_threshold, check_interval
-):
+    instance_config: InstanceConfig,
+    oom_events: Set[str],
+    is_check_enabled: bool,
+    alert_threshold: int,
+    check_interval: int,
+) -> Optional[Tuple[int, str]]:
     """
-    :param instance: InstanceConfig
+    :param instance_config: InstanceConfig
     :param oom_events: a list of OOMEvents
     :param is_check_enabled: boolean to indicate whether the check enabled for the instance
     """
     interval_string = f"{check_interval} minute(s)"
-    instance_name = f"{instance.service}.{instance.instance}"
+    instance_name = f"{instance_config.service}.{instance_config.instance}"
     if not is_check_enabled:
         return (Status.OK, f"This check is disabled for {instance_name}.")
     if not oom_events:
@@ -170,17 +186,18 @@ def compose_sensu_status(
         return None
 
 
-def send_sensu_event(instance, oom_events, args):
+def send_sensu_event(
+    instance_config: InstanceConfig,
+    oom_events: Set[str],
+    args: argparse.Namespace,
+) -> None:
     """
-    :param instance: InstanceConfig
+    :param instance_config: InstanceConfig
     :param oom_events: a list of OOMEvents
     """
-    check_name = compose_check_name_for_service_instance(
-        "oom-killer", instance.service, instance.instance
-    )
-    monitoring_overrides = instance.get_monitoring()
+    monitoring_overrides = instance_config.get_monitoring()
     status = compose_sensu_status(
-        instance=instance,
+        instance_config=instance_config,
         oom_events=oom_events,
         is_check_enabled=monitoring_overrides.get("check_oom_events", True),
         alert_threshold=args.alert_threshold,
@@ -189,36 +206,37 @@ def send_sensu_event(instance, oom_events, args):
     if not status:
         return
 
-    memory_limit = instance.get_mem()
+    memory_limit = instance_config.get_mem()
     try:
         memory_limit_str = f"{int(memory_limit)}MB"
     except ValueError:
-        memory_limit_str = memory_limit
+        memory_limit_str = memory_limit  # type: ignore
 
-    monitoring_overrides.update(
-        {
-            "page": False,
-            "alert_after": "0m",
-            "realert_every": args.realert_every,
-            "runbook": "y/check-oom-events",
-            "tip": (
-                "Follow the runbook to investigate and rightsize memory usage "
-                f"(curr: {memory_limit_str})"
-            ),
-        }
-    )
+    check_defaults = {
+        "page": False,
+        "alert_after": "0m",
+        "realert_every": args.realert_every,
+        "runbook": "y/check-oom-events",
+        "tip": (
+            "Follow the runbook to investigate and rightsize memory usage "
+            f"(curr: {memory_limit_str})"
+        ),
+    }
+
     return monitoring_tools.send_event(
-        service=instance.service,
-        check_name=check_name,
-        overrides=monitoring_overrides,
+        service=instance_config.service,
+        instance=instance_config.instance,
+        check_name="oom-killer",
+        instance_config=instance_config,
+        check_defaults=check_defaults,
         status=status[0],
         output=status[1],
-        soa_dir=instance.soa_dir,
+        soa_dir=instance_config.soa_dir,
         dry_run=args.dry_run,
     )
 
 
-def main(sys_argv):
+def main(sys_argv: List[str]) -> None:
     args = parse_args(sys_argv[1:])
     cluster = load_system_paasta_config().get_cluster()
     victims = latest_oom_events(
@@ -234,7 +252,7 @@ def main(sys_argv):
                 load_deployments=False,
                 soa_dir=args.soa_dir,
             )
-            oom_events = victims.get((service, instance), [])
+            oom_events = victims.get((service, instance), set())
             send_sensu_event(instance_config, oom_events, args)
         except NotImplementedError:  # When instance_type is not supported by get_instance_config
             pass

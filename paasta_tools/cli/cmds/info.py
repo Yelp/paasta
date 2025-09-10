@@ -22,8 +22,7 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
 from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.monitoring_tools import get_runbook
-from paasta_tools.monitoring_tools import get_team
+from paasta_tools.monitoring_tools import read_merged_monitoring_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
@@ -119,19 +118,20 @@ def get_service_info(service, soa_dir):
     description = service_configuration.get("description", NO_DESCRIPTION_MESSAGE)
     external_link = service_configuration.get("external_link", NO_EXTERNAL_LINK_MESSAGE)
     smartstack_endpoints = get_smartstack_endpoints(service, soa_dir)
+
+    monitoring_config = read_merged_monitoring_config(
+        service=service, soa_dir=soa_dir,
+    )
+
     git_url = get_git_url(service, soa_dir)
 
     output = []
     output.append("Service Name: %s" % service)
     output.append("Description: %s" % description)
     output.append("External Link: %s" % PaastaColors.cyan(external_link))
+    output.append(f"Monitored By: team {monitoring_config.get('team', 'not set')}")
     output.append(
-        "Monitored By: team %s"
-        % get_team(service=service, overrides={}, soa_dir=soa_dir)
-    )
-    output.append(
-        "Runbook: %s"
-        % PaastaColors.cyan(get_runbook(service=service, overrides={}, soa_dir=soa_dir))
+        f"Runbook: {PaastaColors.cyan(monitoring_config.get('runbook', 'not set'))}"
     )
     output.append("Git Repo: %s" % git_url)
     output.append(

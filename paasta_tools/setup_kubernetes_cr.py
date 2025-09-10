@@ -33,6 +33,7 @@ from kubernetes.client.exceptions import ApiException
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
+from paasta_tools.instance_config import load_all_configs
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -47,7 +48,6 @@ from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
-from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 

@@ -43,13 +43,14 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.instance_config import InstanceConfigDict
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
@@ -59,6 +60,7 @@ from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import ProjectedSAVolume
+from paasta_tools.monitoring_tools import read_merged_monitoring_config
 
 from paasta_tools import spark_tools
 
@@ -79,7 +81,6 @@ from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 
-from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
 from typing import Optional
 from typing import Dict
@@ -773,16 +774,11 @@ class TronJobConfig:
         return None
 
     def get_monitoring(self):
-        srv_monitoring = dict(
-            monitoring_tools.read_monitoring_config(self.service, soa_dir=self.soa_dir)
+        instance_monitoring_config = self.config_dict.get("monitoring", {})
+        srv_monitoring = read_merged_monitoring_config(
+            self.service, self.soa_dir, instance_overrides=instance_monitoring_config
         )
-        tron_monitoring = self.config_dict.get("monitoring", {})
-        srv_monitoring.update(tron_monitoring)
-        # filter out non-tron monitoring keys
-        srv_monitoring = {
-            k: v for k, v in srv_monitoring.items() if k in VALID_MONITORING_KEYS
-        }
-        return srv_monitoring
+        return {k: v for k, v in srv_monitoring.items() if k in VALID_MONITORING_KEYS}
 
     def get_queueing(self):
         return self.config_dict.get("queueing")

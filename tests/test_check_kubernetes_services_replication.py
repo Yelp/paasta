@@ -61,6 +61,7 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
             expected_count=100,
             replication_checker=None,
             dry_run=True,
+            alert_after=mock.ANY,
         )
 
 
@@ -92,6 +93,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
             expected_count=100,
             pods_by_service_instance={},
             dry_run=True,
+            alert_after=mock.ANY,
         )
 
 
@@ -117,6 +119,7 @@ def test_check_service_replication_for_non_smartstack(instance_config):
             expected_count=100,
             pods_by_service_instance={},
             dry_run=True,
+            alert_after=mock.ANY,
         )
 
 
@@ -142,10 +145,12 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
             5,
             pods_by_service_instance=pods_by_service_instance,
             dry_run=True,
+            alert_after="10m",
         )
-        mock_send_replication_event_if_under_replication.assert_called_with(
+        mock_send_replication_event_if_under_replication.assert_called_once_with(
             instance_config=mock_instance_config,
             expected_count=5,
             num_available=1,
             dry_run=True,
+            alert_after="10m",
         )

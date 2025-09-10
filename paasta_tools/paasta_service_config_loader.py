@@ -21,11 +21,13 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import InstanceConfig_T
+from paasta_tools.instance_config import InstanceConfigDict
+from paasta_tools.instance_config import load_service_instance_configs
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import load_service_instance_configs
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -59,7 +61,7 @@ class PaastaServiceConfigLoader:
     >>>
     """
 
-    _framework_configs: Dict[Tuple[str, type], Dict[str, utils.InstanceConfigDict]]
+    _framework_configs: Dict[Tuple[str, type], Dict[str, InstanceConfigDict]]
     _clusters: List[str]
     _deployments_json: utils.DeploymentsJsonV2
 
@@ -141,7 +143,7 @@ class PaastaServiceConfigLoader:
         self._framework_configs[(cluster, instance_type_class)] = instances
 
     def _get_branch_dict(
-        self, cluster: str, instance: str, config: utils.InstanceConfig
+        self, cluster: str, instance: str, config: InstanceConfig
     ) -> utils.BranchDictV2:
         if self._deployments_json is None:
             self._deployments_json = load_v2_deployments_json(
@@ -154,9 +156,7 @@ class PaastaServiceConfigLoader:
             self._service, branch, deploy_group
         )
 
-    def _get_merged_config(
-        self, config: utils.InstanceConfigDict
-    ) -> utils.InstanceConfigDict:
+    def _get_merged_config(self, config: InstanceConfigDict) -> InstanceConfigDict:
         if self._general_config is None:
             self._general_config = read_service_configuration(
                 service_name=self._service, soa_dir=self._soa_dir
@@ -167,7 +167,7 @@ class PaastaServiceConfigLoader:
         self,
         cluster: str,
         instance: str,
-        config: utils.InstanceConfigDict,
+        config: InstanceConfigDict,
         config_class: Type[InstanceConfig_T],
     ) -> InstanceConfig_T:
         """Create a service instance's configuration for kubernetes.

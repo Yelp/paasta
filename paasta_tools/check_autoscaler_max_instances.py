@@ -176,8 +176,6 @@ async def check_max_instances(
                 status = pysensu_yelp.Status.OK
                 output = f"{service}.{instance} is below max_instances."
 
-            monitoring_overrides = job_config.get_monitoring()
-
             disable_paging_suggestion = "\n".join(
                 [
                     "",
@@ -193,9 +191,10 @@ async def check_max_instances(
                 ]
             )
 
-            monitoring_defaults = {
+            check_defaults = {
                 "page": page_default,  # This will be re-overridden in send_event if the user has specified it in check_overrides.
                 "runbook": "y/check-autoscaler-max-instances",
+                "alert_after": 10,
                 "realert_every": 60,  # The check runs once a minute, so this would realert every hour.
                 "tip": (
                     "The autoscaler wants to scale up to handle additional load"
@@ -206,13 +205,12 @@ async def check_max_instances(
                     f"{disable_paging_suggestion}"
                 ),
             }
-            monitoring_overrides = (
-                monitoring_defaults | monitoring_overrides
-            )  # combine, with preference to overrides
             send_event(
                 service,
-                check_name=f"check_autoscaler_max_instances.{service}.{instance}",
-                overrides=monitoring_overrides,
+                instance,
+                check_name=f"check_autoscaler_max_instances",
+                instance_config=job_config,
+                check_defaults=check_defaults,
                 status=status,
                 output=output,
                 soa_dir=soa_dir,

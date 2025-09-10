@@ -26,11 +26,11 @@ from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.instance.kubernetes import ServiceMesh
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
 from paasta_tools.utils import DeploymentVersion
-from paasta_tools.utils import NoConfigurationForServiceError
 from tests.conftest import wrap_value_in_task
 
 

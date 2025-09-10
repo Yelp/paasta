@@ -321,7 +321,7 @@ class TestNativeServiceConfig:
             autospec=True,
             return_value=system_paasta_config,
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.instance_config.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=True,
         ):

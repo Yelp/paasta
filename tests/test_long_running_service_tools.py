@@ -15,7 +15,7 @@ import mock
 from pytest import raises
 
 from paasta_tools import long_running_service_tools
-from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.instance_config import InvalidInstanceConfig
 
 
 class TestLongRunningServiceConfig:

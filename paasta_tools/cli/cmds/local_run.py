@@ -44,6 +44,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import NoConfigurationForServiceError
+from paasta_tools.utils import validate_service_instance
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
@@ -58,12 +61,10 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
@@ -71,7 +72,6 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
-from paasta_tools.utils import validate_service_instance
 
 
 class AWSSessionCreds(TypedDict):

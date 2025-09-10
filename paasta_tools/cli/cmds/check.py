@@ -29,7 +29,7 @@ from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
-from paasta_tools.monitoring_tools import get_team
+from paasta_tools.monitoring_tools import read_merged_monitoring_config
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
@@ -265,7 +265,9 @@ def sensu_check(service, service_path, soa_dir):
     :param service_path: path to location of monitoring.yaml file"""
     if is_file_in_dir("monitoring.yaml", service_path):
         print(PaastaCheckMessages.SENSU_MONITORING_FOUND)
-        team = get_team(service=service, overrides={}, soa_dir=soa_dir)
+        team = read_merged_monitoring_config(service=service, soa_dir=soa_dir).get(
+            "team"
+        )
         if team is None:
             print(PaastaCheckMessages.SENSU_TEAM_MISSING)
         else:

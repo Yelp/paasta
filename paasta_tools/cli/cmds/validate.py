@@ -54,6 +54,8 @@ from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import InstanceConfigDict
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -73,8 +75,6 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services

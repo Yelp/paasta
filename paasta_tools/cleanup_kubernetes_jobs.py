@@ -193,17 +193,20 @@ def get_applications_to_kill(
                         instance_config, applications
                     )
                 except StatefulSetsAreNotSupportedError:
-                    overrides = {
+                    check_defaults = {
                         "page": True,
                         "alert_after": 0,
                         "tip": f"Revert {service}.{instance} in soa-configs to not include the namespace key.",
                         "runbook": "y/rb-paasta-namespace",
                         "ticket": True,
                     }
+
                     send_event(
                         service=service,
-                        check_name=f"statefulset_bounce_{service}.{instance}",
-                        overrides=overrides,
+                        instance=instance,
+                        check_name=f"statefulset_bounce",
+                        check_defaults=check_defaults,
+                        instance_config=instance_config,
                         status=Status.CRITICAL,  # type: ignore
                         output=f"Unsupported bounce: {service}.{instance}. PaaSTA managed StatefulSets do not support custom namespace",
                         soa_dir=soa_dir,

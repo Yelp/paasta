@@ -25,6 +25,7 @@ import logging
 import sys
 from typing import Sequence
 
+from paasta_tools.instance_config import load_all_configs
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import KubeClient
@@ -32,7 +33,6 @@ from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)

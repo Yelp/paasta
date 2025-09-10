@@ -33,6 +33,8 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
@@ -48,11 +50,9 @@ from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_using_unprivileged_containers
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors

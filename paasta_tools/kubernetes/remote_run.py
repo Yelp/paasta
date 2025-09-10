@@ -35,6 +35,7 @@ from kubernetes.client.exceptions import ApiException
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
+from paasta_tools.instance_config import NoConfigurationForServiceError
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
@@ -44,7 +45,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"

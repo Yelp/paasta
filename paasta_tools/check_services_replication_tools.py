@@ -30,6 +30,7 @@ from typing import Type
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
+from paasta_tools.instance_config import InstanceConfig_T
 from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
@@ -42,7 +43,6 @@ from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SPACER

@@ -169,7 +169,7 @@ def test_setup_all_custom_resources_flink():
 
 def test_load_all_configs():
     with mock.patch(
-        "paasta_tools.utils.load_service_instance_configs",
+        "paasta_tools.instance_config.load_service_instance_configs",
         autospec=True,
     ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
         mock_oslist.return_value = ["kurupt", "mc"]
@@ -189,7 +189,7 @@ def test_load_all_configs():
 
 def test_load_all_flink_configs():
     with mock.patch(
-        "paasta_tools.utils.load_service_instance_configs",
+        "paasta_tools.instance_config.load_service_instance_configs",
         autospec=True,
     ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
         mock_oslist.return_value = ["kurupt", "mc"]

@@ -34,9 +34,9 @@ from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.cli.cmds.spark_run import SPARK_DRIVER_IAM_USER
+from paasta_tools.instance_config import InstanceConfig
+from paasta_tools.instance_config import InstanceConfigDict
 from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
 

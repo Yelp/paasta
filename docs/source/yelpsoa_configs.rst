@@ -1078,6 +1078,13 @@ Here is a list of options that PaaSTA will pass through:
         check_autoscaler_max_instances:
           team: otherteam  # For the check_autoscaler_max_instances alert, otherteam will be notified.
 
+    Currently, the valid checks to override are:
+
+      * ``check_autoscaler_max_instances``
+      * ``oom-killer``
+      * ``statefulset_bounce``
+      * ``pod-eviction``
+
 Monitoring Examples
 ^^^^^^^^^^^^^^^^^^^
 
