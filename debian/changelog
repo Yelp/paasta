@@ -1,3 +1,11 @@
+paasta-tools (1.30.10) xenial; urgency=medium
+
+  * 1.30.10 tagged with 'make release'
+    Commit: Merge pull request #4115 from ymilki/no_gunicorn_sidecar
+    Remove gunicorn sidecar
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 16 Sep 2025 13:34:06 -0700
+
 paasta-tools (1.30.9) xenial; urgency=medium
 
   * 1.30.9 tagged with 'make release'
