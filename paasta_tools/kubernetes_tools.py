@@ -838,7 +838,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif provider["type"] in {
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
             METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
             return V2MetricSpec(
@@ -874,7 +873,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_GUNICORN,
+        }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(

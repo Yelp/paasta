@@ -2704,8 +2704,8 @@ class TestKubernetesDeploymentConfig:
                                 name="service-instance-gunicorn-prom",
                             ),
                             target=V2MetricTarget(
-                                type="Value",
-                                value=1,
+                                type="AverageValue",
+                                average_value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
