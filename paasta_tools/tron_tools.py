@@ -13,6 +13,7 @@
 import datetime
 import difflib
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -64,6 +65,17 @@ from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools import spark_tools
 
 from paasta_tools.kubernetes_tools import (
+    mode_to_int,
+    V1VolumeProjection,
+    PROJECTED_SA_TOKEN_PATH,
+    DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS,
+    V1KeyToPath,
+    V1Volume,
+    V1ServiceAccountTokenProjection,
+    V1SecretVolumeSource,
+    V1ProjectedVolumeSource,
+    V1HostPathVolumeSource,
+    VolumeWithMode,
     NodeSelectorConfig,
     allowlist_denylist_to_requirements,
     contains_zone_label,
@@ -84,12 +96,17 @@ from paasta_tools.kubernetes_tools import (
     V1Affinity,
     V1ObjectMeta,
     V1PodSpec,
+    V1SecretKeySelector,
+    V1VolumeMount,
     AwsEbsVolume,
     paasta_prefixed,
     JOB_TYPE_LABEL_NAME,
     CAPS_DROP,
     get_git_sha_from_dockerurl,
-    load_service_namespace_config,
+    KubePodAnnotations,
+    V1PodSecurityContext,
+    KubePodLabels,
+    InvalidKubernetesConfig,
 )
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -901,6 +918,154 @@ class TronActionConfig(InstanceConfig):
                 **context_kwargs,
             )
 
+    def get_sanitised_volume_name(self, volume_name: str, length_limit: int = 0) -> str:
+        """I know but we really aren't allowed many characters..."""
+        volume_name = volume_name.rstrip("/")
+        sanitised = volume_name.replace("/", "slash-").replace(".", "dot-")
+        sanitised_name = sanitise_kubernetes_name(sanitised)
+        if length_limit and len(sanitised_name) > length_limit:
+            sanitised_name = (
+                sanitised_name[0 : length_limit - 6]
+                + "--"
+                + hashlib.md5(sanitised_name.encode("ascii")).hexdigest()[:4]
+            )
+        return sanitised_name
+
+    def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
+        return self.get_sanitised_volume_name(
+            "host--{name}".format(name=docker_volume["hostPath"]), length_limit=63
+        )
+
+    def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
+        return self.get_sanitised_volume_name(
+            "aws-ebs--{name}{partition}".format(
+                name=aws_ebs_volume["volume_id"],
+                partition=aws_ebs_volume.get("partition", ""),
+            )
+        )
+
+    def get_projected_sa_volume_name(
+        self, projected_sa_volume: ProjectedSAVolume
+    ) -> str:
+        return self.get_sanitised_volume_name(
+            "projected-sa--{audience}".format(audience=projected_sa_volume["audience"]),
+            length_limit=63,
+        )
+
+    def read_only_mode(self, d: VolumeWithMode) -> bool:
+        return d.get("mode", "RO") == "RO"
+
+    def get_pod_volumes(
+        self,
+        docker_volumes: Sequence[DockerVolume],
+        secret_volumes: Sequence[TronSecretVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
+    ) -> Sequence[V1Volume]:
+        pod_volumes = []
+        unique_docker_volumes = {
+            self.get_docker_volume_name(docker_volume): docker_volume
+            for docker_volume in docker_volumes
+        }
+        for name, docker_volume in unique_docker_volumes.items():
+            pod_volumes.append(
+                V1Volume(
+                    host_path=V1HostPathVolumeSource(path=docker_volume["hostPath"]),
+                    name=name,
+                )
+            )
+        for secret_volume in secret_volumes:
+            if "items" in secret_volume:
+                items = [
+                    V1KeyToPath(
+                        key=item["key"],
+                        mode=mode_to_int(item.get("mode")),
+                        path=item["path"],
+                    )
+                    for item in secret_volume["items"]
+                ]
+            else:
+                items = None
+            pod_volumes.append(
+                V1Volume(
+                    name=self.get_secret_volume_name(secret_volume),
+                    secret=V1SecretVolumeSource(
+                        secret_name=get_paasta_secret_name(
+                            self.get_namespace(),
+                            self.get_service(),
+                            secret_volume["secret_name"],
+                        ),
+                        default_mode=mode_to_int(secret_volume.get("default_mode")),
+                        items=items,
+                        optional=False,
+                    ),
+                )
+            )
+        for projected_volume in projected_sa_volumes or []:
+            pod_volumes.append(
+                V1Volume(
+                    name=self.get_projected_sa_volume_name(projected_volume),
+                    projected=V1ProjectedVolumeSource(
+                        sources=[
+                            V1VolumeProjection(
+                                service_account_token=V1ServiceAccountTokenProjection(
+                                    audience=projected_volume["audience"],
+                                    expiration_seconds=projected_volume.get(
+                                        "expiration_seconds",
+                                        DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS,
+                                    ),
+                                    path=PROJECTED_SA_TOKEN_PATH,
+                                )
+                            )
+                        ],
+                    ),
+                ),
+            )
+
+        return pod_volumes
+
+    def get_volume_mounts(
+        self,
+        docker_volumes: Sequence[DockerVolume],
+        aws_ebs_volumes: Sequence[AwsEbsVolume],
+        secret_volumes: Sequence[TronSecretVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
+    ) -> Sequence[V1VolumeMount]:
+        volume_mounts = (
+            [
+                V1VolumeMount(
+                    mount_path=docker_volume["containerPath"],
+                    name=self.get_docker_volume_name(docker_volume),
+                    read_only=self.read_only_mode(docker_volume),
+                )
+                for docker_volume in docker_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=aws_ebs_volume["container_path"],
+                    name=self.get_aws_ebs_volume_name(aws_ebs_volume),
+                    read_only=self.read_only_mode(aws_ebs_volume),
+                )
+                for aws_ebs_volume in aws_ebs_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=volume["container_path"],
+                    name=self.get_secret_volume_name(volume),
+                    read_only=True,
+                )
+                for volume in secret_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=volume["container_path"],
+                    name=self.get_projected_sa_volume_name(volume),
+                    read_only=True,
+                )
+                for volume in projected_sa_volumes or []
+            ]
+        )
+        return volume_mounts
+
     def get_kubernetes_container(
         self,
         docker_volumes: Sequence[DockerVolume],
@@ -916,14 +1081,12 @@ class TronActionConfig(InstanceConfig):
             resources=self.get_resource_requirements(),
             name=self.get_sanitised_instance_name(),
             security_context=self.get_security_context(),
-            volume_mounts=[],  # TODO
-            # volume_mounts=self.get_volume_mounts(
-            #    docker_volumes=docker_volumes,
-            #    aws_ebs_volumes=aws_ebs_volumes,
-            #    persistent_volumes=self.get_persistent_volumes(),
-            #    secret_volumes=secret_volumes,
-            #    projected_sa_volumes=self.get_projected_sa_volumes(),
-            # ),
+            volume_mounts=self.get_volume_mounts(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=aws_ebs_volumes,
+                secret_volumes=secret_volumes,
+                projected_sa_volumes=self.get_projected_sa_volumes(),
+            ),
         )
         return service_container
 
@@ -937,14 +1100,10 @@ class TronActionConfig(InstanceConfig):
         include_liveness_probe: bool = False,
         include_readiness_probe: bool = False,
     ) -> V1PodTemplateSpec:
-        service_namespace_config = load_service_namespace_config(
-            service=self.service, namespace=self.get_nerve_namespace()
-        )
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes(),
         )
 
-        hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
         annotations: KubePodAnnotations = {
             # "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": "false"
@@ -965,13 +1124,11 @@ class TronActionConfig(InstanceConfig):
             share_process_namespace=True,
             node_selector=self.get_node_selectors(),
             restart_policy="Never",
-            volumes=[],  # TODO
-            # volumes=self.get_pod_volumes(
-            #    docker_volumes=docker_volumes + hacheck_sidecar_volumes,
-            #    aws_ebs_volumes=self.get_aws_ebs_volumes(),
-            #    secret_volumes=self.get_secret_volumes(),
-            #    projected_sa_volumes=self.get_projected_sa_volumes(),
-            # ),
+            volumes=self.get_pod_volumes(
+                docker_volumes=docker_volumes,
+                secret_volumes=self.get_secret_volumes(),
+                projected_sa_volumes=self.get_projected_sa_volumes(),
+            ),
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
@@ -1035,12 +1192,12 @@ class TronActionConfig(InstanceConfig):
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
-    def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
+    def get_kubernetes_metadata(self, git_sha: str, username: str) -> V1ObjectMeta:
         return V1ObjectMeta(
             name=self.get_sanitised_instance_name(),
             namespace=self.get_namespace(),
             labels={
-                "yelp.com/owner": "qlo",  # TODO
+                "yelp.com/owner": username,
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
@@ -1057,6 +1214,7 @@ class TronActionConfig(InstanceConfig):
     def format_kubernetes_job(
         self,
         job_label: str,
+        username: str,
         deadline_seconds: int = 3600,
         keep_routable_ip=False,
     ) -> V1Job:
@@ -1081,7 +1239,7 @@ class TronActionConfig(InstanceConfig):
             complete_config = V1Job(
                 api_version="batch/v1",
                 kind="Job",
-                metadata=self.get_kubernetes_metadata(git_sha),
+                metadata=self.get_kubernetes_metadata(git_sha, username),
                 spec=V1JobSpec(
                     active_deadline_seconds=deadline_seconds,
                     ttl_seconds_after_finished=0,  # remove job resource after completion
