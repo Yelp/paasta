@@ -53,6 +53,7 @@ from typing import Collection
 from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
+from typing import Generic
 from typing import IO
 from typing import Iterable
 from typing import Iterator
@@ -2035,7 +2036,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2667,13 +2667,6 @@ class SystemPaastaConfig:
 
     def default_should_use_uwsgi_exporter(self) -> bool:
         return self.config_dict.get("default_should_use_uwsgi_exporter", False)
-
-    def get_gunicorn_exporter_sidecar_image_url(self) -> str:
-        """Get the docker image URL for the gunicorn_exporter sidecar container"""
-        return self.config_dict.get(
-            "gunicorn_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
-        )
 
     def get_mark_for_deployment_max_polling_threads(self) -> int:
         return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
@@ -4139,7 +4132,7 @@ def timeout(
     return decorate
 
 
-class _Timeout:
+class _Timeout(Generic[_TimeoutFuncRetType]):
     def __init__(
         self,
         function: Callable[..., _TimeoutFuncRetType],

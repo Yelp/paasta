@@ -114,7 +114,7 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
                     )
 
 
-def main():
+def main() -> None:
     args = parse_args()
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=log_level)
@@ -232,7 +232,7 @@ def main():
             log.debug(f"Updated {updated}")
 
         if updated_namespaces != new_configs.keys():
-            skipped = set(new_configs.keys()) - set(updated_namespaces.keys())
+            skipped = list(set(new_configs.keys()) - set(updated_namespaces.keys()))
             log.debug(f"Skipped {skipped}")
 
     skipped_report = skipped if args.verbose else len(skipped)

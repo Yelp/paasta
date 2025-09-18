@@ -9,6 +9,7 @@ flake8
 freezegun
 hypothesis
 mock
+mypy
 path.py
 pep8
 pre-commit
@@ -20,4 +21,10 @@ requirements-tools
 Sphinx
 sphinx-rtd-theme
 types-cachetools
+types-croniter
+types-python-dateutil
+types-pytz
+types-pyyaml
+types-requests
+types-retry
 zake

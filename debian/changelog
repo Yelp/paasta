@@ -1,3 +1,43 @@
+paasta-tools (1.30.10) xenial; urgency=medium
+
+  * 1.30.10 tagged with 'make release'
+    Commit: Merge pull request #4115 from ymilki/no_gunicorn_sidecar
+    Remove gunicorn sidecar
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 16 Sep 2025 13:34:06 -0700
+
+paasta-tools (1.30.9) xenial; urgency=medium
+
+  * 1.30.9 tagged with 'make release'
+    Commit: Merge pull request #4111 from Yelp/luisp/run-mypy-with-tests
+    it"s always bothered me that these have to be run explicitly with
+    tox -e mypy OR push to GH.  Additionally, I needed to upgrade mypy
+    to use the "new" list[...]/dict[..., ...]/etc type syntax.  And
+    finally: I deleted some Mesos-related code that the new mypy was
+    flagging since I didn"t want to deal with fixing dead code :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Sep 2025 12:37:18 -0700
+
+paasta-tools (1.30.8) xenial; urgency=medium
+
+  * 1.30.8 tagged with 'make release'
+    Commit: Have setup_kubernetes_job prioritize services whose git_shas
+    are changing (#3577)  Have setup_kubernetes_job prioritize services
+    whose git_shas or image_versions are changing, so that real bounces
+    take priority over big bounces.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Sep 2025 07:52:31 -0700
+
+paasta-tools (1.30.7) xenial; urgency=medium
+
+  * 1.30.7 tagged with 'make release'
+    Commit: Updated mode: http2 support (#4004)  * Updated mode: http2
+    support  * update URL scheme handling in case of http2 mode.  * Add
+    http2 handling for healthcheck mode  * condition for http is not
+    required.
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 08 Sep 2025 02:09:38 -0700
+
 paasta-tools (1.30.5) xenial; urgency=medium
 
   * 1.30.5 tagged with 'make release'

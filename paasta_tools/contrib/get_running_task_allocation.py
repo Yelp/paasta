@@ -1,5 +1,6 @@
 #!/opt/venvs/paasta-tools/bin/python
 import argparse
+import json
 import time
 from typing import Any
 from typing import Dict
@@ -12,7 +13,6 @@ from typing import Optional
 from typing import Tuple
 
 import a_sync
-import simplejson as json
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ResourceRequirements
 

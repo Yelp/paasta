@@ -195,10 +195,8 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
-GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
 SIDECAR_CONTAINER_NAMES = [
     HACHECK_POD_NAME,
-    GUNICORN_EXPORTER_POD_NAME,
 ]
 KUBERNETES_NAMESPACE = "paasta"
 PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
@@ -269,6 +267,10 @@ class KubeDeployment(NamedTuple):
     config_sha: str
     namespace: str
     replicas: Optional[int]
+
+    @property
+    def deployment_version(self) -> DeploymentVersion:
+        return DeploymentVersion(self.git_sha, self.image_version)
 
 
 class KubeCustomResource(NamedTuple):
@@ -1068,15 +1070,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config,
             hacheck_sidecar_volumes,
         )
-        gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
-            system_paasta_config
-        )
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
-        if gunicorn_exporter_container:
-            sidecars.append(gunicorn_exporter_container)
         return sidecars
 
     def get_readiness_check_prefix(
@@ -1162,37 +1159,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     projected_sa_volumes=[],
                 ),
             )
-        return None
-
-    def get_gunicorn_exporter_sidecar_container(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> Optional[V1Container]:
-
-        if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            return V1Container(
-                image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements(
-                    "gunicorn_exporter", system_paasta_config
-                ),
-                name=GUNICORN_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment(),
-                ports=[V1ContainerPort(container_port=9117)],
-                lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
-                        _exec=V1ExecAction(
-                            command=[
-                                "/bin/sh",
-                                "-c",
-                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
-                                # metrics up until our Pod dies
-                                f"sleep {self.get_hacheck_prestop_sleep_seconds()}",
-                            ]
-                        )
-                    )
-                ),
-            )
-
         return None
 
     def get_env(
@@ -1542,7 +1508,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         and the service will be removed from smartstack, which is the same effect we get after running hadown.
         """
 
-        # Everywhere this value is currently used (hacheck sidecar or gunicorn sidecar), we can pretty safely
+        # Everywhere this value is currently used (hacheck sidecar), we can pretty safely
         # assume that the service is in smartstack.
         return self.get_prestop_sleep_seconds(is_in_smartstack=True) + 1
 
@@ -1922,7 +1888,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_datastore_credentials_secret_hash():
                 volume_mounts.append(
                     V1VolumeMount(
-                        mount_path=f"/datastore",
+                        mount_path="/datastore",
                         name=self.get_datastore_secret_volume_name(),
                         read_only=True,
                     )

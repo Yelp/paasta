@@ -95,9 +95,12 @@ class ServiceNamespaceConfig(dict):
         """
         healthcheck_mode = self.get("healthcheck_mode", None)
         if not healthcheck_mode:
-            return self.get_mode()
-        else:
-            return healthcheck_mode
+            mode = self.get_mode()
+            if mode == "http2":
+                healthcheck_mode = "http"
+            else:
+                healthcheck_mode = mode
+        return healthcheck_mode
 
     def get_mode(self) -> str:
         """Get the mode that the service runs in and check that we support it.
@@ -112,7 +115,7 @@ class ServiceNamespaceConfig(dict):
                 return None
             else:
                 return "http"
-        elif mode in ["http", "tcp", "https"]:
+        elif mode in ["http", "http2", "tcp", "https"]:
             return mode
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)

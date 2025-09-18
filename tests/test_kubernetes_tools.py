@@ -3791,8 +3791,8 @@ def test_format_pod_event_messages():
     pod_name = "test_pod"
     rows = kubernetes_tools.format_pod_event_messages(pod_event_messages, pod_name)
 
-    assert rows[1] == f"    Event at 1: message_1"
-    assert rows[2] == f"    Event at 2: message_2"
+    assert rows[1] == "    Event at 1: message_1"
+    assert rows[2] == "    Event at 2: message_2"
 
 
 @given(integers(min_value=0), floats(min_value=0, max_value=1.0))
