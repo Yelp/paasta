@@ -43,6 +43,8 @@ from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL_NAME
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.tron_tools import load_tron_instance_configs
+from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 
@@ -77,6 +79,22 @@ def format_remote_run_job_name(
     :return: job name
     """
     return limit_size_with_hash(f"remote-run-{user}-{job_name}")
+
+
+def load_tron_config(service: str, instance: str, cluster: str) -> TronActionConfig:
+    actions = load_tron_instance_configs(service, cluster)
+    for action in actions:
+        if action.instance == instance:
+            break
+    else:
+        raise RemoteRunError(f"No instance {instance} found for {service}")
+
+    if action.get_executor() != "paasta":
+        raise RemoteRunError(
+            f"{instance} is not a paasta executor action and is not compatible with remote-run"
+        )
+
+    return action
 
 
 def load_eks_or_adhoc_deployment_config(
@@ -133,23 +151,36 @@ def remote_run_start(
     """
     kube_client = KubeClient()
 
-    # Load the service deployment settings
-    deployment_config = load_eks_or_adhoc_deployment_config(
-        service, instance, cluster, is_toolbox, user
-    )
+    tron = False
+    try:
+        # Load the service deployment settings
+        deployment_config = load_eks_or_adhoc_deployment_config(
+            service, instance, cluster, is_toolbox, user
+        )
+    except NoConfigurationForServiceError:
+        # tron
+        tron = True
+        deployment_config = load_tron_config(service, instance, cluster)
 
     # Set override command, or sleep for interactive mode
-    if command and not is_toolbox:
-        deployment_config.config_dict["cmd"] = command
-    elif interactive and not is_toolbox:
-        deployment_config.config_dict["cmd"] = f"sleep {max_duration}"
+    if not tron:
+        if command and not is_toolbox:
+            deployment_config.config_dict["cmd"] = command
+        elif interactive and not is_toolbox:
+            deployment_config.config_dict["cmd"] = f"sleep {max_duration}"
+    else:
+        # Tron dicts use "command" instead of "cmd" and expects an array
+        deployment_config.config_dict["command"] = ["/usr/bin/sleep", str(max_duration)]
 
     # Create the app with a new name
-    formatted_job = deployment_config.format_kubernetes_job(
-        job_label=REMOTE_RUN_JOB_LABEL,
-        deadline_seconds=max_duration,
-        keep_routable_ip=is_toolbox,
-    )
+    format_k8s_job_params = {
+        "job_label": REMOTE_RUN_JOB_LABEL,
+        "deadline_seconds": max_duration,
+        "keep_routable_ip": is_toolbox,
+    }
+    if tron:
+        format_k8s_job_params["username"] = user
+    formatted_job = deployment_config.format_kubernetes_job(**format_k8s_job_params)
     job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
     app_wrapper = get_application_wrapper(formatted_job)
@@ -209,9 +240,12 @@ def remote_run_ready(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_or_adhoc_deployment_config(
-        service, instance, cluster, is_toolbox, user
-    )
+    try:
+        deployment_config = load_eks_or_adhoc_deployment_config(
+            service, instance, cluster, is_toolbox, user
+        )
+    except NoConfigurationForServiceError:
+        deployment_config = load_tron_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
     pod = find_job_pod(kube_client, namespace, job_name)
@@ -254,14 +288,22 @@ def remote_run_stop(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_or_adhoc_deployment_config(
-        service, instance, cluster, is_toolbox, user
-    )
+    tron = False
+    try:
+        deployment_config = load_eks_or_adhoc_deployment_config(
+            service, instance, cluster, is_toolbox, user
+        )
+    except NoConfigurationForServiceError:
+        tron = True
+        deployment_config = load_tron_config(service, instance, cluster)
 
     # Rebuild the job metadata
-    formatted_job = deployment_config.format_kubernetes_job(
-        job_label=REMOTE_RUN_JOB_LABEL
-    )
+    format_k8s_job_params = {
+        "job_label": REMOTE_RUN_JOB_LABEL,
+    }
+    if tron:
+        format_k8s_job_params["username"] = user
+    formatted_job = deployment_config.format_kubernetes_job(**format_k8s_job_params)
     job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
 
@@ -289,14 +331,24 @@ def remote_run_token(
     """
     kube_client = KubeClient()
 
-    # Load the service deployment settings
-    deployment_config = load_eks_or_adhoc_deployment_config(service, instance, cluster)
+    tron = False
+    try:
+        # Load the service deployment settings
+        deployment_config = load_eks_or_adhoc_deployment_config(
+            service, instance, cluster
+        )
+    except NoConfigurationForServiceError:
+        deployment_config = load_tron_config(service, instance, cluster)
+        tron = True
     namespace = deployment_config.get_namespace()
 
     # Rebuild the job metadata
-    formatted_job = deployment_config.format_kubernetes_job(
-        job_label=REMOTE_RUN_JOB_LABEL
-    )
+    format_k8s_job_params = {
+        "job_label": REMOTE_RUN_JOB_LABEL,
+    }
+    if tron:
+        format_k8s_job_params["username"] = user
+    formatted_job = deployment_config.format_kubernetes_job(**format_k8s_job_params)
     job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
 
     # Find pod and create exec token for it
