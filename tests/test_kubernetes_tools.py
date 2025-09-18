@@ -1805,6 +1805,8 @@ class TestKubernetesDeploymentConfig:
         )
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
         mock_get_termination_grace_period.return_value = termination_grace_period
 
         if autoscaling_metric_provider:
@@ -1835,6 +1837,7 @@ class TestKubernetesDeploymentConfig:
         assert mock_service_namespace_config.is_in_smartstack.called
         assert mock_get_pod_volumes.called
         assert mock_get_volumes.called
+        assert mock_load_system_paasta_config.called
         pod_spec_kwargs = dict(
             service_account_name=None,
             containers=mock_get_kubernetes_containers.return_value,
@@ -1896,6 +1899,10 @@ class TestKubernetesDeploymentConfig:
 
         assert ret == expected
 
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     )
@@ -2046,6 +2053,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
         mock_get_volumes,
+        mock_load_system_paasta_config,
         metrics_providers: List[str],
         expected_labels: Dict[str, str],
     ):
@@ -2064,6 +2072,9 @@ class TestKubernetesDeploymentConfig:
         )
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_system_paasta_config.get_hacheck_sidecar_volumes.return_value = []
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
 
         # Deployment config with multiple metrics providers
         mock_config_dict = KubernetesDeploymentConfigDict(
@@ -2087,6 +2098,8 @@ class TestKubernetesDeploymentConfig:
         ret = deployment.get_pod_template_spec(
             git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
         )
+
+        assert mock_load_system_paasta_config.called
 
         # Each metric provider has its own set of labels. We expect to see all of them.
         actual_labels = ret.metadata.labels
