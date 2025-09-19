@@ -2455,11 +2455,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
+        if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
+        if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
