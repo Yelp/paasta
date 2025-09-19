@@ -1,3 +1,10 @@
+paasta-tools (1.30.11) xenial; urgency=medium
+
+  * 1.30.11 tagged with 'make release'
+    Commit: Released 1.30.10 via make release
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 19 Sep 2025 11:22:26 -0700
+
 paasta-tools (1.30.10) xenial; urgency=medium
 
   * 1.30.10 tagged with 'make release'
