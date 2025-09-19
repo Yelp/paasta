@@ -180,8 +180,9 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
     assert service_name in rule["seriesQuery"]
     assert instance_config.instance in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
-    # these two numbers are distinctive and unlikely to be used as constants
-    assert str(metrics_provider_config["setpoint"]) in rule["metricsQuery"]
+
+    # Like uwsgi_v2, we don't use the setpoint in this query -- the HPA will have the setpoint as its target.
+    assert str(metrics_provider_config["setpoint"]) not in rule["metricsQuery"]
     assert (
         str(metrics_provider_config["moving_average_window_seconds"])
         in rule["metricsQuery"]
