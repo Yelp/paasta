@@ -2071,7 +2071,7 @@ class TestKubernetesDeploymentConfig:
             True
         )
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_system_paasta_config.get_pod_defaults.return_value = {"dns_policy": "foo"}
         mock_system_paasta_config.get_hacheck_sidecar_volumes.return_value = []
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
         mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
