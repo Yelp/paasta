@@ -53,6 +53,9 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -60,6 +63,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -212,6 +216,10 @@ def create_instance_scaling_rule(
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_UWSGI_V2:
         return create_instance_uwsgi_v2_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
+    if metrics_provider_config["type"] == METRICS_PROVIDER_WORKER_LOAD:
+        return create_instance_worker_load_scaling_rule(
             service, instance_config, metrics_provider_config, paasta_cluster
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_PISCINA:
@@ -534,7 +542,8 @@ def create_instance_worker_load_scaling_rule(
     """
     instance = instance_config.instance
     moving_average_window = metrics_provider_config.get(
-        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+        "moving_average_window_seconds",
+        DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
@@ -560,7 +569,7 @@ def create_instance_worker_load_scaling_rule(
     """
     load_per_instance = f"""
         avg(
-            uwsgi_worker_busy{{{worker_filter_terms}}}
+            worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
     missing_instances = f"""
@@ -586,7 +595,7 @@ def create_instance_worker_load_scaling_rule(
         )
     """
 
-    metric_name = f"{deployment_name}-uwsgi-v2-prom"
+    metric_name = f"{deployment_name}-worker-load-prom"
 
     return {
         "name": {"as": metric_name},
