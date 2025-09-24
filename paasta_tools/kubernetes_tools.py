@@ -151,6 +151,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -874,7 +875,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_WORKER_LOAD,
+        }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -2462,6 +2466,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
+
+        if self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
         # the default AWS LB Controller behavior is to enable this by-namespace
         # ...but that's kinda annoying to do in a toggleable way - so let's instead
