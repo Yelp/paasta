@@ -523,6 +523,79 @@ def create_instance_uwsgi_v2_scaling_rule(
     }
 
 
+def create_instance_worker_load_scaling_rule(
+    service: str,
+    instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    """
+    Creates a Prometheus adapter rule config for a given service instance using generic worker_busy metric.
+    """
+    instance = instance_config.instance
+    moving_average_window = metrics_provider_config.get(
+        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must NOT filter on namespace in worker_filter_terms (which is used when calculating total_load.
+    # This makes sure that desired_instances includes load from all namespaces.
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+
+    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
+    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
+    # deployment.
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        avg(
+            uwsgi_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    total_load_smoothed = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+
+    metric_name = f"{deployment_name}-uwsgi-v2-prom"
+
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"worker_busy{{{worker_filter_terms}}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(total_load_smoothed),
+    }
+
+
 def create_instance_piscina_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
