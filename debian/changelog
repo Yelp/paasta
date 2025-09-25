@@ -1,3 +1,11 @@
+paasta-tools (1.30.14) xenial; urgency=medium
+
+  * 1.30.14 tagged with 'make release'
+    Commit: Merge pull request #4121 from Yelp/luisp/promql-provider-
+    consistent  s/_/- in arbitrary promql autoscaling provider
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 25 Sep 2025 11:52:46 -0700
+
 paasta-tools (1.30.13) xenial; urgency=medium
 
   * 1.30.13 tagged with 'make release'

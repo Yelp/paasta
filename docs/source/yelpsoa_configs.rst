@@ -369,7 +369,7 @@ instance MAY have:
     * ``metrics_providers``: A list of data sources to use for autoscaling:
 
         * ``type``: Which method the autoscaler will use to determine a service's utilization.
-          Should be ``cpu``, ``uwsgi``, ``active-reqeusts``, ``piscina``, ``gunicorn``, or ``arbitrary_promql``.
+          Should be ``cpu``, ``uwsgi``, ``active-requests``, ``piscina``, ``gunicorn``, or ``arbitrary-promql``.
 
         * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
           Should be ``proportional`` or ``bespoke``.
@@ -388,7 +388,7 @@ instance MAY have:
           provider.
 
         * ``prometheus_adapter_config``: **(advanced users only)** Custom prometheus configuration for the
-          ``arbitrary_promql`` metrics provider.
+          ``arbitrary-promql`` metrics provider.
 
     * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
       this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`
