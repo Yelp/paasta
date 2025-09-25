@@ -72,6 +72,7 @@ from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.long_running_service_tools import DEFAULT_CONTAINER_PORT
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
@@ -1402,6 +1403,12 @@ def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
     )
 
 
+def get_container_env(container: Optional[KubernetesContainerV2]) -> Dict[str, str]:
+    if not container or not container.env:
+        return {}
+    return {env_var.name: env_var.value for env_var in container.env}
+
+
 def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
@@ -1474,9 +1481,14 @@ def create_replica_table(
     for state, pod in pods:
         start_datetime = datetime.fromtimestamp(pod.create_timestamp)
         humanized_start_time = humanize.naturaltime(start_datetime)
+        # Get port from the main container's PAASTA_PORT env var, fallback to DEFAULT_CONTAINER_PORT
+        main_container = get_main_container(pod)
+        container_env = get_container_env(main_container)
+        paasta_port = container_env.get("PAASTA_PORT", str(DEFAULT_CONTAINER_PORT))
+
         row = [
             pod.name,
-            f"{pod.ip}:8888" if pod.ip else "None",
+            f"{pod.ip}:{paasta_port}" if pod.ip else "None",
             pod.host or "None",
             humanized_start_time,
             state.formatted_message,
@@ -1491,7 +1503,6 @@ def create_replica_table(
                 )
             )
 
-        main_container = get_main_container(pod)
         if main_container:
             if main_container.timestamp:
                 timestamp = datetime.fromtimestamp(main_container.timestamp)
