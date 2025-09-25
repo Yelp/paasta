@@ -10,7 +10,7 @@
                     "cpu",
                     "piscina",
                     "gunicorn",
-                    "arbitrary_promql",
+                    "arbitrary-promql",
                     "active-requests"
                 ]
             },

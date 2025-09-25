@@ -87,8 +87,8 @@ The currently available metrics providers are:
   This metrics provider is only valid for the Yelp-internal server-side-rendering (SSR) service. With the ``piscina``
   metrics provider, Paasta will scale your SSR instance based on how many Piscina workers are busy.
 
-:arbitrary_promql:
-  The ``arbitrary_promql`` metrics provider allows you to specify any Prometheus query you want using the `Prometheus
+:arbitrary-promql:
+  The ``arbitrary-promql`` metrics provider allows you to specify any Prometheus query you want using the `Prometheus
   query language (promql) <https://prometheus.io/docs/prometheus/latest/querying/basics/>`.  The autoscaler will attempt
   to scale your service to keep the value of this metric at whatever setpoint you specify.
 
