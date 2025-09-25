@@ -369,7 +369,7 @@ instance MAY have:
     * ``metrics_providers``: A list of data sources to use for autoscaling:
 
         * ``type``: Which method the autoscaler will use to determine a service's utilization.
-          Should be ``cpu``, ``uwsgi``, ``active-reqeusts``, ``piscina``, ``gunicorn``, or ``arbitrary-promql``.
+          Should be ``cpu``, ``uwsgi``, ``active-requests``, ``piscina``, ``gunicorn``, or ``arbitrary-promql``.
 
         * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
           Should be ``proportional`` or ``bespoke``.
