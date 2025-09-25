@@ -151,6 +151,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -874,7 +875,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_WORKER_LOAD,
+        }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -2445,22 +2449,29 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI):
-            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
-            # But we do still need deploy_group for relabeling properly
-            # this should probably eventually be made into a default label,
+        metrics_providers_needing_deploy_group = [
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
+        ]
+
+        if any(
+            self.should_use_metrics_provider(provider)
+            for provider in metrics_providers_needing_deploy_group
+        ):
+            # Deploy group is needed for Prometheus relabeling properly
+            # This should probably eventually be made into a default label,
             # but for now we're fine with it being behind these feature toggles.
-            # ideally, we'd also have the docker image here for ease-of-use
+            # Ideally, we'd also have the docker image here for ease-of-use
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
         if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         # the default AWS LB Controller behavior is to enable this by-namespace
