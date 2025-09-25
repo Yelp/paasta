@@ -2928,7 +2928,7 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-worker_load-prom",
+                                name="service-instance-worker-load-prom",
                             ),
                             target=V2MetricTarget(
                                 type="AverageValue",
