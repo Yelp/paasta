@@ -98,6 +98,20 @@ def mock_pod():
                             path="/healthcheck",
                         ),
                     ),
+                    env=[
+                        Struct(
+                            name="PAASTA_SERVICE",
+                            value="service",
+                        ),
+                        Struct(
+                            name="PAASTA_INSTANCE",
+                            value="instance",
+                        ),
+                        Struct(
+                            name="PAASTA_PORT",
+                            value="8080",
+                        ),
+                    ],
                 )
             ]
         ),
@@ -344,6 +358,20 @@ class TestKubernetesStatusV2:
                             "events": [],
                             "containers": [
                                 {
+                                    "env": [
+                                        {
+                                            "name": "PAASTA_SERVICE",
+                                            "value": "service",
+                                        },
+                                        {
+                                            "name": "PAASTA_INSTANCE",
+                                            "value": "instance",
+                                        },
+                                        {
+                                            "name": "PAASTA_PORT",
+                                            "value": "8080",
+                                        },
+                                    ],
                                     "healthcheck_grace_period": 1,
                                     "healthcheck_cmd": {
                                         "http_url": "http://1.2.3.4:8080/healthcheck"
@@ -999,6 +1027,11 @@ async def test_get_pod_containers(mock_pod):
             healthcheck_grace_period=1,
             healthcheck_cmd={"http_url": "http://1.2.3.4:8080/healthcheck"},
             tail_lines=["current"],
+            env=[
+                {"name": "PAASTA_SERVICE", "value": "service"},
+                {"name": "PAASTA_INSTANCE", "value": "instance"},
+                {"name": "PAASTA_PORT", "value": "8080"},
+            ],
         ),
     ]
 

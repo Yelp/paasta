@@ -673,6 +673,12 @@ components:
         name:
           description: Name of the container
           type: string
+        env:
+          description: Environment variables set in the container
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesContainerEnvVarV2'
+          nullable: true
         state:
           description: State of the container
           type: string
@@ -731,6 +737,16 @@ components:
           $ref: '#/components/schemas/TaskTailLines'
           description: Stdout and stderr tail of the container
       type: object
+    KubernetesContainerEnvVarV2:
+      description: Environment variable for a container
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the environment variable
+        value:
+          type: string
+          description: Value of the environment variable
     KubernetesHealthcheck:
       type: object
       properties:

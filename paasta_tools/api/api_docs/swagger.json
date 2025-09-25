@@ -1954,6 +1954,14 @@
                     "type": "string",
                     "description": "Name of the container"
                 },
+                "env": {
+                    "type": "array",
+                    "description": "Environment variables set in the container",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesContainerEnvVarV2"
+                    },
+                    "x-nullable": true
+                },
                 "state": {
                     "type": "string",
                     "description": "State of the container"
@@ -2005,6 +2013,20 @@
                     "format": "float",
                     "description": "Unix timestamp at which state transitioned",
                     "x-nullable": true
+                }
+            }
+        },
+        "KubernetesContainerEnvVarV2": {
+            "type": "object",
+            "description": "Environment variable for a container",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the environment variable"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Value of the environment variable"
                 }
             }
         },
