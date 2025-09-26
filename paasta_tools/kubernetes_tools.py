@@ -2420,6 +2420,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
+            # NOTE: this is mostly here for autoscaling purposes: we use information from the deploy group
+            # during Prometheus relabeling - but it's not a bad label to have around in general, thus its
+            # inclusion here
+            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
@@ -2445,22 +2449,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI):
-            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
-            # But we do still need deploy_group for relabeling properly
-            # this should probably eventually be made into a default label,
-            # but for now we're fine with it being behind these feature toggles.
-            # ideally, we'd also have the docker image here for ease-of-use
-            # in Prometheus relabeling, but that information is over the
-            # character limit for k8s labels (63 chars)
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
-
+        # NOTE: these are not mutually exclusive as a service could use multiple autoscaling types
         if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         # the default AWS LB Controller behavior is to enable this by-namespace
