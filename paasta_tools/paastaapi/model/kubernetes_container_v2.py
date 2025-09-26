@@ -84,6 +84,7 @@ class KubernetesContainerV2(ModelNormal):
         lazy_import()
         return {
             'name': (str,),  # noqa: E501
+            'env': ({str: (str,)}, none_type,),  # noqa: E501
             'state': (str,),  # noqa: E501
             'last_state': (str, none_type,),  # noqa: E501
             'restart_count': (int, none_type,),  # noqa: E501
@@ -107,6 +108,7 @@ class KubernetesContainerV2(ModelNormal):
 
     attribute_map = {
         'name': 'name',  # noqa: E501
+        'env': 'env',  # noqa: E501
         'state': 'state',  # noqa: E501
         'last_state': 'last_state',  # noqa: E501
         'restart_count': 'restart_count',  # noqa: E501
@@ -170,6 +172,7 @@ class KubernetesContainerV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             name (str): Name of the container. [optional]  # noqa: E501
+            env ({str: (str,)}, none_type): Environment variables set in the container. [optional]  # noqa: E501
             state (str): State of the container. [optional]  # noqa: E501
             last_state (str, none_type): Previous state of the container. [optional]  # noqa: E501
             restart_count (int, none_type): Number of restarts since container creation. [optional]  # noqa: E501

@@ -1954,6 +1954,14 @@
                     "type": "string",
                     "description": "Name of the container"
                 },
+                "env": {
+                    "type": "object",
+                    "description": "Environment variables set in the container",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "x-nullable": true
+                },
                 "state": {
                     "type": "string",
                     "description": "State of the container"

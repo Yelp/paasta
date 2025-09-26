@@ -673,6 +673,12 @@ components:
         name:
           description: Name of the container
           type: string
+        env:
+          description: Environment variables set in the container
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
         state:
           description: State of the container
           type: string
