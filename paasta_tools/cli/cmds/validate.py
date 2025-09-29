@@ -64,6 +64,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -160,6 +161,10 @@ INVALID_AUTOSCALING_FIELDS = {
         "prometheus-adapter-config",
     },
     METRICS_PROVIDER_UWSGI_V2: {
+        "desired_active_requests_per_replica",
+        "prometheus-adapter-config",
+    },
+    METRICS_PROVIDER_WORKER_LOAD: {
         "desired_active_requests_per_replica",
         "prometheus-adapter-config",
     },
