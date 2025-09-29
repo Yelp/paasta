@@ -11,7 +11,7 @@ paasta-tools (1.30.13) xenial; urgency=medium
   * 1.30.13 tagged with 'make release'
     Commit: Merge pull request #4118 from Yelp/u/ilkinmammadzada/PAASTA-
     18460_status_container_port  Using PAASTA_PORT instead of hard-coded
-    one in paasta status
+    one in paasta status.
 
  -- root <ilkinmammadzada@yelp.com>  Thu, 25 Sep 2025 02:20:05 -0700
 
