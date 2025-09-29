@@ -12,7 +12,6 @@
                     "gunicorn",
                     "active-requests",
                     "arbitrary-promql",
-                    "active-requests",
                     "worker-load"
                 ]
             },
