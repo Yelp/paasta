@@ -1,3 +1,20 @@
+paasta-tools (1.31.1) xenial; urgency=medium
+
+  * 1.31.1 tagged with 'make release'
+    Commit: [worker-load autoscaler] Add missing validation config
+    (#4125)  ## Problem  `paasta validate` is failing with the `worker-
+    load` autoscaler because of a missing key  ```   File
+    "/opt/venvs/paasta-tools/lib/python3.10/site-
+    packages/paasta_tools/cli/cmds/validate.py", line 682, in
+    _validate_autoscaling_config     for field in
+    INVALID_AUTOSCALING_FIELDS[metrics_provider_type]: KeyError: "worker-
+    load" ```  ## Solution  Duplicate the `uwsgi-v2` configs for invalid
+    autoscaling fields  ## Validatin  Added test. Manually ran
+    validation against a change ```    autoscaling:
+    metrics_providers: -    - type: uwsgi +    - type: worker-load ```
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Sep 2025 13:20:08 -0700
+
 paasta-tools (1.31.0) xenial; urgency=medium
 
   * 1.31.0 tagged with 'make release'
