@@ -677,7 +677,7 @@ components:
           description: Environment variables set in the container
           type: array
           items:
-            $ref: '#/components/schemas/KubernetesContainerEnvVarV2'
+            $ref: '#/components/schemas/KubernetesContainerV2EnvVar'
           nullable: true
         state:
           description: State of the container
@@ -737,7 +737,7 @@ components:
           $ref: '#/components/schemas/TaskTailLines'
           description: Stdout and stderr tail of the container
       type: object
-    KubernetesContainerEnvVarV2:
+    KubernetesContainerV2EnvVar:
       description: Environment variable for a container
       type: object
       properties:

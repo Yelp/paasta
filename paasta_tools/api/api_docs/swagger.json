@@ -1958,7 +1958,7 @@
                     "type": "array",
                     "description": "Environment variables set in the container",
                     "items": {
-                        "$ref": "#/definitions/KubernetesContainerEnvVarV2"
+                        "$ref": "#/definitions/KubernetesContainerV2EnvVar"
                     },
                     "x-nullable": true
                 },
@@ -2016,7 +2016,7 @@
                 }
             }
         },
-        "KubernetesContainerEnvVarV2": {
+        "KubernetesContainerV2EnvVar": {
             "type": "object",
             "description": "Environment variable for a container",
             "properties": {
