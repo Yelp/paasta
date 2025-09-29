@@ -1403,10 +1403,12 @@ def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
     )
 
 
-def get_container_env(container: Optional[KubernetesContainerV2]) -> Dict[str, str]:
-    if not container or not container.env:
-        return {}
-    return {env_var.name: env_var.value for env_var in container.env}
+def get_container_env(container: Optional[KubernetesContainerV2], env_name: str) -> Optional[str]:
+    if container and container.env:
+        for env_var in container.env:
+            if env_var.name == env_name:
+                return env_var.value
+    return None
 
 
 def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
@@ -1483,8 +1485,7 @@ def create_replica_table(
         humanized_start_time = humanize.naturaltime(start_datetime)
         # Get port from the main container's PAASTA_PORT env var, fallback to DEFAULT_CONTAINER_PORT
         main_container = get_main_container(pod)
-        container_env = get_container_env(main_container)
-        paasta_port = container_env.get("PAASTA_PORT", str(DEFAULT_CONTAINER_PORT))
+        paasta_port = get_container_env(main_container, "PAASTA_PORT") or str(DEFAULT_CONTAINER_PORT)
 
         row = [
             pod.name,
