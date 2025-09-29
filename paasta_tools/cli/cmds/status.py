@@ -1403,12 +1403,11 @@ def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
     )
 
 
-def get_container_env(container: Optional[KubernetesContainerV2], key: str) -> str:
-    if not container or not container.env:
-        return ""
-    for env_var in container.env:
-        if env_var.name == key:
-            return str(env_var.value)
+def get_container_env(container: Optional[KubernetesContainerV2], env_name: str) -> str:
+    if container and container.env:
+        for env_var in container.env:
+            if env_var.name == env_name:
+                return str(env_var.value)
     return ""
 
 
