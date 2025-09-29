@@ -1407,7 +1407,7 @@ def get_container_env(container: Optional[KubernetesContainerV2], env_name: str)
     if container and container.env:
         for env_var in container.env:
             if env_var.name == env_name:
-                return str(env_var.value)
+                return env_var.value
     return ""
 
 
