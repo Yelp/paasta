@@ -10,8 +10,9 @@
                     "cpu",
                     "piscina",
                     "gunicorn",
+                    "active-requests",
                     "arbitrary-promql",
-                    "active-requests"
+                    "worker-load"
                 ]
             },
             "decision_policy": {
