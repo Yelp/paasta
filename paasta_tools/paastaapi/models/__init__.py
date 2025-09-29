@@ -45,8 +45,8 @@ from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
 from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 from paasta_tools.paastaapi.model.integer_and_error import IntegerAndError
 from paasta_tools.paastaapi.model.kubernetes_container import KubernetesContainer
-from paasta_tools.paastaapi.model.kubernetes_container_env_var_v2 import KubernetesContainerEnvVarV2
 from paasta_tools.paastaapi.model.kubernetes_container_v2 import KubernetesContainerV2
+from paasta_tools.paastaapi.model.kubernetes_container_v2_env_var import KubernetesContainerV2EnvVar
 from paasta_tools.paastaapi.model.kubernetes_healthcheck import KubernetesHealthcheck
 from paasta_tools.paastaapi.model.kubernetes_pod import KubernetesPod
 from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent

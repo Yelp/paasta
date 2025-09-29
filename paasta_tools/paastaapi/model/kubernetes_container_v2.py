@@ -31,10 +31,10 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
-    from paasta_tools.paastaapi.model.kubernetes_container_env_var_v2 import KubernetesContainerEnvVarV2
+    from paasta_tools.paastaapi.model.kubernetes_container_v2_env_var import KubernetesContainerV2EnvVar
     from paasta_tools.paastaapi.model.kubernetes_healthcheck import KubernetesHealthcheck
     from paasta_tools.paastaapi.model.task_tail_lines import TaskTailLines
-    globals()['KubernetesContainerEnvVarV2'] = KubernetesContainerEnvVarV2
+    globals()['KubernetesContainerV2EnvVar'] = KubernetesContainerV2EnvVar
     globals()['KubernetesHealthcheck'] = KubernetesHealthcheck
     globals()['TaskTailLines'] = TaskTailLines
 
@@ -86,7 +86,7 @@ class KubernetesContainerV2(ModelNormal):
         lazy_import()
         return {
             'name': (str,),  # noqa: E501
-            'env': ([KubernetesContainerEnvVarV2], none_type,),  # noqa: E501
+            'env': ([KubernetesContainerV2EnvVar], none_type,),  # noqa: E501
             'state': (str,),  # noqa: E501
             'last_state': (str, none_type,),  # noqa: E501
             'restart_count': (int, none_type,),  # noqa: E501
@@ -174,7 +174,7 @@ class KubernetesContainerV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             name (str): Name of the container. [optional]  # noqa: E501
-            env ([KubernetesContainerEnvVarV2], none_type): Environment variables set in the container. [optional]  # noqa: E501
+            env ([KubernetesContainerV2EnvVar], none_type): Environment variables set in the container. [optional]  # noqa: E501
             state (str): State of the container. [optional]  # noqa: E501
             last_state (str, none_type): Previous state of the container. [optional]  # noqa: E501
             restart_count (int, none_type): Number of restarts since container creation. [optional]  # noqa: E501
