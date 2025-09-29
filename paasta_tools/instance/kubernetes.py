@@ -925,7 +925,7 @@ async def get_pod_containers(
         specs: List[V1Container] = [c for c in container_specs if c.name == cs.name]
         healthcheck_grace_period = 0
         healthcheck = None
-        env_list = None
+        env = None
         if specs:
             # There should be only one matching spec
             spec = specs[0]
@@ -937,7 +937,7 @@ async def get_pod_containers(
                     pod.status.pod_ip, spec.liveness_probe
                 )
             if spec.env:
-                env_list = [{"name": e.name, "value": e.value} for e in spec.env]
+                env = [{"name": e.name, "value": e.value} for e in spec.env]
 
         state_dict = cs.state.to_dict()
         state = None
@@ -1015,7 +1015,7 @@ async def get_pod_containers(
         containers.append(
             {
                 "name": cs.name,
-                "env": env_list,
+                "env": env,
                 "restart_count": cs.restart_count,
                 "state": state,
                 "reason": reason,
