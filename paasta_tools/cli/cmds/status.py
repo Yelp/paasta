@@ -1403,12 +1403,12 @@ def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
     )
 
 
-def get_container_env(container: Optional[KubernetesContainerV2], env_name: str) -> str:
+def get_container_env(container: Optional[KubernetesContainerV2], env_name: str) -> Optional[str]:
     if container and container.env:
         for env_var in container.env:
             if env_var.name == env_name:
                 return env_var.value
-    return ""
+    return None
 
 
 def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
