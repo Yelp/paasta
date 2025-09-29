@@ -1,3 +1,17 @@
+paasta-tools (1.31.0) xenial; urgency=medium
+
+  * 1.31.0 tagged with 'make release'
+    Commit: Merge pull request #4120 from ymilki/worker_load_autoscaler
+    ## Feature  The `worker-load` autoscaler functions equivalently to
+    the `uwsgi-v2` autoscaler except it looks at the `worker_busy`
+    metric (instead of `uwsgi_worker_busy`). This is meant to be an
+    autoscaler that can apply to any service that depends on worker
+    utilization - particularly targeting both uwsgi and gunicorn
+    services.  ## Changes  * Add autoscaling rule * Add to
+    `metrics_providers` schema * Add `worker-load` autoscaler
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Sep 2025 08:34:47 -0700
+
 paasta-tools (1.30.14) xenial; urgency=medium
 
   * 1.30.14 tagged with 'make release'
