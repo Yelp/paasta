@@ -937,7 +937,11 @@ async def get_pod_containers(
                     pod.status.pod_ip, spec.liveness_probe
                 )
             if spec.env:
-                env = [{"name": e.name, "value": e.value} for e in spec.env]
+                env = [
+                    {"name": e.name, "value": e.value}
+                    for e in spec.env
+                    if e.value_from is None
+                ]
 
         state_dict = cs.state.to_dict()
         state = None
