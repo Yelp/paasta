@@ -102,14 +102,22 @@ def mock_pod():
                         Struct(
                             name="PAASTA_SERVICE",
                             value="service",
+                            value_from=None,
                         ),
                         Struct(
                             name="PAASTA_INSTANCE",
                             value="instance",
+                            value_from=None,
                         ),
                         Struct(
                             name="PAASTA_PORT",
                             value="8080",
+                            value_from=None,
+                        ),
+                        Struct(
+                            name="COMPLEX_ENV",
+                            value=None,
+                            value_from="TEST",
                         ),
                     ],
                 )
