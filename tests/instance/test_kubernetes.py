@@ -300,6 +300,7 @@ class TestKubernetesStatusV2:
 
         mock_load_service_namespace_config.return_value = {}
         mock_job_config.get_registrations.return_value = ["service.instance"]
+        mock_job_config.get_container_port.return_value = 8080
         mock_get_pod_event_messages.return_value = []
         status = pik.kubernetes_status_v2(
             service="service",
@@ -317,6 +318,7 @@ class TestKubernetesStatusV2:
             "bounce_method": mock_job_config.get_bounce_method.return_value,
             "versions": [
                 {
+                    "container_port": 8080,
                     "type": "ReplicaSet",
                     "name": "replicaset_1",
                     "replicas": 1,
@@ -394,6 +396,7 @@ class TestKubernetesStatusV2:
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
+        mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
                 metadata=Struct(
@@ -426,6 +429,7 @@ class TestKubernetesStatusV2:
 
         assert len(status["versions"]) == 1
         assert status["versions"][0] == {
+            "container_port": 8080,
             "name": "controller_revision_1",
             "type": "ControllerRevision",
             "replicas": 1,
@@ -455,6 +459,7 @@ class TestKubernetesStatusV2:
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
+        mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
                 metadata=Struct(
@@ -488,6 +493,7 @@ class TestKubernetesStatusV2:
 
         assert len(status["versions"]) == 1
         assert status["versions"][0] == {
+            "container_port": 8080,
             "name": "controller_revision_1",
             "type": "ControllerRevision",
             "replicas": 1,

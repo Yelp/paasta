@@ -874,6 +874,10 @@ components:
       type: object
     KubernetesVersion:
       properties:
+        container_port:
+          description: Port for exposing when in bridge mode
+          format: int32
+          type: integer
         type:
           description: Type of version (ReplicaSet or ControllerRevision)
           type: string

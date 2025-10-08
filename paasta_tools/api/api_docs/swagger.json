@@ -1788,6 +1788,11 @@
         "KubernetesVersion": {
             "type": "object",
             "properties": {
+                "container_port": {
+                    "description": "Port for exposing when in bridge mode",
+                    "type": "integer",
+                    "format": "int32"
+                },
                 "type": {
                     "description": "Type of version (ReplicaSet or ControllerRevision)",
                     "type": "string"
