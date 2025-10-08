@@ -1314,7 +1314,10 @@ def get_version_table_entry(
             for state in ReplicaState
             if state in replica_state_counts
         ]
-        entry.append(f"  Replica States: {' / '.join(replica_state_display)}")
+        total_count = PaastaColors.bold(f"{replica_state_counts.total()}")
+        entry.append(
+            f"  Replica States: {' / '.join(replica_state_display)} ({total_count} total)"
+        )
         if not verbose:
             unhealthy_replicas = [
                 (state, pod) for state, pod in replica_states if state.is_unhealthy()
