@@ -2709,8 +2709,8 @@ class TestPrintFlinkStatus:
         metadata = mock_flink_status["metadata"]
         expected_output = _get_flink_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            "    Pods: 3 running, 0 evicted, 0 other \x1b[1m(3 total)\x1b[0m",
+            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled \x1b[1m(1 total)\x1b[0m",
             "    1 taskmanagers, 3/4 slots available",
             "    Jobs:",
             "      Job Name       State       Started",
@@ -2779,7 +2779,7 @@ class TestPrintFlinkStatus:
             "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other",
+            "    Pods: 3 running, 0 evicted, 0 other \x1b[1m(3 total)\x1b[0m",
         ]
         append_pod_status(status["pod_status"], expected_output)
         expected_output.append(
@@ -2851,7 +2851,7 @@ class TestPrintFlinkStatus:
             "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
-            "    Pods: 1 running, 0 evicted, 0 other",
+            "    Pods: 1 running, 0 evicted, 0 other \x1b[1m(1 total)\x1b[0m",
         ]
         append_pod_status(status["pod_status"], expected_output)
         expected_output.append(
@@ -2916,8 +2916,8 @@ class TestPrintFlinkStatus:
             "      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service=fake_service&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance=fake_instance&form.cluster=fake_cluster",
             f"{OUTPUT_HORIZONTAL_RULE}",
             f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            "    Pods: 3 running, 0 evicted, 0 other \x1b[1m(3 total)\x1b[0m",
+            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled \x1b[1m(1 total)\x1b[0m",
             "    1 taskmanagers, 3/4 slots available",
             "    Jobs:",
             "      Job Name       State       Started",
