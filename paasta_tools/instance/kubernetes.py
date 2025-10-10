@@ -353,7 +353,7 @@ async def mesh_status(
     for location, hosts in node_hostname_by_location.items():
         max_retries = 3
 
-        for attempt in range(3):
+        for attempt in range(max_retries):
             host = replication_checker.get_hostname_in_pool(hosts, instance_pool)
             try:
                 if service_mesh == ServiceMesh.SMARTSTACK:
