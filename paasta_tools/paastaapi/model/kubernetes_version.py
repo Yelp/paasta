@@ -159,7 +159,7 @@ class KubernetesVersion(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            container_port (int): Port for exposing when in bridge mode. [optional]  # noqa: E501
+            container_port (int): Port the container is expecting to receive traffic on. [optional]  # noqa: E501
             type (str): Type of version (ReplicaSet or ControllerRevision). [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp when version was created. [optional]  # noqa: E501
             git_sha (str): Git SHA of service code for this version of the instance. [optional]  # noqa: E501

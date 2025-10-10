@@ -875,7 +875,7 @@ components:
     KubernetesVersion:
       properties:
         container_port:
-          description: Port for exposing when in bridge mode
+          description: Port the container is expecting to receive traffic on
           format: int32
           type: integer
         type:
