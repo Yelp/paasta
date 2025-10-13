@@ -1872,7 +1872,10 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
-        if autoscaling_metric_provider != METRICS_PROVIDER_UWSGI:
+        if autoscaling_metric_provider in {
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+        }:
             expected_labels[
                 f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
             ] = "true"
