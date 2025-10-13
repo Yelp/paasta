@@ -1,3 +1,17 @@
+paasta-tools (1.31.3) xenial; urgency=medium
+
+  * 1.31.3 tagged with 'make release'
+    Commit: Retry more intelligently when getting hosts in mesh_status
+    (#4105)  We do currently have some request-level retries using a
+    Session() if I"m reading things correctly, but that will retry on
+    the same host - which generally won"t be too helpful for hosts that
+    are broken/dying/gone.  This is somewhat funky-looking, but without
+    breaking this out into another function and using something like the
+    `retry` library (or a similar artisanal decorator), this is probably
+    good enough for now  Co-authored-by: Jen Patague <jfong@yelp.com>
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 13 Oct 2025 07:49:28 -0700
+
 paasta-tools (1.31.2) xenial; urgency=medium
 
   * 1.31.2 tagged with 'make release'
