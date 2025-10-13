@@ -43,6 +43,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -1200,6 +1201,16 @@ def test_check_secrets_for_instance_missing_secret(
             ["fake_service.abc", "fake_service.def"],
             "kubernetes",
             False,
+        ),
+        (
+            {
+                "metrics_providers": [
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.55}
+                ]
+            },
+            [],
+            "eks",
+            True,
         ),
     ],
 )
