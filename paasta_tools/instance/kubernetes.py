@@ -100,6 +100,7 @@ class KubernetesVersionDict(TypedDict, total=False):
     config_sha: str
     pods: Sequence[Mapping[str, Any]]
     namespace: str
+    container_port: Optional[int]
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -698,6 +699,7 @@ async def kubernetes_status_v2(
                 instance=instance,
                 namespaces=relevant_namespaces,
                 pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
+                container_port=job_config.get_container_port(),
             )
         )
         tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
@@ -717,6 +719,7 @@ async def kubernetes_status_v2(
                 instance=instance,
                 namespaces=relevant_namespaces,
                 pod_status_by_replicaset_task=pod_status_by_replicaset_task,  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
+                container_port=job_config.get_container_port(),
             )
         )
         tasks.extend([pod_status_by_replicaset_task, versions_task])  # type: ignore  # PAASTA-18698; ignoring due to unexpected type mismatch
@@ -788,6 +791,7 @@ async def get_versions_for_replicasets(
     instance: str,
     namespaces: Iterable[str],
     pod_status_by_replicaset_task: "asyncio.Future[Mapping[str, Sequence[asyncio.Future[Dict[str, Any]]]]]",
+    container_port: Optional[int],
 ) -> List[KubernetesVersionDict]:
 
     replicaset_list: List[V1ReplicaSet] = []
@@ -815,6 +819,7 @@ async def get_versions_for_replicasets(
                 replicaset,
                 kube_client,
                 pod_status_by_replicaset.get(replicaset.metadata.name),
+                container_port,
             )
             for replicaset in actually_running_replicasets
         ]
@@ -826,6 +831,7 @@ async def get_replicaset_status(
     replicaset: V1ReplicaSet,
     client: kubernetes_tools.KubeClient,
     pod_status_tasks: Sequence["asyncio.Future[Dict[str, Any]]"],
+    container_port: Optional[int],
 ) -> KubernetesVersionDict:
     return {
         "name": replicaset.metadata.name,
@@ -840,6 +846,7 @@ async def get_replicaset_status(
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": await asyncio.gather(*pod_status_tasks) if pod_status_tasks else [],
         "namespace": replicaset.metadata.namespace,
+        "container_port": container_port,
     }
 
 
@@ -1063,6 +1070,7 @@ async def get_versions_for_controller_revisions(
     instance: str,
     namespaces: Iterable[str],
     pod_status_by_sha_and_readiness_task: "asyncio.Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[asyncio.Future[Mapping[str, Any]]]]]]",
+    container_port: Optional[int] = None,
 ) -> List[KubernetesVersionDict]:
     controller_revision_list: List[V1ControllerRevision] = []
 
@@ -1092,6 +1100,7 @@ async def get_versions_for_controller_revisions(
                 cr,
                 kube_client,
                 pod_status_by_sha_and_readiness[(git_sha, config_sha)],
+                container_port=container_port,
             )
             for (git_sha, config_sha), cr in cr_by_shas.items()
         ]
@@ -1106,6 +1115,7 @@ async def get_version_for_controller_revision(
     pod_status_tasks_by_readiness: Mapping[
         bool, Sequence["asyncio.Future[Mapping[str, Any]]"]
     ],
+    container_port: Optional[int] = None,
 ) -> KubernetesVersionDict:
     all_pod_status_tasks = [
         task for tasks in pod_status_tasks_by_readiness.values() for task in tasks
@@ -1122,6 +1132,7 @@ async def get_version_for_controller_revision(
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": [task.result() for task in all_pod_status_tasks],
         "namespace": cr.metadata.namespace,
+        "container_port": container_port,
     }
 
 

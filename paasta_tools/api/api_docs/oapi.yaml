@@ -874,6 +874,10 @@ components:
       type: object
     KubernetesVersion:
       properties:
+        container_port:
+          description: Port the container is expecting to receive traffic on
+          format: int32
+          type: integer
         type:
           description: Type of version (ReplicaSet or ControllerRevision)
           type: string
