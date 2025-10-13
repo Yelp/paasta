@@ -917,11 +917,13 @@ def _print_flink_status_from_job_manager(
             else f"{pod_evicted_count}"
         )
 
+    pods_total_count = pod_running_count + pod_evicted_count + pod_other_count
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
         f" {evicted} evicted,"
-        f" {pod_other_count} other"
+        f" {pod_other_count} other,"
+        f" {pods_total_count} total"
     )
 
     if not should_job_info_be_shown(status["state"]):
@@ -944,12 +946,19 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
+        jobs_total_count = (
+            overview.jobs_running
+            + overview.jobs_finished
+            + overview.jobs_failed
+            + overview.jobs_cancelled
+        )
         output.append(
             "    Jobs:"
             f" {overview.jobs_running} running,"
             f" {overview.jobs_finished} finished,"
             f" {overview.jobs_failed} failed,"
-            f" {overview.jobs_cancelled} cancelled"
+            f" {overview.jobs_cancelled} cancelled,"
+            f" {jobs_total_count} total"
         )
         output.append(
             "   "
@@ -1313,7 +1322,9 @@ def get_version_table_entry(
             for state in ReplicaState
             if state in replica_state_counts
         ]
-        entry.append(f"  Replica States: {' / '.join(replica_state_display)}")
+        entry.append(
+            f"  Replica States: {' / '.join(replica_state_display)} / {replica_state_counts.total()} total"
+        )
         if not verbose:
             unhealthy_replicas = [
                 (state, pod) for state, pod in replica_states if state.is_unhealthy()
