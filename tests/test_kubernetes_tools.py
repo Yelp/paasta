@@ -1880,6 +1880,8 @@ class TestKubernetesDeploymentConfig:
                 expected_labels[
                     f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
                 ] = "true"
+            elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
+                expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
         if autoscaling_metric_provider in (
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_GUNICORN,
