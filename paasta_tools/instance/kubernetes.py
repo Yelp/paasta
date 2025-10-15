@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from asyncio.tasks import Task
 from collections import defaultdict
 from enum import Enum
@@ -17,6 +18,7 @@ from typing import Union
 
 import a_sync
 import pytz
+import requests.exceptions
 from kubernetes.client import V1Container
 from kubernetes.client import V1ControllerRevision
 from kubernetes.client import V1Pod
@@ -74,6 +76,8 @@ INSTANCE_TYPE_CR_ID = dict(
     nrtsearchserviceeks=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceMesh(Enum):
@@ -348,31 +352,49 @@ async def mesh_status(
 
     pods = await pods_task
     for location, hosts in node_hostname_by_location.items():
-        host = replication_checker.get_hostname_in_pool(hosts, instance_pool)
-        if service_mesh == ServiceMesh.SMARTSTACK:
-            mesh_status["locations"].append(
-                _build_smartstack_location_dict(
-                    synapse_host=host,
-                    synapse_port=settings.system_paasta_config.get_synapse_port(),
-                    synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
-                    registration=registration,
-                    pods=pods,
-                    location=location,
-                    should_return_individual_backends=should_return_individual_backends,
-                )
-            )
-        elif service_mesh == ServiceMesh.ENVOY:
-            mesh_status["locations"].append(
-                _build_envoy_location_dict(
-                    envoy_host=host,
-                    envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
-                    envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
-                    registration=registration,
-                    pods=pods,
-                    location=location,
-                    should_return_individual_backends=should_return_individual_backends,
-                )
-            )
+        max_retries = 3
+
+        for attempt in range(max_retries):
+            host = replication_checker.get_hostname_in_pool(hosts, instance_pool)
+            try:
+                if service_mesh == ServiceMesh.SMARTSTACK:
+                    location_dict = _build_smartstack_location_dict(
+                        synapse_host=host,
+                        synapse_port=settings.system_paasta_config.get_synapse_port(),
+                        synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
+                        registration=registration,
+                        pods=pods,
+                        location=location,
+                        should_return_individual_backends=should_return_individual_backends,
+                    )
+                elif service_mesh == ServiceMesh.ENVOY:
+                    location_dict = _build_envoy_location_dict(
+                        envoy_host=host,
+                        envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
+                        envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
+                        registration=registration,
+                        pods=pods,
+                        location=location,
+                        should_return_individual_backends=should_return_individual_backends,
+                    )
+
+                mesh_status["locations"].append(location_dict)
+                return mesh_status
+
+            except requests.exceptions.ConnectTimeout:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        "attempt %s/%s: Unable to connect to %s, retrying (on another host, hopefully)...",
+                        attempt,
+                        max_retries,
+                        host,
+                    )
+                    continue
+                else:
+                    logger.critical(
+                        "Unable to connect to %s, not retrying again.", host
+                    )
+                    raise
     return mesh_status
 
 
