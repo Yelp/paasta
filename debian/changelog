@@ -1,3 +1,11 @@
+paasta-tools (1.31.4) xenial; urgency=medium
+
+  * 1.31.4 tagged with 'make release'
+    Commit: Merge pull request #4130 from ymilki/worker_load_pod_label
+    When using worker-load autoscaler, need gunicorn label
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 15 Oct 2025 13:05:41 -0700
+
 paasta-tools (1.31.3) xenial; urgency=medium
 
   * 1.31.3 tagged with 'make release'
