@@ -529,7 +529,7 @@ instance MAY have:
     This is a dictionary with the following keys:
 
     * ``cpu``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the CPU limit, respectively.
-    * ``memory``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the memory limit, respectively.
+    * ``mem``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the memory limit, respectively.
     * ``disk``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the disk limit, respectively.
 
     Example::
