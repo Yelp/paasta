@@ -74,6 +74,7 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 STANDARD_PAASTA_CLI_PATHS = {
+    "/bin/paasta",
     "/opt/venvs/paasta-tools/bin/paasta",
     "/usr/bin/paasta",
 }
