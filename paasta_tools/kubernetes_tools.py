@@ -50,6 +50,7 @@ from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import CoreV1Event
 from kubernetes.client import models
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
@@ -113,7 +114,6 @@ from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
@@ -3005,7 +3005,7 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
                 name="paasta-api-server-per-namespace",
             ),
             subjects=[
-                V1Subject(
+                RbacV1Subject(
                     kind="User",
                     name="yelp.com/paasta-api-server",
                 ),
@@ -4388,7 +4388,7 @@ def ensure_service_account(
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=sa_name,

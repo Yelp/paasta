@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from kubernetes import client as kube_client
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
@@ -62,7 +63,6 @@ from kubernetes.client import V1ServiceAccountList
 from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
@@ -554,18 +554,18 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
             autospec=True,
-            return_value={
-                "limits": {
+            return_value=V1ResourceRequirements(
+                limits={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-                "requests": {
+                requests={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-            },
+            ),
         ):
             mock_system_config = mock.Mock(
                 get_hacheck_sidecar_image_url=mock.Mock(
@@ -4768,7 +4768,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config84789e0b"
+            == "configcfb8df3a"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4814,7 +4814,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config46a479f2"
+            == "config5fd00e4b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4861,7 +4861,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "confige61d940f"
+            == "configf035f8d9"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -5087,7 +5087,7 @@ def test_ensure_service_account_with_k8s_role_new():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5140,7 +5140,7 @@ def test_ensure_service_account_existing():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5201,7 +5201,7 @@ def test_ensure_service_account_existing_different_role():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5325,7 +5325,7 @@ def test_ensure_service_account_caps_with_k8s():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
