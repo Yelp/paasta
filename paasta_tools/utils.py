@@ -1949,6 +1949,7 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     topology_key: str
     when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
     max_skew: int
+    match_label_keys: List[str]
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):

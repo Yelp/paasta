@@ -2227,6 +2227,182 @@ class TestKubernetesDeploymentConfig:
             == expected_constraints
         )
 
+    def test_create_pod_topology_spread_constraints_with_match_label_keys(self):
+        """Test that match_label_keys are properly passed through when specified"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_multiple_match_label_keys(
+        self,
+    ):
+        """Test that multiple match_label_keys are properly passed through"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 2,
+                "when_unsatisfiable": "DoNotSchedule",
+                "match_label_keys": [
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=2,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=[
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_empty_match_label_keys(self):
+        """Test that explicitly setting match_label_keys to empty list is preserved"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_mixed_match_label_keys(self):
+        """Test constraints where some have match_label_keys and some don't"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 3,
+                "when_unsatisfiable": "DoNotSchedule",
+                # No match_label_keys specified, should default to None
+            },
+            {
+                "topology_key": "kubernetes.io/region",
+                "max_skew": 5,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],  # Explicitly empty
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=5,
+                topology_key="kubernetes.io/region",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
     @pytest.mark.parametrize(
         "raw_selectors,expected",
         [
