@@ -4185,6 +4185,10 @@ def create_pod_topology_spread_constraints(
                 when_unsatisfiable=constraint.get(
                     "when_unsatisfiable", "ScheduleAnyway"
                 ),
+                # we might want to default this to someting else in the future
+                # but for now, make this opt-in
+                # (null or empty list means only match against the labelSelector)
+                match_label_keys=constraint.get("match_label_keys", None),
             )
         )
 

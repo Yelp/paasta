@@ -2204,6 +2204,7 @@ class TestKubernetesDeploymentConfig:
                 max_skew=1,
                 topology_key="kubernetes.io/hostname",
                 when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=None,
             ),
             V1TopologySpreadConstraint(
                 label_selector=V1LabelSelector(
@@ -2215,6 +2216,7 @@ class TestKubernetesDeploymentConfig:
                 max_skew=3,
                 topology_key="topology.kubernetes.io/zone",
                 when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
             ),
         ]
 
