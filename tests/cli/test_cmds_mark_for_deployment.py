@@ -903,87 +903,99 @@ def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_ro
 
 def test_MarkForDeployProcess_send_manual_rollback_instructions_with_no_old_git_sha():
     """Test that rollback instructions are not sent when old_git_sha is None (new deploy group)."""
-    mfdp = WrappedMarkForDeploymentProcess(
-        service="service",
-        deploy_info=MagicMock(),
-        deploy_group="new_deploy_group",
-        commit="new_commit_sha",
-        old_git_sha=None,
-        git_url="git_url",
-        auto_rollback=False,
-        block=False,
-        soa_dir="soa_dir",
-        timeout=3600,
-        warn_pct=50,
-        auto_certify_delay=None,
-        auto_abandon_delay=600,
-        auto_rollback_delay=30,
-        authors=None,
-    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="new_deploy_group",
+            commit="new_commit_sha",
+            old_git_sha=None,
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
 
-    mfdp.update_slack_thread = mock.Mock(autospec=True)
+        mfdp.update_slack_thread = mock.Mock(autospec=True)
 
-    with mock.patch("builtins.print", autospec=True) as mock_print:
-        mfdp.send_manual_rollback_instructions()
+        with mock.patch("builtins.print", autospec=True) as mock_print:
+            mfdp.send_manual_rollback_instructions()
 
-    mfdp.update_slack_thread.assert_not_called()
-    mock_print.assert_not_called()
+        mfdp.update_slack_thread.assert_not_called()
+        mock_print.assert_not_called()
 
 
 def test_MarkForDeployProcess_send_manual_rollback_instructions_with_old_git_sha():
     """Test that rollback instructions are sent when old_git_sha is set."""
-    mfdp = WrappedMarkForDeploymentProcess(
-        service="service",
-        deploy_info=MagicMock(),
-        deploy_group="deploy_group",
-        commit="new_commit_sha",
-        old_git_sha="old_commit_sha",
-        git_url="git_url",
-        auto_rollback=False,
-        block=False,
-        soa_dir="soa_dir",
-        timeout=3600,
-        warn_pct=50,
-        auto_certify_delay=None,
-        auto_abandon_delay=600,
-        auto_rollback_delay=30,
-        authors=None,
-    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit="new_commit_sha",
+            old_git_sha="old_commit_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
 
-    mfdp.update_slack_thread = mock.Mock(autospec=True)
+        mfdp.update_slack_thread = mock.Mock(autospec=True)
 
-    with mock.patch("builtins.print", autospec=True) as mock_print:
-        mfdp.send_manual_rollback_instructions()
+        with mock.patch("builtins.print", autospec=True) as mock_print:
+            mfdp.send_manual_rollback_instructions()
 
-    mock_print.assert_called_once()
-    assert "--commit old_commit_sha" in mock_print.call_args[0][0]
+        mock_print.assert_called_once()
+        assert "--commit old_commit_sha" in mock_print.call_args[0][0]
 
 
 def test_MarkForDeployProcess_send_manual_rollback_instructions_same_version():
     """Test that rollback instructions are not sent when deployment versions are the same."""
     same_sha = "same_commit_sha"
-    mfdp = WrappedMarkForDeploymentProcess(
-        service="service",
-        deploy_info=MagicMock(),
-        deploy_group="deploy_group",
-        commit=same_sha,
-        old_git_sha=same_sha,
-        git_url="git_url",
-        auto_rollback=False,
-        block=False,
-        soa_dir="soa_dir",
-        timeout=3600,
-        warn_pct=50,
-        auto_certify_delay=None,
-        auto_abandon_delay=600,
-        auto_rollback_delay=30,
-        authors=None,
-    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit=same_sha,
+            old_git_sha=same_sha,
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
 
-    mfdp.update_slack_thread = mock.Mock(autospec=True)
+        mfdp.update_slack_thread = mock.Mock(autospec=True)
 
-    with mock.patch("builtins.print", autospec=True) as mock_print:
-        mfdp.send_manual_rollback_instructions()
+        with mock.patch("builtins.print", autospec=True) as mock_print:
+            mfdp.send_manual_rollback_instructions()
 
-    mfdp.update_slack_thread.assert_not_called()
-    mock_print.assert_not_called()
+        mfdp.update_slack_thread.assert_not_called()
+        mock_print.assert_not_called()
