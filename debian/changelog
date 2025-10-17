@@ -1,3 +1,117 @@
+paasta-tools (1.31.4) xenial; urgency=medium
+
+  * 1.31.4 tagged with 'make release'
+    Commit: Merge pull request #4130 from ymilki/worker_load_pod_label
+    When using worker-load autoscaler, need gunicorn label
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 15 Oct 2025 13:05:41 -0700
+
+paasta-tools (1.31.3) xenial; urgency=medium
+
+  * 1.31.3 tagged with 'make release'
+    Commit: Retry more intelligently when getting hosts in mesh_status
+    (#4105)  We do currently have some request-level retries using a
+    Session() if I"m reading things correctly, but that will retry on
+    the same host - which generally won"t be too helpful for hosts that
+    are broken/dying/gone.  This is somewhat funky-looking, but without
+    breaking this out into another function and using something like the
+    `retry` library (or a similar artisanal decorator), this is probably
+    good enough for now  Co-authored-by: Jen Patague <jfong@yelp.com>
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 13 Oct 2025 07:49:28 -0700
+
+paasta-tools (1.31.2) xenial; urgency=medium
+
+  * 1.31.2 tagged with 'make release'
+    Commit: Merge pull request #4129 from Yelp/u/ilkinmammadzada/PAASTA-
+    18460_status_api_paasta_port  adding container_port to
+    KubernetesVersion
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Mon, 13 Oct 2025 04:35:34 -0700
+
+paasta-tools (1.31.1) xenial; urgency=medium
+
+  * 1.31.1 tagged with 'make release'
+    Commit: [worker-load autoscaler] Add missing validation config
+    (#4125)  ## Problem  `paasta validate` is failing with the `worker-
+    load` autoscaler because of a missing key  ```   File
+    "/opt/venvs/paasta-tools/lib/python3.10/site-
+    packages/paasta_tools/cli/cmds/validate.py", line 682, in
+    _validate_autoscaling_config     for field in
+    INVALID_AUTOSCALING_FIELDS[metrics_provider_type]: KeyError: "worker-
+    load" ```  ## Solution  Duplicate the `uwsgi-v2` configs for invalid
+    autoscaling fields  ## Validatin  Added test. Manually ran
+    validation against a change ```    autoscaling:
+    metrics_providers: -    - type: uwsgi +    - type: worker-load ```
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Sep 2025 13:20:08 -0700
+
+paasta-tools (1.31.0) xenial; urgency=medium
+
+  * 1.31.0 tagged with 'make release'
+    Commit: Merge pull request #4120 from ymilki/worker_load_autoscaler
+    ## Feature  The `worker-load` autoscaler functions equivalently to
+    the `uwsgi-v2` autoscaler except it looks at the `worker_busy`
+    metric (instead of `uwsgi_worker_busy`). This is meant to be an
+    autoscaler that can apply to any service that depends on worker
+    utilization - particularly targeting both uwsgi and gunicorn
+    services.  ## Changes  * Add autoscaling rule * Add to
+    `metrics_providers` schema * Add `worker-load` autoscaler
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Sep 2025 08:34:47 -0700
+
+paasta-tools (1.30.14) xenial; urgency=medium
+
+  * 1.30.14 tagged with 'make release'
+    Commit: Merge pull request #4121 from Yelp/luisp/promql-provider-
+    consistent  s/_/- in arbitrary promql autoscaling provider
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 25 Sep 2025 11:52:46 -0700
+
+paasta-tools (1.30.13) xenial; urgency=medium
+
+  * 1.30.13 tagged with 'make release'
+    Commit: Merge pull request #4118 from Yelp/u/ilkinmammadzada/PAASTA-
+    18460_status_container_port  Using PAASTA_PORT instead of hard-coded
+    one in paasta status
+
+ -- root <ilkinmammadzada@yelp.com>  Thu, 25 Sep 2025 02:20:05 -0700
+
+paasta-tools (1.30.12) xenial; urgency=medium
+
+  * 1.30.12 tagged with 'make release'
+    Commit: Merge pull request #4116 from ymilki/multi_metric  Add pod
+    labels for all configured metrics providers
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 19 Sep 2025 11:23:41 -0700
+
+paasta-tools (1.30.11) xenial; urgency=medium
+
+  * 1.30.11 tagged with 'make release'
+    Commit: Released 1.30.10 via make release
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 19 Sep 2025 11:22:26 -0700
+
+paasta-tools (1.30.10) xenial; urgency=medium
+
+  * 1.30.10 tagged with 'make release'
+    Commit: Merge pull request #4115 from ymilki/no_gunicorn_sidecar
+    Remove gunicorn sidecar
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 16 Sep 2025 13:34:06 -0700
+
+paasta-tools (1.30.9) xenial; urgency=medium
+
+  * 1.30.9 tagged with 'make release'
+    Commit: Merge pull request #4111 from Yelp/luisp/run-mypy-with-tests
+    it"s always bothered me that these have to be run explicitly with
+    tox -e mypy OR push to GH.  Additionally, I needed to upgrade mypy
+    to use the "new" list[...]/dict[..., ...]/etc type syntax.  And
+    finally: I deleted some Mesos-related code that the new mypy was
+    flagging since I didn"t want to deal with fixing dead code :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Sep 2025 12:37:18 -0700
+
 paasta-tools (1.30.8) xenial; urgency=medium
 
   * 1.30.8 tagged with 'make release'

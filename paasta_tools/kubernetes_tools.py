@@ -151,6 +151,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -195,10 +196,8 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
-GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
 SIDECAR_CONTAINER_NAMES = [
     HACHECK_POD_NAME,
-    GUNICORN_EXPORTER_POD_NAME,
 ]
 KUBERNETES_NAMESPACE = "paasta"
 PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
@@ -876,7 +875,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_WORKER_LOAD,
+        }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -1072,15 +1074,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config,
             hacheck_sidecar_volumes,
         )
-        gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
-            system_paasta_config
-        )
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
-        if gunicorn_exporter_container:
-            sidecars.append(gunicorn_exporter_container)
         return sidecars
 
     def get_readiness_check_prefix(
@@ -1166,37 +1163,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     projected_sa_volumes=[],
                 ),
             )
-        return None
-
-    def get_gunicorn_exporter_sidecar_container(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> Optional[V1Container]:
-
-        if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            return V1Container(
-                image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements(
-                    "gunicorn_exporter", system_paasta_config
-                ),
-                name=GUNICORN_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment(),
-                ports=[V1ContainerPort(container_port=9117)],
-                lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
-                        _exec=V1ExecAction(
-                            command=[
-                                "/bin/sh",
-                                "-c",
-                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
-                                # metrics up until our Pod dies
-                                f"sleep {self.get_hacheck_prestop_sleep_seconds()}",
-                            ]
-                        )
-                    )
-                ),
-            )
-
         return None
 
     def get_env(
@@ -1546,7 +1512,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         and the service will be removed from smartstack, which is the same effect we get after running hadown.
         """
 
-        # Everywhere this value is currently used (hacheck sidecar or gunicorn sidecar), we can pretty safely
+        # Everywhere this value is currently used (hacheck sidecar), we can pretty safely
         # assume that the service is in smartstack.
         return self.get_prestop_sleep_seconds(is_in_smartstack=True) + 1
 
@@ -2483,22 +2449,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI):
-            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
-            # But we do still need deploy_group for relabeling properly
-            # this should probably eventually be made into a default label,
+        metrics_providers_needing_deploy_group = [
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
+        ]
+
+        if any(
+            self.should_use_metrics_provider(provider)
+            for provider in metrics_providers_needing_deploy_group
+        ):
+            # Deploy group is needed for Prometheus relabeling properly
+            # This should probably eventually be made into a default label,
             # but for now we're fine with it being behind these feature toggles.
-            # ideally, we'd also have the docker image here for ease-of-use
+            # Ideally, we'd also have the docker image here for ease-of-use
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+        if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+        if self.should_use_metrics_provider(
+            METRICS_PROVIDER_GUNICORN
+        ) or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         # the default AWS LB Controller behavior is to enable this by-namespace
