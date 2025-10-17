@@ -906,6 +906,9 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_with_no_old_git_
     with mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
         autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
@@ -938,6 +941,9 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_with_old_git_sha
     """Test that rollback instructions are sent when old_git_sha is set."""
     with mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
     ):
         mfdp = WrappedMarkForDeploymentProcess(
@@ -972,6 +978,9 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_same_version():
     same_sha = "same_commit_sha"
     with mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
     ):
         mfdp = WrappedMarkForDeploymentProcess(
