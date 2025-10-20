@@ -25,6 +25,7 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
+from kubernetes.client import V1HostAlias
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1Job
@@ -152,6 +153,7 @@ from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.kubernetes_tools import validate_host_aliases_config
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
@@ -1903,6 +1905,184 @@ class TestKubernetesDeploymentConfig:
         )
 
         assert ret == expected
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+        return_value=[],
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_host_aliases",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    def test_get_pod_template_spec_with_host_aliases(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_pod_anti_affinity,
+        mock_get_host_aliases,
+        mock_get_termination_grace_period,
+        mock_load_service_namespace_config,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_kubernetes_containers,
+        mock_get_volumes,
+        mock_load_system_paasta_config,
+    ):
+        host_aliases = [
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["example.local", "example"],
+                "ticket_ref": "PAASTA-1234",
+            }
+        ]
+        mock_get_host_aliases.return_value = host_aliases
+        mock_service_namespace_config = mock.Mock()
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+        mock_service_namespace_config.is_in_smartstack.return_value = False
+        mock_get_node_affinity.return_value = None
+        mock_get_pod_anti_affinity.return_value = None
+        mock_create_pod_topology_spread_constraints.return_value = []
+        mock_get_termination_grace_period.return_value = None
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            True
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+
+        ret = self.deployment.get_pod_template_spec(
+            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+        )
+
+        assert ret.spec.host_aliases == [
+            V1HostAlias(ip="1.2.3.4", hostnames=["example.local", "example"])
+        ]
+        mock_get_host_aliases.assert_called_once_with(self.deployment)
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.validate_host_aliases_config",
+        autospec=True,
+    )
+    def test_get_host_aliases_raises_when_validation_errors(
+        self, mock_validate_host_aliases_config
+    ):
+        mock_validate_host_aliases_config.return_value = (
+            ["host_alias is missing an ip"],
+            [],
+        )
+
+        with pytest.raises(InvalidKubernetesConfig) as exc:
+            self.deployment.get_host_aliases()
+
+        assert "host_alias is missing an ip" in str(exc.value)
+        assert mock_validate_host_aliases_config.call_count == 1
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.validate_host_aliases_config",
+        autospec=True,
+    )
+    def test_get_host_aliases_returns_validated_config(
+        self, mock_validate_host_aliases_config
+    ):
+        validated = [
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["example.local"],
+                "ticket_ref": "PAASTA-1234",
+            }
+        ]
+        mock_validate_host_aliases_config.return_value = ([], validated)
+
+        assert self.deployment.get_host_aliases() == validated
+        assert mock_validate_host_aliases_config.call_count == 1
+
+    def test_validate_host_aliases_config_success(self):
+        host_aliases = [
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["example.local", "localhost"],
+                "ticket_ref": "PAASTA-1234",
+            },
+            {
+                "ip": "2001:db8::1",
+                "hostnames": ["v6.local"],
+                "ticket_ref": "PAASTA-IPv6",
+            },
+        ]
+
+        errors, built = validate_host_aliases_config(host_aliases)
+
+        assert errors == []
+        assert built == host_aliases
+
+    def test_validate_host_aliases_config_returns_errors(self):
+        host_aliases = [
+            {
+                "ip": "not-an-ip",
+                "hostnames": ["example.local"],
+                "ticket_ref": " ",
+            }
+        ]
+
+        errors, built = validate_host_aliases_config(host_aliases)
+
+        assert built == []
+        assert errors == [
+            "host_alias for not-an-ip must be a valid IP address",
+            "host_alias for not-an-ip is missing a ticket_ref",
+        ]
+
+    def test_validate_host_aliases_config_invalid_hostnames(self):
+        host_aliases = [
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["_invalid", "valid.example.com", "-bad"],
+                "ticket_ref": "PAASTA-1234",
+            }
+        ]
+
+        errors, built = validate_host_aliases_config(host_aliases)
+
+        assert built == []
+        assert len(errors) == 1
+        assert "host_alias for 1.2.3.4 has invalid hostname(s):" in errors[0]
+        assert "_invalid" in errors[0]
+        assert "-bad" in errors[0]
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",

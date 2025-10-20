@@ -13,6 +13,7 @@
 import base64
 import functools
 import hashlib
+import ipaddress
 import itertools
 import json
 import logging
@@ -45,6 +46,7 @@ from typing import Union
 import a_sync
 import requests
 import service_configuration_lib
+from fqdn import FQDN
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
@@ -67,6 +69,7 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
+from kubernetes.client import V1HostAlias
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1Job
@@ -429,12 +432,94 @@ class NodeSelectorsPreferredConfigDict(TypedDict):
     preferences: Dict[str, NodeSelectorConfig]
 
 
+class HostAliasConfig(TypedDict):
+    ip: str
+    hostnames: List[str]
+    ticket_ref: str
+
+
+def validate_host_aliases_config(
+    host_aliases_config: Sequence[Mapping[str, Any]]
+) -> Tuple[List[str], List[HostAliasConfig]]:
+    """Validate raw host-alias config entries and build ``HostAliasConfig`` values.
+
+    Returns a 2-tuple ``(errors, host_aliases)``. ``errors`` is a list of error
+    messages detailing any invalid entries found. ``host_aliases`` is a list of
+    validated config dictionaries. The two are mutually exclusive: when any
+    errors are present, ``host_aliases`` is an empty list.
+    """
+    errors: List[str] = []
+    host_aliases: List[HostAliasConfig] = []
+
+    for alias in host_aliases_config:
+        if not isinstance(alias, Mapping):
+            errors.append("host_alias entry must be a mapping")
+            continue
+
+        alias_errors: List[str] = []
+
+        # Validate IP
+        alias_ip_value = alias.get("ip")
+        alias_ip = alias_ip_value.strip() if isinstance(alias_ip_value, str) else None
+
+        if not alias_ip:
+            alias_errors.append("host_alias is missing an ip")
+        else:
+            try:
+                alias_ip = str(ipaddress.ip_address(alias_ip))
+            except ValueError:
+                alias_errors.append(
+                    f"host_alias for {alias_ip} must be a valid IP address"
+                )
+
+        descriptor = f"host_alias for {alias_ip}" if alias_ip else "host_alias"
+
+        # Validate ticket_ref
+        ticket_ref = alias.get("ticket_ref")
+        if not isinstance(ticket_ref, str) or not ticket_ref.strip():
+            alias_errors.append(f"{descriptor} is missing a ticket_ref")
+
+        # Validate hostnames
+        hostnames = alias.get("hostnames")
+        if not isinstance(hostnames, list) or not hostnames:
+            alias_errors.append(f"{descriptor} must define hostnames")
+        else:
+            invalid_hostnames = []
+            for hostname in hostnames:
+                if not isinstance(hostname, str) or not hostname:
+                    alias_errors.append(
+                        f"{descriptor} must define non-empty hostname strings"
+                    )
+                    continue
+                if not FQDN(hostname, min_labels=1).is_valid:
+                    invalid_hostnames.append(hostname)
+            if invalid_hostnames:
+                alias_errors.append(
+                    f"{descriptor} has invalid hostname(s): {', '.join(invalid_hostnames)}"
+                )
+
+        if alias_errors:
+            errors.extend(alias_errors)
+            continue
+
+        host_aliases.append(
+            HostAliasConfig(
+                ip=alias_ip,
+                hostnames=hostnames,
+                ticket_ref=ticket_ref,
+            )
+        )
+
+    return (errors, []) if errors else ([], host_aliases)
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     node_selectors: Dict[str, NodeSelectorConfig]
     node_selectors_preferred: List[NodeSelectorsPreferredConfigDict]
+    host_aliases: List[HostAliasConfig]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
@@ -658,7 +743,7 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, NodeSelectorConfig]
+    raw_selectors: Mapping[str, NodeSelectorConfig],
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.
@@ -2399,6 +2484,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 fs_group=fs_group
             )
 
+        host_aliases = self.get_host_aliases()
+        if host_aliases:
+            pod_spec_kwargs["host_aliases"] = [
+                V1HostAlias(ip=alias["ip"], hostnames=alias["hostnames"])
+                for alias in host_aliases
+            ]
+
         # prometheus_path is used to override the default scrape path in Prometheus
         prometheus_path = self.get_prometheus_path()
         if prometheus_path:
@@ -2759,6 +2851,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             config_volumes=super().get_projected_sa_volumes(),
             soa_dir=self.soa_dir,
         )
+
+    def get_host_aliases(self) -> List[HostAliasConfig]:
+        host_aliases_config = cast(
+            Sequence[Mapping[str, Any]], self.config_dict.get("host_aliases", [])
+        )
+        errors, host_aliases = validate_host_aliases_config(host_aliases_config)
+        if errors:
+            raise InvalidKubernetesConfig(
+                Exception("; ".join(errors)),
+                self.get_service(),
+                self.get_instance(),
+            )
+        return host_aliases
 
 
 def get_kubernetes_secret_hashes(
@@ -4426,7 +4531,6 @@ def update_crds(
                 desired_crd.metadata[
                     "resourceVersion"
                 ] = existing_crd.metadata.resource_version
-
                 apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd
                 )

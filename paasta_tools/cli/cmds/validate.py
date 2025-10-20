@@ -27,7 +27,9 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
+from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Union
@@ -55,6 +57,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import validate_host_aliases_config
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
@@ -711,6 +714,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                 continue
 
             instance_config = cast(LongRunningServiceConfig, instance_config)
+
             if (
                 # instance_config is an `InstanceConfig` object, which doesn't have an `is_autoscaling_enabled()`
                 # method, but by asserting that the type is in K8S_TYPES, we know we're dealing with either
@@ -915,6 +919,36 @@ def validate_secrets(service_path):
     return return_value
 
 
+def validate_host_aliases(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    for cluster in list_clusters(service, soa_dir):
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            if instance_config.get_instance_type() not in K8S_TYPES:
+                continue
+
+            host_aliases = cast(
+                Sequence[Mapping[str, Any]],
+                instance_config.config_dict.get("host_aliases", []),
+            )
+
+            errors, _ = validate_host_aliases_config(host_aliases)
+
+            for error in errors:
+                print(
+                    failure(
+                        f"{service}.{instance} (cluster: {cluster}) {error}",
+                        "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#host-aliases",
+                    )
+                )
+                returncode = False
+
+    return returncode
+
+
 def validate_cpu_burst(service_path: str) -> bool:
     soa_dir, service = path_to_soa_dir_service(service_path)
     skip_cpu_burst_validation_list = (
@@ -1001,6 +1035,7 @@ def paasta_validate_soa_configs(
         partial(validate_tron, verbose=verbose),
         validate_paasta_objects,
         validate_unique_instance_names,
+        validate_host_aliases,
         validate_autoscaling_configs,
         validate_secrets,
         validate_min_max_instances,

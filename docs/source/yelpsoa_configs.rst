@@ -221,6 +221,21 @@ These options are only applicable to tasks scheduled on Kubernetes.
       PaaSTA will automatically convert it to a canonical version set by
       Kubernetes on all AWS nodes.
 
+  * ``host_aliases``: Additional host entries to inject into the pod's
+  ``/etc/hosts`` file. Each alias requires an ``ip`` (IPv4 or IPv6), one or more
+  ``hostnames``, and a ``ticket_ref`` for the change. These map directly to
+  Kubernetes HostAliases - see the `docs
+  <https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/>`_
+  for more info.  NB: You should probably only be reaching for this in an
+  emergency!::
+
+      host_aliases:
+        - ip: "10.1.2.3"
+          hostnames:
+            - "db.internal"
+            - "db"
+          ticket_ref: "PAASTA-1234"
+
   * ``anti_affinity``: A set of rules define when a node *should not* be
     selected for spawning a task in terms of task running on the node.
     This can be used to schedule a single task per node and provide better

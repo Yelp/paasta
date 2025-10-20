@@ -316,6 +316,43 @@
                         }
                     }
                 },
+                "host_aliases": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "ip": {
+                                "type": "string",
+                                "anyOf": [
+                                    {
+                                        "format": "ipv4"
+                                    },
+                                    {
+                                        "format": "ipv6"
+                                    }
+                                ]
+                            },
+                            "hostnames": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                            },
+                            "ticket_ref": {
+                                "type": "string",
+                                "pattern": ".*\\S.*"
+                            }
+                        },
+                        "required": [
+                            "ip",
+                            "hostnames",
+                            "ticket_ref"
+                        ]
+                    }
+                },
                 "node_selectors_preferred": {
                     "type": "array",
                     "items": {
