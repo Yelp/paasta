@@ -1,3 +1,14 @@
+paasta-tools (1.32.0) xenial; urgency=medium
+
+  * 1.32.0 tagged with 'make release'
+    Commit: Add `deploy_group` as a default k8s label (#4123)  This was
+    initially added just for autoscaling purposes, but it complicates
+    the code a bit to have it only be included for autoscaled instances
+    and it"s a somewhat useful label to have for adhoc filtering - so
+    let"s do a big bounce to simplify/improve things :)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 21 Oct 2025 10:11:02 -0700
+
 paasta-tools (1.31.4) xenial; urgency=medium
 
   * 1.31.4 tagged with 'make release'
