@@ -1264,7 +1264,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.ping_authors()
 
     def send_manual_rollback_instructions(self) -> None:
-        if self.deployment_version != self.old_deployment_version:
+        # NOTE: new deploy groups are not exactly a particularly frequent occurrence, but
+        # we want to prevent sending messages that look like
+        # `If you need to roll back manually, run: paasta rollback --service $S --deploy-group $G --commit None`
+        # since that's not actually valid/actionable.
+        # thus the seemingly out-of-nowhere old_git_sha check: new deploy groups won't have value set there.
+        if (
+            self.deployment_version != self.old_deployment_version
+            and self.old_git_sha is not None
+        ):
             extra_rollback_args = ""
             if self.old_deployment_version.image_version:
                 extra_rollback_args = (
