@@ -15,6 +15,7 @@ docker
 dulwich >= 0.17.3
 environment-tools
 ephemeral-port-reserve >= 1.0.1
+fqdn
 graphviz
 grpcio
 gunicorn
