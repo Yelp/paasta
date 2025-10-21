@@ -182,6 +182,7 @@ CAPS_DROP = [
     "SYS_CHROOT",
     "SETFCAP",
 ]
+DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE = "/nail/etc/docker-registry-ro"
 
 
 class RollbackTypes(Enum):
@@ -2066,6 +2067,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_tron_tsc: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
+    readonly_docker_registry_auth_file: str
 
 
 def load_system_paasta_config(
@@ -2840,6 +2842,16 @@ class SystemPaastaConfig:
             # NOTE: this should never happen unless we've gotten bad data
             return None
 
+    def get_readonly_docker_registry_auth_file(self) -> str:
+        """Get the location of the readonly docker registry auth file, as a URI.
+
+        :returns: the URI specified, or file:///etc/docker/readonly-docker-registry/.dockercfg if not specified.
+        """
+        return self.config_dict.get(
+            "readonly_docker_registry_auth_file",
+            DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
+        )
+
 
 def _run(
     command: Union[str, List[str]],
@@ -2879,6 +2891,7 @@ def _run(
         popen_kwargs["stderr"] = STDOUT
         popen_kwargs["stdin"] = stdin
         popen_kwargs["env"] = env
+        print(command)
         process = Popen(command, **popen_kwargs)
 
         if stdin_interrupt:
