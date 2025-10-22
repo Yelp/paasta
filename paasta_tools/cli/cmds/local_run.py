@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import base64
 import datetime
 import json
 import os
@@ -31,6 +32,7 @@ from urllib.parse import urlparse
 import boto3
 import requests
 from docker import errors
+from docker.api.client import APIClient
 from mypy_extensions import TypedDict
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
@@ -612,26 +614,70 @@ class LostContainerException(Exception):
     pass
 
 
-def docker_pull_image(docker_url):
-    """Pull an image via ``docker pull``. Uses the actual pull command instead of the python
-    bindings due to the docker auth/registry transition. Once we are past Docker 1.6
-    we can use better credential management, but for now this function assumes the
-    user running the command has already been authorized for the registry"""
+class DockerAuthConfig(TypedDict):
+    username: str
+    password: str
+
+
+def get_readonly_docker_registry_auth_config(
+    docker_url: str,
+) -> DockerAuthConfig | None:
+    system_paasta_config = load_system_paasta_config()
+    config_path = system_paasta_config.get_readonly_docker_registry_auth_file()
+
+    with open(config_path) as f:
+        docker_config = json.load(f)
+    registry = docker_url.split("/")[0]
+
+    # find matching auth config - our usual ro config will have at least two entries
+    # at the time this comment was written
+    auths = docker_config
+    for auth_url, auth_data in auths.items():
+        if registry in auth_url:
+            # Decode the base64 auth string if present
+            if "auth" in auth_data:
+                auth_string = base64.b64decode(auth_data["auth"]).decode("utf-8")
+                username, password = auth_string.split(":", 1)
+                return {"username": username, "password": password}
+
+    # afaik, we should only hit this if folks are being naughty and passing a docker url from docker-dev
+    return None
+
+
+def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
+    """Pull an image using the docker-py library with read-only registry credentials"""
     print(
-        "Please wait while the image (%s) is pulled (times out after 30m)..."
-        % docker_url,
+        f"Please wait while the image ({docker_url}) is pulled (times out after 30m)...",
         file=sys.stderr,
     )
-    with Timeout(
-        seconds=1800, error_message=f"Timed out pulling docker image from {docker_url}"
-    ), open(os.devnull, mode="wb") as DEVNULL:
-        ret, _ = _run("docker pull %s" % docker_url, stream=True, stdin=DEVNULL)
-        if ret != 0:
-            print(
-                "\nPull failed. Are you authorized to run docker commands?",
-                file=sys.stderr,
-            )
-            sys.exit(ret)
+
+    auth_config = get_readonly_docker_registry_auth_config(docker_url)
+    if not auth_config:
+        print(
+            PaastaColors.yellow(
+                "Warning: No read-only docker registry credentials found, attempting to pull without authentication."
+            ),
+            file=sys.stderr,
+        )
+
+    try:
+        with Timeout(
+            seconds=1800,
+            error_message=f"Timed out pulling docker image from {docker_url}",
+        ):
+            # this is slightly funky since pull() returns the output line-by-line, but as a dict
+            # ...that we then need to format back to the usual `docker pull` output
+            # :p
+            for line in docker_client.pull(
+                docker_url, auth_config=auth_config, stream=True, decode=True
+            ):
+                print(f"{line['id']}: {line['status']}", file=sys.stderr)
+    except Exception as e:
+        print(
+            f"\nPull failed. Error: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 def get_container_id(docker_client, container_name):
@@ -1226,7 +1272,7 @@ def configure_and_run_docker_container(
             return 1
 
     if pull_image:
-        docker_pull_image(docker_url)
+        docker_pull_image(docker_client, docker_url)
 
     for volume in instance_config.get_volumes(
         system_paasta_config.get_volumes(),
@@ -1303,9 +1349,6 @@ def docker_config_available():
 
 
 def paasta_local_run(args):
-    if args.action == "pull" and os.geteuid() != 0 and not docker_config_available():
-        print("Re-executing paasta local-run --pull with sudo..")
-        os.execvp("sudo", ["sudo", "-H"] + sys.argv)
     if args.action == "build" and not makefile_responds_to("cook-image"):
         print(
             "A local Makefile with a 'cook-image' target is required for --build",
