@@ -1,3 +1,18 @@
+paasta-tools (1.33.0) xenial; urgency=medium
+
+  * 1.33.0 tagged with 'make release'
+    Commit: Don"t re-exec as root to pull in `local-run` (#4132)  *
+    Handle `paasta local-run` being called from inside a venv  We
+    occasionally get onpoint questions re: `paasta local-run` not
+    working inside yelpsoa-configs - most of the time, these are non-
+    infra engineers without sudo access who are then unable to use local-
+    run until they deactivate their venv, directly invoke
+    /usr/bin/paasta, or run from a shell without the venv activated.
+    Instead of bothering with with this re-exec/sudo nonsense - let"s
+    just use the existing read-only credentials on-disk!
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 22 Oct 2025 12:29:53 -0700
+
 paasta-tools (1.32.0) xenial; urgency=medium
 
   * 1.32.0 tagged with 'make release'
