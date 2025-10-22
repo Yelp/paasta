@@ -2889,7 +2889,6 @@ def _run(
         popen_kwargs["stderr"] = STDOUT
         popen_kwargs["stdin"] = stdin
         popen_kwargs["env"] = env
-        print(command)
         process = Popen(command, **popen_kwargs)
 
         if stdin_interrupt:
