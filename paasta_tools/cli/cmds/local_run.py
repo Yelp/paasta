@@ -75,11 +75,6 @@ from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
-STANDARD_PAASTA_CLI_PATHS = {
-    "/opt/venvs/paasta-tools/bin/paasta",
-    "/usr/bin/paasta",
-}
-
 
 class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
