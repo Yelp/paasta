@@ -2843,9 +2843,7 @@ class SystemPaastaConfig:
             return None
 
     def get_readonly_docker_registry_auth_file(self) -> str:
-        """Get the location of the readonly docker registry auth file, as a URI.
-
-        :returns: the URI specified, or file:///etc/docker/readonly-docker-registry/.dockercfg if not specified.
+        """Get the location of the readonly docker registry auth file as an absolute path. 
         """
         return self.config_dict.get(
             "readonly_docker_registry_auth_file",
