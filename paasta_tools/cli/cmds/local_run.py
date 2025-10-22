@@ -627,7 +627,6 @@ class DockerAuthConfig(TypedDict):
 def get_readonly_docker_registry_auth_config(
     docker_url: str,
 ) -> DockerAuthConfig | None:
-    # Load auth config from the read-only credentials
     system_paasta_config = load_system_paasta_config()
     config_path = system_paasta_config.get_readonly_docker_registry_auth_file()
 
@@ -658,7 +657,6 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
     )
 
     auth_config = get_readonly_docker_registry_auth_config(docker_url)
-
     if not auth_config:
         print(
             PaastaColors.yellow(

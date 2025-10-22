@@ -2843,8 +2843,7 @@ class SystemPaastaConfig:
             return None
 
     def get_readonly_docker_registry_auth_file(self) -> str:
-        """Get the location of the readonly docker registry auth file as an absolute path. 
-        """
+        """Get the location of the readonly docker registry auth file as an absolute path."""
         return self.config_dict.get(
             "readonly_docker_registry_auth_file",
             DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
