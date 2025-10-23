@@ -1349,6 +1349,11 @@ def docker_config_available():
 
 
 def paasta_local_run(args):
+    if args.action == "pull" and os.geteuid() != 0 and not args.skip_secrets:
+        # XXX: we should re-architect this to not need sudo, but for now,
+        # re-exec ourselves with sudo to get access to the paasta vault token
+        print("Re-executing paasta local-run --pull with sudo for Vault access...")
+        os.execvp("sudo", ["sudo", "-H", "/usr/bin/paasta"] + sys.argv[1:])
     if args.action == "build" and not makefile_responds_to("cook-image"):
         print(
             "A local Makefile with a 'cook-image' target is required for --build",
