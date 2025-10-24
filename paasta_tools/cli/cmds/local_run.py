@@ -75,6 +75,12 @@ from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
+STANDARD_PAASTA_CLI_PATHS = {
+    "/bin/paasta",
+    "/opt/venvs/paasta-tools/bin/paasta",
+    "/usr/bin/paasta",
+}
+
 
 class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
@@ -1349,6 +1355,26 @@ def docker_config_available():
 
 
 def paasta_local_run(args):
+    if args.action == "pull" and os.geteuid() != 0 and not args.skip_secrets:
+        # we unfortunately sometimes install paasta inside the virtualenv of repos where
+        # folks might be running commands such as `paasta local-run`.
+        # this tends to cause some confusion as this results folks being denied access
+        # to sudo since the virtualenv paasta is not in our sudoers :)
+        # NOTE: in the unlikely event that someone does need to run this from a venv,
+        # there's an opt-out env var
+        if (
+            sys.argv[0] not in STANDARD_PAASTA_CLI_PATHS
+            and "PAASTA_ALLOW_VENV" not in os.environ
+        ):
+            print(
+                "You are running the PaaSTA CLI from a virtualenv - this is unexpected. Re-executing `paasta` from the standard location.."
+            )
+            os.execvp("/usr/bin/paasta", ["/usr/bin/paasta"] + sys.argv[1:])
+        # XXX: we should re-architect this to not need sudo, but for now,
+        # re-exec ourselves with sudo to get access to the paasta vault token
+        # NOTE: once we do that, we can also remove the venv check above :)
+        print("Re-executing paasta local-run --pull with sudo for Vault access...")
+        os.execvp("sudo", ["sudo", "-H", "/usr/bin/paasta"] + sys.argv[1:])
     if args.action == "build" and not makefile_responds_to("cook-image"):
         print(
             "A local Makefile with a 'cook-image' target is required for --build",
