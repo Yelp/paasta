@@ -65,6 +65,15 @@ The currently available metrics providers are:
   The default autoscaling method if none is provided.
   Measures the CPU usage of your service's container.
 
+:worker-load:
+  With the ``worker-load`` metrics provider, Paasta will scale your service based on worker utilization metrics.
+  The autoscaler will use the ``setpoint`` value (default 0.8) to determine the target worker utilization.
+  For example, with a setpoint of 0.8, the autoscaler will try to keep your workers at 80% utilization on average.
+
+  .. note::
+    This metric provider is compatible for both uwsgi and gunicorn services and is preferred over the uwsgi/gunicorn metric providers.
+    If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
+
 :uwsgi:
   With the ``uwsgi`` metrics provider, Paasta will configure your Pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
   We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
@@ -72,7 +81,6 @@ The currently available metrics providers are:
   .. note::
 
     If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
-
 
 :gunicorn:
   With the ``gunicorn`` metrics provider, Paasta will configure your Pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
