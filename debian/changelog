@@ -1,3 +1,16 @@
+paasta-tools (1.33.1) xenial; urgency=medium
+
+  * 1.33.1 tagged with 'make release'
+    Commit: Add back re-exec code to local-run (#4136)  * Add back re-
+    exec code to local-run  Turns out there was a hidden dependency in
+    the pre-existing code: running as root allows folks to use the
+    Puppeted PaaSTA Vault token on adhoc-prod - otherwise, they cannot
+    access the secrets their service is configured to use  * add back
+    venv detection code  i dunno why i thought we didn"t need this
+    anymore after ^
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 27 Oct 2025 10:44:27 -0700
+
 paasta-tools (1.33.0) xenial; urgency=medium
 
   * 1.33.0 tagged with 'make release'
