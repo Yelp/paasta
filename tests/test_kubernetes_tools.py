@@ -1885,6 +1885,7 @@ class TestKubernetesDeploymentConfig:
         if autoscaling_metric_provider in (
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
         ):
             routable_ip = "true"
 

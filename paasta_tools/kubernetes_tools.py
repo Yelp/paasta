@@ -2272,6 +2272,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             or self.get_prometheus_port() is not None
             or self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI)
             or self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN)
+            or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD)
         ):
             return "true"
         return "false"
