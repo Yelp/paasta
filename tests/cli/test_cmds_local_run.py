@@ -575,7 +575,9 @@ def test_configure_and_run_pulls_image_when_asked(
         assume_role_aws_account="dev",
     )
     assert return_code == 0
-    mock_docker_pull_image.assert_called_once_with("fake_registry/fake_image")
+    mock_docker_pull_image.assert_called_once_with(
+        mock_docker_client, "fake_registry/fake_image"
+    )
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
         "vault_auth_method": "ldap",
@@ -1849,32 +1851,42 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
+    "paasta_tools.cli.cmds.local_run.get_readonly_docker_registry_auth_config",
     autospec=True,
-    return_value=(0, "fake _run output"),
+    return_value={"username": "test_user", "password": "test_pass"},
 )
-def test_pull_image_runs_docker_pull(mock_run):
-    open_mock = mock.mock_open()
-    with mock.patch("builtins.open", open_mock, autospec=None):
-        docker_pull_image("fake_image")
-    mock_run.assert_called_once_with(
-        "docker pull fake_image", stream=True, stdin=mock.ANY
+def test_pull_image_runs_docker_pull(mock_get_auth):
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    # Simulate streaming output from docker pull
+    mock_docker_client.pull.return_value = [
+        {"id": "layer1", "status": "Pulling"},
+        {"id": "layer2", "status": "Complete"},
+    ]
+    docker_pull_image(mock_docker_client, "fake_image")
+    mock_docker_client.pull.assert_called_once_with(
+        "fake_image",
+        auth_config={"username": "test_user", "password": "test_pass"},
+        stream=True,
+        decode=True,
     )
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
+    "paasta_tools.cli.cmds.local_run.get_readonly_docker_registry_auth_config",
     autospec=True,
-    return_value=(42, "fake _run output"),
+    return_value={"username": "test_user", "password": "test_pass"},
 )
-def test_pull_docker_image_exists_with_failure(mock_run):
+def test_pull_docker_image_exists_with_failure(mock_get_auth):
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    mock_docker_client.pull.side_effect = Exception("Pull failed")
     with raises(SystemExit) as excinfo:
-        open_mock = mock.mock_open()
-        with mock.patch("builtins.open", open_mock, autospec=None):
-            docker_pull_image("fake_image")
-    assert excinfo.value.code == 42
-    mock_run.assert_called_once_with(
-        "docker pull fake_image", stream=True, stdin=mock.ANY
+        docker_pull_image(mock_docker_client, "fake_image")
+    assert excinfo.value.code == 1
+    mock_docker_client.pull.assert_called_once_with(
+        "fake_image",
+        auth_config={"username": "test_user", "password": "test_pass"},
+        stream=True,
+        decode=True,
     )
 
 
