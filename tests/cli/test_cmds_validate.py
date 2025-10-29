@@ -31,6 +31,7 @@ from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_cpu_burst
+from paasta_tools.cli.cmds.validate import validate_host_aliases
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
@@ -57,6 +58,7 @@ def clear_get_config_file_dict_cache():
 
 @patch("paasta_tools.cli.cmds.validate.validate_cpu_burst", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_host_aliases", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
@@ -68,6 +70,7 @@ def clear_get_config_file_dict_cache():
 def test_paasta_validate_calls_everything(
     mock_validate_cpu_burst,
     mock_validate_autoscaling_configs,
+    mock_validate_host_aliases,
     mock_validate_secrets,
     mock_check_service_path,
     mock_get_service_path,
@@ -80,6 +83,7 @@ def test_paasta_validate_calls_everything(
     # Ensure each check in 'paasta_validate' is called
     mock_validate_cpu_burst.return_value = True
     mock_validate_autoscaling_configs.return_value = True
+    mock_validate_host_aliases.return_value = True
     mock_validate_secrets.return_value = True
     mock_check_service_path.return_value = True
     mock_get_service_path.return_value = "unused_path"
@@ -101,6 +105,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_paasta_objects.called
     assert mock_validate_secrets.called
     assert mock_validate_autoscaling_configs.called
+    assert mock_validate_host_aliases.called
     assert mock_validate_cpu_burst.called
 
 
@@ -202,6 +207,123 @@ def test_validate_min_max_instances_success(
         "The number of min_instances (3) cannot be greater than the max_instances (1)."
         in output
     )
+
+
+@pytest.mark.parametrize(
+    "host_alias, expected_messages",
+    [
+        (
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["example.local"],
+            },
+            [
+                "example.main (cluster: fake-cluster) host_alias for 1.2.3.4 is missing a ticket_ref",
+            ],
+        ),
+        (
+            {
+                "ip": "not-an-ip",
+                "hostnames": ["example.local"],
+                "ticket_ref": "ticket",
+            },
+            [
+                "example.main (cluster: fake-cluster) host_alias for not-an-ip must be a valid IP address",
+            ],
+        ),
+        (
+            {
+                "ip": "not-an-ip",
+                "hostnames": ["example.local"],
+            },
+            [
+                "example.main (cluster: fake-cluster) host_alias for not-an-ip must be a valid IP address",
+                "example.main (cluster: fake-cluster) host_alias for not-an-ip is missing a ticket_ref",
+            ],
+        ),
+        (
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["_invalid"],
+                "ticket_ref": "ticket",
+            },
+            [
+                "example.main (cluster: fake-cluster) host_alias for 1.2.3.4 has invalid hostname(s): _invalid",
+            ],
+        ),
+    ],
+)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_host_aliases_validations(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_load_all_instance_configs_for_service,
+    host_alias,
+    expected_messages,
+    capsys,
+):
+    service = "example"
+    instance = "main"
+    cluster = "fake-cluster"
+
+    mock_path_to_soa_dir_service.return_value = ("/nail/etc/services", service)
+    mock_list_clusters.return_value = [cluster]
+
+    instance_config = mock.Mock()
+    instance_config.get_instance_type.return_value = "kubernetes"
+    instance_config.config_dict = {"host_aliases": [host_alias]}
+    mock_load_all_instance_configs_for_service.return_value = [
+        (instance, instance_config)
+    ]
+
+    assert not validate_host_aliases("/nail/etc/services/example")
+    output, _ = capsys.readouterr()
+    for message in expected_messages:
+        assert message in output
+
+
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_host_aliases_validations_success(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_load_all_instance_configs_for_service,
+    capsys,
+):
+    service = "example"
+    instance = "main"
+    cluster = "fake-cluster"
+
+    mock_path_to_soa_dir_service.return_value = ("/nail/etc/services", service)
+    mock_list_clusters.return_value = [cluster]
+
+    instance_config = mock.Mock()
+    instance_config.get_instance_type.return_value = "kubernetes"
+    instance_config.config_dict = {
+        "host_aliases": [
+            {
+                "ip": "1.2.3.4",
+                "hostnames": ["example.local"],
+                "ticket_ref": "ticket",
+            }
+        ]
+    }
+    mock_load_all_instance_configs_for_service.return_value = [
+        (instance, instance_config)
+    ]
+
+    assert validate_host_aliases("/nail/etc/services/example")
+    output, _ = capsys.readouterr()
+    assert output == ""
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
