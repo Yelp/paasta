@@ -1,3 +1,18 @@
+paasta-tools (1.33.3) xenial; urgency=medium
+
+  * 1.33.3 tagged with 'make release'
+    Commit: Handle services on registries with no ro creds (#4141)  *
+    Handle services on registries with no ro creds  There were two bugs
+    in my original implementation: * we crash if there"s no ro creds
+    file (i had assumed the creds were   distributed everywhere) * we
+    don"t re-exec as root for registries with no ro creds and required
+    auth  This diff fixes both :)  I"ve also dropped the intermediate re-
+    exec when in a venv since krall showed me the error of my ways - I"m
+    not sure why I thought the  parent program of where sudo is invoked
+    from mattered...
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 30 Oct 2025 14:58:14 -0700
+
 paasta-tools (1.33.2) xenial; urgency=medium
 
   * 1.33.2 tagged with 'make release'
