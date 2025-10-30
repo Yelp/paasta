@@ -1375,7 +1375,7 @@ def should_reexec_as_root(
     need_vault_token = not skip_secrets and action == "pull"
 
     # there are some special teams with their own private docker registries and no ro creds
-    # however, we don't know what registry is to be used without loading the instance config
+    # however, we don't know what registry is to be used without loading the service config
     service_info = read_service_configuration(service, soa_dir)
     # technically folks can set the standard registry as a value here, but atm no one is doing that :p
     registry_override = service_info.get("docker_registry")
