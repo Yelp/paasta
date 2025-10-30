@@ -2849,7 +2849,7 @@ class SystemPaastaConfig:
             DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
         )
 
-    def get_private_docker_registries(self) -> set[str]:
+    def get_private_docker_registries(self) -> Set[str]:
         """Get all the internal Docker registries without generally-available RO creds."""
         return set(self.config_dict.get("private_docker_registries", []))
 
