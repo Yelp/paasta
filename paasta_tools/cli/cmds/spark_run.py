@@ -17,6 +17,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import boto3
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
@@ -885,6 +886,8 @@ def configure_and_run_docker_container(
     kubeconfig_dir = os.path.dirname(system_paasta_config.get_spark_kubeconfig())
     volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
+    # Pass the configuration required some of the services
+    spark_conf["scs_conf"] = args.scs
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     environment.update(
@@ -897,6 +900,8 @@ def configure_and_run_docker_container(
         )
     )  # type:ignore
     environment.update(extra_driver_envs)
+    if "jupyter-lab" == args.cmd:
+        environment["SPARK_DRIVER_TYPE"] = "jupyter"
 
     if args.use_service_auth_token:
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
@@ -1190,6 +1195,36 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
     return action_dict.get("env", dict())
 
 
+def get_aws_account_id(
+    aws_creds: Tuple[Optional[str], Optional[str], Optional[str]]
+) -> Optional[str]:
+    access_key, secret_key, session_token = aws_creds
+
+    if not access_key or not secret_key:
+        return None
+
+    try:
+        account_id = (
+            boto3.client(
+                "sts",
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+            )
+            .get_caller_identity()
+            .get("Account")
+        )
+
+        return account_id
+    except Exception as e:
+        print(
+            PaastaColors.red(f"Error getting AWS account ID: {e}"),
+            file=sys.stderr,
+        )
+
+        return None
+
+
 def paasta_spark_run(args: argparse.Namespace) -> int:
     if args.get_eks_token_via_iam_user and os.getuid() != 0:
         print("Re-executing paasta spark-run with sudo..", file=sys.stderr)
@@ -1399,6 +1434,27 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         service_account_name=service_account_name,
         jira_ticket=args.jira_ticket,
     )
+
+    # Prepare configuration required for some of the services
+    scs_args = {
+        "cluster_manager": args.cluster_manager,
+        "spark_app_base_name": app_base_name,
+        "docker_image": docker_image_digest,
+        "user_spark_opts": user_spark_opts,
+        "paasta_cluster": paasta_cluster,
+        "paasta_pool": args.pool,
+        "paasta_service": args.service,
+        "paasta_instance": paasta_instance,
+        "extra_volumes": cast(List[Mapping[str, str]], volumes),
+        "force_spark_resource_configs": args.force_spark_resource_configs,
+        "k8s_server_address": k8s_server_address,
+        "jira_ticket": args.jira_ticket,
+        "service_account_name": service_account_name,
+        "ui_port": int(spark_conf["spark.ui.port"]),
+        "user": os.environ.get("USER"),
+        "aws_account_id": get_aws_account_id(aws_creds),
+    }
+    args.scs = json.dumps(scs_args, indent=4)
 
     return configure_and_run_docker_container(
         args,
