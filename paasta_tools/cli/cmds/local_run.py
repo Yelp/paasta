@@ -1385,8 +1385,9 @@ def should_reexec_as_root(
 
 
 def paasta_local_run(args):
+    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     if should_reexec_as_root(
-        args.service, args.skip_secrets, args.action, args.yelpsoa_config_root
+        service, args.skip_secrets, args.action, args.yelpsoa_config_root
     ):
         # XXX: we should re-architect this to not need sudo, but for now,
         # re-exec ourselves with sudo to get access to the paasta vault token
@@ -1420,8 +1421,6 @@ def paasta_local_run(args):
         system_paasta_config = SystemPaastaConfig({"volumes": []}, "/etc/paasta")
 
     local_run_config = system_paasta_config.get_local_run_config()
-
-    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
 
     if args.cluster:
         cluster = args.cluster
