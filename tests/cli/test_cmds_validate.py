@@ -18,6 +18,14 @@ import mock
 import pytest
 from mock import patch
 
+from paasta_tools.cli.cmds.validate import _check_advertise_discover
+from paasta_tools.cli.cmds.validate import _check_proxy_port_in_use
+from paasta_tools.cli.cmds.validate import _check_smartstack_name_length
+from paasta_tools.cli.cmds.validate import _check_smartstack_name_length_envoy
+from paasta_tools.cli.cmds.validate import _check_smartstack_proxied_through
+from paasta_tools.cli.cmds.validate import _check_smartstack_valid_proxy
+from paasta_tools.cli.cmds.validate import _get_etc_services
+from paasta_tools.cli.cmds.validate import _get_etc_services_entry
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
@@ -37,6 +45,7 @@ from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
+from paasta_tools.cli.cmds.validate import validate_smartstack
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
@@ -65,17 +74,21 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.get_service_path", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_service_path", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
 def test_paasta_validate_calls_everything(
-    mock_validate_cpu_burst,
-    mock_validate_autoscaling_configs,
+    mock_validate_service_name,
+    mock_validate_smartstack,
     mock_validate_secrets,
     mock_check_service_path,
     mock_get_service_path,
     mock_validate_tron,
     mock_validate_all_schemas,
     mock_validate_paasta_objects,
-    mock_validate_unique_instance_names,
     mock_validate_min_max_instances,
+    mock_validate_unique_instance_names,
+    mock_validate_autoscaling_configs,
+    mock_validate_cpu_burst,
 ):
     # Ensure each check in 'paasta_validate' is called
     mock_validate_cpu_burst.return_value = True
@@ -88,6 +101,8 @@ def test_paasta_validate_calls_everything(
     mock_validate_paasta_objects.return_value = True
     mock_validate_unique_instance_names.return_value = True
     mock_validate_min_max_instances.return_value = True
+    mock_validate_smartstack.return_value = True
+    mock_validate_service_name.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
@@ -102,6 +117,8 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_secrets.called
     assert mock_validate_autoscaling_configs.called
     assert mock_validate_cpu_burst.called
+    assert mock_validate_smartstack.called
+    assert mock_validate_service_name.called
 
 
 @patch(
@@ -1421,3 +1438,328 @@ fake_instance1:
         return_value=("fake_soa_dir", "fake_service"),
     ):
         assert validate_cpu_burst("fake-service-path") is expected
+
+
+def test_validate_smartstack_missing_file():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.os.path.exists",
+        return_value=False,
+        autospec=True,
+    ):
+        assert validate_smartstack("/fake/service/path") is True
+
+
+def test_validate_smartstack_empty_config():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.os.path.exists",
+        return_value=True,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_config_file_dict",
+        return_value={},
+        autospec=True,
+    ):
+        assert validate_smartstack("/fake/service/path") is False
+
+
+def test_validate_smartstack_success():
+    mock_config = {
+        "main": {"proxy_port": 20000, "advertise": ["region"], "discover": "region"}
+    }
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.os.path.exists",
+        return_value=True,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_config_file_dict",
+        return_value=mock_config,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
+        return_value=("/soa", "test_service"),
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_name_length_envoy",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_name_length", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate._check_proxy_port_in_use",
+        return_value=False,
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate._check_advertise_discover", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_proxied_through",
+        autospec=True,
+    ):
+        assert validate_smartstack("/fake/service/path") is True
+
+
+def test_check_smartstack_name_length_envoy_valid():
+    _check_smartstack_name_length_envoy("short_service", "short_namespace")
+
+
+def test_check_smartstack_name_length_envoy_invalid():
+    long_service = "a" * 60
+    long_namespace = "b" * 60
+
+    with pytest.raises(ValueError):
+        _check_smartstack_name_length_envoy(long_service, long_namespace)
+
+
+def test_check_smartstack_name_length_valid():
+    _check_smartstack_name_length("short_service", "short_ns")
+
+
+def test_check_smartstack_name_length_invalid():
+    long_name = "a" * 30
+    long_namespace = "b" * 30
+
+    with pytest.raises(ValueError):
+        _check_smartstack_name_length(long_name, long_namespace)
+
+
+def test_check_proxy_port_in_use_none_port():
+    assert _check_proxy_port_in_use("service", "namespace", None) is False
+
+
+def test_check_proxy_port_in_use_not_found():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services_entry",
+        return_value=None,
+        autospec=True,
+    ):
+        assert _check_proxy_port_in_use("service", "namespace", 12345) is False
+
+
+def test_check_proxy_port_in_use_same_service():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services_entry",
+        return_value="service.namespace",
+        autospec=True,
+    ):
+        assert _check_proxy_port_in_use("service", "namespace", 12345) is False
+
+
+def test_check_proxy_port_in_use_different_service():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services_entry",
+        return_value="other.service",
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_proxy_port_in_use("service", "namespace", 12345)
+
+
+def test_check_advertise_discover_valid():
+    smartstack_data = {"advertise": ["region", "habitat"], "discover": "region"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.available_location_types",
+        return_value=["region", "habitat", "ecosystem"],
+        autospec=True,
+    ):
+        _check_advertise_discover(smartstack_data)
+
+
+def test_check_advertise_discover_discover_not_in_advertise():
+    smartstack_data = {"advertise": ["habitat"], "discover": "region"}
+
+    with pytest.raises(ValueError):
+        _check_advertise_discover(smartstack_data)
+
+
+def test_check_advertise_discover_invalid_location_type():
+    smartstack_data = {"advertise": ["invalid_type"], "discover": "invalid_type"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.available_location_types",
+        return_value=["region", "habitat"],
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_advertise_discover(smartstack_data)
+
+
+def test_check_advertise_discover_extra_advertise_valid():
+    smartstack_data = {
+        "advertise": ["habitat", "region"],
+        "discover": "habitat",
+        "extra_advertise": {"region:uswest1-prod": ["region:uswest1-prod"]},
+    }
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.available_location_types",
+        return_value=["region", "habitat"],
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.convert_location_type",
+        return_value=["uswest1-prod"],
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.compare_types", return_value=0, autospec=True
+    ):
+        _check_advertise_discover(smartstack_data)
+
+
+def test_check_advertise_discover_extra_advertise_invalid_location():
+    smartstack_data = {
+        "advertise": ["region"],
+        "discover": "region",
+        "extra_advertise": {"invalid:location": ["region:uswest1-prod"]},
+    }
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.available_location_types",
+        return_value=["region", "habitat"],
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.convert_location_type",
+        side_effect=Exception("Invalid location"),
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_advertise_discover(smartstack_data)
+
+
+def test_check_advertise_discover_rhs_less_general():
+    smartstack_data = {
+        "advertise": ["region"],
+        "discover": "region",
+        "extra_advertise": {"region:uswest1-prod": ["habitat:uswest1-prod-bar"]},
+    }
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.available_location_types",
+        return_value=["region", "habitat"],
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.convert_location_type",
+        return_value=["uswest1-prod"],
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.compare_types", return_value=1, autospec=True
+    ):
+        with pytest.raises(ValueError):
+            _check_advertise_discover(smartstack_data)
+
+
+def test_check_smartstack_proxied_through_no_proxied_through():
+    smartstack_data = {}
+    _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_proxied_through_valid():
+    smartstack_data = {"proxied_through": "proxy_service.main"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy", autospec=True
+    ):
+        _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_valid_proxy_valid():
+    proxy_config = {"main": {"proxy_port": 20000}}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_config_file_dict",
+        return_value=proxy_config,
+        autospec=True,
+    ):
+        _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
+
+
+def test_check_smartstack_valid_proxy_namespace_not_found():
+    proxy_config = {"other": {"proxy_port": 20000}}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_config_file_dict",
+        return_value=proxy_config,
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
+
+
+def test_check_smartstack_valid_proxy_file_not_found():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_config_file_dict",
+        side_effect=FileNotFoundError(),
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
+
+
+def test_get_etc_services():
+    mock_services_content = """# Network services
+ssh             22/tcp
+http            80/tcp
+https           443/tcp
+my-service.main 20000/tcp"""
+    expected_lines = [
+        "# Network services",
+        "ssh             22/tcp",
+        "http            80/tcp",
+        "https           443/tcp",
+        "my-service.main 20000/tcp",
+    ]
+
+    with mock.patch(
+        "builtins.open", mock.mock_open(read_data=mock_services_content), autospec=None
+    ):
+        services = _get_etc_services()
+        assert services == expected_lines
+
+
+def test_get_etc_services_entry_found():
+    mock_services = [
+        "# Network services",
+        "ssh             22/tcp",
+        "my-service.main 20000/tcp",
+        "https           443/tcp",
+    ]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services",
+        return_value=mock_services,
+        autospec=True,
+    ):
+        result = _get_etc_services_entry(20000)
+        assert result == "my-service.main"
+
+
+def test_get_etc_services_entry_not_found():
+    mock_services = [
+        "# Network services",
+        "ssh             22/tcp",
+        "https           443/tcp",
+    ]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services",
+        return_value=mock_services,
+        autospec=True,
+    ):
+        result = _get_etc_services_entry(12345)
+        assert result is None
+
+
+def test_get_etc_services_entry_malformed_line():
+    mock_services = [
+        "# Network services",
+        "malformed_line",
+        "ssh             22/tcp",
+        "incomplete",
+        "my-service.main 20000/tcp",
+    ]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._get_etc_services",
+        return_value=mock_services,
+        autospec=True,
+    ):
+        result = _get_etc_services_entry(20000)
+        assert result == "my-service.main"
