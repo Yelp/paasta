@@ -1648,7 +1648,7 @@ def test_check_advertise_discover_rhs_less_general():
 
 def test_check_smartstack_proxied_through_no_proxied_through():
     smartstack_data = {}
-    _check_smartstack_proxied_through(smartstack_data)
+    _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
 
 
 def test_check_smartstack_proxied_through_valid():
@@ -1657,7 +1657,7 @@ def test_check_smartstack_proxied_through_valid():
     with mock.patch(
         "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy", autospec=True
     ):
-        _check_smartstack_proxied_through(smartstack_data)
+        _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
 
 
 def test_check_smartstack_valid_proxy_valid():
@@ -1668,7 +1668,7 @@ def test_check_smartstack_valid_proxy_valid():
         return_value=proxy_config,
         autospec=True,
     ):
-        _check_smartstack_valid_proxy("proxy_service.main")
+        _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
 
 
 def test_check_smartstack_valid_proxy_namespace_not_found():
@@ -1680,7 +1680,7 @@ def test_check_smartstack_valid_proxy_namespace_not_found():
         autospec=True,
     ):
         with pytest.raises(ValueError):
-            _check_smartstack_valid_proxy("proxy_service.main")
+            _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
 
 
 def test_check_smartstack_valid_proxy_file_not_found():
@@ -1690,7 +1690,7 @@ def test_check_smartstack_valid_proxy_file_not_found():
         autospec=True,
     ):
         with pytest.raises(ValueError):
-            _check_smartstack_valid_proxy("proxy_service.main")
+            _check_smartstack_valid_proxy("proxy_service.main", "/fake/soa/dir")
 
 
 def test_get_etc_services():
