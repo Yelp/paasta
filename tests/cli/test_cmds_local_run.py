@@ -46,6 +46,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
@@ -57,6 +58,7 @@ def test_dry_run(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
+    mock_should_reexec_as_root,
     capfd,
     system_paasta_config,
 ):
@@ -65,6 +67,7 @@ def test_dry_run(
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_figure_out_service_name.return_value = "fake_service"
+    mock_should_reexec_as_root.return_value = False
 
     # Should pass and produce something
     with raises(SystemExit) as excinfo:
@@ -87,6 +90,7 @@ def test_dry_run(
     assert isinstance(expected_out, list)
 
 
+@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
@@ -98,6 +102,7 @@ def test_dry_run_json_dict(
     mock_paasta_cook_image,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
+    mock_should_reexec_as_root,
     capfd,
     system_paasta_config,
 ):
@@ -120,6 +125,7 @@ def test_dry_run_json_dict(
     mock_paasta_cook_image.return_value = 0
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_figure_out_service_name.return_value = "fake_service"
+    mock_should_reexec_as_root.return_value = False
 
     # Should pass and produce something
     with raises(SystemExit) as excinfo:
@@ -575,7 +581,9 @@ def test_configure_and_run_pulls_image_when_asked(
         assume_role_aws_account="dev",
     )
     assert return_code == 0
-    mock_docker_pull_image.assert_called_once_with("fake_registry/fake_image")
+    mock_docker_pull_image.assert_called_once_with(
+        mock_docker_client, "fake_registry/fake_image"
+    )
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
         "vault_auth_method": "ldap",
@@ -752,6 +760,7 @@ def test_configure_and_run_docker_container_respects_docker_sha(
         assert return_code == 0
 
 
+@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
@@ -773,6 +782,7 @@ def test_run_success(
     mock_Client,
     mock_run_docker_container,
     mock_figure_out_service_name,
+    mock_should_reexec_as_root,
 ):
     mock_os_geteuid.return_value = 0
     mock_run.return_value = (0, "Output")
@@ -781,6 +791,7 @@ def test_run_success(
     mock_Client.return_value = None
     mock_run_docker_container.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
+    mock_should_reexec_as_root.return_value = False
 
     args = mock.MagicMock()
     args.service = "fake_service"
@@ -799,6 +810,7 @@ def test_run_success(
         ("pnw-prod", "dev", "dev"),
     ],
 )
+@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
@@ -810,12 +822,14 @@ def test_assume_role_aws_account(
     mock_validate_service_name,
     mock_figure_out_service_name,
     mock_system_paasta_config,
+    mock_should_reexec_as_root,
     cluster,
     aws_account,
     expected_aws_account,
     system_paasta_config,
 ):
     mock_system_paasta_config.return_value = system_paasta_config
+    mock_should_reexec_as_root.return_value = False
 
     args = mock.MagicMock()
     args.cluster = cluster
@@ -827,6 +841,7 @@ def test_assume_role_aws_account(
     assert kwargs.get("assume_role_aws_account", "") == expected_aws_account
 
 
+@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
@@ -842,11 +857,13 @@ def test_run_cook_image_fails(
     mock_Client,
     mock_run_docker_container,
     mock_figure_out_service_name,
+    mock_should_reexec_as_root,
 ):
     mock_paasta_cook_image.return_value = 1
     mock_Client.return_value = None
     mock_run_docker_container.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
+    mock_should_reexec_as_root.return_value = False
 
     args = mock.MagicMock()
     args.service = "fake_service"
@@ -1849,32 +1866,42 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
+    "paasta_tools.cli.cmds.local_run.get_readonly_docker_registry_auth_config",
     autospec=True,
-    return_value=(0, "fake _run output"),
+    return_value={"username": "test_user", "password": "test_pass"},
 )
-def test_pull_image_runs_docker_pull(mock_run):
-    open_mock = mock.mock_open()
-    with mock.patch("builtins.open", open_mock, autospec=None):
-        docker_pull_image("fake_image")
-    mock_run.assert_called_once_with(
-        "docker pull fake_image", stream=True, stdin=mock.ANY
+def test_pull_image_runs_docker_pull(mock_get_auth):
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    # Simulate streaming output from docker pull
+    mock_docker_client.pull.return_value = [
+        {"id": "layer1", "status": "Pulling"},
+        {"id": "layer2", "status": "Complete"},
+    ]
+    docker_pull_image(mock_docker_client, "fake_image")
+    mock_docker_client.pull.assert_called_once_with(
+        "fake_image",
+        auth_config={"username": "test_user", "password": "test_pass"},
+        stream=True,
+        decode=True,
     )
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
+    "paasta_tools.cli.cmds.local_run.get_readonly_docker_registry_auth_config",
     autospec=True,
-    return_value=(42, "fake _run output"),
+    return_value={"username": "test_user", "password": "test_pass"},
 )
-def test_pull_docker_image_exists_with_failure(mock_run):
+def test_pull_docker_image_exists_with_failure(mock_get_auth):
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    mock_docker_client.pull.side_effect = Exception("Pull failed")
     with raises(SystemExit) as excinfo:
-        open_mock = mock.mock_open()
-        with mock.patch("builtins.open", open_mock, autospec=None):
-            docker_pull_image("fake_image")
-    assert excinfo.value.code == 42
-    mock_run.assert_called_once_with(
-        "docker pull fake_image", stream=True, stdin=mock.ANY
+        docker_pull_image(mock_docker_client, "fake_image")
+    assert excinfo.value.code == 1
+    mock_docker_client.pull.assert_called_once_with(
+        "fake_image",
+        auth_config={"username": "test_user", "password": "test_pass"},
+        stream=True,
+        decode=True,
     )
 
 

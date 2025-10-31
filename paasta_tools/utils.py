@@ -182,6 +182,7 @@ CAPS_DROP = [
     "SYS_CHROOT",
     "SETFCAP",
 ]
+DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE = "/nail/etc/docker-registry-ro"
 
 
 class RollbackTypes(Enum):
@@ -2066,6 +2067,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_tron_tsc: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
+    readonly_docker_registry_auth_file: str
+    private_docker_registries: List[str]
 
 
 def load_system_paasta_config(
@@ -2839,6 +2842,17 @@ class SystemPaastaConfig:
         else:
             # NOTE: this should never happen unless we've gotten bad data
             return None
+
+    def get_readonly_docker_registry_auth_file(self) -> str:
+        """Get the location of the readonly docker registry auth file as an absolute path."""
+        return self.config_dict.get(
+            "readonly_docker_registry_auth_file",
+            DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
+        )
+
+    def get_private_docker_registries(self) -> Set[str]:
+        """Get all the internal Docker registries without generally-available RO creds."""
+        return set(self.config_dict.get("private_docker_registries", []))
 
 
 def _run(

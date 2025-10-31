@@ -1,3 +1,75 @@
+paasta-tools (1.33.4) xenial; urgency=medium
+
+  * 1.33.4 tagged with 'make release'
+    Commit: Figure out service name earlier in local-run (#4142)  I
+    forgot that some folks obviate the -s/--service $SERVICE arg when
+    running `paasta` from inside a service checkout!  This handles that
+    case by resolving the desired service name as soon as possible :)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 31 Oct 2025 09:54:54 -0700
+
+paasta-tools (1.33.3) xenial; urgency=medium
+
+  * 1.33.3 tagged with 'make release'
+    Commit: Handle services on registries with no ro creds (#4141)  *
+    Handle services on registries with no ro creds  There were two bugs
+    in my original implementation: * we crash if there"s no ro creds
+    file (i had assumed the creds were   distributed everywhere) * we
+    don"t re-exec as root for registries with no ro creds and required
+    auth  This diff fixes both :)  I"ve also dropped the intermediate re-
+    exec when in a venv since krall showed me the error of my ways - I"m
+    not sure why I thought the  parent program of where sudo is invoked
+    from mattered...
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 30 Oct 2025 14:58:14 -0700
+
+paasta-tools (1.33.2) xenial; urgency=medium
+
+  * 1.33.2 tagged with 'make release'
+    Commit: Merge pull request #4138 from ymilki/worker_load_routable_ip
+    worker-load needs routeable-ip for prometheus scraping
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 29 Oct 2025 12:29:22 -0700
+
+paasta-tools (1.33.1) xenial; urgency=medium
+
+  * 1.33.1 tagged with 'make release'
+    Commit: Add back re-exec code to local-run (#4136)  * Add back re-
+    exec code to local-run  Turns out there was a hidden dependency in
+    the pre-existing code: running as root allows folks to use the
+    Puppeted PaaSTA Vault token on adhoc-prod - otherwise, they cannot
+    access the secrets their service is configured to use  * add back
+    venv detection code  i dunno why i thought we didn"t need this
+    anymore after ^
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 27 Oct 2025 10:44:27 -0700
+
+paasta-tools (1.33.0) xenial; urgency=medium
+
+  * 1.33.0 tagged with 'make release'
+    Commit: Don"t re-exec as root to pull in `local-run` (#4132)  *
+    Handle `paasta local-run` being called from inside a venv  We
+    occasionally get onpoint questions re: `paasta local-run` not
+    working inside yelpsoa-configs - most of the time, these are non-
+    infra engineers without sudo access who are then unable to use local-
+    run until they deactivate their venv, directly invoke
+    /usr/bin/paasta, or run from a shell without the venv activated.
+    Instead of bothering with with this re-exec/sudo nonsense - let"s
+    just use the existing read-only credentials on-disk!
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 22 Oct 2025 12:29:53 -0700
+
+paasta-tools (1.32.0) xenial; urgency=medium
+
+  * 1.32.0 tagged with 'make release'
+    Commit: Add `deploy_group` as a default k8s label (#4123)  This was
+    initially added just for autoscaling purposes, but it complicates
+    the code a bit to have it only be included for autoscaled instances
+    and it"s a somewhat useful label to have for adhoc filtering - so
+    let"s do a big bounce to simplify/improve things :)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 21 Oct 2025 10:11:02 -0700
+
 paasta-tools (1.31.4) xenial; urgency=medium
 
   * 1.31.4 tagged with 'make release'

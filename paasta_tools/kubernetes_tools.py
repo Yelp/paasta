@@ -2272,6 +2272,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             or self.get_prometheus_port() is not None
             or self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI)
             or self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN)
+            or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD)
         ):
             return "true"
         return "false"
@@ -2424,6 +2425,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
+            # NOTE: this is mostly here for autoscaling purposes: we use information from the deploy group
+            # during Prometheus relabeling - but it's not a bad label to have around in general, thus its
+            # inclusion here
+            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
@@ -2449,25 +2454,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        metrics_providers_needing_deploy_group = [
-            METRICS_PROVIDER_UWSGI,
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_WORKER_LOAD,
-        ]
-
-        if any(
-            self.should_use_metrics_provider(provider)
-            for provider in metrics_providers_needing_deploy_group
-        ):
-            # Deploy group is needed for Prometheus relabeling properly
-            # This should probably eventually be made into a default label,
-            # but for now we're fine with it being behind these feature toggles.
-            # Ideally, we'd also have the docker image here for ease-of-use
-            # in Prometheus relabeling, but that information is over the
-            # character limit for k8s labels (63 chars)
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
-
+        # NOTE: these are not mutually exclusive as a service could use multiple autoscaling types
         if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
