@@ -22,6 +22,7 @@ from datetime import datetime
 from functools import lru_cache
 from functools import partial
 from glob import glob
+from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -1130,10 +1131,10 @@ def _check_advertise_discover(
                 )
 
 
-def _check_smartstack_valid_proxy(proxied_through: str) -> None:
+def _check_smartstack_valid_proxy(proxied_through: str, soa_dir: str) -> None:
     """Checks whether its parameter is a valid Smartstack namespace. Can be used for proxied_through or clb_proxy."""
     proxy_service, proxy_namespace = proxied_through.split(".")
-    proxy_smartstack_filename = f"{proxy_service}/smartstack.yaml"
+    proxy_smartstack_filename = Path(soa_dir) / proxy_service / "smartstack.yaml"
     try:
         yaml_data = get_config_file_dict(proxy_smartstack_filename)
         if proxy_namespace not in yaml_data:
@@ -1149,14 +1150,15 @@ def _check_smartstack_valid_proxy(proxied_through: str) -> None:
 
 
 def _check_smartstack_proxied_through(
-    smartstack_data: dict[str, Any]
+    smartstack_data: dict[str, Any],
+    soa_dir: str,
 ) -> None:  # XXX: we should use a TypedDict here
     """Checks the proxied_through field of a Smartstack namespace refers to another valid Smartstack namespace"""
     if "proxied_through" not in smartstack_data:
         return
 
     proxied_through = smartstack_data["proxied_through"]
-    _check_smartstack_valid_proxy(proxied_through)
+    _check_smartstack_valid_proxy(proxied_through, soa_dir)
 
 
 def validate_smartstack(service_path: str) -> bool:
@@ -1168,13 +1170,13 @@ def validate_smartstack(service_path: str) -> bool:
     if not config:
         print(
             failure(
-                "smartstack.yaml is empty - if this service is not mesh-registed, please remove this file.",
+                "smartstack.yaml is empty - if this service is not mesh-registered, please remove this file.",
                 "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
             )
         )
         return False
 
-    _, service = path_to_soa_dir_service(service_path)
+    soa_dir, service = path_to_soa_dir_service(service_path)
     for namespace, namespace_config in config.items():
         # XXX(luisp): these should all really either return bools or be enforced in the schema
         # ...i'm mostly leaving these as-is since i'm trying to remove some internal code that
@@ -1185,7 +1187,7 @@ def validate_smartstack(service_path: str) -> bool:
         proxy_port = namespace_config["proxy_port"]
         _check_proxy_port_in_use(service, namespace, proxy_port)
         _check_advertise_discover(namespace_config)
-        _check_smartstack_proxied_through(namespace_config)
+        _check_smartstack_proxied_through(namespace_config, soa_dir)
 
     print(success("All SmartStack configs are valid"))
     return True
