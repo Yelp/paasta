@@ -1,3 +1,13 @@
+paasta-tools (1.33.4) xenial; urgency=medium
+
+  * 1.33.4 tagged with 'make release'
+    Commit: Figure out service name earlier in local-run (#4142)  I
+    forgot that some folks obviate the -s/--service $SERVICE arg when
+    running `paasta` from inside a service checkout!  This handles that
+    case by resolving the desired service name as soon as possible :)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 31 Oct 2025 09:54:54 -0700
+
 paasta-tools (1.33.3) xenial; urgency=medium
 
   * 1.33.3 tagged with 'make release'
