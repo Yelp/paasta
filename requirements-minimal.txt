@@ -30,7 +30,7 @@ kazoo >= 2.0.0
 # that we can use across our different clusters (e.g, if X.0.0 removes an API version that we use
 # in any cluster, this upper-bound should be < X.0.0)
 # we should probably also be better at setting a correct lower-bound, but that's less likely to cause issues.
-kubernetes >= 18.20.0, < 26.0.0
+kubernetes >= 29.0.0, < 35.0.0
 ldap3
 manhole
 mypy-extensions >= 0.3.0
