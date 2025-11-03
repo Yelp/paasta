@@ -1,3 +1,16 @@
+paasta-tools (1.34.0) xenial; urgency=medium
+
+  * 1.34.0 tagged with 'make release'
+    Commit: Support matchLabelKeys in TSCs (#4133)  This diff does a
+    couple things: * bumps the kubernetes version to something more
+    modern (and all the API changes/renames that go along with that) *
+    un-links the eks/kubernetes schemas (since the kubernetes files will
+    not support matchLabelKeys) * adds matchLabelKeys (well,
+    `match_label_keys` :p) support  Ref.: PAASTA-18779  (NOTE: new tests
+    written by claude)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 03 Nov 2025 11:29:25 -0800
+
 paasta-tools (1.33.4) xenial; urgency=medium
 
   * 1.33.4 tagged with 'make release'
