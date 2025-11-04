@@ -151,6 +151,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -195,10 +196,8 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
-GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
 SIDECAR_CONTAINER_NAMES = [
     HACHECK_POD_NAME,
-    GUNICORN_EXPORTER_POD_NAME,
 ]
 KUBERNETES_NAMESPACE = "paasta"
 PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
@@ -269,6 +268,10 @@ class KubeDeployment(NamedTuple):
     config_sha: str
     namespace: str
     replicas: Optional[int]
+
+    @property
+    def deployment_version(self) -> DeploymentVersion:
+        return DeploymentVersion(self.git_sha, self.image_version)
 
 
 class KubeCustomResource(NamedTuple):
@@ -872,7 +875,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] == METRICS_PROVIDER_UWSGI_V2:
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_WORKER_LOAD,
+        }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -1068,15 +1074,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config,
             hacheck_sidecar_volumes,
         )
-        gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
-            system_paasta_config
-        )
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
-        if gunicorn_exporter_container:
-            sidecars.append(gunicorn_exporter_container)
         return sidecars
 
     def get_readiness_check_prefix(
@@ -1162,37 +1163,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     projected_sa_volumes=[],
                 ),
             )
-        return None
-
-    def get_gunicorn_exporter_sidecar_container(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> Optional[V1Container]:
-
-        if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            return V1Container(
-                image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements(
-                    "gunicorn_exporter", system_paasta_config
-                ),
-                name=GUNICORN_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment(),
-                ports=[V1ContainerPort(container_port=9117)],
-                lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
-                        _exec=V1ExecAction(
-                            command=[
-                                "/bin/sh",
-                                "-c",
-                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
-                                # metrics up until our Pod dies
-                                f"sleep {self.get_hacheck_prestop_sleep_seconds()}",
-                            ]
-                        )
-                    )
-                ),
-            )
-
         return None
 
     def get_env(
@@ -1460,6 +1430,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         secret_volumes: Sequence[SecretVolume],
         service_namespace_config: ServiceNamespaceConfig,
         include_sidecars: bool = True,
+        include_liveness_probe: bool = True,
+        include_readiness_probe: bool = True,
     ) -> Sequence[V1Container]:
         ports = [self.get_container_port()]
         # MONK-1130
@@ -1485,8 +1457,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             ),
             name=self.get_sanitised_instance_name(),
-            liveness_probe=self.get_liveness_probe(service_namespace_config),
-            readiness_probe=self.get_readiness_probe(service_namespace_config),
+            liveness_probe=(
+                self.get_liveness_probe(service_namespace_config)
+                if include_liveness_probe
+                else None
+            ),
+            readiness_probe=(
+                self.get_readiness_probe(service_namespace_config)
+                if include_readiness_probe
+                else None
+            ),
             ports=[V1ContainerPort(container_port=port) for port in ports],
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
@@ -1532,7 +1512,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         and the service will be removed from smartstack, which is the same effect we get after running hadown.
         """
 
-        # Everywhere this value is currently used (hacheck sidecar or gunicorn sidecar), we can pretty safely
+        # Everywhere this value is currently used (hacheck sidecar), we can pretty safely
         # assume that the service is in smartstack.
         return self.get_prestop_sleep_seconds(is_in_smartstack=True) + 1
 
@@ -1912,7 +1892,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_datastore_credentials_secret_hash():
                 volume_mounts.append(
                     V1VolumeMount(
-                        mount_path=f"/datastore",
+                        mount_path="/datastore",
                         name=self.get_datastore_secret_volume_name(),
                         read_only=True,
                     )
@@ -2165,6 +2145,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 restart_on_failure=False,
                 include_sidecars=include_sidecars,
                 force_no_routable_ip=not keep_routable_ip,
+                include_liveness_probe=False,
+                include_readiness_probe=False,
             )
             pod_template.metadata.labels.update(additional_labels)
             complete_config = V1Job(
@@ -2290,6 +2272,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             or self.get_prometheus_port() is not None
             or self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI)
             or self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN)
+            or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD)
         ):
             return "true"
         return "false"
@@ -2304,6 +2287,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         restart_on_failure: bool = True,
         include_sidecars: bool = True,
         force_no_routable_ip: bool = False,
+        include_liveness_probe: bool = True,
+        include_readiness_probe: bool = True,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -2341,6 +2326,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 system_paasta_config=system_paasta_config,
                 service_namespace_config=service_namespace_config,
                 include_sidecars=include_sidecars,
+                include_liveness_probe=include_liveness_probe,
+                include_readiness_probe=include_readiness_probe,
             ),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
@@ -2438,6 +2425,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
+            # NOTE: this is mostly here for autoscaling purposes: we use information from the deploy group
+            # during Prometheus relabeling - but it's not a bad label to have around in general, thus its
+            # inclusion here
+            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
@@ -2463,22 +2454,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI):
-            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
-            # But we do still need deploy_group for relabeling properly
-            # this should probably eventually be made into a default label,
-            # but for now we're fine with it being behind these feature toggles.
-            # ideally, we'd also have the docker image here for ease-of-use
-            # in Prometheus relabeling, but that information is over the
-            # character limit for k8s labels (63 chars)
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
-
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+        # NOTE: these are not mutually exclusive as a service could use multiple autoscaling types
+        if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        elif self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+        if self.should_use_metrics_provider(
+            METRICS_PROVIDER_GUNICORN
+        ) or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         # the default AWS LB Controller behavior is to enable this by-namespace
@@ -4195,6 +4177,10 @@ def create_pod_topology_spread_constraints(
                 when_unsatisfiable=constraint.get(
                     "when_unsatisfiable", "ScheduleAnyway"
                 ),
+                # we might want to default this to someting else in the future
+                # but for now, make this opt-in
+                # (null or empty list means only match against the labelSelector)
+                match_label_keys=constraint.get("match_label_keys", None),
             )
         )
 

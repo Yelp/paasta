@@ -30,6 +30,7 @@ from typing import Callable
 from typing import ContextManager
 from typing import Dict
 from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableSequence
@@ -52,10 +53,31 @@ try:
 except ImportError:
     scribereader = None
 
+# NOTE: this is an internal-only package, so we won't be able to typecheck against it with mypy
+# without these hacky inlined stubs
 try:
     from logreader.readers import S3LogsReader
+
+    s3reader_available = True
 except ImportError:
-    S3LogsReader = None
+    s3reader_available = False
+
+    class S3LogsReader:  # type: ignore[no-redef]  # stub class for internal-only package
+        def __init__(self, superregion: str) -> None:
+            raise ImportError(
+                "logreader (internal Yelp package) is not available - unable to display logs."
+            )
+
+        def get_log_reader(
+            self,
+            log_name: str,
+            start_datetime: datetime.datetime,
+            end_datetime: datetime.datetime,
+        ) -> Iterator[str]:
+            raise NotImplementedError(
+                "logreader (internal Yelp package) is not available - unable to display logs."
+            )
+
 
 from pytimeparse.timeparse import timeparse
 
@@ -156,7 +178,7 @@ def add_subparser(subparsers) -> None:
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
-        help=f"Define a different soa config directory. Defaults to %(default)s.",
+        help="Define a different soa config directory. Defaults to %(default)s.",
     )
 
     status_parser.add_argument(
@@ -1174,7 +1196,7 @@ class VectorLogsReader(LogReader):
     ) -> None:
         super().__init__()
 
-        if S3LogsReader is None:
+        if not s3reader_available:
             raise Exception("yelp_clog package must be available to use S3LogsReader")
 
         self.cluster_map = cluster_map
@@ -1226,16 +1248,16 @@ class VectorLogsReader(LogReader):
                 except ValueError:
                     timestamp = pytz.utc.localize(datetime.datetime.min)
 
-                line = {"raw_line": line, "sort_key": timestamp}
-                aggregated_logs.append(line)
+                formatted_line = {"raw_line": line, "sort_key": timestamp}
+                aggregated_logs.append(formatted_line)
 
         aggregated_logs = list(
             {line["raw_line"]: line for line in aggregated_logs}.values()
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
 
-        for line in aggregated_logs:
-            print_log(line["raw_line"], levels, raw_mode, strip_headers)
+        for formatted_line in aggregated_logs:
+            print_log(formatted_line["raw_line"], levels, raw_mode, strip_headers)
 
     def tail_logs(
         self,

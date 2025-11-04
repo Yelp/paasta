@@ -18,6 +18,7 @@ import a_sync
 import asynctest
 import mock
 import pytest
+import requests.exceptions
 
 import paasta_tools.instance.kubernetes as pik
 from paasta_tools import utils
@@ -300,6 +301,7 @@ class TestKubernetesStatusV2:
 
         mock_load_service_namespace_config.return_value = {}
         mock_job_config.get_registrations.return_value = ["service.instance"]
+        mock_job_config.get_container_port.return_value = 8080
         mock_get_pod_event_messages.return_value = []
         status = pik.kubernetes_status_v2(
             service="service",
@@ -317,6 +319,7 @@ class TestKubernetesStatusV2:
             "bounce_method": mock_job_config.get_bounce_method.return_value,
             "versions": [
                 {
+                    "container_port": 8080,
                     "type": "ReplicaSet",
                     "name": "replicaset_1",
                     "replicas": 1,
@@ -394,6 +397,7 @@ class TestKubernetesStatusV2:
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
+        mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
                 metadata=Struct(
@@ -426,6 +430,7 @@ class TestKubernetesStatusV2:
 
         assert len(status["versions"]) == 1
         assert status["versions"][0] == {
+            "container_port": 8080,
             "name": "controller_revision_1",
             "type": "ControllerRevision",
             "replicas": 1,
@@ -455,6 +460,7 @@ class TestKubernetesStatusV2:
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
+        mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
                 metadata=Struct(
@@ -488,6 +494,7 @@ class TestKubernetesStatusV2:
 
         assert len(status["versions"]) == 1
         assert status["versions"][0] == {
+            "container_port": 8080,
             "name": "controller_revision_1",
             "type": "ControllerRevision",
             "replicas": 1,
@@ -1003,3 +1010,292 @@ async def test_get_pod_containers(mock_pod):
     ]
 
     assert no_start_containers[0]["timestamp"] is None
+
+
+@pytest.mark.asyncio
+async def test_mesh_status_retry_on_timeout_then_success():
+    """Test that mesh_status retries on ConnectTimeout and succeeds on second attempt."""
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+        return_value=[],
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_checker_class, asynctest.patch(
+        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+        autospec=True,
+    ) as mock_build_dict, asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+        return_value=6,
+        autospec=True,
+    ):
+        mock_checker = mock_checker_class.return_value
+        mock_checker.get_allowed_locations_and_hosts.return_value = {
+            "location1": ["host1", "host2", "host3"]
+        }
+        mock_checker.get_hostname_in_pool.side_effect = ["host1", "host2"]
+
+        # First call raises ConnectTimeout, second succeeds
+        mock_build_dict.side_effect = [
+            requests.exceptions.ConnectTimeout(),
+            {"location": "location1", "backends": []},
+        ]
+
+        mock_job_config = mock.Mock()
+        mock_job_config.get_registrations.return_value = ["service.main"]
+        mock_job_config.get_pool.return_value = "default"
+        mock_job_config.get_nerve_namespace.return_value = "service.main"
+
+        mock_settings = mock.Mock()
+        mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
+            "http://{host}:{port}/status"
+        )
+
+        pods_task = wrap_value_in_task([])
+
+        result = await pik.mesh_status(
+            service="test_service",
+            service_mesh=pik.ServiceMesh.SMARTSTACK,
+            instance="test_instance",
+            job_config=mock_job_config,
+            service_namespace_config={},
+            pods_task=pods_task,
+            settings=mock_settings,
+        )
+
+        assert result["registration"] == "service.main"
+        assert len(result["locations"]) == 1
+        assert mock_checker.get_hostname_in_pool.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_mesh_status_all_retries_exhausted():
+    """Test that mesh_status raises ConnectTimeout when all retry attempts fail."""
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+        return_value=[],
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_checker_class, asynctest.patch(
+        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+        autospec=True,
+    ) as mock_build_dict, asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+        return_value=6,
+        autospec=True,
+    ):
+        mock_checker = mock_checker_class.return_value
+        mock_checker.get_allowed_locations_and_hosts.return_value = {
+            "location1": ["host1", "host2", "host3"]
+        }
+        mock_checker.get_hostname_in_pool.side_effect = ["host1", "host2", "host3"]
+
+        # All attempts raise ConnectTimeout
+        import requests.exceptions
+
+        mock_build_dict.side_effect = requests.exceptions.ConnectTimeout()
+
+        mock_job_config = mock.Mock()
+        mock_job_config.get_registrations.return_value = ["service.main"]
+        mock_job_config.get_pool.return_value = "default"
+        mock_job_config.get_nerve_namespace.return_value = "service.main"
+
+        mock_settings = mock.Mock()
+        mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
+            "http://{host}:{port}/status"
+        )
+
+        pods_task = wrap_value_in_task([])
+
+        with pytest.raises(requests.exceptions.ConnectTimeout):
+            await pik.mesh_status(
+                service="test_service",
+                service_mesh=pik.ServiceMesh.SMARTSTACK,
+                instance="test_instance",
+                job_config=mock_job_config,
+                service_namespace_config={},
+                pods_task=pods_task,
+                settings=mock_settings,
+            )
+
+        # Verify all 3 attempts were made
+        assert mock_checker.get_hostname_in_pool.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_mesh_status_retry_switches_hosts():
+    """Test that mesh_status calls get_hostname_in_pool on each retry to switch hosts."""
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+        return_value=[],
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_checker_class, asynctest.patch(
+        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+        autospec=True,
+    ) as mock_build_dict, asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+        return_value=6,
+        autospec=True,
+    ):
+        mock_checker = mock_checker_class.return_value
+        mock_checker.get_allowed_locations_and_hosts.return_value = {
+            "location1": ["host1", "host2", "host3"]
+        }
+
+        # First two calls timeout, third succeeds
+        mock_build_dict.side_effect = [
+            requests.exceptions.ConnectTimeout(),
+            requests.exceptions.ConnectTimeout(),
+            {"location": "location1", "backends": []},
+        ]
+
+        mock_job_config = mock.Mock()
+        mock_job_config.get_registrations.return_value = ["service.main"]
+        mock_job_config.get_pool.return_value = "default"
+        mock_job_config.get_nerve_namespace.return_value = "service.main"
+
+        mock_settings = mock.Mock()
+        mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
+            "http://{host}:{port}/status"
+        )
+
+        pods_task = wrap_value_in_task([])
+
+        await pik.mesh_status(
+            service="test_service",
+            service_mesh=pik.ServiceMesh.SMARTSTACK,
+            instance="test_instance",
+            job_config=mock_job_config,
+            service_namespace_config={},
+            pods_task=pods_task,
+            settings=mock_settings,
+        )
+
+        # Verify get_hostname_in_pool was called 3 times (once per attempt)
+        assert mock_checker.get_hostname_in_pool.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_mesh_status_no_timeout_success():
+    """Test that mesh_status succeeds on first attempt without retries when no timeout occurs."""
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+        return_value=[],
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_checker_class, asynctest.patch(
+        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+        autospec=True,
+    ) as mock_build_dict, asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+        return_value=6,
+        autospec=True,
+    ):
+        mock_checker = mock_checker_class.return_value
+        mock_checker.get_allowed_locations_and_hosts.return_value = {
+            "location1": ["host1", "host2", "host3"]
+        }
+        mock_checker.get_hostname_in_pool.return_value = "host1"
+
+        # First call succeeds immediately
+        mock_build_dict.return_value = {"location": "location1", "backends": []}
+
+        mock_job_config = mock.Mock()
+        mock_job_config.get_registrations.return_value = ["service.main"]
+        mock_job_config.get_pool.return_value = "default"
+        mock_job_config.get_nerve_namespace.return_value = "service.main"
+
+        mock_settings = mock.Mock()
+        mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
+            "http://{host}:{port}/status"
+        )
+
+        pods_task = wrap_value_in_task([])
+
+        result = await pik.mesh_status(
+            service="test_service",
+            service_mesh=pik.ServiceMesh.SMARTSTACK,
+            instance="test_instance",
+            job_config=mock_job_config,
+            service_namespace_config={},
+            pods_task=pods_task,
+            settings=mock_settings,
+        )
+
+        assert result["registration"] == "service.main"
+        assert len(result["locations"]) == 1
+        # Verify only one attempt was made (no retries)
+        assert mock_checker.get_hostname_in_pool.call_count == 1
+        assert mock_build_dict.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_mesh_status_envoy_timeout_retry():
+    """Test that mesh_status retries on ConnectTimeout for Envoy mesh."""
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+        return_value=[],
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_checker_class, asynctest.patch(
+        "paasta_tools.instance.kubernetes._build_envoy_location_dict",
+        autospec=True,
+    ) as mock_build_dict, asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+        return_value=6,
+        autospec=True,
+    ):
+        mock_checker = mock_checker_class.return_value
+        mock_checker.get_allowed_locations_and_hosts.return_value = {
+            "location1": ["host1", "host2", "host3"]
+        }
+        mock_checker.get_hostname_in_pool.side_effect = ["host1", "host2"]
+
+        # First call raises ConnectTimeout, second succeeds
+        import requests.exceptions
+
+        mock_build_dict.side_effect = [
+            requests.exceptions.ConnectTimeout(),
+            {"location": "location1", "backends": []},
+        ]
+
+        mock_job_config = mock.Mock()
+        mock_job_config.get_registrations.return_value = ["service.main"]
+        mock_job_config.get_pool.return_value = "default"
+        mock_job_config.get_nerve_namespace.return_value = "service.main"
+
+        mock_settings = mock.Mock()
+        mock_settings.system_paasta_config.get_envoy_admin_port.return_value = 9901
+        mock_settings.system_paasta_config.get_envoy_admin_endpoint_format.return_value = (
+            "http://{host}:{port}/clusters"
+        )
+
+        pods_task = wrap_value_in_task([])
+
+        result = await pik.mesh_status(
+            service="test_service",
+            service_mesh=pik.ServiceMesh.ENVOY,
+            instance="test_instance",
+            job_config=mock_job_config,
+            service_namespace_config={},
+            pods_task=pods_task,
+            settings=mock_settings,
+        )
+
+        assert result["registration"] == "service.main"
+        assert len(result["locations"]) == 1
+        assert mock_checker.get_hostname_in_pool.call_count == 2

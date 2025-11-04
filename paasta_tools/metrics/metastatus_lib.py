@@ -43,7 +43,6 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
-from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -97,9 +96,6 @@ def get_mesos_cpu_status(
     total = metrics["master/cpus_total"]
     used = metrics["master/cpus_used"]
 
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["cpus"]
-
     available = total - used
     return total, used, available
 
@@ -134,9 +130,6 @@ def get_mesos_memory_status(
     """
     total = metrics["master/mem_total"]
     used = metrics["master/mem_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["mem"]
 
     available = total - used
 
@@ -176,9 +169,6 @@ def get_mesos_disk_status(
     total = metrics["master/disk_total"]
     used = metrics["master/disk_used"]
 
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["disk"]
-
     available = total - used
     return total, used, available
 
@@ -215,9 +205,6 @@ def get_mesos_gpu_status(
     """
     total = metrics["master/gpus_total"]
     used = metrics["master/gpus_used"]
-
-    for slave in mesos_state["slaves"]:
-        used += reserved_maintenence_resources(slave["reserved_resources"])["gpus"]
 
     available = total - used
     return total, used, available
@@ -647,11 +634,6 @@ def calculate_resource_utilization_for_slaves(
     for task in tasks:
         task_resources = task["resources"]
         resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
-    for slave in slaves:
-        filtered_resources = filter_mesos_state_metrics(
-            reserved_maintenence_resources(slave["reserved_resources"])
-        )
-        resource_free_dict.subtract(Counter(filtered_resources))
     return {
         "free": ResourceInfo(
             cpus=resource_free_dict["cpus"],
@@ -1102,9 +1084,3 @@ def get_table_rows_for_resource_info_dict(
     return attribute_values + format_row_for_resource_utilization_healthchecks(
         healthcheck_utilization_pairs
     )
-
-
-def reserved_maintenence_resources(
-    resources: MesosResources,
-):
-    return resources.get(MAINTENANCE_ROLE, {"cpus": 0, "mem": 0, "disk": 0, "gpus": 0})

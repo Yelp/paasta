@@ -157,6 +157,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
@@ -553,18 +554,18 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
             autospec=True,
-            return_value={
-                "limits": {
+            return_value=V1ResourceRequirements(
+                limits={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-                "requests": {
+                requests={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-            },
+            ),
         ):
             mock_system_config = mock.Mock(
                 get_hacheck_sidecar_image_url=mock.Mock(
@@ -1530,6 +1531,8 @@ class TestKubernetesDeploymentConfig:
                 restart_on_failure=False,
                 include_sidecars=False,
                 force_no_routable_ip=True,
+                include_liveness_probe=False,
+                include_readiness_probe=False,
             )
             assert job.metadata.labels == {
                 "paasta.yelp.com/owner": "whatever",
@@ -1737,6 +1740,7 @@ class TestKubernetesDeploymentConfig:
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
             METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
         ],
     )
     @pytest.mark.parametrize(
@@ -1803,6 +1807,8 @@ class TestKubernetesDeploymentConfig:
         )
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
         mock_get_termination_grace_period.return_value = termination_grace_period
 
         if autoscaling_metric_provider:
@@ -1812,7 +1818,7 @@ class TestKubernetesDeploymentConfig:
                 autoscaling={
                     "metrics_providers": [{"type": autoscaling_metric_provider}]
                 },
-                deploy_group="fake_group",
+                deploy_group="brentford.fm",
             )
             autoscaled_deployment = KubernetesDeploymentConfig(
                 service="kurupt",
@@ -1833,6 +1839,7 @@ class TestKubernetesDeploymentConfig:
         assert mock_service_namespace_config.is_in_smartstack.called
         assert mock_get_pod_volumes.called
         assert mock_get_volumes.called
+        assert mock_load_system_paasta_config.called
         pod_spec_kwargs = dict(
             service_account_name=None,
             containers=mock_get_kubernetes_containers.return_value,
@@ -1860,19 +1867,25 @@ class TestKubernetesDeploymentConfig:
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
+            "paasta.yelp.com/deploy_group": "brentford.fm",
         }
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
-        if autoscaling_metric_provider:
-            expected_labels["paasta.yelp.com/deploy_group"] = "fake_group"
-            if autoscaling_metric_provider != METRICS_PROVIDER_UWSGI:
-                expected_labels[
-                    f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
-                ] = "true"
+        if autoscaling_metric_provider in (
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+        ):
+            expected_labels[
+                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
+            ] = "true"
+        elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
+            expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
+
         if autoscaling_metric_provider in (
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
         ):
             routable_ip = "true"
 
@@ -1893,6 +1906,228 @@ class TestKubernetesDeploymentConfig:
         )
 
         assert ret == expected
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "metrics_providers,expected_labels",
+        [
+            # No metrics providers
+            ([], {}),
+            # Single providers
+            ([METRICS_PROVIDER_UWSGI], {}),
+            (
+                [METRICS_PROVIDER_PISCINA],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_GUNICORN],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            ([METRICS_PROVIDER_CPU], {}),
+            ([METRICS_PROVIDER_UWSGI_V2], {}),
+            # Two provider combinations
+            (
+                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_PISCINA],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_GUNICORN],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_GUNICORN],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            ([METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_CPU], {}),
+            (
+                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_CPU],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [METRICS_PROVIDER_GUNICORN, METRICS_PROVIDER_CPU],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            # Three provider combinations
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+            ),
+            (
+                [
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            # All providers
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+            (
+                [
+                    METRICS_PROVIDER_UWSGI,
+                    METRICS_PROVIDER_PISCINA,
+                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_CPU,
+                    METRICS_PROVIDER_UWSGI_V2,
+                ],
+                {
+                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
+                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
+                },
+            ),
+        ],
+    )
+    def test_get_pod_template_spec_multiple_metrics_providers(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_pod_anti_affinity,
+        mock_get_termination_grace_period,
+        mock_load_service_namespace_config,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_kubernetes_containers,
+        mock_get_volumes,
+        mock_load_system_paasta_config,
+        metrics_providers: List[str],
+        expected_labels: Dict[str, str],
+    ):
+        """Test get_pod_template_spec with multiple metrics providers in all combinations."""
+        mock_service_namespace_config = mock.Mock()
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+        mock_service_namespace_config.is_in_smartstack.return_value = True
+        mock_get_node_affinity.return_value = None
+        mock_get_pod_anti_affinity.return_value = None
+        mock_create_pod_topology_spread_constraints.return_value = []
+        mock_get_termination_grace_period.return_value = None
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            True
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = {"dns_policy": "foo"}
+        mock_system_paasta_config.get_hacheck_sidecar_volumes.return_value = []
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+
+        # Deployment config with multiple metrics providers
+        mock_config_dict = KubernetesDeploymentConfigDict(
+            min_instances=1,
+            max_instances=3,
+            autoscaling={
+                "metrics_providers": [
+                    {"type": provider} for provider in metrics_providers
+                ]
+            },
+            deploy_group="fake_group",
+        )
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict=mock_config_dict,
+            branch_dict=None,
+        )
+
+        ret = deployment.get_pod_template_spec(
+            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+        )
+
+        assert mock_load_system_paasta_config.called
+
+        # Each metric provider has its own set of labels. We expect to see all of them.
+        actual_labels = ret.metadata.labels
+        for expected_label, expected_value in expected_labels.items():
+            assert actual_labels.get(expected_label) == expected_value, (
+                f"Expected label {expected_label}={expected_value}, "
+                f"but got {actual_labels.get(expected_label)}"
+            )
+
+        # Deploy group label is only set when specific metrics providers are used
+        deploy_group_providers = {
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+        }
+        if any(provider in deploy_group_providers for provider in metrics_providers):
+            assert actual_labels.get("paasta.yelp.com/deploy_group") == "fake_group"
+
+        # Autoscaled label is always set
+        assert actual_labels.get("paasta.yelp.com/autoscaled") == "true"
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
@@ -1970,6 +2205,7 @@ class TestKubernetesDeploymentConfig:
                 max_skew=1,
                 topology_key="kubernetes.io/hostname",
                 when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=None,
             ),
             V1TopologySpreadConstraint(
                 label_selector=V1LabelSelector(
@@ -1981,6 +2217,183 @@ class TestKubernetesDeploymentConfig:
                 max_skew=3,
                 topology_key="topology.kubernetes.io/zone",
                 when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_match_label_keys(self):
+        """Test that match_label_keys are properly passed through when specified"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_multiple_match_label_keys(
+        self,
+    ):
+        """Test that multiple match_label_keys are properly passed through"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 2,
+                "when_unsatisfiable": "DoNotSchedule",
+                "match_label_keys": [
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=2,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=[
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_empty_match_label_keys(self):
+        """Test that explicitly setting match_label_keys to empty list is preserved"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_mixed_match_label_keys(self):
+        """Test constraints where some have match_label_keys and some don't"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 3,
+                "when_unsatisfiable": "DoNotSchedule",
+                # No match_label_keys specified, should default to None
+            },
+            {
+                "topology_key": "kubernetes.io/region",
+                "max_skew": 5,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],  # Explicitly empty
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=5,
+                topology_key="kubernetes.io/region",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
             ),
         ]
 
@@ -2620,6 +3033,87 @@ class TestKubernetesDeploymentConfig:
                             target=V2MetricTarget(
                                 type="AverageValue",
                                 average_value=0.4,
+                            ),
+                            described_object=V2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                        ),
+                    ),
+                ],
+                scale_target_ref=V2CrossVersionObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
+                ),
+            ),
+        )
+
+        assert expected_res == return_value
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    def test_get_autoscaling_metric_spec_worker_load_prometheus(
+        self, fake_system_paasta_config
+    ):
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
+                            "setpoint": 0.5,
+                            "forecast_policy": "moving_average",
+                            "moving_average_window_seconds": 300,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+            "paasta",
+        )
+        expected_res = V2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={},
+                labels=mock.ANY,
+            ),
+            spec=V2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2MetricSpec(
+                        type="Object",
+                        object=V2ObjectMetricSource(
+                            metric=V2MetricIdentifier(
+                                name="service-instance-worker-load-prom",
+                            ),
+                            target=V2MetricTarget(
+                                type="AverageValue",
+                                average_value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3577,8 +4071,8 @@ def test_format_pod_event_messages():
     pod_name = "test_pod"
     rows = kubernetes_tools.format_pod_event_messages(pod_event_messages, pod_name)
 
-    assert rows[1] == f"    Event at 1: message_1"
-    assert rows[2] == f"    Event at 2: message_2"
+    assert rows[1] == "    Event at 1: message_1"
+    assert rows[2] == "    Event at 2: message_2"
 
 
 @given(integers(min_value=0), floats(min_value=0, max_value=1.0))
@@ -4478,7 +4972,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config84789e0b"
+            == "configeed84480"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4524,7 +5018,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config46a479f2"
+            == "config2c86f676"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4571,7 +5065,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "confige61d940f"
+            == "config0e657f9b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

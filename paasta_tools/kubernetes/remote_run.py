@@ -44,7 +44,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import load_system_paasta_config
-
+from paasta_tools.utils import NoConfigurationForServiceError
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
@@ -66,8 +66,8 @@ class RemoteRunOutcome(TypedDict, total=False):
     namespace: str
 
 
-def _format_remote_run_job_name(
-    job: V1Job,
+def format_remote_run_job_name(
+    job_name: str,
     user: str,
 ) -> str:
     """Format name for remote run job
@@ -76,7 +76,35 @@ def _format_remote_run_job_name(
     :param str user: the user requesting the remote-run
     :return: job name
     """
-    return limit_size_with_hash(f"remote-run-{user}-{job.metadata.name}")
+    return limit_size_with_hash(f"remote-run-{user}-{job_name}")
+
+
+def load_eks_or_adhoc_deployment_config(
+    service: str,
+    instance: str,
+    cluster: str,
+    is_toolbox: bool = False,
+    user: Optional[str] = None,
+) -> EksDeploymentConfig:
+    assert user or not is_toolbox, "User required for toolbox deployment"
+    try:
+        deployment_config = (
+            generate_toolbox_deployment(service, cluster, user)
+            if is_toolbox
+            else load_eks_service_config(service, instance, cluster)
+        )
+    except NoConfigurationForServiceError:
+        # Perhaps they are trying to use an adhoc instance
+        deployment_config = load_adhoc_job_config(service, instance, cluster)
+        deployment_config = EksDeploymentConfig(
+            service,
+            cluster,
+            instance,
+            config_dict=deployment_config.config_dict,
+            branch_dict=deployment_config.branch_dict,
+        )
+        deployment_config.config_filename_prefix = "adhoc"
+    return deployment_config
 
 
 def remote_run_start(
@@ -88,6 +116,7 @@ def remote_run_start(
     recreate: bool,
     max_duration: int,
     is_toolbox: bool,
+    command: Optional[str] = None,
 ) -> RemoteRunOutcome:
     """Trigger remote-run job
 
@@ -99,19 +128,20 @@ def remote_run_start(
     :param bool recreate: whether to recreate remote-run job if existing
     :param int max_duration: maximum allowed duration for the remote-ruh job
     :param bool is_toolbox: requested job is for a toolbox container
+    :param str command: command override to execute in the job container
     :return: outcome of the operation, and resulting Kubernetes pod information
     """
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
 
-    # Set to interactive mode
-    if interactive and not is_toolbox:
+    # Set override command, or sleep for interactive mode
+    if command and not is_toolbox:
+        deployment_config.config_dict["cmd"] = command
+    elif interactive and not is_toolbox:
         deployment_config.config_dict["cmd"] = f"sleep {max_duration}"
 
     # Create the app with a new name
@@ -120,10 +150,11 @@ def remote_run_start(
         deadline_seconds=max_duration,
         keep_routable_ip=is_toolbox,
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
     app_wrapper = get_application_wrapper(formatted_job)
     app_wrapper.soa_config = deployment_config
+    app_wrapper.ensure_service_account(kube_client)
 
     # Launch pod
     logger.info(f"Starting {job_name}")
@@ -178,10 +209,8 @@ def remote_run_ready(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
     namespace = deployment_config.get_namespace()
 
@@ -225,17 +254,15 @@ def remote_run_stop(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = (
-        generate_toolbox_deployment(service, cluster, user)
-        if is_toolbox
-        else load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(
+        service, instance, cluster, is_toolbox, user
     )
 
     # Rebuild the job metadata
     formatted_job = deployment_config.format_kubernetes_job(
         job_label=REMOTE_RUN_JOB_LABEL
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
     formatted_job.metadata.name = job_name
 
     # Stop the job
@@ -263,14 +290,14 @@ def remote_run_token(
     kube_client = KubeClient()
 
     # Load the service deployment settings
-    deployment_config = load_eks_service_config(service, instance, cluster)
+    deployment_config = load_eks_or_adhoc_deployment_config(service, instance, cluster)
     namespace = deployment_config.get_namespace()
 
     # Rebuild the job metadata
     formatted_job = deployment_config.format_kubernetes_job(
         job_label=REMOTE_RUN_JOB_LABEL
     )
-    job_name = _format_remote_run_job_name(formatted_job, user)
+    job_name = format_remote_run_job_name(formatted_job.metadata.name, user)
 
     # Find pod and create exec token for it
     pod = find_job_pod(kube_client, namespace, job_name)
@@ -449,7 +476,7 @@ def create_pod_scoped_role(
     role_name = f"remote-run-role-{pod_name_hash}"
     policy = V1PolicyRule(
         verbs=["create", "get"],
-        resources=["pods", "pods/exec"],
+        resources=["pods", "pods/exec", "pods/log"],
         resource_names=[pod_name],
         api_groups=[""],
     )

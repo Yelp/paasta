@@ -35,6 +35,7 @@ def view_remote_run_start(request):
     interactive = request.swagger_data["json_body"].get("interactive", True)
     recreate = request.swagger_data["json_body"].get("recreate", False)
     is_toolbox = request.swagger_data["json_body"].get("toolbox", False)
+    command = request.swagger_data["json_body"].get("command", None)
     max_duration = min(
         request.swagger_data["json_body"].get("max_duration", DEFAULT_MAX_DURATION),
         get_max_job_duration_limit(),
@@ -49,6 +50,7 @@ def view_remote_run_start(request):
             recreate=recreate,
             max_duration=max_duration,
             is_toolbox=is_toolbox,
+            command=command,
         )
     except Exception:
         error_message = traceback.format_exc()

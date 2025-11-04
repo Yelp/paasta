@@ -26,6 +26,7 @@ import socket
 import subprocess
 from collections import defaultdict
 from shlex import quote
+from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Generator
@@ -378,7 +379,7 @@ def list_service_instances(soa_dir: str = DEFAULT_SOA_DIR):
     return the_list
 
 
-def list_instances(**kwargs):
+def list_instances(**kwargs: Any) -> list[str]:
     """Returns a sorted list of all possible instance names
     for tab completion. We try to guess what service you might be
     operating on, otherwise we just provide *all* of them
@@ -597,42 +598,54 @@ def get_jenkins_build_output_url():
 
 InstanceListerSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(Optional[str], "cluster"),
-        NamedArg(str, "instance_type"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(Optional[str], "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "instance_type"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     List[Tuple[str, str]],
 ]
 
 InstanceLoaderSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(str, "instance"),
-        NamedArg(str, "cluster"),
-        NamedArg(bool, "load_deployments"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(bool, "load_deployments"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     InstanceConfig,
 ]
 
 LongRunningServiceListerSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(Optional[str], "cluster"),
-        NamedArg(str, "instance_type"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(Optional[str], "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "instance_type"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     List[Tuple[str, str]],
 ]
 
 LongRunningServiceLoaderSig = Callable[
     [
-        NamedArg(str, "service"),
-        NamedArg(str, "instance"),
-        NamedArg(str, "cluster"),
-        NamedArg(bool, "load_deployments"),
-        NamedArg(str, "soa_dir"),
+        NamedArg(
+            str,
+            "service",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        NamedArg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "cluster"),  # noqa: F821  # flake8 false-positive
+        NamedArg(bool, "load_deployments"),  # noqa: F821  # flake8 false-positive
+        NamedArg(str, "soa_dir"),  # noqa: F821  # flake8 false-positive
     ],
     LongRunningServiceConfig,
 ]

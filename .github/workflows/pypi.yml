@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         toxenv:
-          - py310-linux,docs,mypy,tests
+          - py310-linux,docs,tests
           - general_itests
     env:
       DOCKER_REGISTRY: ""
@@ -40,6 +40,6 @@ jobs:
       # this will create both a source distribution and a wheel
       - run: python -m build
       # and finally, upload the distributions to public PyPI
-      - uses: pypa/gh-action-pypi-publish@v1.2.2
+      - uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.pypi_password }}

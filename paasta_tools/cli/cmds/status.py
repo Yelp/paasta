@@ -123,12 +123,15 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
 
 InstanceStatusWriter = Callable[
     [
-        Arg(str, "cluster"),
-        Arg(str, "service"),
-        Arg(str, "instance"),
-        Arg(List[str], "output"),
+        Arg(
+            str,
+            "cluster",  # noqa: F821  # flake8 false-positive, these are not var references
+        ),
+        Arg(str, "service"),  # noqa: F821  # flake8 false-positive
+        Arg(str, "instance"),  # noqa: F821  # flake8 false-positive
+        Arg(List[str], "output"),  # noqa: F821  # flake8 false-positive
         Arg(Any),
-        Arg(int, "verbose"),
+        Arg(int, "verbose"),  # noqa: F821  # flake8 false-positive
     ],
     int,
 ]
@@ -328,7 +331,7 @@ def paasta_status_on_api_endpoint(
         )
         return 1
     except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))
         return 1
 
@@ -528,7 +531,7 @@ def get_smartstack_status_human(
 
     output = ["Smartstack:"]
     output.append(f"  Haproxy Service Name: {registration}")
-    output.append(f"  Backends:")
+    output.append("  Backends:")
     for location in locations:
         backend_status = haproxy_backend_report(
             expected_backends_per_location, location.running_backends_count
@@ -586,7 +589,7 @@ def get_envoy_status_human(
 
     output = ["Envoy:"]
     output.append(f"  Service Name: {registration}")
-    output.append(f"  Backends:")
+    output.append("  Backends:")
     for location in locations:
         backend_status = envoy_backend_report(
             expected_backends_per_location, location.running_backends_count
@@ -829,7 +832,7 @@ def _print_flink_status_from_job_manager(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
 
@@ -858,7 +861,7 @@ def _print_flink_status_from_job_manager(
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
         # Print Flink Log Commands
-        output.append(f"    Flink Log Commands:")
+        output.append("    Flink Log Commands:")
         output.append(
             f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
         )
@@ -875,7 +878,7 @@ def _print_flink_status_from_job_manager(
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
         # Print Flink Metrics Links
-        output.append(f"    Flink Monitoring:")
+        output.append("    Flink Monitoring:")
         output.append(
             f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
         )
@@ -914,11 +917,13 @@ def _print_flink_status_from_job_manager(
             else f"{pod_evicted_count}"
         )
 
+    pods_total_count = pod_running_count + pod_evicted_count + pod_other_count
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
         f" {evicted} evicted,"
-        f" {pod_other_count} other"
+        f" {pod_other_count} other,"
+        f" {pods_total_count} total"
     )
 
     if not should_job_info_be_shown(status["state"]):
@@ -941,12 +946,19 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
+        jobs_total_count = (
+            overview.jobs_running
+            + overview.jobs_finished
+            + overview.jobs_failed
+            + overview.jobs_cancelled
+        )
         output.append(
             "    Jobs:"
             f" {overview.jobs_running} running,"
             f" {overview.jobs_finished} finished,"
             f" {overview.jobs_failed} failed,"
-            f" {overview.jobs_cancelled} cancelled"
+            f" {overview.jobs_cancelled} cancelled,"
+            f" {jobs_total_count} total"
         )
         output.append(
             "   "
@@ -1310,21 +1322,33 @@ def get_version_table_entry(
             for state in ReplicaState
             if state in replica_state_counts
         ]
-        entry.append(f"  Replica States: {' / '.join(replica_state_display)}")
+        entry.append(
+            f"  Replica States: {' / '.join(replica_state_display)} / {replica_state_counts.total()} total"
+        )
         if not verbose:
             unhealthy_replicas = [
                 (state, pod) for state, pod in replica_states if state.is_unhealthy()
             ]
             if unhealthy_replicas:
-                entry.append(f"    Unhealthy Replicas:")
+                entry.append("    Unhealthy Replicas:")
                 replica_table = create_replica_table(
-                    unhealthy_replicas, service, instance, cluster, verbose
+                    unhealthy_replicas,
+                    service,
+                    instance,
+                    cluster,
+                    version.container_port,
+                    verbose,
                 )
                 for line in replica_table:
                     entry.append(f"      {line}")
         else:
             replica_table = create_replica_table(
-                replica_states, service, instance, cluster, verbose
+                replica_states,
+                service,
+                instance,
+                cluster,
+                version.container_port,
+                verbose,
             )
             for line in replica_table:
                 entry.append(f"    {line}")
@@ -1464,6 +1488,7 @@ def create_replica_table(
     service: str,
     instance: str,
     cluster: str,
+    container_port: int,
     verbose: int = 0,
 ) -> List[str]:
     header = ["ID", "IP/Port", "Host deployed to", "Started at what localtime", "State"]
@@ -1471,9 +1496,10 @@ def create_replica_table(
     for state, pod in pods:
         start_datetime = datetime.fromtimestamp(pod.create_timestamp)
         humanized_start_time = humanize.naturaltime(start_datetime)
+
         row = [
             pod.name,
-            f"{pod.ip}:8888" if pod.ip else "None",
+            f"{pod.ip}:{container_port}" if pod.ip else "None",
             pod.host or "None",
             humanized_start_time,
             state.formatted_message,
@@ -1523,7 +1549,7 @@ def create_replica_table(
                             f"  OOM Killed {human_oom_kill_timestamp} ({oom_kill_timestamp})."
                         ),
                         PaastaColors.red(
-                            f"    Check y/check-oom-events and consider increasing memory in yelpsoa_configs"
+                            "    Check y/check-oom-events and consider increasing memory in yelpsoa_configs"
                         ),
                     ]
                 )
@@ -1587,7 +1613,7 @@ def create_replica_table(
         elif state == ReplicaState.UNKNOWN:
             table.append(
                 PaastaColors.red(
-                    f"  Cannot determine pod state, please try again. If you continue to see this state, please contact #paasta"
+                    "  Cannot determine pod state, please try again. If you continue to see this state, please contact #paasta"
                 )
             )
     return format_table(table)
@@ -1607,7 +1633,7 @@ def get_autoscaling_table(
         table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
-            table.append(f"       Metrics:")
+            table.append("       Metrics:")
 
         metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
         for metric in autoscaling_status["metrics"]:
@@ -1695,10 +1721,10 @@ def print_kubernetes_status(
         output.append(
             f"       Last scale time: {autoscaling_status['last_scale_time']}"
         )
-        output.append(f"       Dashboard: y/was-it-the-autoscaler")
+        output.append("       Dashboard: y/was-it-the-autoscaler")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
-            output.append(f"       Metrics:")
+            output.append("       Metrics:")
 
         metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
         for metric in autoscaling_status["metrics"]:
@@ -2201,15 +2227,15 @@ def apply_args_filters(
         if args.service or args.instances:
             print(
                 PaastaColors.red(
-                    f"Invalid command. Do not include optional arguments -s or -i "
-                    f"when using shorthand notation."
+                    "Invalid command. Do not include optional arguments -s or -i "
+                    "when using shorthand notation."
                 )
             )
             return clusters_services_instances
         if "." in args.service_instance:
             args.service, args.instances = args.service_instance.split(".", 1)
         else:
-            print(PaastaColors.red(f'Use a "." to separate service and instance name'))
+            print(PaastaColors.red('Use a "." to separate service and instance name'))
             return clusters_services_instances
     if args.service:
         try:
@@ -2221,7 +2247,7 @@ def apply_args_filters(
                 args.service, all_services, n=5, cutoff=0.5
             )
             if suggestions:
-                print(PaastaColors.red(f"Did you mean any of these?"))
+                print(PaastaColors.red("Did you mean any of these?"))
                 for suggestion in suggestions:
                     print(PaastaColors.red(f"  {suggestion}"))
             return clusters_services_instances

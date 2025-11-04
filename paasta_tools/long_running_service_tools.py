@@ -41,6 +41,7 @@ DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 
 METRICS_PROVIDER_CPU = "cpu"
 METRICS_PROVIDER_UWSGI = "uwsgi"
@@ -48,7 +49,8 @@ METRICS_PROVIDER_UWSGI_V2 = "uwsgi-v2"
 METRICS_PROVIDER_GUNICORN = "gunicorn"
 METRICS_PROVIDER_PISCINA = "piscina"
 METRICS_PROVIDER_ACTIVE_REQUESTS = "active-requests"
-METRICS_PROVIDER_PROMQL = "arbitrary_promql"
+METRICS_PROVIDER_PROMQL = "arbitrary-promql"
+METRICS_PROVIDER_WORKER_LOAD = "worker-load"
 
 ALL_METRICS_PROVIDERS = [
     METRICS_PROVIDER_CPU,
@@ -58,6 +60,7 @@ ALL_METRICS_PROVIDERS = [
     METRICS_PROVIDER_PISCINA,
     METRICS_PROVIDER_ACTIVE_REQUESTS,
     METRICS_PROVIDER_PROMQL,
+    METRICS_PROVIDER_WORKER_LOAD,
 ]
 
 
@@ -95,9 +98,12 @@ class ServiceNamespaceConfig(dict):
         """
         healthcheck_mode = self.get("healthcheck_mode", None)
         if not healthcheck_mode:
-            return self.get_mode()
-        else:
-            return healthcheck_mode
+            mode = self.get_mode()
+            if mode == "http2":
+                healthcheck_mode = "http"
+            else:
+                healthcheck_mode = mode
+        return healthcheck_mode
 
     def get_mode(self) -> str:
         """Get the mode that the service runs in and check that we support it.
@@ -112,7 +118,7 @@ class ServiceNamespaceConfig(dict):
                 return None
             else:
                 return "http"
-        elif mode in ["http", "tcp", "https"]:
+        elif mode in ["http", "http2", "tcp", "https"]:
             return mode
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)

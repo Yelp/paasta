@@ -31,7 +31,7 @@ kazoo >= 2.0.0
 # in any cluster, this upper-bound should be < X.0.0)
 # NOTE: the above is not exactly true anymore due to our legacy clusters...
 # we should probably also be better at setting a correct lower-bound, but that's less likely to cause issues.
-kubernetes >= 27.0.0, < 30.0.0
+kubernetes >= 29.0.0, < 35.0.0
 ldap3
 manhole
 mypy-extensions >= 0.3.0

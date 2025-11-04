@@ -64,6 +64,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -160,6 +161,10 @@ INVALID_AUTOSCALING_FIELDS = {
         "prometheus-adapter-config",
     },
     METRICS_PROVIDER_UWSGI_V2: {
+        "desired_active_requests_per_replica",
+        "prometheus-adapter-config",
+    },
+    METRICS_PROVIDER_WORKER_LOAD: {
         "desired_active_requests_per_replica",
         "prometheus-adapter-config",
     },
@@ -504,23 +509,32 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
     for cluster in list_tron_clusters(service, soa_dir):
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
-        elif verbose:
-            # service config has been validated and cron schedules should be safe to parse
-
-            # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
-            service_config = load_tron_service_config(
-                service=service, cluster=cluster, soa_dir=soa_dir
-            )
-            for config in service_config:
-                cron_expression = config.get_cron_expression()
-                if cron_expression:
-                    print_upcoming_runs(config, cron_expression)
-
+        # service config has been validated and cron schedules should be safe to parse
+        # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
+        service_config = load_tron_service_config(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        )
+        for config in service_config:
+            cron_expression = config.get_cron_expression()
+            if cron_expression:
+                try:
+                    upcoming_runs = get_upcoming_runs(config, cron_expression)
+                    if verbose:
+                        print(info_message(f"Upcoming runs for {config.get_name()}:"))
+                        for run in upcoming_runs:
+                            print(f"\t{run}")
+                except Exception as e:
+                    print(
+                        failure(
+                            f"Invalid schedule ({cron_expression}) for {config.get_name()}: {e}",
+                            "http://crontab.guru",
+                        )
+                    )
+                    returncode = False
     return returncode
 
 
-def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
-    print(info_message(f"Upcoming runs for {config.get_name()}:"))
+def get_upcoming_runs(config: TronJobConfig, cron_expression: str) -> List[datetime]:
 
     config_tz = config.get_time_zone() or DEFAULT_TZ
 
@@ -528,9 +542,7 @@ def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
         cron_schedule=cron_expression,
         starting_from=pytz.timezone(config_tz).localize(datetime.today()),
     )
-
-    for run in next_cron_runs:
-        print(f"\t{run}")
+    return next_cron_runs
 
 
 def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
@@ -566,7 +578,7 @@ def validate_paasta_objects(service_path):
         errors = "\n".join(messages)
         print(failure((f"There were failures validating {service}: {errors}"), ""))
     else:
-        print(success(f"All PaaSTA Instances for are valid for all clusters"))
+        print(success("All PaaSTA Instances for are valid for all clusters"))
 
     return returncode
 
@@ -734,7 +746,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                             and configured_provider_count > 1
                         ):
                             raise AutoscalingValidationError(
-                                f"cannot use bespoke autoscaling with HPA autoscaling"
+                                "cannot use bespoke autoscaling with HPA autoscaling"
                             )
                         if metrics_provider["type"] in seen_provider_types:
                             raise AutoscalingValidationError(
@@ -801,7 +813,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                             ):
                                 link = "y/override-cpu-autotune"
                                 raise AutoscalingValidationError(
-                                    f"CPU override detected for a CPU-autoscaled instance; "
+                                    "CPU override detected for a CPU-autoscaled instance; "
                                     "see the following link for next steps:"
                                 )
                     except AutoscalingValidationError as e:
@@ -874,7 +886,7 @@ def check_secrets_for_instance(
 
 def list_upcoming_runs(
     cron_schedule: str, starting_from: datetime, num_runs: int = 5
-) -> List[str]:
+) -> List[datetime]:
     iter = croniter(cron_schedule, starting_from)
     return [iter.get_next(datetime) for _ in range(num_runs)]
 
@@ -1009,4 +1021,5 @@ def paasta_validate(args):
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
     if not paasta_validate_soa_configs(service, service_path, args.verbose):
+        print("Invalid configs found. Please try again.")
         return 1

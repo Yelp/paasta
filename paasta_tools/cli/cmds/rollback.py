@@ -340,7 +340,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         print(
             PaastaColors.yellow(
-                f"WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
+                "WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
             )
         )
 

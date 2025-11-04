@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "title": "Paasta API",
-        "version": "1.2.0"
+        "version": "1.3.0"
     },
     "basePath": "/v1",
     "schemes": [
@@ -1788,6 +1788,11 @@
         "KubernetesVersion": {
             "type": "object",
             "properties": {
+                "container_port": {
+                    "description": "Port the container is expecting to receive traffic on",
+                    "type": "integer",
+                    "format": "int32"
+                },
                 "type": {
                     "description": "Type of version (ReplicaSet or ControllerRevision)",
                     "type": "string"
@@ -2324,6 +2329,9 @@
                 },
                 "toolbox": {
                     "type": "boolean"
+                },
+                "command": {
+                    "type": "string"
                 }
             },
             "required": [

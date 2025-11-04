@@ -53,6 +53,7 @@ from typing import Collection
 from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
+from typing import Generic
 from typing import IO
 from typing import Iterable
 from typing import Iterator
@@ -181,6 +182,7 @@ CAPS_DROP = [
     "SYS_CHROOT",
     "SETFCAP",
 ]
+DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE = "/nail/etc/docker-registry-ro"
 
 
 class RollbackTypes(Enum):
@@ -1948,6 +1950,7 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     topology_key: str
     when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
     max_skew: int
+    match_label_keys: List[str]
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
@@ -2035,7 +2038,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2066,6 +2068,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_tron_tsc: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
+    readonly_docker_registry_auth_file: str
+    private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
 
 
@@ -2167,7 +2171,7 @@ class SystemPaastaConfig:
 
     def get_default_spark_iam_user(self) -> str:
         return self.config_dict.get(
-            "default_spark_iam_user", "/etc/boto_cfg/mrjob.yaml"
+            "default_spark_iam_user", "/etc/boto_cfg/spark_driver.yaml"
         )
 
     def get_default_spark_driver_pool_override(self) -> str:
@@ -2669,13 +2673,6 @@ class SystemPaastaConfig:
     def default_should_use_uwsgi_exporter(self) -> bool:
         return self.config_dict.get("default_should_use_uwsgi_exporter", False)
 
-    def get_gunicorn_exporter_sidecar_image_url(self) -> str:
-        """Get the docker image URL for the gunicorn_exporter sidecar container"""
-        return self.config_dict.get(
-            "gunicorn_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
-        )
-
     def get_mark_for_deployment_max_polling_threads(self) -> int:
         return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
 
@@ -2847,6 +2844,17 @@ class SystemPaastaConfig:
         else:
             # NOTE: this should never happen unless we've gotten bad data
             return None
+
+    def get_readonly_docker_registry_auth_file(self) -> str:
+        """Get the location of the readonly docker registry auth file as an absolute path."""
+        return self.config_dict.get(
+            "readonly_docker_registry_auth_file",
+            DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
+        )
+
+    def get_private_docker_registries(self) -> Set[str]:
+        """Get all the internal Docker registries without generally-available RO creds."""
+        return set(self.config_dict.get("private_docker_registries", []))
 
     def get_unhealthy_pod_eviction_policy(self) -> str:
         """
@@ -4149,7 +4157,7 @@ def timeout(
     return decorate
 
 
-class _Timeout:
+class _Timeout(Generic[_TimeoutFuncRetType]):
     def __init__(
         self,
         function: Callable[..., _TimeoutFuncRetType],
