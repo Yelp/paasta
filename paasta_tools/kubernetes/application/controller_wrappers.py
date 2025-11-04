@@ -173,21 +173,21 @@ class Application(ABC):
         self, kube_client: KubeClient, namespace: str
     ) -> V1PodDisruptionBudget:
         max_unavailable: Union[str, int]
+
+        system_paasta_config = load_system_paasta_config()
+
         if "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (
                 f"{int((1 - self.soa_config.get_bounce_margin_factor()) * 100)}%"
             )
         else:
-            system_paasta_config = load_system_paasta_config()
             max_unavailable = system_paasta_config.get_pdb_max_unavailable()
 
         if "unhealthy_pod_eviction_policy" in self.soa_config.config_dict:
             unhealthy_pod_eviction_policy = (
                 self.soa_config.get_unhealthy_pod_eviction_policy()
             )
-
         else:
-            system_paasta_config = load_system_paasta_config()
             unhealthy_pod_eviction_policy = (
                 system_paasta_config.get_unhealthy_pod_eviction_policy()
             )
@@ -226,7 +226,7 @@ class Application(ABC):
                 != pdr.spec.unhealthy_pod_eviction_policy
             ):
                 logging.info(f"Updating poddisruptionbudget {pdr.metadata.name}")
-                return kube_client.policy.replace_namespaced_pod_disruption_budget(
+                return kube_client.policy.patch_namespaced_pod_disruption_budget(
                     name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
                 )
             else:

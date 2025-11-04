@@ -88,6 +88,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_margin_factor: float
     should_ping_for_unhealthy_pods: bool
     weight: int
+    unhealthy_pod_eviction_policy: str
 
 
 class ServiceNamespaceConfig(dict):

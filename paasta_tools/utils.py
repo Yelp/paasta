@@ -2859,7 +2859,7 @@ class SystemPaastaConfig:
     def get_unhealthy_pod_eviction_policy(self) -> str:
         """
         Get the unhealthy pod eviction policy for the cluster. Posible values:
-        * IfHealthyBudget:  unhealthy pods will not be evicted.
+        * IfHealthyBudget: unhealthy pods will only be evicted wrt to PodDisruptionBudget
         * AlwaysAllow: evict unhealthy pods regardless of the PodDisruptionBudget status.
         Defaults to IfHealthyBudget
         """

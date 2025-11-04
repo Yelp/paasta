@@ -4088,8 +4088,9 @@ def test_max_unavailable(instances, bmf):
 @pytest.mark.parametrize(
     "unhealthy_eviction_enabled,expected_policy",
     (
-        (False, None),
-        (True, "AlwaysAllow"),
+        (None, "IfHealthyBudget"),
+        ("IfHealthyBudget", "IfHealthyBudget"),
+        ("AlwaysAllow", "AlwaysAllow"),
     ),
 )
 def test_pod_disruption_budget_for_service_instance(
