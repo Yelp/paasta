@@ -2066,7 +2066,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_tron_tsc: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
-    enable_unhealthy_pod_eviction: bool
+    unhealthy_pod_eviction_policy: str
 
 
 def load_system_paasta_config(
@@ -2848,14 +2848,14 @@ class SystemPaastaConfig:
             # NOTE: this should never happen unless we've gotten bad data
             return None
 
-    def get_enable_unhealthy_pod_eviction(self) -> bool:
+    def get_unhealthy_pod_eviction_policy(self) -> str:
         """
-        Feature toggle to enable PDBs to evict unhealthy pods.
-
-        Defaults to False (meaning unhealthy pods will not be evicted) as we have legacy clusters where this is
-        unsupported.
+        Get the unhealthy pod eviction policy for the cluster. Posible values:
+        * IfHealthyBudget:  unhealthy pods will not be evicted.
+        * AlwaysAllow: evict unhealthy pods regardless of the PodDisruptionBudget status.
+        Defaults to IfHealthyBudget
         """
-        return self.config_dict.get("enable_unhealthy_pod_eviction", False)
+        return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
 
 
 def _run(

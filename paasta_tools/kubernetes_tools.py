@@ -3392,6 +3392,7 @@ def pod_disruption_budget_for_service_instance(
     instance: str,
     max_unavailable: Union[str, int],
     namespace: str,
+    unhealthy_pod_eviction_policy: str,
 ) -> V1PodDisruptionBudget:
     selector = V1LabelSelector(
         match_labels={
@@ -3399,17 +3400,11 @@ def pod_disruption_budget_for_service_instance(
             "paasta.yelp.com/instance": instance,
         }
     )
-    if load_system_paasta_config().get_enable_unhealthy_pod_eviction():
-        spec = V1PodDisruptionBudgetSpec(
-            max_unavailable=max_unavailable,
-            unhealthy_pod_eviction_policy="AlwaysAllow",  # XXX: should this be configurable?
-            selector=selector,
-        )
-    else:
-        spec = V1PodDisruptionBudgetSpec(
-            max_unavailable=max_unavailable,
-            selector=selector,
-        )
+    spec = V1PodDisruptionBudgetSpec(
+        max_unavailable=max_unavailable,
+        unhealthy_pod_eviction_policy=unhealthy_pod_eviction_policy,
+        selector=selector,
+    )
 
     return V1PodDisruptionBudget(
         metadata=V1ObjectMeta(

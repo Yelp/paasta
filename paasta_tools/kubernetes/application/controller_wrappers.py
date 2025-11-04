@@ -181,11 +181,23 @@ class Application(ABC):
             system_paasta_config = load_system_paasta_config()
             max_unavailable = system_paasta_config.get_pdb_max_unavailable()
 
+        if "unhealthy_pod_eviction_policy" in self.soa_config.config_dict:
+            unhealthy_pod_eviction_policy = (
+                self.soa_config.get_unhealthy_pod_eviction_policy()
+            )
+
+        else:
+            system_paasta_config = load_system_paasta_config()
+            unhealthy_pod_eviction_policy = (
+                system_paasta_config.get_unhealthy_pod_eviction_policy()
+            )
+
         pdr = pod_disruption_budget_for_service_instance(
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
             max_unavailable=max_unavailable,
             namespace=namespace,
+            unhealthy_pod_eviction_policy=unhealthy_pod_eviction_policy,
         )
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
@@ -198,14 +210,23 @@ class Application(ABC):
                 raise
 
         if existing_pdr:
+            """
+            Update the pod disruption budget only if spec.max_unavailable
+            or spec.unhealthy_pod_eviction_policy have changed;
+            ignore changes to other fields
+            """
             if existing_pdr.spec.min_available is not None:
                 logging.info(
                     "Not updating poddisruptionbudget: can't have both "
                     "min_available and max_unavailable"
                 )
-            elif existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
+            elif (
+                existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable
+                or existing_pdr.spec.unhealthy_pod_eviction_policy
+                != pdr.spec.unhealthy_pod_eviction_policy
+            ):
                 logging.info(f"Updating poddisruptionbudget {pdr.metadata.name}")
-                return kube_client.policy.patch_namespaced_pod_disruption_budget(
+                return kube_client.policy.replace_namespaced_pod_disruption_budget(
                     name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
                 )
             else:

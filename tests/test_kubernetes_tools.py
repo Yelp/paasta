@@ -3621,6 +3621,7 @@ def test_pod_disruption_budget_for_service_instance(
             instance="bar_1",
             max_unavailable="10%",
             namespace=mock_namespace,
+            unhealthy_pod_eviction_policy=expected_policy,
         )
 
     assert x.metadata.name == "foo--1-bar--1"
