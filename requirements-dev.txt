@@ -10,7 +10,7 @@ docutils==0.12
 exceptiongroup==1.1.2
 filelock==3.13.1
 flake8==7.3.0
-freezegun==0.3.7
+freezegun==1.5.5
 hypothesis==6.79.4
 identify==2.4.12
 imagesize==0.7.1
