@@ -212,7 +212,7 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
         dest="vault_auth_method",
         required=False,
         default="token",
-        choices=["token", "ldap"],
+        choices=["token", "okta"],
     )
     parser.add_argument(
         "--vault-token-file",
@@ -456,7 +456,7 @@ def paasta_secret(args):
                 "vault_token_file": args.vault_token_file,
                 # best solution so far is to change the below string to "token",
                 # so that token file is picked up from argparse
-                "vault_auth_method": "ldap",  # must have LDAP to get 2FA push for prod
+                "vault_auth_method": "okta",  # must use Okta to get 2FA push
             },
         )
         secret_provider.write_secret(
