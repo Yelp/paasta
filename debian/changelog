@@ -1,3 +1,11 @@
+paasta-tools (1.35.3) xenial; urgency=medium
+
+  * 1.35.3 tagged with 'make release'
+    Commit: Merge pull request #4146 from Yelp/u/ajayprataps/PAASTA-
+    18594  Added Unhealthy Pod eviction policy flag
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Mon, 10 Nov 2025 03:29:30 -0800
+
 paasta-tools (1.35.2) xenial; urgency=medium
 
   * 1.35.2 tagged with 'make release'
