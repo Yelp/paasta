@@ -88,6 +88,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_margin_factor: float
     should_ping_for_unhealthy_pods: bool
     weight: int
+    unhealthy_pod_eviction_policy: str
 
 
 class ServiceNamespaceConfig(dict):
@@ -412,6 +413,9 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_bounce_margin_factor(self) -> float:
         return self.config_dict.get("bounce_margin_factor", 0.95)
+
+    def get_unhealthy_pod_eviction_policy(self) -> str:
+        return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
 
     def get_should_ping_for_unhealthy_pods(self, default: bool) -> bool:
         return self.config_dict.get("should_ping_for_unhealthy_pods", default)

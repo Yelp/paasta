@@ -3374,21 +3374,26 @@ def pod_disruption_budget_for_service_instance(
     instance: str,
     max_unavailable: Union[str, int],
     namespace: str,
+    unhealthy_pod_eviction_policy: str,
 ) -> V1PodDisruptionBudget:
+    selector = V1LabelSelector(
+        match_labels={
+            "paasta.yelp.com/service": service,
+            "paasta.yelp.com/instance": instance,
+        }
+    )
+    spec = V1PodDisruptionBudgetSpec(
+        max_unavailable=max_unavailable,
+        unhealthy_pod_eviction_policy=unhealthy_pod_eviction_policy,
+        selector=selector,
+    )
+
     return V1PodDisruptionBudget(
         metadata=V1ObjectMeta(
             name=get_kubernetes_app_name(service, instance),
             namespace=namespace,
         ),
-        spec=V1PodDisruptionBudgetSpec(
-            max_unavailable=max_unavailable,
-            selector=V1LabelSelector(
-                match_labels={
-                    "paasta.yelp.com/service": service,
-                    "paasta.yelp.com/instance": instance,
-                }
-            ),
-        ),
+        spec=spec,
     )
 
 

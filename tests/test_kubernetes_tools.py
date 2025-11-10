@@ -4085,14 +4085,39 @@ def test_max_unavailable(instances, bmf):
     assert type(res) is int
 
 
-def test_pod_disruption_budget_for_service_instance():
+@pytest.mark.parametrize(
+    "unhealthy_eviction_enabled,expected_policy",
+    (
+        (None, "IfHealthyBudget"),
+        ("IfHealthyBudget", "IfHealthyBudget"),
+        ("AlwaysAllow", "AlwaysAllow"),
+    ),
+)
+def test_pod_disruption_budget_for_service_instance(
+    unhealthy_eviction_enabled, expected_policy
+):
     mock_namespace = "paasta"
-    x = pod_disruption_budget_for_service_instance(
-        service="foo_1",
-        instance="bar_1",
-        max_unavailable="10%",
-        namespace=mock_namespace,
-    )
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "enable_unhealthy_pod_eviction": unhealthy_eviction_enabled,
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ):
+        x = pod_disruption_budget_for_service_instance(
+            service="foo_1",
+            instance="bar_1",
+            max_unavailable="10%",
+            namespace=mock_namespace,
+            unhealthy_pod_eviction_policy=expected_policy,
+        )
 
     assert x.metadata.name == "foo--1-bar--1"
     assert x.metadata.namespace == "paasta"
@@ -4101,6 +4126,7 @@ def test_pod_disruption_budget_for_service_instance():
         "paasta.yelp.com/service": "foo_1",
         "paasta.yelp.com/instance": "bar_1",
     }
+    assert x.spec.unhealthy_pod_eviction_policy == expected_policy
 
 
 def test_create_pod_disruption_budget():
