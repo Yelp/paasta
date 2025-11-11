@@ -401,6 +401,11 @@ def validate_schema(file_path: str, file_type: str) -> bool:
 
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
+
+    # Filter out template stanzas (keys starting with "_") for smartstack configs
+    if file_type == "smartstack":
+        config_file_object = filter_templates_from_config(config_file_object)
+
     try:
         validator.validate(config_file_object)
         if file_type in K8S_TYPES and not validate_instance_names(
