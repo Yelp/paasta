@@ -50,6 +50,7 @@ from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import CoreV1Event
 from kubernetes.client import models
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
@@ -113,7 +114,6 @@ from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
@@ -2992,7 +2992,7 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
                 name="paasta-api-server-per-namespace",
             ),
             subjects=[
-                V1Subject(
+                RbacV1Subject(
                     kind="User",
                     name="yelp.com/paasta-api-server",
                 ),
@@ -3374,21 +3374,26 @@ def pod_disruption_budget_for_service_instance(
     instance: str,
     max_unavailable: Union[str, int],
     namespace: str,
+    unhealthy_pod_eviction_policy: str,
 ) -> V1PodDisruptionBudget:
+    selector = V1LabelSelector(
+        match_labels={
+            "paasta.yelp.com/service": service,
+            "paasta.yelp.com/instance": instance,
+        }
+    )
+    spec = V1PodDisruptionBudgetSpec(
+        max_unavailable=max_unavailable,
+        unhealthy_pod_eviction_policy=unhealthy_pod_eviction_policy,
+        selector=selector,
+    )
+
     return V1PodDisruptionBudget(
         metadata=V1ObjectMeta(
             name=get_kubernetes_app_name(service, instance),
             namespace=namespace,
         ),
-        spec=V1PodDisruptionBudgetSpec(
-            max_unavailable=max_unavailable,
-            selector=V1LabelSelector(
-                match_labels={
-                    "paasta.yelp.com/service": service,
-                    "paasta.yelp.com/instance": instance,
-                }
-            ),
-        ),
+        spec=spec,
     )
 
 
@@ -4172,6 +4177,10 @@ def create_pod_topology_spread_constraints(
                 when_unsatisfiable=constraint.get(
                     "when_unsatisfiable", "ScheduleAnyway"
                 ),
+                # we might want to default this to someting else in the future
+                # but for now, make this opt-in
+                # (null or empty list means only match against the labelSelector)
+                match_label_keys=constraint.get("match_label_keys", None),
             )
         )
 
@@ -4375,7 +4384,7 @@ def ensure_service_account(
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=sa_name,

@@ -1950,6 +1950,7 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     topology_key: str
     when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
     max_skew: int
+    match_label_keys: List[str]
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
@@ -2068,6 +2069,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
     readonly_docker_registry_auth_file: str
+    private_docker_registries: List[str]
+    unhealthy_pod_eviction_policy: str
 
 
 def load_system_paasta_config(
@@ -2848,6 +2851,19 @@ class SystemPaastaConfig:
             "readonly_docker_registry_auth_file",
             DEFAULT_READONLY_DOCKER_REGISTRY_AUTH_FILE,
         )
+
+    def get_private_docker_registries(self) -> Set[str]:
+        """Get all the internal Docker registries without generally-available RO creds."""
+        return set(self.config_dict.get("private_docker_registries", []))
+
+    def get_unhealthy_pod_eviction_policy(self) -> str:
+        """
+        Get the unhealthy pod eviction policy for the cluster. Posible values:
+        * IfHealthyBudget: unhealthy pods will only be evicted wrt to PodDisruptionBudget
+        * AlwaysAllow: evict unhealthy pods regardless of the PodDisruptionBudget status.
+        Defaults to IfHealthyBudget
+        """
+        return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
 
 
 def _run(
