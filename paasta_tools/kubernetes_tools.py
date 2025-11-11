@@ -2458,11 +2458,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        if self.should_use_metrics_provider(
-            METRICS_PROVIDER_GUNICORN
-        ) or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
-            labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
-
         # the default AWS LB Controller behavior is to enable this by-namespace
         # ...but that's kinda annoying to do in a toggleable way - so let's instead
         # toggle based on pod labels (which of course, will require changing the controller
