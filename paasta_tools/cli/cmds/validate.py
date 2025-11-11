@@ -77,6 +77,7 @@ from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
+from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
@@ -1175,6 +1176,9 @@ def validate_smartstack(service_path: str) -> bool:
             )
         )
         return False
+
+    # Filter out template stanzas (keys starting with "_")
+    config = filter_templates_from_config(config)
 
     soa_dir, service = path_to_soa_dir_service(service_path)
     for namespace, namespace_config in config.items():
