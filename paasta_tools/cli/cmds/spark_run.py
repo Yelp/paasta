@@ -897,6 +897,8 @@ def configure_and_run_docker_container(
         )
     )  # type:ignore
     environment.update(extra_driver_envs)
+    if "jupyter-lab" == args.cmd:
+        environment["SPARK_DRIVER_TYPE"] = "jupyter"
 
     if args.use_service_auth_token:
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
