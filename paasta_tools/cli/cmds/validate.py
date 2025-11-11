@@ -145,6 +145,9 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
+SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES = {
+    "smartstack",
+}
 
 INVALID_AUTOSCALING_FIELDS = {
     # setpoint isn't included here because we need to confirm that setpoint = 0.8
@@ -403,7 +406,7 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     config_file_object = get_config_file_dict(file_path)
 
     # Filter out template stanzas (keys starting with "_") for smartstack configs
-    if file_type == "smartstack":
+    if file_type in SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES:
         config_file_object = filter_templates_from_config(config_file_object)
 
     try:
