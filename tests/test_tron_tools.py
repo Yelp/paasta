@@ -1408,6 +1408,7 @@ class TestTronTools:
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
+                "SPARK_DRIVER_TYPE": "tron",
                 "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
                 "AWS_DEFAULT_REGION": "us-west-2",
