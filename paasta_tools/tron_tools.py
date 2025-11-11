@@ -506,7 +506,7 @@ class TronActionConfig(InstanceConfig):
             # XXX: update PAASTA_RESOURCE_* env vars to use the correct value from spark_args and set
             # these to the correct values for the executors as part of the driver commandline
 
-            # driver type needed for some services
+            # our internal Spark configuration service needs this to determine if any special behavior is required
             env["SPARK_DRIVER_TYPE"] = "tron"
 
         return env
