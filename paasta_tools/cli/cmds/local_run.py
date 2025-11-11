@@ -34,6 +34,7 @@ import requests
 from docker import errors
 from docker.api.client import APIClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_service_configuration
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.cli.authentication import get_service_auth_token
@@ -74,12 +75,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
-
-STANDARD_PAASTA_CLI_PATHS = {
-    "/bin/paasta",
-    "/opt/venvs/paasta-tools/bin/paasta",
-    "/usr/bin/paasta",
-}
 
 
 class AWSSessionCreds(TypedDict):
@@ -631,8 +626,19 @@ def get_readonly_docker_registry_auth_config(
     system_paasta_config = load_system_paasta_config()
     config_path = system_paasta_config.get_readonly_docker_registry_auth_file()
 
-    with open(config_path) as f:
-        docker_config = json.load(f)
+    try:
+        with open(config_path) as f:
+            docker_config = json.load(f)
+    except Exception:
+        print(
+            PaastaColors.yellow(
+                "Warning: unable to load read-only docker registry credentials."
+            ),
+            file=sys.stderr,
+        )
+        # the best we can do is try to pull with whatever auth the user has configured locally
+        # i.e., root-owned docker config in /root/.docker/config.json
+        return None
     registry = docker_url.split("/")[0]
 
     # find matching auth config - our usual ro config will have at least two entries
@@ -646,7 +652,7 @@ def get_readonly_docker_registry_auth_config(
                 username, password = auth_string.split(":", 1)
                 return {"username": username, "password": password}
 
-    # afaik, we should only hit this if folks are being naughty and passing a docker url from docker-dev
+    # we'll hit this for registries like docker-dev or extra-private internal registries
     return None
 
 
@@ -661,7 +667,7 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
     if not auth_config:
         print(
             PaastaColors.yellow(
-                "Warning: No read-only docker registry credentials found, attempting to pull without authentication."
+                "Warning: No read-only docker registry credentials found, attempting to pull without them."
             ),
             file=sys.stderr,
         )
@@ -677,7 +683,9 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
             for line in docker_client.pull(
                 docker_url, auth_config=auth_config, stream=True, decode=True
             ):
-                print(f"{line['id']}: {line['status']}", file=sys.stderr)
+                # not all lines have an 'id' key :(
+                id_prefix = f"{line['id']}: " if "id" in line else ""
+                print(f"{id_prefix}{line['status']}", file=sys.stderr)
     except Exception as e:
         print(
             f"\nPull failed. Error: {e}",
@@ -1354,26 +1362,39 @@ def docker_config_available():
     )
 
 
+def should_reexec_as_root(
+    service: str, skip_secrets: bool, action: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> bool:
+    # local-run can't pull secrets from Vault in prod without a root-owned token
+    need_vault_token = not skip_secrets and action == "pull"
+
+    # there are some special teams with their own private docker registries and no ro creds
+    # however, we don't know what registry is to be used without loading the service config
+    service_info = read_service_configuration(service, soa_dir)
+    # technically folks can set the standard registry as a value here, but atm no one is doing that :p
+    registry_override = service_info.get("docker_registry")
+    # note: we could also have a list of registries that have ro creds, but this seems fine for now
+    uses_private_registry = (
+        registry_override
+        and registry_override
+        in load_system_paasta_config().get_private_docker_registries()
+    )
+    need_docker_config = uses_private_registry and action == "pull"
+
+    return (need_vault_token or need_docker_config) and os.geteuid() != 0
+
+
 def paasta_local_run(args):
-    if args.action == "pull" and os.geteuid() != 0 and not args.skip_secrets:
-        # we unfortunately sometimes install paasta inside the virtualenv of repos where
-        # folks might be running commands such as `paasta local-run`.
-        # this tends to cause some confusion as this results folks being denied access
-        # to sudo since the virtualenv paasta is not in our sudoers :)
-        # NOTE: in the unlikely event that someone does need to run this from a venv,
-        # there's an opt-out env var
-        if (
-            sys.argv[0] not in STANDARD_PAASTA_CLI_PATHS
-            and "PAASTA_ALLOW_VENV" not in os.environ
-        ):
-            print(
-                "You are running the PaaSTA CLI from a virtualenv - this is unexpected. Re-executing `paasta` from the standard location.."
-            )
-            os.execvp("/usr/bin/paasta", ["/usr/bin/paasta"] + sys.argv[1:])
+    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+    if should_reexec_as_root(
+        service, args.skip_secrets, args.action, args.yelpsoa_config_root
+    ):
         # XXX: we should re-architect this to not need sudo, but for now,
         # re-exec ourselves with sudo to get access to the paasta vault token
         # NOTE: once we do that, we can also remove the venv check above :)
-        print("Re-executing paasta local-run --pull with sudo for Vault access...")
+        print(
+            "Re-executing paasta local-run --pull with sudo for Vault/Docker registry access..."
+        )
         os.execvp("sudo", ["sudo", "-H", "/usr/bin/paasta"] + sys.argv[1:])
     if args.action == "build" and not makefile_responds_to("cook-image"):
         print(
@@ -1400,8 +1421,6 @@ def paasta_local_run(args):
         system_paasta_config = SystemPaastaConfig({"volumes": []}, "/etc/paasta")
 
     local_run_config = system_paasta_config.get_local_run_config()
-
-    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
 
     if args.cluster:
         cluster = args.cluster

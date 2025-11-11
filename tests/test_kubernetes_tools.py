@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from kubernetes import client as kube_client
+from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
@@ -62,7 +63,6 @@ from kubernetes.client import V1ServiceAccountList
 from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
-from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
@@ -554,18 +554,18 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
             autospec=True,
-            return_value={
-                "limits": {
+            return_value=V1ResourceRequirements(
+                limits={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-                "requests": {
+                requests={
                     "cpu": 0.1,
                     "memory": "1024Mi",
                     "ephemeral-storage": "256Mi",
                 },
-            },
+            ),
         ):
             mock_system_config = mock.Mock(
                 get_hacheck_sidecar_image_url=mock.Mock(
@@ -2205,6 +2205,7 @@ class TestKubernetesDeploymentConfig:
                 max_skew=1,
                 topology_key="kubernetes.io/hostname",
                 when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=None,
             ),
             V1TopologySpreadConstraint(
                 label_selector=V1LabelSelector(
@@ -2216,6 +2217,183 @@ class TestKubernetesDeploymentConfig:
                 max_skew=3,
                 topology_key="topology.kubernetes.io/zone",
                 when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_match_label_keys(self):
+        """Test that match_label_keys are properly passed through when specified"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_multiple_match_label_keys(
+        self,
+    ):
+        """Test that multiple match_label_keys are properly passed through"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 2,
+                "when_unsatisfiable": "DoNotSchedule",
+                "match_label_keys": [
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=2,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=[
+                    "paasta.yelp.com/git_sha",
+                    "paasta.yelp.com/config_sha",
+                ],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_with_empty_match_label_keys(self):
+        """Test that explicitly setting match_label_keys to empty list is preserved"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
+
+    def test_create_pod_topology_spread_constraints_mixed_match_label_keys(self):
+        """Test constraints where some have match_label_keys and some don't"""
+        configured_constraints: List[TopologySpreadConstraintDict] = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": ["paasta.yelp.com/git_sha"],
+            },
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 3,
+                "when_unsatisfiable": "DoNotSchedule",
+                # No match_label_keys specified, should default to None
+            },
+            {
+                "topology_key": "kubernetes.io/region",
+                "max_skew": 5,
+                "when_unsatisfiable": "ScheduleAnyway",
+                "match_label_keys": [],  # Explicitly empty
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=["paasta.yelp.com/git_sha"],
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+                match_label_keys=None,
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=5,
+                topology_key="kubernetes.io/region",
+                when_unsatisfiable="ScheduleAnyway",
+                match_label_keys=[],
             ),
         ]
 
@@ -3907,14 +4085,39 @@ def test_max_unavailable(instances, bmf):
     assert type(res) is int
 
 
-def test_pod_disruption_budget_for_service_instance():
+@pytest.mark.parametrize(
+    "unhealthy_eviction_enabled,expected_policy",
+    (
+        (None, "IfHealthyBudget"),
+        ("IfHealthyBudget", "IfHealthyBudget"),
+        ("AlwaysAllow", "AlwaysAllow"),
+    ),
+)
+def test_pod_disruption_budget_for_service_instance(
+    unhealthy_eviction_enabled, expected_policy
+):
     mock_namespace = "paasta"
-    x = pod_disruption_budget_for_service_instance(
-        service="foo_1",
-        instance="bar_1",
-        max_unavailable="10%",
-        namespace=mock_namespace,
-    )
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "enable_unhealthy_pod_eviction": unhealthy_eviction_enabled,
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ):
+        x = pod_disruption_budget_for_service_instance(
+            service="foo_1",
+            instance="bar_1",
+            max_unavailable="10%",
+            namespace=mock_namespace,
+            unhealthy_pod_eviction_policy=expected_policy,
+        )
 
     assert x.metadata.name == "foo--1-bar--1"
     assert x.metadata.namespace == "paasta"
@@ -3923,6 +4126,7 @@ def test_pod_disruption_budget_for_service_instance():
         "paasta.yelp.com/service": "foo_1",
         "paasta.yelp.com/instance": "bar_1",
     }
+    assert x.spec.unhealthy_pod_eviction_policy == expected_policy
 
 
 def test_create_pod_disruption_budget():
@@ -4769,7 +4973,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config477c36f2"
+            == "configeed84480"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4815,7 +5019,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config8f26372a"
+            == "config2c86f676"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4862,7 +5066,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configcf829e28"
+            == "config0e657f9b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -5088,7 +5292,7 @@ def test_ensure_service_account_with_k8s_role_new():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5141,7 +5345,7 @@ def test_ensure_service_account_existing():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5202,7 +5406,7 @@ def test_ensure_service_account_existing_different_role():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,
@@ -5326,7 +5530,7 @@ def test_ensure_service_account_caps_with_k8s():
                     name=k8s_role,
                 ),
                 subjects=[
-                    V1Subject(
+                    RbacV1Subject(
                         kind="ServiceAccount",
                         namespace=namespace,
                         name=expected_sa_name,

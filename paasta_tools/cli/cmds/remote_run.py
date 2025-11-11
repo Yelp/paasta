@@ -295,11 +295,19 @@ def paasta_remote_run_stop(
 
 
 def add_common_args_to_parser(parser: argparse.ArgumentParser):
+    def _validate_service_name(name: str) -> str:
+        if name not in _list_services_and_toolboxes():
+            raise ValueError(f"{name} is not a known service name")
+        return name
+
     service_arg = parser.add_argument(
         "-s",
         "--service",
         help="The name of the service you wish to inspect. Required.",
         required=True,
+        # not using `choices` for validation to avoid the help text
+        # for the command being incredibly large
+        type=_validate_service_name,
     )
     service_arg.completer = lazy_choices_completer(_list_services_and_toolboxes)  # type: ignore
     instance_or_toolbox = parser.add_mutually_exclusive_group()
@@ -323,6 +331,7 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
         "--cluster",
         help="The name of the cluster you wish to run your task on. Required.",
         required=True,
+        choices=list_clusters(),
     )
     cluster_arg.completer = lazy_choices_completer(list_clusters)  # type: ignore
 
