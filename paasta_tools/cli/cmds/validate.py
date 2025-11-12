@@ -146,15 +146,6 @@ CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
 
-# some teams want to have template stanzas here, but unless we want to
-# complicate the schema, it's easier to just preprocess any templates out
-# before doing schema validation
-# otherwise, folks have to do things like add dummy proxy_ports to these templates
-# just to appease the schema
-SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES = {
-    "smartstack",
-}
-
 INVALID_AUTOSCALING_FIELDS = {
     # setpoint isn't included here because we need to confirm that setpoint = 0.8
     # (since it's auto-added at parse-time)
@@ -410,10 +401,6 @@ def validate_schema(file_path: str, file_type: str) -> bool:
 
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
-
-    # Filter out template stanzas (keys starting with "_") for schemas that can't handle them properly
-    if file_type in SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES:
-        config_file_object = filter_templates_from_config(config_file_object)
 
     try:
         validator.validate(config_file_object)
