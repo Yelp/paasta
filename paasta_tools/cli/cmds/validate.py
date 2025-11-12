@@ -145,6 +145,12 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
+
+# some teams want to have template stanzas here, but unless we want to
+# complicate the schema, it's easier to just preprocess any templates out
+# before doing schema validation
+# otherwise, folks have to do things like add dummy proxy_ports to these templates
+# just to appease the schema
 SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES = {
     "smartstack",
 }
@@ -405,7 +411,7 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
 
-    # Filter out template stanzas (keys starting with "_") for smartstack configs
+    # Filter out template stanzas (keys starting with "_") for schemas that can't handle them properly
     if file_type in SKIP_TEMPLATE_SCHEMA_VALIDATION_FILES:
         config_file_object = filter_templates_from_config(config_file_object)
 
