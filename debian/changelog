@@ -1,3 +1,12 @@
+paasta-tools (1.35.4) xenial; urgency=medium
+
+  * 1.35.4 tagged with 'make release'
+    Commit: Set SPARK_DRIVER_TYPE for spark-run Spark drivers (#4140)
+    This will be read by service_configuration_lib in order to populate
+    data required by our internal Spark Configuration Service
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 11 Nov 2025 10:38:34 -0800
+
 paasta-tools (1.35.3) xenial; urgency=medium
 
   * 1.35.3 tagged with 'make release'
