@@ -105,7 +105,7 @@ specify the following options:
     volume on a sensitive part of the filesystem, as root. PaaSTA does not
     validate that the bind mounts are "safe".
 
-  * ``uses_bulkdata```: A boolean indicating whether the service should mount the directory /nail/bulkdata on the host into the container. Defaults to true.
+  * ``uses_bulkdata``: A boolean indicating whether the service should mount the directory /nail/bulkdata on the host into the container. Defaults to true.
 
 
 Placement Options
@@ -168,6 +168,16 @@ These options are only applicable to tasks scheduled on Kubernetes.
     For more information, see the official Kubernetes
     documentation on `topology spread constraints
     <https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/>`_.
+
+  * ``unhealthy_pod_eviction_policy``: defines when unhealthy pods can be evicted under a PodDisruptionBudget
+
+      unhealthy_pod_eviction_policy: IfhealthyBudget
+
+    These can be configured per cluster (or globally) and will be added to every PodDisruptionBudget.
+
+    For more information, see the official Kubernetes
+    documentation on `unhealthy pod eviction policy
+    <https://kubernetes.io/docs/tasks/run-application/configure-pdb/#unhealthy-pod-eviction-policy/>`_.
 
   * ``node_selectors``: A map of labels a node is required to have for a task
     to be launched on said node. There are several ways to define a selector.
