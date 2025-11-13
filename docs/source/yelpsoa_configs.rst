@@ -169,12 +169,15 @@ These options are only applicable to tasks scheduled on Kubernetes.
     documentation on `topology spread constraints
     <https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/>`_.
 
-  * ``unhealthy_pod_eviction_policy``: defines when unhealthy pods can be evicted under a PodDisruptionBudget
+  * ``unhealthy_pod_eviction_policy``: An option to control when unhealthy Pods can be evicted under a PodDisruptionBudget (PDB).
 
-      unhealthy_pod_eviction_policy: IfhealthyBudget
+    The default is ``IfHealthyBudget``, which prevents disrupting unhealthy Pods if their eviction would violate the PDB constraints.
 
-    These can be configured per cluster (or globally) and will be added to every PodDisruptionBudget.
+    This can also be set to ``AlwaysAllow`` to essentially exclude unhealthy Pods from the PDB and allow eviction.
+    For example::
+      unhealthy_pod_eviction_policy: AlwaysAllow
 
+    This value is generally configured by PaaSTA globally, but can be overridden per-instance as a power-user override - you should generally **not** be configuring this yourself.
     For more information, see the official Kubernetes
     documentation on `unhealthy pod eviction policy
     <https://kubernetes.io/docs/tasks/run-application/configure-pdb/#unhealthy-pod-eviction-policy/>`_.
