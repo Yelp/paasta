@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+from unittest.mock import AsyncMock
 
-import asynctest
 import mock
 from pyramid import testing
 
@@ -52,9 +52,7 @@ def test_resources_utilization_nothing_special(
     request = testing.DummyRequest()
     request.swagger_data = {"groupings": None, "filter": None}
     mock_mesos_state = mock.Mock()
-    mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(return_value=mock_mesos_state)
-    )
+    mock_master = mock.Mock(state=AsyncMock(return_value=mock_mesos_state))
     mock_get_mesos_master.return_value = mock_master
 
     mock_get_resource_utilization_by_grouping.return_value = {
@@ -135,8 +133,8 @@ def test_resources_utilization_with_grouping(mock_get_mesos_master):
     request = testing.DummyRequest()
     request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
     mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        state=AsyncMock(
+            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
         )
     )
@@ -158,8 +156,8 @@ def test_resources_utilization_with_filter(mock_get_mesos_master):
         "filter": ["region:top", "pool:default,other"],
     }
     mock_master = mock.Mock(
-        state=asynctest.CoroutineMock(
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        state=AsyncMock(
+            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
         )
     )

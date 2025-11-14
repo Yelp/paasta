@@ -534,10 +534,6 @@ def test_start_or_stop_bad_refs(
     assert "deployed there yet?" in capfd.readouterr()[0]
 
 
-def test_cluster_list_defaults_to_all():
-    return True
-
-
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
 )

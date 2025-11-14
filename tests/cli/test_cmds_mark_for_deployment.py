@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest.mock import AsyncMock
 
-import asynctest
 import mock
 from mock import ANY
 from mock import call
@@ -51,10 +51,10 @@ class FakeArgs:
 
 @fixture
 def mock_periodically_update_slack():
-    # for some reason asynctest.patch doesn't work as a decorator, so I've defined this fixture.
-    with asynctest.patch(
+    with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack",
-        autospec=True,
+        new_callable=AsyncMock,
+        autospec=None,
     ) as periodically_update_slack:
         yield periodically_update_slack
 

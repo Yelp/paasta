@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
-import asynctest
 import mock
 import pytest
 
@@ -36,7 +37,7 @@ def test_register_drain_method():
 
 @contextlib.contextmanager
 def mock_ClientSession(**fake_session_kwargs):
-    fake_session = asynctest.MagicMock(name="session", **fake_session_kwargs)
+    fake_session = MagicMock(name="session", **fake_session_kwargs)
 
     class FakeClientSession:
         def __init__(self, *args, **kwargs):
@@ -93,7 +94,7 @@ class TestHacheckDrainMethod:
     async def test_is_draining_yes(self):
         fake_response = mock.Mock(
             status=503,
-            text=asynctest.CoroutineMock(
+            text=AsyncMock(
                 return_value="Service service in down state since 1435694078.778886 "
                 "until 1435694178.780000: Drained by Paasta"
             ),
@@ -101,24 +102,18 @@ class TestHacheckDrainMethod:
         fake_task = mock.Mock(host="fake_host", ports=[54321])
         with mock_ClientSession(
             get=mock.Mock(
-                return_value=asynctest.MagicMock(
-                    __aenter__=asynctest.CoroutineMock(return_value=fake_response)
-                )
+                return_value=MagicMock(__aenter__=AsyncMock(return_value=fake_response))
             )
         ):
             assert await self.drain_method.is_draining(fake_task) is True
 
     @pytest.mark.asyncio
     async def test_is_draining_no(self):
-        fake_response = mock.Mock(
-            status=200, text=asynctest.CoroutineMock(return_value="")
-        )
+        fake_response = mock.Mock(status=200, text=AsyncMock(return_value=""))
         fake_task = mock.Mock(host="fake_host", ports=[54321])
         with mock_ClientSession(
             get=mock.Mock(
-                return_value=asynctest.MagicMock(
-                    __aenter__=asynctest.CoroutineMock(return_value=fake_response)
-                )
+                return_value=MagicMock(__aenter__=AsyncMock(return_value=fake_response))
             )
         ):
             assert await self.drain_method.is_draining(fake_task) is False
@@ -189,9 +184,7 @@ class TestHTTPDrainMethod:
         }
 
         fake_resp = mock.Mock(status=1234)
-        mock_request = mock.Mock(
-            return_value=asynctest.CoroutineMock(return_value=fake_resp)()
-        )
+        mock_request = mock.Mock(return_value=AsyncMock(return_value=fake_resp)())
         with mock_ClientSession(request=mock_request):
             await drain_method.issue_request(url_spec=url_spec, task=fake_task)
 
