@@ -1339,7 +1339,7 @@ class TestTronTools:
     "jira_ticket": null,
     "service_account_name": null,
     "ui_port": 39091,
-    "user": "timma",
+    "user": null,
     "aws_account_id": null
 }'"""
 
