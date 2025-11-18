@@ -1851,7 +1851,7 @@ async def wait_for_deployment(
             system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
         )
 
-    with progressbar.ProgressBar(maxval=total_instances) as bar:
+    with progressbar.ProgressBar(max_value=total_instances) as bar:
         instance_done_futures = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for cluster, instance_configs in instance_configs_per_cluster.items():
