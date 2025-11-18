@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.eks_tools import load_eks_service_config_no_cache

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
 
 from paasta_tools.cli.cmds.pause_service_autoscaler import MAX_PAUSE_DURATION
 from paasta_tools.cli.cmds.pause_service_autoscaler import (

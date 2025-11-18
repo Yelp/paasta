@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # We just want to test that task_processing is available in the virtualenv
-import mock
+from unittest import mock
+
 from slackclient import SlackClient
 
 from paasta_tools.slack import PaastaSlackClient

@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 import pytest
 
 import paasta_tools.paastaapi.models as paastamodels

@@ -1,6 +1,6 @@
 import unittest
+from unittest import mock
 
-import mock
 from py.test import raises
 
 from paasta_tools.metrics import metrics_lib

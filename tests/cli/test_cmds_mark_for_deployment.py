@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest import mock
+from unittest.mock import ANY
 from unittest.mock import AsyncMock
+from unittest.mock import call
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
-import mock
-from mock import ANY
-from mock import call
-from mock import MagicMock
-from mock import patch
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient

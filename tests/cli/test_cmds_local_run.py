@@ -14,9 +14,9 @@
 import json
 import os
 import re
+from unittest import mock
 
 import docker
-import mock
 import pytest
 from pytest import mark
 from pytest import raises

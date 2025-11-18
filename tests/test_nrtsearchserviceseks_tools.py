@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools.nrtsearchserviceeks_tools import (
     load_nrtsearchserviceeks_instance_config,

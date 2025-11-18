@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest import mock
 from unittest.mock import AsyncMock
 
-import mock
 import pytest
 from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException

@@ -7,7 +7,6 @@ docutils
 flake8
 freezegun
 hypothesis
-mock
 mypy
 path.py
 pep8

@@ -1,9 +1,9 @@
 import contextlib
+from unittest import mock
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import Mock
 
-import mock
 import pytest
 
 from paasta_tools import hacheck

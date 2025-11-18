@@ -2,8 +2,8 @@ import asyncio
 import functools
 import weakref
 from collections import defaultdict
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools.async_utils import async_ttl_cache
