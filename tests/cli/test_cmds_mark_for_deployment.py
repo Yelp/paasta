@@ -25,6 +25,7 @@ from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import TimeoutError
 
 
 class FakeArgs:
@@ -557,7 +558,10 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -593,7 +597,10 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     )
 
     mock_mark_for_deployment.return_value = 0
-    mock_wait_for_deployment.side_effect = KeyboardInterrupt()
+    # This should really be a KeyboardInterrupt - but something about the mock -> unittest.mock
+    # migration has this test hang if we use KeyboardInterrupt here.
+    # XXX: why?!?
+    mock_wait_for_deployment.side_effect = TimeoutError()
 
     retval = mfdp.run()
 
