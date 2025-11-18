@@ -5556,9 +5556,7 @@ def test_get_kubernetes_secret(decode):
         autospec=True,
     ) as mock_kube_client, mock.patch(
         "paasta_tools.kubernetes_tools.os.environ", autospec=True
-    ) as mock_env, mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
-    ) as mock_kube_client:
+    ) as mock_env:
         mock_namespace = "paasta"
         service_name = "example_service"
         secret_name = "example_secret"
