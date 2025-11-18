@@ -443,7 +443,8 @@ def test_send_sfx_event(mock_get_instance_config):
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.clog", autospec=True)
+@patch("paasta_tools.oom_logger.clog.log_line", autospec=True)
+@patch("paasta_tools.oom_logger.clog.config.configure", autospec=True)
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
@@ -457,7 +458,8 @@ def test_main(
     mock_log_to_clog,
     mock_load_system_paasta_config,
     mock_send_sfx_event,
-    mock_clog,
+    mock_clog_configure,
+    mock_clog_log_line,
     mock_sys_stdin,
     sys_stdin,
     docker_inspect,
@@ -481,7 +483,8 @@ def test_main(
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.clog", autospec=True)
+@patch("paasta_tools.oom_logger.clog.log_line", autospec=True)
+@patch("paasta_tools.oom_logger.clog.config.configure", autospec=True)
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
@@ -497,7 +500,8 @@ def test_main_containerd(
     mock_log_to_clog,
     mock_load_system_paasta_config,
     mock_send_sfx_event,
-    mock_clog,
+    mock_clog_configure,
+    mock_clog_log_line,
     mock_sys_stdin,
     sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
     log_line_containerd,
