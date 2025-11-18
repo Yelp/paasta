@@ -60,6 +60,8 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import format_checkpoint_health
+from paasta_tools.flink_tools import format_recent_changes
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
@@ -1059,6 +1061,22 @@ def _print_flink_status_from_job_manager(
                 )
             )
             break
+
+    # Show Job Health and Recent Changes for sqlclient with -vv flag
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        # Add Job Health section
+        health_output = format_checkpoint_health(service, instance, jobs, client)
+        output.extend(health_output)
+
+        # Add Recent Changes section
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        # Get the deployed version from metadata
+        version = metadata.get("labels", {}).get(paasta_prefixed("git_sha"), "unknown")
+        changes_output = format_recent_changes(service, instance, cluster, jobs, version)
+        output.extend(changes_output)
+
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)

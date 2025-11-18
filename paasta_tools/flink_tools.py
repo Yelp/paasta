@@ -361,3 +361,120 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_flink_job_checkpoints(
+    service: str, instance: str, job_id: str, client: PaastaOApiClient
+) -> Mapping[str, Any]:
+    """Get checkpoint statistics for a Flink job.
+
+    :param service: The service name
+    :param instance: The instance of the service
+    :param job_id: The Flink job ID
+    :param client: The paasta api client
+    :returns: Checkpoint statistics including latest checkpoint, savepoint, and failure counts
+    """
+    try:
+        # Query the Flink REST API through paasta-api
+        # This endpoint returns checkpoint statistics
+        response = client.service.get_flink_cluster_job_details(
+            service=service, instance=instance, job_id=job_id
+        )
+        # For now, return the full response - we'll extract checkpoint info from it
+        return response
+    except ApiException:
+        # If the API doesn't support this endpoint yet, return empty dict
+        return {}
+
+
+def format_checkpoint_health(
+    service: str,
+    instance: str,
+    jobs: List[FlinkJobDetails],
+    client: PaastaOApiClient,
+) -> List[str]:
+    """Format checkpoint health information for display.
+
+    :param service: The service name
+    :param instance: The instance of the service
+    :param jobs: List of Flink job details
+    :param client: The paasta api client
+    :returns: List of formatted strings for output
+    """
+    output = []
+
+    if not jobs:
+        return output
+
+    # Get the most recent running job
+    running_jobs = [j for j in jobs if j.get("state") == "RUNNING"]
+    if not running_jobs:
+        return output
+
+    job = running_jobs[0]
+    job_id = job.get("id")
+
+    if not job_id:
+        return output
+
+    # For now, show placeholder text indicating this feature is coming
+    # In a future iteration, we'll query the actual checkpoint API
+    output.append("    Flink Job Health:")
+    output.append("      Last Checkpoint:      [checkpoint data coming soon]")
+    output.append("      Job Restarts:         [restart tracking coming soon]")
+
+    return output
+
+
+def format_recent_changes(
+    service: str,
+    instance: str,
+    cluster: str,
+    jobs: List[FlinkJobDetails],
+    version: str,
+) -> List[str]:
+    """Format recent changes information for display.
+
+    :param service: The service name
+    :param instance: The instance of the service
+    :param cluster: The cluster name
+    :param jobs: List of Flink job details
+    :param version: Current deployed version (git SHA)
+    :returns: List of formatted strings for output
+    """
+    from datetime import datetime
+
+    output = []
+    output.append("    Recent Changes:")
+
+    # Get last deploy time from job start time
+    if jobs:
+        running_jobs = [j for j in jobs if j.get("state") == "RUNNING"]
+        if running_jobs:
+            job = running_jobs[0]
+            start_time = job.get("start_time")
+            if start_time:
+                start_dt = datetime.fromtimestamp(start_time / 1000)
+                now = datetime.now()
+                age = now - start_dt
+
+                # Format age nicely
+                if age.days > 0:
+                    age_str = f"{age.days} days ago"
+                elif age.seconds >= 3600:
+                    hours = age.seconds // 3600
+                    age_str = f"{hours} hours ago"
+                else:
+                    minutes = age.seconds // 60
+                    age_str = f"{minutes} minutes ago"
+
+                output.append(f"      Last Deploy:          {age_str} ({start_dt.strftime('%Y-%m-%d %H:%M:%S')})")
+
+    # Show deployed version
+    if version:
+        output.append(f"      Deployed Version:     {version}")
+
+    # Config changes - placeholder for now
+    output.append("      Last Config Change:   [config tracking coming soon]")
+
+    return output
