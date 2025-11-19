@@ -60,9 +60,11 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import format_kafka_topics
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flink_tools import get_sqlclient_parallelism
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -896,6 +898,16 @@ def _print_flink_status_from_job_manager(
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
+    # Show Kafka topic details for sqlclient with -vv flag (before State block)
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        try:
+            kafka_output = format_kafka_topics(service, instance, cluster)
+            output.extend(kafka_output)
+        except Exception as e:
+            output.append(f"    Kafka Topics: Error - {type(e).__name__}: {str(e)}")
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
     # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
@@ -1001,15 +1013,33 @@ def _print_flink_status_from_job_manager(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
+    # Get parallelism from srv-configs for sqlclient jobs
+    job_parallelism = None
+    if service == "sqlclient":
+        try:
+            job_parallelism = get_sqlclient_parallelism(service, instance, cluster)
+        except Exception:
+            pass  # If we can't get parallelism, just don't show it
+
     output.append("    Jobs:")
     if verbose > 1:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
-        )
+        if job_parallelism is not None:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Parallelism Job ID                           Started'
+            )
+        else:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+            )
     else:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
-        )
+        if job_parallelism is not None:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Parallelism Started'
+            )
+        else:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+            )
 
     # Use only the most recent jobs
     unique_jobs = (
@@ -1029,10 +1059,17 @@ def _print_flink_status_from_job_manager(
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose > 1:
-            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+            if job_parallelism is not None:
+                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {parallelism: <11} {job_id} {start_time}
+        {dashboard_url}"""
+            else:
+                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
-            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+            if job_parallelism is not None:
+                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {parallelism: <11} {start_time}"
+            else:
+                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
         if verbose or job_printed_count < allowed_max_jobs_printed:
             job_printed_count += 1
@@ -1043,14 +1080,21 @@ def _print_flink_status_from_job_manager(
                 if job.get("state") and job.get("state") in ("FAILED", "FAILING")
                 else PaastaColors.yellow
             )
-            job_info_str = fmt.format(
-                job_id=job_id,
-                job_name=get_flink_job_name(job),
-                allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
-                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
-            )
+
+            format_args = {
+                "job_id": job_id,
+                "job_name": get_flink_job_name(job),
+                "allowed_max_job_name_length": allowed_max_job_name_length,
+                "state": color_fn((job.get("state").title() or "Unknown")),
+                "start_time": f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                "dashboard_url": PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            }
+
+            # Add parallelism if available
+            if job_parallelism is not None:
+                format_args["parallelism"] = str(job_parallelism)
+
+            job_info_str = fmt.format(**format_args)
             output.append(job_info_str)
         else:
             output.append(

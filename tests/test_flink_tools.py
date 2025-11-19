@@ -319,3 +319,228 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             branch_dict=None,
         )
         assert flink_deployment_config.get_pool() == "flink-spot"
+
+
+class TestSafeStr:
+    def test_safe_str_with_string(self):
+        assert flink_tools._safe_str("hello") == "hello"
+
+    def test_safe_str_with_int(self):
+        assert flink_tools._safe_str(123) == "123"
+
+    def test_safe_str_with_float(self):
+        assert flink_tools._safe_str(2.0) == "2.0"
+
+    def test_safe_str_with_none(self):
+        assert flink_tools._safe_str(None) is None
+
+    def test_safe_str_with_bool(self):
+        assert flink_tools._safe_str(True) == "True"
+        assert flink_tools._safe_str(False) == "False"
+
+
+class TestGetSqlclientJobConfig:
+    @mock.patch("paasta_tools.flink_tools.os.path.exists", autospec=True)
+    @mock.patch("service_configuration_lib.read_yaml_file", autospec=True)
+    @mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True)
+    def test_basic_sources_and_sinks(
+        self, mock_load_config, mock_read_yaml, mock_exists
+    ):
+        # Setup mocks
+        mock_config = mock.Mock()
+        mock_config.get_ecosystem_for_cluster.return_value = "prod"
+        mock_load_config.return_value = mock_config
+        mock_exists.return_value = True
+
+        # Mock YAML config with sources, sinks, and parallelism
+        mock_read_yaml.return_value = {
+            "parallelism": 10,
+            "sources": [
+                {
+                    "table_name": "test_source",
+                    "config": {
+                        "schema_id": 12345,
+                    },
+                }
+            ],
+            "sinks": [
+                {
+                    "table_name": "test_sink",
+                    "config": {
+                        "namespace": "test_namespace",
+                        "source": "test_source",
+                        "alias": "1.0",
+                    },
+                }
+            ],
+        }
+
+        result = flink_tools.get_sqlclient_job_config(
+            "sqlclient", "test_instance", "test_cluster"
+        )
+
+        assert "sources" in result
+        assert "sinks" in result
+        assert "ecosystem" in result
+        assert "parallelism" in result
+        assert result["ecosystem"] == "prod"
+        assert result["parallelism"] == 10
+        assert len(result["sources"]) == 1
+        assert len(result["sinks"]) == 1
+
+        # Verify source details
+        source = result["sources"][0]
+        assert source["table_name"] == "test_source"
+        assert source["schema_id"] == 12345
+
+        # Verify sink details
+        sink = result["sinks"][0]
+        assert sink["table_name"] == "test_sink"
+        assert sink["namespace"] == "test_namespace"
+        assert sink["source"] == "test_source"
+        assert sink["alias"] == "1.0"
+
+    @mock.patch("paasta_tools.flink_tools.os.path.exists", autospec=True)
+    @mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True)
+    def test_missing_config_file(self, mock_load_config, mock_exists):
+        # Setup mocks
+        mock_config = mock.Mock()
+        mock_config.get_ecosystem_for_cluster.return_value = "prod"
+        mock_load_config.return_value = mock_config
+        mock_exists.return_value = False
+
+        result = flink_tools.get_sqlclient_job_config(
+            "sqlclient", "nonexistent", "test_cluster"
+        )
+
+        assert "error" in result
+        assert "not found" in result["error"].lower()
+
+    @mock.patch("paasta_tools.flink_tools.os.path.exists", autospec=True)
+    @mock.patch("service_configuration_lib.read_yaml_file", autospec=True)
+    @mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True)
+    def test_handles_float_alias(self, mock_load_config, mock_read_yaml, mock_exists):
+        # Test that YAML float parsing (alias: 2.0) is handled correctly
+        mock_config = mock.Mock()
+        mock_config.get_ecosystem_for_cluster.return_value = "prod"
+        mock_load_config.return_value = mock_config
+        mock_exists.return_value = True
+
+        mock_read_yaml.return_value = {
+            "sources": [
+                {
+                    "table_name": "test_source",
+                    "config": {
+                        "namespace": "test_ns",
+                        "source": "test_src",
+                        "alias": 2.0,  # This will be a float from YAML
+                    },
+                }
+            ],
+            "sinks": [],
+        }
+
+        result = flink_tools.get_sqlclient_job_config(
+            "sqlclient", "test_instance", "test_cluster"
+        )
+
+        # Verify alias is converted to string "2.0"
+        source = result["sources"][0]
+        assert source["alias"] == "2.0"
+        assert isinstance(source["alias"], str)
+
+
+class TestGetSqlclientParallelism:
+    @mock.patch("paasta_tools.flink_tools.get_sqlclient_job_config", autospec=True)
+    def test_get_parallelism(self, mock_get_config):
+        mock_get_config.return_value = {"parallelism": 10}
+
+        result = flink_tools.get_sqlclient_parallelism(
+            "sqlclient", "test_instance", "test_cluster"
+        )
+
+        assert result == 10
+
+    @mock.patch("paasta_tools.flink_tools.get_sqlclient_job_config", autospec=True)
+    def test_get_parallelism_none(self, mock_get_config):
+        mock_get_config.return_value = {}
+
+        result = flink_tools.get_sqlclient_parallelism(
+            "sqlclient", "test_instance", "test_cluster"
+        )
+
+        assert result is None
+
+
+class TestFormatKafkaTopics:
+    def test_format_with_schema_id(self):
+        topics_info = {
+            "sources": [
+                {
+                    "table_name": "test_source",
+                    "schema_id": 12345,
+                    "namespace": None,
+                    "source": None,
+                    "alias": None,
+                }
+            ],
+            "sinks": [],
+            "ecosystem": "prod",
+        }
+
+        with mock.patch(
+            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+        ):
+            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+
+        output_str = "\n".join(output)
+        assert "Data Pipeline Topology:" in output_str
+        assert "Sources: 1 topics" in output_str
+        assert "test_source" in output_str
+        assert "Schema ID:       12345" in output_str
+        assert "pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345" in output_str
+        assert "datapipe schema describe --schema-id 12345" in output_str
+        assert "datapipe stream tail --schema-id 12345" in output_str
+
+    def test_format_with_namespace_source_alias(self):
+        topics_info = {
+            "sources": [],
+            "sinks": [
+                {
+                    "table_name": "test_sink",
+                    "namespace": "test_namespace",
+                    "source": "test_source",
+                    "alias": "1.0",
+                    "pkeys": "id",
+                }
+            ],
+            "ecosystem": "devc",
+        }
+
+        with mock.patch(
+            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+        ):
+            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+
+        output_str = "\n".join(output)
+        assert "Sinks:   1 topics" in output_str
+        assert "test_sink" in output_str
+        assert "Namespace:       test_namespace" in output_str
+        assert "Source:          test_source" in output_str
+        assert "Alias:           1.0" in output_str
+        assert "Primary Keys:    id" in output_str
+        assert "pipeline_studio_v2.yelpcorp.com/namespaces/test_namespace/sources/test_source/asset-details?alias=1.0" in output_str
+        assert "datapipe schema describe --namespace test_namespace --source test_source --alias 1.0" in output_str
+        assert "datapipe stream tail --namespace test_namespace --source test_source --alias 1.0" in output_str
+
+    def test_format_with_error(self):
+        topics_info = {"error": "Test error message"}
+
+        with mock.patch(
+            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+        ):
+            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+
+        output_str = "\n".join(output)
+        assert "Kafka Topics: Unable to fetch" in output_str
+        assert "Error: Test error message" in output_str

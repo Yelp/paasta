@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
+import re
+import subprocess
 from typing import Any
 from typing import List
 from typing import Mapping
@@ -20,6 +23,7 @@ from urllib.parse import urlparse
 
 import requests
 import service_configuration_lib
+import yaml
 from mypy_extensions import TypedDict
 
 from paasta_tools.api import settings
@@ -54,6 +58,15 @@ OVERVIEW_KEYS = {
     "jobs-failed",
 }
 JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time"}
+
+
+def _safe_str(value: Any) -> Optional[str]:
+    """Convert value to string, handling None safely.
+
+    :param value: Value to convert
+    :returns: String representation or None
+    """
+    return str(value) if value is not None else None
 
 
 class TaskManagerConfig(TypedDict, total=False):
@@ -361,3 +374,263 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_sqlclient_job_config(
+    service: str,
+    instance: str,
+    cluster: str,
+) -> Mapping[str, Any]:
+    """Get job configuration for a SQLClient Flink job from srv-configs.
+
+    :param service: The service name (should be 'sqlclient')
+    :param instance: The instance name
+    :param cluster: The cluster name
+    :returns: Dict with job config including parallelism, sources, sinks
+    """
+    try:
+        # Read job config from hiera-merged srv-configs
+        # Path: /nail/srv/configs/{service}/{instance}/job.d/{instance}.yaml
+        # This is the standard pattern used by flink-supervisor
+        from paasta_tools.utils import load_system_paasta_config
+        from service_configuration_lib import read_yaml_file
+
+        system_paasta_config = load_system_paasta_config()
+        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+
+        # Construct path to srv-configs job file (hiera-merged, deployed version)
+        job_config_path = os.path.join(
+            "/nail/srv/configs",
+            str(service),
+            str(instance),
+            "job.d",
+            f"{instance}.yaml",
+        )
+
+        if not os.path.exists(job_config_path):
+            return {
+                "error": f"Job config not found. Instance '{instance}' may not be deployed to this environment."
+            }
+
+        # Use service_configuration_lib to read YAML (handles caching, validation, etc.)
+        config = read_yaml_file(job_config_path)
+
+        sources = config.get("sources", [])
+        sinks = config.get("sinks", [])
+        parallelism = config.get("parallelism")
+
+        # Query datapipe for each source
+        sources_info = []
+        for source in sources:
+            source_config = source.get("config", {})
+            table_name = source.get("table_name")
+
+            schema_id = source_config.get("schema_id")
+            namespace = source_config.get("namespace")
+            source_name = source_config.get("source")
+            alias = source_config.get("alias")
+
+            # Convert all values to strings to handle YAML float parsing (e.g., "2.0" -> 2.0)
+            info = {
+                "table_name": _safe_str(table_name),
+                "schema_id": int(schema_id) if schema_id else None,
+                "namespace": _safe_str(namespace),
+                "source": _safe_str(source_name),
+                "alias": _safe_str(alias),
+            }
+
+            sources_info.append(info)
+
+        # Query datapipe for each sink
+        sinks_info = []
+        for sink in sinks:
+            sink_config = sink.get("config", {})
+            table_name = sink.get("table_name")
+
+            namespace = sink_config.get("namespace")
+            source_name = sink_config.get("source")
+            alias = sink_config.get("alias")
+            pkeys = sink_config.get("pkeys")
+
+            # Convert all values to strings to handle YAML float parsing
+            info = {
+                "table_name": _safe_str(table_name),
+                "namespace": _safe_str(namespace),
+                "source": _safe_str(source_name),
+                "alias": _safe_str(alias),
+                "pkeys": _safe_str(pkeys),
+            }
+
+            sinks_info.append(info)
+
+        return {
+            "sources": sources_info,
+            "sinks": sinks_info,
+            "ecosystem": ecosystem,
+            "parallelism": parallelism,
+        }
+
+    except Exception as e:
+        import traceback
+        return {"error": f"{type(e).__name__}: {str(e)}", "traceback": traceback.format_exc()}
+
+
+def get_sqlclient_parallelism(
+    service: str,
+    instance: str,
+    cluster: str,
+) -> Optional[int]:
+    """Get parallelism value for a SQLClient Flink job.
+
+    :param service: The service name (should be 'sqlclient')
+    :param instance: The instance name
+    :param cluster: The cluster name
+    :returns: Parallelism value or None if not found
+    """
+    job_config = get_sqlclient_job_config(service, instance, cluster)
+    return job_config.get("parallelism")
+
+
+def format_kafka_topics(
+    service: str,
+    instance: str,
+    cluster: str,
+) -> List[str]:
+    """Format Kafka topic information for SQLClient Flink jobs.
+
+    :param service: The service name
+    :param instance: The instance name
+    :param cluster: The cluster name
+    :returns: List of formatted strings for output
+    """
+    output = []
+
+    # Get topic information
+    topics_info = get_sqlclient_job_config(service, instance, cluster)
+
+    if "error" in topics_info:
+        error_msg = topics_info['error']
+        output.append(f"    Kafka Topics: Unable to fetch")
+        output.append(f"      Error: {error_msg}")
+        if "traceback" in topics_info:
+            output.append(f"      Debug traceback available (check logs)")
+        return output
+
+    sources = topics_info.get("sources", [])
+    sinks = topics_info.get("sinks", [])
+    ecosystem = topics_info.get("ecosystem", "prod")
+
+    output.append(f"    Data Pipeline Topology:")
+    output.append(f"      Sources: {len(sources)} topics")
+    output.append(f"      Sinks:   {len(sinks)} topics")
+
+    # Format sources
+    if sources:
+        output.append("")
+        output.append("    Source Topics:")
+        for idx, source in enumerate(sources, 1):
+            table_name = source.get("table_name", "unknown")
+            schema_id = source.get("schema_id")
+            namespace = source.get("namespace")
+            source_name = source.get("source")
+            alias = source.get("alias")
+
+            output.append(f"      {idx}. {table_name}")
+
+            if schema_id or namespace:
+                if schema_id:
+                    output.append(f"         Schema ID:       {schema_id}")
+                if namespace:
+                    output.append(f"         Namespace:       {namespace}")
+                if source_name:
+                    output.append(f"         Source:          {source_name}")
+                if alias:
+                    output.append(f"         Alias:           {alias}")
+
+                # Pipeline Studio link
+                if schema_id and not (namespace and source_name):
+                    # Use schema_id based URL when only schema_id is available
+                    pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem={ecosystem}&schema_id={schema_id}"
+                    output.append(f"         Pipeline Studio: {pipeline_url}")
+                elif namespace and source_name:
+                    # Use namespace/source based URL when available
+                    pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/namespaces/{namespace}/sources/{source_name}/asset-details"
+                    if alias:
+                        pipeline_url += f"?alias={alias}"
+                    output.append(f"         Pipeline Studio: {pipeline_url}")
+
+                # Schema describe command
+                if schema_id:
+                    describe_cmd = f"datapipe schema describe --schema-id {schema_id}"
+                elif namespace and source_name:
+                    describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
+                    if alias:
+                        describe_cmd += f" --alias {alias}"
+                else:
+                    describe_cmd = None
+
+                if describe_cmd:
+                    output.append(f"         Describe:        {describe_cmd}")
+
+                # Datapipe tail command
+                if schema_id:
+                    tail_cmd = f"datapipe stream tail --schema-id {schema_id} --all-fields --json"
+                elif namespace and source_name:
+                    tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
+                    if alias:
+                        tail_cmd += f" --alias {alias}"
+                    tail_cmd += " --all-fields --json"
+                else:
+                    tail_cmd = None
+
+                if tail_cmd:
+                    output.append(f"         Tail:            {tail_cmd}")
+
+            output.append("")
+
+    # Format sinks
+    if sinks:
+        output.append("    Sink Topics:")
+        for idx, sink in enumerate(sinks, 1):
+            table_name = sink.get("table_name", "unknown")
+            namespace = sink.get("namespace")
+            source_name = sink.get("source")
+            alias = sink.get("alias")
+            pkeys = sink.get("pkeys")
+
+            output.append(f"      {idx}. {table_name}")
+
+            if namespace:
+                output.append(f"         Namespace:       {namespace}")
+            if source_name:
+                output.append(f"         Source:          {source_name}")
+            if alias:
+                output.append(f"         Alias:           {alias}")
+            if pkeys:
+                output.append(f"         Primary Keys:    {pkeys}")
+
+            # Pipeline Studio link
+            if namespace and source_name:
+                pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/namespaces/{namespace}/sources/{source_name}/asset-details"
+                if alias:
+                    pipeline_url += f"?alias={alias}"
+                output.append(f"         Pipeline Studio: {pipeline_url}")
+
+            # Schema describe command
+            if namespace and source_name:
+                describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
+                if alias:
+                    describe_cmd += f" --alias {alias}"
+                output.append(f"         Describe:        {describe_cmd}")
+
+            # Datapipe tail command
+            if namespace and source_name:
+                tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
+                if alias:
+                    tail_cmd += f" --alias {alias}"
+                tail_cmd += " --all-fields --json"
+                output.append(f"         Tail:            {tail_cmd}")
+
+            output.append("")
+
+    return output
