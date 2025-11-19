@@ -1025,7 +1025,7 @@ def _print_flink_status_from_job_manager(
     if verbose > 1:
         if job_parallelism is not None:
             output.append(
-                f'      {"Job Name": <{allowed_max_job_name_length}} State       Parallelism Job ID                           Started'
+                f'      {"Job Name": <{allowed_max_job_name_length}} State   Parallelism Job ID                           Started'
             )
         else:
             output.append(
@@ -1034,7 +1034,7 @@ def _print_flink_status_from_job_manager(
     else:
         if job_parallelism is not None:
             output.append(
-                f'      {"Job Name": <{allowed_max_job_name_length}} State       Parallelism Started'
+                f'      {"Job Name": <{allowed_max_job_name_length}} State   Parallelism Started'
             )
         else:
             output.append(
@@ -1060,14 +1060,14 @@ def _print_flink_status_from_job_manager(
         job_id = job["jid"]
         if verbose > 1:
             if job_parallelism is not None:
-                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {parallelism: <11} {job_id} {start_time}
+                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <8} {parallelism: <11} {job_id} {start_time}
         {dashboard_url}"""
             else:
                 fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
             if job_parallelism is not None:
-                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {parallelism: <11} {start_time}"
+                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <8} {parallelism: <11} {start_time}"
             else:
                 fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
