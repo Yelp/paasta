@@ -16,7 +16,9 @@ from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
+from paasta_tools.kubernetes_tools import create_service
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import delete_service
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
@@ -26,6 +28,7 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
+from paasta_tools.kubernetes_tools import update_service
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import load_system_paasta_config
 
@@ -297,6 +300,7 @@ class DeploymentWrapper(Application):
         )
         self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
         self.sync_horizontal_pod_autoscaler(kube_client)
+        self.sync_service(kube_client)
 
     def update(self, kube_client: KubeClient) -> None:
         # If HPA is enabled, do not update replicas.
@@ -310,6 +314,7 @@ class DeploymentWrapper(Application):
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
+        self.sync_service(kube_client)
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
@@ -400,6 +405,47 @@ class DeploymentWrapper(Application):
                     self.item.metadata.name, self.item.metadata.namespace
                 )
             )
+
+    def sync_service(self, kube_client: KubeClient) -> None:
+        """Create or update the Kubernetes Service if configured."""
+        formatted_service = self.soa_config.format_kubernetes_service()
+        service_name = self.soa_config.get_kubernetes_service_name()
+        namespace = self.soa_config.get_namespace()
+
+        service_exists = self.exists_service(kube_client, service_name, namespace)
+
+        if formatted_service is None:
+            # If config removed, but service exists, delete it
+            if service_exists:
+                self.logging.info(
+                    f"Deleting Service for {service_name}/name in {namespace}/namespace"
+                )
+                delete_service(kube_client, service_name, namespace)
+            return
+
+        if not service_exists:
+            self.logging.info(
+                f"Creating Service for {service_name}/name in {namespace}/namespace"
+            )
+            create_service(kube_client, formatted_service, namespace)
+        else:
+            self.logging.info(
+                f"Updating Service for {service_name}/name in {namespace}/namespace"
+            )
+            update_service(kube_client, formatted_service, namespace)
+
+    def exists_service(
+        self, kube_client: KubeClient, service_name: str, namespace: str
+    ) -> bool:
+        try:
+            kube_client.core.read_namespaced_service(
+                name=service_name, namespace=namespace
+            )
+            return True
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            raise
 
 
 class StatefulSetWrapper(Application):
