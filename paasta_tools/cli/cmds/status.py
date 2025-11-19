@@ -15,7 +15,9 @@
 import asyncio
 import concurrent.futures
 import difflib
+import os
 import shutil
+import subprocess
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -854,12 +856,46 @@ def _print_flink_status_from_job_manager(
     if verbose:
         # Print Flink config link resources
         ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-        output.append(
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
-        )
-        output.append(
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
-        )
+
+        # Generate yelpsoa-configs link
+        if service == "sqlclient":
+            # For sqlclient, try to find the specific line in the flinkeks config file
+            yelpsoa_file = f"flinkeks-pnw-{ecosystem}.yaml"
+            yelpsoa_file_path = os.path.join(
+                "/nail/etc/services", service, yelpsoa_file
+            )
+
+            # Try to find the line number where the instance is defined
+            line_number = None
+            try:
+                result = subprocess.run(
+                    ["grep", "-n", f"^{instance}:", yelpsoa_file_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if result.returncode == 0:
+                    line_number = result.stdout.split(":")[0]
+            except Exception:
+                pass
+
+            if line_number:
+                yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/blob/master/{service}/{yelpsoa_file}#L{line_number}"
+            else:
+                yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+        else:
+            yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+
+        output.append(f"    Yelpsoa configs: {yelpsoa_url}")
+
+        # Generate srv-configs link
+        if service == "sqlclient":
+            # For sqlclient, link to the specific instance directory
+            srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}/{instance}"
+        else:
+            srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+
+        output.append(f"    Srv configs: {srv_url}")
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
