@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import glob
 import json
 import os
 import re
@@ -380,37 +381,57 @@ def get_sqlclient_job_config(
     service: str,
     instance: str,
     cluster: str,
+    job_name: Optional[str] = None,
 ) -> Mapping[str, Any]:
     """Get job configuration for a SQLClient Flink job from srv-configs.
 
     :param service: The service name (should be 'sqlclient')
     :param instance: The instance name
     :param cluster: The cluster name
+    :param job_name: Optional job name (if different from instance)
     :returns: Dict with job config including parallelism, sources, sinks
     """
     try:
         # Read job config from hiera-merged srv-configs
-        # Path: /nail/srv/configs/{service}/{instance}/job.d/{instance}.yaml
-        # This is the standard pattern used by flink-supervisor
+        # Path: /nail/srv/configs/{service}/{instance}/job.d/{job_name}.yaml
+        # Note: SQLClient instances can have multiple jobs
         from paasta_tools.utils import load_system_paasta_config
         from service_configuration_lib import read_yaml_file
 
         system_paasta_config = load_system_paasta_config()
         ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
 
-        # Construct path to srv-configs job file (hiera-merged, deployed version)
-        job_config_path = os.path.join(
-            "/nail/srv/configs",
+        # Read from full srv-configs repo (has all instances, not just deployed ones)
+        # Path: /nail/etc/srv-configs/.client/public/ecosystem/{ecosystem}/{service}/{instance}/job.d/
+        job_d_path = os.path.join(
+            "/nail/etc/srv-configs/.client/public/ecosystem",
+            str(ecosystem),
             str(service),
             str(instance),
             "job.d",
-            f"{instance}.yaml",
         )
 
-        if not os.path.exists(job_config_path):
+        if not os.path.exists(job_d_path):
             return {
-                "error": f"Job config not found. Instance '{instance}' may not be deployed to this environment."
+                "error": f"Job config directory not found for instance '{instance}'."
             }
+
+        # If job_name is provided, use it; otherwise try instance name or find first YAML
+        if job_name:
+            job_config_path = os.path.join(job_d_path, f"{job_name}.yaml")
+        else:
+            # Try instance name first
+            job_config_path = os.path.join(job_d_path, f"{instance}.yaml")
+
+        # If specific file doesn't exist, find any YAML file in job.d
+        if not os.path.exists(job_config_path):
+            yaml_files = glob.glob(os.path.join(job_d_path, "*.yaml"))
+            if yaml_files:
+                job_config_path = yaml_files[0]  # Use first YAML file found
+            else:
+                return {
+                    "error": f"No job config files found in {job_d_path}"
+                }
 
         # Use service_configuration_lib to read YAML (handles caching, validation, etc.)
         config = read_yaml_file(job_config_path)
@@ -589,34 +610,25 @@ def format_resource_optimization(
     output.append(f"        Idle Slots:       {analysis['idle_slots']} slots")
 
     recommendation = analysis.get("recommendation")
-    if recommendation:
+    if recommendation and recommendation["action"] == "reduce":
         output.append("")
-
-        if recommendation["action"] == "reduce":
-            output.append("      💡 OPTIMIZATION OPPORTUNITY:")
-            output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
-            output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
-            output.append(f"        Benefit:          Reduce overprovisioning, save resources")
-        elif recommendation["action"] == "increase":
-            output.append("      ⚠️  LOW HEADROOM WARNING:")
-            output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
-            output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
-            output.append(f"        Benefit:          Add failover capacity")
+        output.append("      💡 OPTIMIZATION OPPORTUNITY:")
+        output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
+        output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
+        output.append(f"        Benefit:          Reduce overprovisioning, save resources")
 
         output.append("")
         output.append("      Configuration Changes Needed:")
-        output.append(f"        File: yelpsoa-configs/{service}/{instance}.yaml")
-        output.append("        Changes:")
-        output.append("          taskmanager:")
-        output.append(f"            instances: {recommendation['new_instances']}  # currently: {analysis['current_instances']}")
+        output.append("        taskmanager:")
+        output.append(f"          instances: {recommendation['new_instances']}  # currently: {analysis['current_instances']}")
 
         if recommendation['new_slots_per_tm'] != analysis['current_slots_per_tm']:
-            output.append(f"            taskSlots: {recommendation['new_slots_per_tm']}  # currently: {analysis['current_slots_per_tm']}")
+            output.append(f"          taskSlots: {recommendation['new_slots_per_tm']}  # currently: {analysis['current_slots_per_tm']}")
         else:
-            output.append(f"            # taskSlots: {analysis['current_slots_per_tm']}  (no change needed)")
+            output.append(f"          # taskSlots: {analysis['current_slots_per_tm']}  (no change needed)")
     else:
         output.append("")
-        output.append("      ✅ Resource utilization is optimal (50-90%)")
+        output.append("      ✅ Resource utilization is optimal")
 
     return output
 
