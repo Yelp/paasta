@@ -439,6 +439,7 @@ def get_sqlclient_job_config(
         sources = config.get("sources", [])
         sinks = config.get("sinks", [])
         parallelism = config.get("parallelism")
+        udf_config = config.get("udf_config")
 
         # Query datapipe for each source
         sources_info = []
@@ -489,6 +490,7 @@ def get_sqlclient_job_config(
             "sinks": sinks_info,
             "ecosystem": ecosystem,
             "parallelism": parallelism,
+            "udf_config": udf_config,
         }
 
     except Exception as e:
@@ -510,6 +512,25 @@ def get_sqlclient_parallelism(
     """
     job_config = get_sqlclient_job_config(service, instance, cluster)
     return job_config.get("parallelism")
+
+
+def get_sqlclient_udf_plugin(
+    service: str,
+    instance: str,
+    cluster: str,
+) -> Optional[str]:
+    """Get UDF plugin name for a SQLClient Flink job.
+
+    :param service: The service name (should be 'sqlclient')
+    :param instance: The instance name
+    :param cluster: The cluster name
+    :returns: UDF plugin name or None if not configured
+    """
+    job_config = get_sqlclient_job_config(service, instance, cluster)
+    udf_config = job_config.get("udf_config")
+    if udf_config and isinstance(udf_config, dict):
+        return udf_config.get("plugin_name")
+    return None
 
 
 def analyze_slot_utilization(

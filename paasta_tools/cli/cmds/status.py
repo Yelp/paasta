@@ -68,6 +68,7 @@ from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.flink_tools import get_sqlclient_parallelism
+from paasta_tools.flink_tools import get_sqlclient_udf_plugin
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -896,6 +897,16 @@ def _print_flink_status_from_job_manager(
             srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
 
         output.append(f"    Srv configs: {srv_url}")
+
+        # For sqlclient, add UDF link if job has UDF config
+        if service == "sqlclient":
+            try:
+                udf_plugin = get_sqlclient_udf_plugin(service, instance, cluster)
+                if udf_plugin:
+                    udf_url = f"https://github.yelpcorp.com/misc/sqlclient_plugins/tree/main/udf/{udf_plugin}"
+                    output.append(f"    UDF: {udf_url}")
+            except Exception:
+                pass  # If we can't get UDF info, just don't show it
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
