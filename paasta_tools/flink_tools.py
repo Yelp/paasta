@@ -361,3 +361,202 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_flink_instance_details(
+    metadata: Mapping[str, Any],
+    flink_config: Optional[Any],
+    flink_instance_config: Any,
+    service: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Mapping[str, Any]:
+    """Collect Flink instance metadata and configuration details.
+
+    :param metadata: Kubernetes metadata from flink status
+    :param flink_config: Flink configuration (None if not running)
+    :param flink_instance_config: Flink instance config from yelpsoa-configs
+    :param service: Service name
+    :param soa_dir: SOA directory path
+    :returns: Dict with instance details
+    """
+    from paasta_tools.monitoring_tools import get_runbook
+    from paasta_tools.monitoring_tools import get_team
+
+    labels = metadata.get("labels", {})
+    annotations = metadata.get("annotations", {})
+
+    # Extract config SHA
+    config_sha = labels.get(paasta_prefixed("config_sha"))
+    if config_sha and config_sha.startswith("config"):
+        config_sha = config_sha[6:]
+
+    # Extract version and dashboard URL
+    version = None
+    version_revision = None
+    dashboard_url = None
+
+    if flink_config:
+        version = flink_config.flink_version
+        version_revision = flink_config.flink_revision
+
+    if annotations:
+        dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
+
+    # Get pool, team, runbook
+    pool = flink_instance_config.get_pool()
+    team = flink_instance_config.get_team() or get_team(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+    runbook = flink_instance_config.get_runbook() or get_runbook(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+
+    return {
+        "config_sha": config_sha,
+        "version": version,
+        "version_revision": version_revision,
+        "dashboard_url": dashboard_url,
+        "pool": pool,
+        "team": team,
+        "runbook": runbook,
+    }
+
+
+def format_flink_instance_header(
+    details: Mapping[str, Any], verbose: bool
+) -> List[str]:
+    """Format basic instance information (config SHA, version, URL).
+
+    :param details: Instance details from get_flink_instance_details()
+    :param verbose: Whether to show version revision
+    :returns: List of formatted strings
+    """
+    output: List[str] = []
+
+    # Config SHA (always shown)
+    if details.get("config_sha"):
+        output.append(f"    Config SHA: {details['config_sha']}")
+
+    # Version (with optional revision)
+    if details.get("version"):
+        if verbose and details.get("version_revision"):
+            output.append(
+                f"    Flink version: {details['version']} {details['version_revision']}"
+            )
+        else:
+            output.append(f"    Flink version: {details['version']}")
+
+    # Dashboard URL
+    if details.get("dashboard_url"):
+        output.append(f"    URL: {details['dashboard_url']}/")
+
+    return output
+
+
+def format_flink_instance_metadata(
+    details: Mapping[str, Any], service: str
+) -> List[str]:
+    """Format verbose instance metadata (repo links, pool, owner, runbook).
+
+    :param details: Instance details from get_flink_instance_details()
+    :param service: Service name
+    :returns: List of formatted strings
+    """
+    output: List[str] = []
+
+    # Repo links
+    output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+    output.append(
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+    )
+
+    # Pool, owner, runbook
+    if details.get("pool"):
+        output.append(f"    Flink Pool: {details['pool']}")
+    if details.get("team"):
+        output.append(f"    Owner: {details['team']}")
+    if details.get("runbook"):
+        output.append(f"    Flink Runbook: {details['runbook']}")
+
+    return output
+
+
+def format_flink_config_links(
+    service: str, instance: str, ecosystem: str
+) -> List[str]:
+    """Format configuration repository links.
+
+    :param service: Service name
+    :param instance: Instance name
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :returns: List of formatted strings
+    """
+    output: List[str] = []
+
+    output.append(
+        f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+    )
+    output.append(
+        f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+    )
+
+    return output
+
+
+def format_flink_log_commands(
+    service: str, instance: str, cluster: str
+) -> List[str]:
+    """Format paasta logs commands.
+
+    :param service: Service name
+    :param instance: Instance name
+    :param cluster: Cluster name
+    :returns: List of formatted strings
+    """
+    output: List[str] = []
+
+    output.append("    Flink Log Commands:")
+    output.append(
+        f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
+    )
+    output.append(
+        f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER"
+    )
+    output.append(
+        f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER"
+    )
+    output.append(
+        f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
+    )
+
+    return output
+
+
+def format_flink_monitoring_links(
+    service: str, instance: str, ecosystem: str, cluster: str
+) -> List[str]:
+    """Format Grafana and cost monitoring links.
+
+    :param service: Service name
+    :param instance: Instance name
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :param cluster: Cluster name
+    :returns: List of formatted strings
+    """
+    output: List[str] = []
+
+    output.append("    Flink Monitoring:")
+    output.append(
+        f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+    )
+    output.append(
+        f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+    )
+    output.append(
+        f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+    )
+    output.append(
+        f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
+    )
+
+    return output
