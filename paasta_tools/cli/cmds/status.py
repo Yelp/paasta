@@ -61,6 +61,7 @@ from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import format_kafka_topics
+from paasta_tools.flink_tools import format_resource_optimization
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
@@ -1106,6 +1107,19 @@ def _print_flink_status_from_job_manager(
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
+
+    # Show resource optimization for sqlclient with -vv flag
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        try:
+            optimization_output = format_resource_optimization(
+                service, instance, overview, flink_instance_config
+            )
+            output.extend(optimization_output)
+        except Exception as e:
+            output.append(f"    Resource Optimization: Error - {type(e).__name__}: {str(e)}")
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
     return 0
 
 

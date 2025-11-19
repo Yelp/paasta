@@ -491,6 +491,136 @@ def get_sqlclient_parallelism(
     return job_config.get("parallelism")
 
 
+def analyze_slot_utilization(
+    overview: FlinkClusterOverview,
+    instance_config: FlinkDeploymentConfig,
+) -> Mapping[str, Any]:
+    """Analyze Flink slot utilization and suggest optimizations.
+
+    :param overview: Flink cluster overview with slot information
+    :param instance_config: Flink instance configuration
+    :returns: Dict with current config, utilization, and recommendations
+    """
+    total_slots = overview.slots_total
+    available_slots = overview.slots_available
+    used_slots = total_slots - available_slots
+    taskmanagers = overview.taskmanagers
+
+    # Calculate utilization
+    utilization_pct = (used_slots / total_slots * 100) if total_slots > 0 else 0
+
+    # Get current config from yelpsoa-configs
+    taskmanager_config = instance_config.config_dict.get("taskmanager", {})
+    current_instances = taskmanager_config.get("instances", taskmanagers)
+
+    # Calculate slots per taskmanager
+    slots_per_tm = total_slots // taskmanagers if taskmanagers > 0 else 1
+
+    analysis = {
+        "current_instances": current_instances,
+        "current_slots_per_tm": slots_per_tm,
+        "total_slots": total_slots,
+        "used_slots": used_slots,
+        "idle_slots": available_slots,
+        "utilization_pct": utilization_pct,
+    }
+
+    # Suggest optimization if utilization is very low (< 50%) or very high (> 90%)
+    recommendation = None
+
+    if utilization_pct < 50 and used_slots > 0:
+        # Too many idle slots - suggest reducing instances
+        # Target 75% utilization with at least 1 slot buffer
+        target_slots = max(used_slots + 1, int(used_slots / 0.75))
+        recommended_instances = max(1, (target_slots + slots_per_tm - 1) // slots_per_tm)
+
+        if recommended_instances < current_instances:
+            recommendation = {
+                "action": "reduce",
+                "new_instances": recommended_instances,
+                "new_slots_per_tm": slots_per_tm,
+                "new_total_slots": recommended_instances * slots_per_tm,
+                "expected_utilization": (used_slots / (recommended_instances * slots_per_tm) * 100) if (recommended_instances * slots_per_tm) > 0 else 0,
+            }
+
+    elif utilization_pct > 90:
+        # Too high utilization - suggest adding capacity
+        # Target 75% utilization
+        target_slots = int(used_slots / 0.75)
+        recommended_instances = max(current_instances, (target_slots + slots_per_tm - 1) // slots_per_tm)
+
+        if recommended_instances > current_instances:
+            recommendation = {
+                "action": "increase",
+                "new_instances": recommended_instances,
+                "new_slots_per_tm": slots_per_tm,
+                "new_total_slots": recommended_instances * slots_per_tm,
+                "expected_utilization": (used_slots / (recommended_instances * slots_per_tm) * 100) if (recommended_instances * slots_per_tm) > 0 else 0,
+            }
+
+    analysis["recommendation"] = recommendation
+    return analysis
+
+
+def format_resource_optimization(
+    service: str,
+    instance: str,
+    overview: FlinkClusterOverview,
+    instance_config: FlinkDeploymentConfig,
+) -> List[str]:
+    """Format resource optimization suggestions for display.
+
+    :param service: The service name
+    :param instance: The instance name
+    :param overview: Flink cluster overview
+    :param instance_config: Flink instance configuration
+    :returns: List of formatted strings for output
+    """
+    output = []
+
+    analysis = analyze_slot_utilization(overview, instance_config)
+
+    output.append("    Resource Utilization & Optimization:")
+    output.append("      Current Configuration:")
+    output.append(f"        Taskmanagers:     {analysis['current_instances']} instances")
+    output.append(f"        Slots per TM:     {analysis['current_slots_per_tm']} slots")
+    output.append(f"        Total Slots:      {analysis['total_slots']} slots")
+    output.append(f"        Used Slots:       {analysis['used_slots']} slots ({analysis['utilization_pct']:.0f}% utilization)")
+    output.append(f"        Idle Slots:       {analysis['idle_slots']} slots")
+
+    recommendation = analysis.get("recommendation")
+    if recommendation:
+        output.append("")
+
+        if recommendation["action"] == "reduce":
+            output.append("      💡 OPTIMIZATION OPPORTUNITY:")
+            output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
+            output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
+            output.append(f"        Benefit:          Reduce overprovisioning, save resources")
+        elif recommendation["action"] == "increase":
+            output.append("      ⚠️  LOW HEADROOM WARNING:")
+            output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
+            output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
+            output.append(f"        Benefit:          Add failover capacity")
+
+        output.append("")
+        output.append("      Configuration Changes Needed:")
+        output.append(f"        File: yelpsoa-configs/{service}/{instance}.yaml")
+        output.append("        Changes:")
+        output.append("          taskmanager:")
+        output.append(f"            instances: {recommendation['new_instances']}  # currently: {analysis['current_instances']}")
+
+        if recommendation['new_slots_per_tm'] != analysis['current_slots_per_tm']:
+            output.append(f"            taskSlots: {recommendation['new_slots_per_tm']}  # currently: {analysis['current_slots_per_tm']}")
+        else:
+            output.append(f"            # taskSlots: {analysis['current_slots_per_tm']}  (no change needed)")
+    else:
+        output.append("")
+        output.append("      ✅ Resource utilization is optimal (50-90%)")
+
+    return output
+
+
 def format_kafka_topics(
     service: str,
     instance: str,
