@@ -692,3 +692,102 @@ class TestFormatResourceOptimization:
 
         output_str = "\n".join(output)
         assert "Resource utilization is optimal" in output_str
+
+
+class TestFormatTopicLinksAndCommands:
+    def test_with_schema_id(self):
+        output = flink_tools._format_topic_links_and_commands(
+            schema_id=12345,
+            namespace=None,
+            source_name=None,
+            alias=None,
+            ecosystem="prod",
+        )
+
+        output_str = "\n".join(output)
+        assert "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345" in output_str
+        assert "Describe:        datapipe schema describe --schema-id 12345" in output_str
+        assert "Tail:            datapipe stream tail --schema-id 12345" in output_str
+
+    def test_with_namespace_source_alias(self):
+        output = flink_tools._format_topic_links_and_commands(
+            schema_id=None,
+            namespace="test_ns",
+            source_name="test_src",
+            alias="1.0",
+            ecosystem="prod",
+        )
+
+        output_str = "\n".join(output)
+        assert "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/namespaces/test_ns/sources/test_src/asset-details?alias=1.0" in output_str
+        assert "Describe:        datapipe schema describe --namespace test_ns --source test_src --alias 1.0" in output_str
+        assert "Tail:            datapipe stream tail --namespace test_ns --source test_src --alias 1.0" in output_str
+
+
+class TestFormatConsumerGroupInfo:
+    def test_prod_consumer_group(self):
+        output = flink_tools._format_consumer_group_info(
+            "sqlclient", "test_instance", "test_job", "prod"
+        )
+
+        output_str = "\n".join(output)
+        assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
+        assert "kafka-view.admin.yelp.com/clusters/scribe.uswest2-prod/groups/flink.sqlclient.test_instance.test_job" in output_str
+        assert "grafana.yelpcorp.com/d/kcHXkIBnz/consumer-metrics" in output_str
+
+    def test_devc_consumer_group(self):
+        output = flink_tools._format_consumer_group_info(
+            "sqlclient", "test_instance", "test_job", "devc"
+        )
+
+        output_str = "\n".join(output)
+        assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
+        assert "kafka-view.paasta-norcal-devc.yelp/clusters/buff-high.uswest1-devc/groups/flink.sqlclient.test_instance.test_job" in output_str
+
+
+class TestFormatSourceTopics:
+    def test_format_sources(self):
+        sources = [
+            {
+                "table_name": "test_source",
+                "schema_id": 123,
+                "namespace": None,
+                "source": None,
+                "alias": None,
+            }
+        ]
+
+        output = flink_tools._format_source_topics(sources, "prod")
+
+        output_str = "\n".join(output)
+        assert "Source Topics:" in output_str
+        assert "1. test_source" in output_str
+        assert "Schema ID:       123" in output_str
+
+    def test_empty_sources(self):
+        output = flink_tools._format_source_topics([], "prod")
+        assert output == []
+
+
+class TestFormatSinkTopics:
+    def test_format_sinks(self):
+        sinks = [
+            {
+                "table_name": "test_sink",
+                "namespace": "test_ns",
+                "source": "test_src",
+                "alias": "1.0",
+                "pkeys": "id",
+            }
+        ]
+
+        output = flink_tools._format_sink_topics(sinks, "prod")
+
+        output_str = "\n".join(output)
+        assert "Sink Topics:" in output_str
+        assert "1. test_sink" in output_str
+        assert "Primary Keys:    id" in output_str
+
+    def test_empty_sinks(self):
+        output = flink_tools._format_sink_topics([], "prod")
+        assert output == []

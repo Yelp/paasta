@@ -60,6 +60,13 @@ OVERVIEW_KEYS = {
 }
 JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time"}
 
+# URL constants for external services
+PIPELINE_STUDIO_BASE = "https://pipeline_studio_v2.yelpcorp.com"
+KAFKA_VIEW_PROD_DOMAIN = "kafka-view.admin.yelp.com"
+KAFKA_VIEW_DEVC_DOMAIN = "kafka-view.paasta-norcal-devc.yelp"
+GRAFANA_BASE = "https://grafana.yelpcorp.com"
+SRV_CONFIGS_FULL_REPO = "/nail/etc/srv-configs/.client/public/ecosystem"
+
 
 def _safe_str(value: Any) -> Optional[str]:
     """Convert value to string, handling None safely.
@@ -404,7 +411,7 @@ def get_sqlclient_job_config(
         # Read from full srv-configs repo (has all instances, not just deployed ones)
         # Path: /nail/etc/srv-configs/.client/public/ecosystem/{ecosystem}/{service}/{instance}/job.d/
         job_d_path = os.path.join(
-            "/nail/etc/srv-configs/.client/public/ecosystem",
+            SRV_CONFIGS_FULL_REPO,
             str(ecosystem),
             str(service),
             str(instance),
@@ -654,6 +661,185 @@ def format_resource_optimization(
     return output
 
 
+def _format_topic_links_and_commands(
+    schema_id: Optional[int],
+    namespace: Optional[str],
+    source_name: Optional[str],
+    alias: Optional[str],
+    ecosystem: str,
+) -> List[str]:
+    """Format Pipeline Studio link, describe command, and tail command for a topic.
+
+    :param schema_id: Schema ID (if available)
+    :param namespace: Namespace name
+    :param source_name: Source name
+    :param alias: Alias version
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :returns: List of formatted strings
+    """
+    output = []
+
+    # Pipeline Studio link
+    if schema_id and not (namespace and source_name):
+        # Use schema_id based URL when only schema_id is available
+        pipeline_url = f"{PIPELINE_STUDIO_BASE}/?search_by=2&ecosystem={ecosystem}&schema_id={schema_id}"
+        output.append(f"         Pipeline Studio: {pipeline_url}")
+    elif namespace and source_name:
+        # Use namespace/source based URL when available
+        pipeline_url = f"{PIPELINE_STUDIO_BASE}/namespaces/{namespace}/sources/{source_name}/asset-details"
+        if alias:
+            pipeline_url += f"?alias={alias}"
+        output.append(f"         Pipeline Studio: {pipeline_url}")
+
+    # Schema describe command
+    if schema_id:
+        describe_cmd = f"datapipe schema describe --schema-id {schema_id}"
+    elif namespace and source_name:
+        describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
+        if alias:
+            describe_cmd += f" --alias {alias}"
+    else:
+        describe_cmd = None
+
+    if describe_cmd:
+        output.append(f"         Describe:        {describe_cmd}")
+
+    # Datapipe tail command
+    if schema_id:
+        tail_cmd = f"datapipe stream tail --schema-id {schema_id} --all-fields --json"
+    elif namespace and source_name:
+        tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
+        if alias:
+            tail_cmd += f" --alias {alias}"
+        tail_cmd += " --all-fields --json"
+    else:
+        tail_cmd = None
+
+    if tail_cmd:
+        output.append(f"         Tail:            {tail_cmd}")
+
+    return output
+
+
+def _format_consumer_group_info(
+    service: str,
+    instance: str,
+    job_name: str,
+    ecosystem: str,
+) -> List[str]:
+    """Format consumer group information with monitoring links.
+
+    :param service: The service name
+    :param instance: The instance name
+    :param job_name: The Flink job name
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :returns: List of formatted strings
+    """
+    output = []
+    consumer_group = f"flink.{service}.{instance}.{job_name}"
+    output.append(f"      Consumer Group: {consumer_group}")
+
+    # Determine Kafka View domain and cluster based on ecosystem
+    if ecosystem == "prod":
+        kafka_view_domain = KAFKA_VIEW_PROD_DOMAIN
+        kafka_cluster = "scribe.uswest2-prod"
+    else:
+        kafka_view_domain = KAFKA_VIEW_DEVC_DOMAIN
+        kafka_cluster = f"buff-high.uswest1-{ecosystem}"
+
+    kafka_view_url = f"http://{kafka_view_domain}/clusters/{kafka_cluster}/groups/{consumer_group}"
+    output.append(f"        Kafka View: {kafka_view_url}")
+
+    # Grafana consumer metrics link
+    grafana_url = f"{GRAFANA_BASE}/d/kcHXkIBnz/consumer-metrics?orgId=1&var-cluster_type=All&var-cluster_name=All&var-consumergroup={consumer_group}&var-topic=.%2A"
+    output.append(f"        Grafana: {grafana_url}")
+
+    return output
+
+
+def _format_source_topics(sources: List[Mapping[str, Any]], ecosystem: str) -> List[str]:
+    """Format source topics with details and links.
+
+    :param sources: List of source topic info dicts
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :returns: List of formatted strings
+    """
+    output = []
+    if not sources:
+        return output
+
+    output.append("")
+    output.append("    Source Topics:")
+    for idx, source in enumerate(sources, 1):
+        table_name = source.get("table_name", "unknown")
+        schema_id = source.get("schema_id")
+        namespace = source.get("namespace")
+        source_name = source.get("source")
+        alias = source.get("alias")
+
+        output.append(f"      {idx}. {table_name}")
+
+        if schema_id or namespace:
+            if schema_id:
+                output.append(f"         Schema ID:       {schema_id}")
+            if namespace:
+                output.append(f"         Namespace:       {namespace}")
+            if source_name:
+                output.append(f"         Source:          {source_name}")
+            if alias:
+                output.append(f"         Alias:           {alias}")
+
+            # Use helper to format links and commands
+            output.extend(_format_topic_links_and_commands(
+                schema_id, namespace, source_name, alias, ecosystem
+            ))
+
+        output.append("")
+
+    return output
+
+
+def _format_sink_topics(sinks: List[Mapping[str, Any]], ecosystem: str) -> List[str]:
+    """Format sink topics with details and links.
+
+    :param sinks: List of sink topic info dicts
+    :param ecosystem: Ecosystem (prod, devc, etc.)
+    :returns: List of formatted strings
+    """
+    output = []
+    if not sinks:
+        return output
+
+    output.append("    Sink Topics:")
+    for idx, sink in enumerate(sinks, 1):
+        table_name = sink.get("table_name", "unknown")
+        namespace = sink.get("namespace")
+        source_name = sink.get("source")
+        alias = sink.get("alias")
+        pkeys = sink.get("pkeys")
+
+        output.append(f"      {idx}. {table_name}")
+
+        if namespace:
+            output.append(f"         Namespace:       {namespace}")
+        if source_name:
+            output.append(f"         Source:          {source_name}")
+        if alias:
+            output.append(f"         Alias:           {alias}")
+        if pkeys:
+            output.append(f"         Primary Keys:    {pkeys}")
+
+        # Use helper to format links and commands
+        if namespace and source_name:
+            output.extend(_format_topic_links_and_commands(
+                None, namespace, source_name, alias, ecosystem
+            ))
+
+        output.append("")
+
+    return output
+
+
 def format_kafka_topics(
     service: str,
     instance: str,
@@ -685,139 +871,19 @@ def format_kafka_topics(
     sinks = topics_info.get("sinks", [])
     ecosystem = topics_info.get("ecosystem", "prod")
 
+    # Header
     output.append(f"    Data Pipeline Topology:")
     output.append(f"      Sources: {len(sources)} topics")
     output.append(f"      Sinks:   {len(sinks)} topics")
 
-    # Add consumer group information
+    # Consumer group info
     if job_name:
-        consumer_group = f"flink.{service}.{instance}.{job_name}"
-        output.append(f"      Consumer Group: {consumer_group}")
+        output.extend(_format_consumer_group_info(service, instance, job_name, ecosystem))
 
-        # Determine Kafka View domain and cluster based on ecosystem
-        if ecosystem == "prod":
-            kafka_view_domain = "kafka-view.admin.yelp.com"
-            # Prod uses scribe cluster
-            kafka_cluster = "scribe.uswest2-prod"
-        else:
-            # Devc uses different domain and cluster
-            kafka_view_domain = "kafka-view.paasta-norcal-devc.yelp"
-            kafka_cluster = f"buff-high.uswest1-{ecosystem}"
+    # Source topics
+    output.extend(_format_source_topics(sources, ecosystem))
 
-        kafka_view_url = f"http://{kafka_view_domain}/clusters/{kafka_cluster}/groups/{consumer_group}"
-        output.append(f"        Kafka View: {kafka_view_url}")
-
-        # Grafana consumer metrics link
-        grafana_url = f"https://grafana.yelpcorp.com/d/kcHXkIBnz/consumer-metrics?orgId=1&var-cluster_type=All&var-cluster_name=All&var-consumergroup={consumer_group}&var-topic=.%2A"
-        output.append(f"        Grafana: {grafana_url}")
-
-    # Format sources
-    if sources:
-        output.append("")
-        output.append("    Source Topics:")
-        for idx, source in enumerate(sources, 1):
-            table_name = source.get("table_name", "unknown")
-            schema_id = source.get("schema_id")
-            namespace = source.get("namespace")
-            source_name = source.get("source")
-            alias = source.get("alias")
-
-            output.append(f"      {idx}. {table_name}")
-
-            if schema_id or namespace:
-                if schema_id:
-                    output.append(f"         Schema ID:       {schema_id}")
-                if namespace:
-                    output.append(f"         Namespace:       {namespace}")
-                if source_name:
-                    output.append(f"         Source:          {source_name}")
-                if alias:
-                    output.append(f"         Alias:           {alias}")
-
-                # Pipeline Studio link
-                if schema_id and not (namespace and source_name):
-                    # Use schema_id based URL when only schema_id is available
-                    pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem={ecosystem}&schema_id={schema_id}"
-                    output.append(f"         Pipeline Studio: {pipeline_url}")
-                elif namespace and source_name:
-                    # Use namespace/source based URL when available
-                    pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/namespaces/{namespace}/sources/{source_name}/asset-details"
-                    if alias:
-                        pipeline_url += f"?alias={alias}"
-                    output.append(f"         Pipeline Studio: {pipeline_url}")
-
-                # Schema describe command
-                if schema_id:
-                    describe_cmd = f"datapipe schema describe --schema-id {schema_id}"
-                elif namespace and source_name:
-                    describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
-                    if alias:
-                        describe_cmd += f" --alias {alias}"
-                else:
-                    describe_cmd = None
-
-                if describe_cmd:
-                    output.append(f"         Describe:        {describe_cmd}")
-
-                # Datapipe tail command
-                if schema_id:
-                    tail_cmd = f"datapipe stream tail --schema-id {schema_id} --all-fields --json"
-                elif namespace and source_name:
-                    tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
-                    if alias:
-                        tail_cmd += f" --alias {alias}"
-                    tail_cmd += " --all-fields --json"
-                else:
-                    tail_cmd = None
-
-                if tail_cmd:
-                    output.append(f"         Tail:            {tail_cmd}")
-
-            output.append("")
-
-    # Format sinks
-    if sinks:
-        output.append("    Sink Topics:")
-        for idx, sink in enumerate(sinks, 1):
-            table_name = sink.get("table_name", "unknown")
-            namespace = sink.get("namespace")
-            source_name = sink.get("source")
-            alias = sink.get("alias")
-            pkeys = sink.get("pkeys")
-
-            output.append(f"      {idx}. {table_name}")
-
-            if namespace:
-                output.append(f"         Namespace:       {namespace}")
-            if source_name:
-                output.append(f"         Source:          {source_name}")
-            if alias:
-                output.append(f"         Alias:           {alias}")
-            if pkeys:
-                output.append(f"         Primary Keys:    {pkeys}")
-
-            # Pipeline Studio link
-            if namespace and source_name:
-                pipeline_url = f"https://pipeline_studio_v2.yelpcorp.com/namespaces/{namespace}/sources/{source_name}/asset-details"
-                if alias:
-                    pipeline_url += f"?alias={alias}"
-                output.append(f"         Pipeline Studio: {pipeline_url}")
-
-            # Schema describe command
-            if namespace and source_name:
-                describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
-                if alias:
-                    describe_cmd += f" --alias {alias}"
-                output.append(f"         Describe:        {describe_cmd}")
-
-            # Datapipe tail command
-            if namespace and source_name:
-                tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
-                if alias:
-                    tail_cmd += f" --alias {alias}"
-                tail_cmd += " --all-fields --json"
-                output.append(f"         Tail:            {tail_cmd}")
-
-            output.append("")
+    # Sink topics
+    output.extend(_format_sink_topics(sinks, ecosystem))
 
     return output
