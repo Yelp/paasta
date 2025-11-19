@@ -658,12 +658,14 @@ def format_kafka_topics(
     service: str,
     instance: str,
     cluster: str,
+    job_name: Optional[str] = None,
 ) -> List[str]:
     """Format Kafka topic information for SQLClient Flink jobs.
 
     :param service: The service name
     :param instance: The instance name
     :param cluster: The cluster name
+    :param job_name: The Flink job name (for consumer group)
     :returns: List of formatted strings for output
     """
     output = []
@@ -686,6 +688,28 @@ def format_kafka_topics(
     output.append(f"    Data Pipeline Topology:")
     output.append(f"      Sources: {len(sources)} topics")
     output.append(f"      Sinks:   {len(sinks)} topics")
+
+    # Add consumer group information
+    if job_name:
+        consumer_group = f"flink.{service}.{instance}.{job_name}"
+        output.append(f"      Consumer Group: {consumer_group}")
+
+        # Determine Kafka View domain and cluster based on ecosystem
+        if ecosystem == "prod":
+            kafka_view_domain = "kafka-view.admin.yelp.com"
+            # Prod uses scribe cluster
+            kafka_cluster = "scribe.uswest2-prod"
+        else:
+            # Devc uses different domain and cluster
+            kafka_view_domain = "kafka-view.paasta-norcal-devc.yelp"
+            kafka_cluster = f"buff-high.uswest1-{ecosystem}"
+
+        kafka_view_url = f"http://{kafka_view_domain}/clusters/{kafka_cluster}/groups/{consumer_group}"
+        output.append(f"        Kafka View: {kafka_view_url}")
+
+        # Grafana consumer metrics link
+        grafana_url = f"https://grafana.yelpcorp.com/d/kcHXkIBnz/consumer-metrics?orgId=1&var-cluster_type=All&var-cluster_name=All&var-consumergroup={consumer_group}&var-topic=.%2A"
+        output.append(f"        Grafana: {grafana_url}")
 
     # Format sources
     if sources:

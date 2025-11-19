@@ -946,15 +946,7 @@ def _print_flink_status_from_job_manager(
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
-    # Show Kafka topic details for sqlclient with -vv flag (before State block)
-    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
-        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
-        try:
-            kafka_output = format_kafka_topics(service, instance, cluster)
-            output.extend(kafka_output)
-        except Exception as e:
-            output.append(f"    Kafka Topics: Error - {type(e).__name__}: {str(e)}")
-        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+    # Kafka topics section moved to after jobs are fetched (to get job name for consumer group)
 
     # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
@@ -1103,9 +1095,16 @@ def _print_flink_status_from_job_manager(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
+    first_job_name = None  # Capture first job name for consumer group
 
     for job in unique_jobs:
         job_id = job["jid"]
+        job_name = get_flink_job_name(job)
+
+        # Capture first job name for consumer group info
+        if first_job_name is None:
+            first_job_name = job_name
+
         if verbose > 1:
             if job_parallelism is not None:
                 fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <8} {parallelism: <11} {job_id} {start_time}
@@ -1131,7 +1130,7 @@ def _print_flink_status_from_job_manager(
 
             format_args = {
                 "job_id": job_id,
-                "job_name": get_flink_job_name(job),
+                "job_name": job_name,
                 "allowed_max_job_name_length": allowed_max_job_name_length,
                 "state": color_fn((job.get("state").title() or "Unknown")),
                 "start_time": f"{str(start_time)} ({humanize.naturaltime(start_time)})",
@@ -1151,6 +1150,16 @@ def _print_flink_status_from_job_manager(
                 )
             )
             break
+
+    # Show Kafka topic details for sqlclient with -vv flag (after jobs, so we have job name)
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        try:
+            kafka_output = format_kafka_topics(service, instance, cluster, first_job_name)
+            output.extend(kafka_output)
+        except Exception as e:
+            output.append(f"    Kafka Topics: Error - {type(e).__name__}: {str(e)}")
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
