@@ -1,6 +1,5 @@
 alabaster==0.7.10
 astroid==2.15.8
-asynctest==0.12.0
 Babel==2.9.1
 cfgv==2.0.1
 coverage==6.5.0
