@@ -1155,7 +1155,9 @@ def _print_flink_status_from_job_manager(
     if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
         try:
-            kafka_output = format_kafka_topics(service, instance, cluster, first_job_name)
+            kafka_output = format_kafka_topics(
+                service, instance, cluster, first_job_name
+            )
             output.extend(kafka_output)
         except Exception as e:
             output.append(f"    Kafka Topics: Error - {type(e).__name__}: {str(e)}")
@@ -1173,7 +1175,9 @@ def _print_flink_status_from_job_manager(
             )
             output.extend(optimization_output)
         except Exception as e:
-            output.append(f"    Resource Optimization: Error - {type(e).__name__}: {str(e)}")
+            output.append(
+                f"    Resource Optimization: Error - {type(e).__name__}: {str(e)}"
+            )
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
     return 0

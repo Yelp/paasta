@@ -564,16 +564,23 @@ class TestFormatKafkaTopics:
         }
 
         with mock.patch(
-            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+            "paasta_tools.flink_tools.get_sqlclient_job_config",
+            autospec=True,
+            return_value=topics_info,
         ):
-            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+            output = flink_tools.format_kafka_topics(
+                "sqlclient", "test", "test_cluster"
+            )
 
         output_str = "\n".join(output)
         assert "Data Pipeline Topology:" in output_str
         assert "Sources: 1 topics" in output_str
         assert "test_source" in output_str
         assert "Schema ID:       12345" in output_str
-        assert "pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345" in output_str
+        assert (
+            "pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345"
+            in output_str
+        )
         assert "datapipe schema describe --schema-id 12345" in output_str
         assert "datapipe stream tail --schema-id 12345" in output_str
 
@@ -593,9 +600,13 @@ class TestFormatKafkaTopics:
         }
 
         with mock.patch(
-            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+            "paasta_tools.flink_tools.get_sqlclient_job_config",
+            autospec=True,
+            return_value=topics_info,
         ):
-            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+            output = flink_tools.format_kafka_topics(
+                "sqlclient", "test", "test_cluster"
+            )
 
         output_str = "\n".join(output)
         assert "Sinks:   1 topics" in output_str
@@ -604,17 +615,30 @@ class TestFormatKafkaTopics:
         assert "Source:          test_source" in output_str
         assert "Alias:           1.0" in output_str
         assert "Primary Keys:    id" in output_str
-        assert "pipeline_studio_v2.yelpcorp.com/namespaces/test_namespace/sources/test_source/asset-details?alias=1.0" in output_str
-        assert "datapipe schema describe --namespace test_namespace --source test_source --alias 1.0" in output_str
-        assert "datapipe stream tail --namespace test_namespace --source test_source --alias 1.0" in output_str
+        assert (
+            "pipeline_studio_v2.yelpcorp.com/namespaces/test_namespace/sources/test_source/asset-details?alias=1.0"
+            in output_str
+        )
+        assert (
+            "datapipe schema describe --namespace test_namespace --source test_source --alias 1.0"
+            in output_str
+        )
+        assert (
+            "datapipe stream tail --namespace test_namespace --source test_source --alias 1.0"
+            in output_str
+        )
 
     def test_format_with_error(self):
         topics_info = {"error": "Test error message"}
 
         with mock.patch(
-            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+            "paasta_tools.flink_tools.get_sqlclient_job_config",
+            autospec=True,
+            return_value=topics_info,
         ):
-            output = flink_tools.format_kafka_topics("sqlclient", "test", "test_cluster")
+            output = flink_tools.format_kafka_topics(
+                "sqlclient", "test", "test_cluster"
+            )
 
         output_str = "\n".join(output)
         assert "Kafka Topics: Unable to fetch" in output_str
@@ -622,37 +646,67 @@ class TestFormatKafkaTopics:
 
     def test_format_with_consumer_group_prod(self):
         topics_info = {
-            "sources": [{"table_name": "test_source", "schema_id": 123, "namespace": None, "source": None, "alias": None}],
+            "sources": [
+                {
+                    "table_name": "test_source",
+                    "schema_id": 123,
+                    "namespace": None,
+                    "source": None,
+                    "alias": None,
+                }
+            ],
             "sinks": [],
             "ecosystem": "prod",
         }
 
         with mock.patch(
-            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+            "paasta_tools.flink_tools.get_sqlclient_job_config",
+            autospec=True,
+            return_value=topics_info,
         ):
-            output = flink_tools.format_kafka_topics("sqlclient", "test_instance", "test_cluster", job_name="test_job")
+            output = flink_tools.format_kafka_topics(
+                "sqlclient", "test_instance", "test_cluster", job_name="test_job"
+            )
 
         output_str = "\n".join(output)
         assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
-        assert "kafka-view.admin.yelp.com/clusters/scribe.uswest2-prod/groups/flink.sqlclient.test_instance.test_job" in output_str
+        assert (
+            "kafka-view.admin.yelp.com/clusters/scribe.uswest2-prod/groups/flink.sqlclient.test_instance.test_job"
+            in output_str
+        )
         assert "grafana.yelpcorp.com/d/kcHXkIBnz/consumer-metrics" in output_str
         assert "var-consumergroup=flink.sqlclient.test_instance.test_job" in output_str
 
     def test_format_with_consumer_group_devc(self):
         topics_info = {
-            "sources": [{"table_name": "test_source", "schema_id": 123, "namespace": None, "source": None, "alias": None}],
+            "sources": [
+                {
+                    "table_name": "test_source",
+                    "schema_id": 123,
+                    "namespace": None,
+                    "source": None,
+                    "alias": None,
+                }
+            ],
             "sinks": [],
             "ecosystem": "devc",
         }
 
         with mock.patch(
-            "paasta_tools.flink_tools.get_sqlclient_job_config", return_value=topics_info
+            "paasta_tools.flink_tools.get_sqlclient_job_config",
+            autospec=True,
+            return_value=topics_info,
         ):
-            output = flink_tools.format_kafka_topics("sqlclient", "test_instance", "test_cluster", job_name="test_job")
+            output = flink_tools.format_kafka_topics(
+                "sqlclient", "test_instance", "test_cluster", job_name="test_job"
+            )
 
         output_str = "\n".join(output)
         assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
-        assert "kafka-view.paasta-norcal-devc.yelp/clusters/buff-high.uswest1-devc/groups/flink.sqlclient.test_instance.test_job" in output_str
+        assert (
+            "kafka-view.paasta-norcal-devc.yelp/clusters/buff-high.uswest1-devc/groups/flink.sqlclient.test_instance.test_job"
+            in output_str
+        )
 
 
 class TestFormatResourceOptimization:
@@ -705,8 +759,13 @@ class TestFormatTopicLinksAndCommands:
         )
 
         output_str = "\n".join(output)
-        assert "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345" in output_str
-        assert "Describe:        datapipe schema describe --schema-id 12345" in output_str
+        assert (
+            "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/?search_by=2&ecosystem=prod&schema_id=12345"
+            in output_str
+        )
+        assert (
+            "Describe:        datapipe schema describe --schema-id 12345" in output_str
+        )
         assert "Tail:            datapipe stream tail --schema-id 12345" in output_str
 
     def test_with_namespace_source_alias(self):
@@ -719,9 +778,18 @@ class TestFormatTopicLinksAndCommands:
         )
 
         output_str = "\n".join(output)
-        assert "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/namespaces/test_ns/sources/test_src/asset-details?alias=1.0" in output_str
-        assert "Describe:        datapipe schema describe --namespace test_ns --source test_src --alias 1.0" in output_str
-        assert "Tail:            datapipe stream tail --namespace test_ns --source test_src --alias 1.0" in output_str
+        assert (
+            "Pipeline Studio: https://pipeline_studio_v2.yelpcorp.com/namespaces/test_ns/sources/test_src/asset-details?alias=1.0"
+            in output_str
+        )
+        assert (
+            "Describe:        datapipe schema describe --namespace test_ns --source test_src --alias 1.0"
+            in output_str
+        )
+        assert (
+            "Tail:            datapipe stream tail --namespace test_ns --source test_src --alias 1.0"
+            in output_str
+        )
 
 
 class TestFormatConsumerGroupInfo:
@@ -732,7 +800,10 @@ class TestFormatConsumerGroupInfo:
 
         output_str = "\n".join(output)
         assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
-        assert "kafka-view.admin.yelp.com/clusters/scribe.uswest2-prod/groups/flink.sqlclient.test_instance.test_job" in output_str
+        assert (
+            "kafka-view.admin.yelp.com/clusters/scribe.uswest2-prod/groups/flink.sqlclient.test_instance.test_job"
+            in output_str
+        )
         assert "grafana.yelpcorp.com/d/kcHXkIBnz/consumer-metrics" in output_str
 
     def test_devc_consumer_group(self):
@@ -742,7 +813,10 @@ class TestFormatConsumerGroupInfo:
 
         output_str = "\n".join(output)
         assert "Consumer Group: flink.sqlclient.test_instance.test_job" in output_str
-        assert "kafka-view.paasta-norcal-devc.yelp/clusters/buff-high.uswest1-devc/groups/flink.sqlclient.test_instance.test_job" in output_str
+        assert (
+            "kafka-view.paasta-norcal-devc.yelp/clusters/buff-high.uswest1-devc/groups/flink.sqlclient.test_instance.test_job"
+            in output_str
+        )
 
 
 class TestFormatSourceTopics:

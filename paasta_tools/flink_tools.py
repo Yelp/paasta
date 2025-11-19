@@ -13,8 +13,6 @@
 import glob
 import json
 import os
-import re
-import subprocess
 from typing import Any
 from typing import List
 from typing import Mapping
@@ -24,7 +22,6 @@ from urllib.parse import urlparse
 
 import requests
 import service_configuration_lib
-import yaml
 from mypy_extensions import TypedDict
 
 from paasta_tools.api import settings
@@ -100,7 +97,6 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,
             instance=instance,
@@ -436,9 +432,7 @@ def get_sqlclient_job_config(
             if yaml_files:
                 job_config_path = yaml_files[0]  # Use first YAML file found
             else:
-                return {
-                    "error": f"No job config files found in {job_d_path}"
-                }
+                return {"error": f"No job config files found in {job_d_path}"}
 
         # Use service_configuration_lib to read YAML (handles caching, validation, etc.)
         config = read_yaml_file(job_config_path)
@@ -502,7 +496,11 @@ def get_sqlclient_job_config(
 
     except Exception as e:
         import traceback
-        return {"error": f"{type(e).__name__}: {str(e)}", "traceback": traceback.format_exc()}
+
+        return {
+            "error": f"{type(e).__name__}: {str(e)}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 def get_sqlclient_parallelism(
@@ -581,7 +579,9 @@ def analyze_slot_utilization(
         # Too many idle slots - suggest reducing instances
         # Target 75% utilization with at least 1 slot buffer
         target_slots = max(used_slots + 1, int(used_slots / 0.75))
-        recommended_instances = max(1, (target_slots + slots_per_tm - 1) // slots_per_tm)
+        recommended_instances = max(
+            1, (target_slots + slots_per_tm - 1) // slots_per_tm
+        )
 
         if recommended_instances < current_instances:
             recommendation = {
@@ -589,14 +589,20 @@ def analyze_slot_utilization(
                 "new_instances": recommended_instances,
                 "new_slots_per_tm": slots_per_tm,
                 "new_total_slots": recommended_instances * slots_per_tm,
-                "expected_utilization": (used_slots / (recommended_instances * slots_per_tm) * 100) if (recommended_instances * slots_per_tm) > 0 else 0,
+                "expected_utilization": (
+                    used_slots / (recommended_instances * slots_per_tm) * 100
+                )
+                if (recommended_instances * slots_per_tm) > 0
+                else 0,
             }
 
     elif utilization_pct > 90:
         # Too high utilization - suggest adding capacity
         # Target 75% utilization
         target_slots = int(used_slots / 0.75)
-        recommended_instances = max(current_instances, (target_slots + slots_per_tm - 1) // slots_per_tm)
+        recommended_instances = max(
+            current_instances, (target_slots + slots_per_tm - 1) // slots_per_tm
+        )
 
         if recommended_instances > current_instances:
             recommendation = {
@@ -604,7 +610,11 @@ def analyze_slot_utilization(
                 "new_instances": recommended_instances,
                 "new_slots_per_tm": slots_per_tm,
                 "new_total_slots": recommended_instances * slots_per_tm,
-                "expected_utilization": (used_slots / (recommended_instances * slots_per_tm) * 100) if (recommended_instances * slots_per_tm) > 0 else 0,
+                "expected_utilization": (
+                    used_slots / (recommended_instances * slots_per_tm) * 100
+                )
+                if (recommended_instances * slots_per_tm) > 0
+                else 0,
             }
 
     analysis["recommendation"] = recommendation
@@ -631,29 +641,45 @@ def format_resource_optimization(
 
     output.append("    Resource Utilization & Optimization:")
     output.append("      Current Configuration:")
-    output.append(f"        Taskmanagers:     {analysis['current_instances']} instances")
+    output.append(
+        f"        Taskmanagers:     {analysis['current_instances']} instances"
+    )
     output.append(f"        Slots per TM:     {analysis['current_slots_per_tm']} slots")
     output.append(f"        Total Slots:      {analysis['total_slots']} slots")
-    output.append(f"        Used Slots:       {analysis['used_slots']} slots ({analysis['utilization_pct']:.0f}% utilization)")
+    output.append(
+        f"        Used Slots:       {analysis['used_slots']} slots ({analysis['utilization_pct']:.0f}% utilization)"
+    )
     output.append(f"        Idle Slots:       {analysis['idle_slots']} slots")
 
     recommendation = analysis.get("recommendation")
     if recommendation and recommendation["action"] == "reduce":
         output.append("")
         output.append("      💡 OPTIMIZATION OPPORTUNITY:")
-        output.append(f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots")
-        output.append(f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)")
-        output.append(f"        Benefit:          Reduce overprovisioning, save resources")
+        output.append(
+            f"        Recommended:      {recommendation['new_instances']} taskmanagers × {recommendation['new_slots_per_tm']} slots = {recommendation['new_total_slots']} total slots"
+        )
+        output.append(
+            f"        Expected Usage:   {analysis['used_slots']} slots ({recommendation['expected_utilization']:.0f}% utilization)"
+        )
+        output.append(
+            "        Benefit:          Reduce overprovisioning, save resources"
+        )
 
         output.append("")
         output.append("      Configuration Changes Needed:")
         output.append("        taskmanager:")
-        output.append(f"          instances: {recommendation['new_instances']}  # currently: {analysis['current_instances']}")
+        output.append(
+            f"          instances: {recommendation['new_instances']}  # currently: {analysis['current_instances']}"
+        )
 
-        if recommendation['new_slots_per_tm'] != analysis['current_slots_per_tm']:
-            output.append(f"          taskSlots: {recommendation['new_slots_per_tm']}  # currently: {analysis['current_slots_per_tm']}")
+        if recommendation["new_slots_per_tm"] != analysis["current_slots_per_tm"]:
+            output.append(
+                f"          taskSlots: {recommendation['new_slots_per_tm']}  # currently: {analysis['current_slots_per_tm']}"
+            )
         else:
-            output.append(f"          # taskSlots: {analysis['current_slots_per_tm']}  (no change needed)")
+            output.append(
+                f"          # taskSlots: {analysis['current_slots_per_tm']}  (no change needed)"
+            )
     else:
         output.append("")
         output.append("      ✅ Resource utilization is optimal")
@@ -695,7 +721,9 @@ def _format_topic_links_and_commands(
     if schema_id:
         describe_cmd = f"datapipe schema describe --schema-id {schema_id}"
     elif namespace and source_name:
-        describe_cmd = f"datapipe schema describe --namespace {namespace} --source {source_name}"
+        describe_cmd = (
+            f"datapipe schema describe --namespace {namespace} --source {source_name}"
+        )
         if alias:
             describe_cmd += f" --alias {alias}"
     else:
@@ -708,7 +736,9 @@ def _format_topic_links_and_commands(
     if schema_id:
         tail_cmd = f"datapipe stream tail --schema-id {schema_id} --all-fields --json"
     elif namespace and source_name:
-        tail_cmd = f"datapipe stream tail --namespace {namespace} --source {source_name}"
+        tail_cmd = (
+            f"datapipe stream tail --namespace {namespace} --source {source_name}"
+        )
         if alias:
             tail_cmd += f" --alias {alias}"
         tail_cmd += " --all-fields --json"
@@ -747,7 +777,9 @@ def _format_consumer_group_info(
         kafka_view_domain = KAFKA_VIEW_DEVC_DOMAIN
         kafka_cluster = f"buff-high.uswest1-{ecosystem}"
 
-    kafka_view_url = f"http://{kafka_view_domain}/clusters/{kafka_cluster}/groups/{consumer_group}"
+    kafka_view_url = (
+        f"http://{kafka_view_domain}/clusters/{kafka_cluster}/groups/{consumer_group}"
+    )
     output.append(f"        Kafka View: {kafka_view_url}")
 
     # Grafana consumer metrics link
@@ -757,7 +789,9 @@ def _format_consumer_group_info(
     return output
 
 
-def _format_source_topics(sources: List[Mapping[str, Any]], ecosystem: str) -> List[str]:
+def _format_source_topics(
+    sources: List[Mapping[str, Any]], ecosystem: str
+) -> List[str]:
     """Format source topics with details and links.
 
     :param sources: List of source topic info dicts
@@ -790,9 +824,11 @@ def _format_source_topics(sources: List[Mapping[str, Any]], ecosystem: str) -> L
                 output.append(f"         Alias:           {alias}")
 
             # Use helper to format links and commands
-            output.extend(_format_topic_links_and_commands(
-                schema_id, namespace, source_name, alias, ecosystem
-            ))
+            output.extend(
+                _format_topic_links_and_commands(
+                    schema_id, namespace, source_name, alias, ecosystem
+                )
+            )
 
         output.append("")
 
@@ -831,9 +867,11 @@ def _format_sink_topics(sinks: List[Mapping[str, Any]], ecosystem: str) -> List[
 
         # Use helper to format links and commands
         if namespace and source_name:
-            output.extend(_format_topic_links_and_commands(
-                None, namespace, source_name, alias, ecosystem
-            ))
+            output.extend(
+                _format_topic_links_and_commands(
+                    None, namespace, source_name, alias, ecosystem
+                )
+            )
 
         output.append("")
 
@@ -860,11 +898,11 @@ def format_kafka_topics(
     topics_info = get_sqlclient_job_config(service, instance, cluster)
 
     if "error" in topics_info:
-        error_msg = topics_info['error']
-        output.append(f"    Kafka Topics: Unable to fetch")
+        error_msg = topics_info["error"]
+        output.append("    Kafka Topics: Unable to fetch")
         output.append(f"      Error: {error_msg}")
         if "traceback" in topics_info:
-            output.append(f"      Debug traceback available (check logs)")
+            output.append("      Debug traceback available (check logs)")
         return output
 
     sources = topics_info.get("sources", [])
@@ -872,13 +910,15 @@ def format_kafka_topics(
     ecosystem = topics_info.get("ecosystem", "prod")
 
     # Header
-    output.append(f"    Data Pipeline Topology:")
+    output.append("    Data Pipeline Topology:")
     output.append(f"      Sources: {len(sources)} topics")
     output.append(f"      Sinks:   {len(sinks)} topics")
 
     # Consumer group info
     if job_name:
-        output.extend(_format_consumer_group_info(service, instance, job_name, ecosystem))
+        output.extend(
+            _format_consumer_group_info(service, instance, job_name, ecosystem)
+        )
 
     # Source topics
     output.extend(_format_source_topics(sources, ecosystem))
