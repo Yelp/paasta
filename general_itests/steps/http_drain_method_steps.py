@@ -15,8 +15,8 @@ import asyncio
 import http.server
 import threading
 from typing import List
+from unittest import mock
 
-import mock
 from behave import given
 from behave import then
 from behave import when
