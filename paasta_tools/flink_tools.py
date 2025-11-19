@@ -798,7 +798,7 @@ def _format_source_topics(
     :param ecosystem: Ecosystem (prod, devc, etc.)
     :returns: List of formatted strings
     """
-    output = []
+    output: List[str] = []
     if not sources:
         return output
 
@@ -842,7 +842,7 @@ def _format_sink_topics(sinks: List[Mapping[str, Any]], ecosystem: str) -> List[
     :param ecosystem: Ecosystem (prod, devc, etc.)
     :returns: List of formatted strings
     """
-    output = []
+    output: List[str] = []
     if not sinks:
         return output
 
