@@ -5,8 +5,8 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Sequence
+from unittest.mock import AsyncMock
 
-import asynctest
 import mock
 import pytest
 from hypothesis import given
@@ -4120,8 +4120,10 @@ def test_get_pod_event_messages(messages_num, event_loop):
 
     kube_client = mock.MagicMock()
 
-    with asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_events_for_object", autospec=True
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_events_for_object",
+        new_callable=AsyncMock,
+        autospec=None,
     ) as mock_get_events_for_object:
         mock_get_events_for_object.return_value = events
         pod_event_messages = event_loop.run_until_complete(

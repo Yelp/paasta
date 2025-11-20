@@ -1,13 +1,12 @@
 alabaster==0.7.16
 aspy.yaml==0.3.0
 astroid==2.4.2
-asynctest==0.12.0
 Babel==2.17.0
 cached-property==1.3.1
 cfgv==1.0.0
 docutils==0.21.2
 flake8==3.5.0
-freezegun==0.3.7
+freezegun==1.5.5
 identify==1.0.6
 imagesize==1.4.1
 isort==4.2.5
