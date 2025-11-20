@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import json
 import os
 import tempfile
 from unittest import mock
@@ -1306,6 +1307,39 @@ class TestTronTools:
             if s.startswith("spark.app.name"):
                 spark_app_name = s.split("=")[1]
 
+        # Expected spark config passed as JSON string via --conf scs_conf=
+        expected_scs_conf_json = {
+            "cluster_manager": "kubernetes",
+            "spark_app_base_name": "tron_spark_my_service_my_job.do_something",
+            "docker_image": "docker-registry.com:400/$PAASTA_DOCKER_IMAGE",
+            "user_spark_opts": {
+                "spark.cores.max": "4",
+                "spark.driver.memory": "1g",
+                "spark.executor.memory": "1g",
+                "spark.executor.cores": "2",
+            },
+            "paasta_cluster": "test-cluster",
+            "paasta_pool": "special_pool",
+            "paasta_service": "my_service",
+            "paasta_instance": "my_job.do_something",
+            "extra_volumes": [
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
+            ],
+            "force_spark_resource_configs": False,
+            "k8s_server_address": "https://k8s.test-cluster.paasta:6443",
+            "jira_ticket": None,
+            "service_account_name": None,
+            "ui_port": 39091,
+            "user": os.getenv("USER"),
+            "aws_account_id": None,
+        }
+        expected_scs_conf = json.dumps(expected_scs_conf_json, indent=4)
+
         expected = {
             "command": "timeout 12h spark-submit "
             "--conf spark.cores.max=4 "
@@ -1371,6 +1405,7 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.decommission.script=/opt/spark/kubernetes/dockerfiles/spark/decom.sh "
             "--conf spark.logConf=true "
+            f"--conf scs_conf='{expected_scs_conf}' "
             "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
