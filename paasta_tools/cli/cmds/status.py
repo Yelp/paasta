@@ -781,7 +781,6 @@ def _print_flink_status_from_job_manager(
     flink_instance_config: FlinkDeploymentConfig,
     verbose: int,
 ) -> int:
-    # === Phase 1: Validate and collect data ===
     status = flink.get("status")
     if status is None:
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
@@ -829,8 +828,6 @@ def _print_flink_status_from_job_manager(
 
     # Collect job details
     job_details = flink_tools.collect_flink_job_details(status, overview, jobs)
-
-    # === Phase 2: Build output ===
 
     # Header section
     output.extend(flink_tools.format_flink_instance_header(instance_details, verbose))

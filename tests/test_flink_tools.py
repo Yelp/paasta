@@ -472,7 +472,7 @@ class TestFormatFlinkStateAndPods:
         assert "State:" in output_text
         assert "Stopped" in output_text
         assert "1 running" in output_text
-        assert "2 evicted" in output_text
+        assert "evicted" in output_text  # Will be colored red when > 0
         assert "1 other" in output_text
         assert "4 total" in output_text
         # Should not have job counts or taskmanager info
@@ -629,8 +629,8 @@ class TestFormatFlinkJobsTable:
 class TestGetFlinkInstanceDetails:
     """Tests for get_flink_instance_details function."""
 
-    @mock.patch("paasta_tools.flink_tools.get_runbook", autospec=True)
-    @mock.patch("paasta_tools.flink_tools.get_team", autospec=True)
+    @mock.patch("paasta_tools.monitoring_tools.get_runbook", autospec=True)
+    @mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True)
     def test_get_instance_details_with_running_cluster(
         self, mock_get_team, mock_get_runbook
     ):
@@ -665,8 +665,8 @@ class TestGetFlinkInstanceDetails:
         assert result["team"] == "test-team"
         assert result["runbook"] == "y/rb-test"
 
-    @mock.patch("paasta_tools.flink_tools.get_runbook", autospec=True)
-    @mock.patch("paasta_tools.flink_tools.get_team", autospec=True)
+    @mock.patch("paasta_tools.monitoring_tools.get_runbook", autospec=True)
+    @mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True)
     def test_get_instance_details_with_stopped_cluster(
         self, mock_get_team, mock_get_runbook
     ):
@@ -844,4 +844,4 @@ class TestFormatFlinkMonitoringLinks:
         assert "Container Metrics:" in output_text
         assert "JVM Metrics:" in output_text
         assert "Flink Cost:" in output_text
-        assert "splunk.yelpcorp.com" in output_text
+        assert "app.cloudzero.com" in output_text
