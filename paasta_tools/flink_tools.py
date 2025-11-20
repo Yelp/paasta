@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import shutil
+from datetime import datetime
+from itertools import groupby
 from typing import Any
 from typing import List
 from typing import Mapping
@@ -18,6 +21,7 @@ from typing import Optional
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
+import humanize
 import requests
 import service_configuration_lib
 from mypy_extensions import TypedDict
@@ -40,6 +44,7 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import PaastaColors
 
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
@@ -481,9 +486,7 @@ def format_flink_instance_metadata(
     return output
 
 
-def format_flink_config_links(
-    service: str, instance: str, ecosystem: str
-) -> List[str]:
+def format_flink_config_links(service: str, instance: str, ecosystem: str) -> List[str]:
     """Format configuration repository links.
 
     :param service: Service name
@@ -503,9 +506,7 @@ def format_flink_config_links(
     return output
 
 
-def format_flink_log_commands(
-    service: str, instance: str, cluster: str
-) -> List[str]:
+def format_flink_log_commands(service: str, instance: str, cluster: str) -> List[str]:
     """Format paasta logs commands.
 
     :param service: Service name
@@ -556,7 +557,254 @@ def format_flink_monitoring_links(
         f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
     )
     output.append(
-        f"      Flink Cost: https://splunk.yelpcorp.com/en-US/app/yelp_computeinfra/paasta_service_utilization?form.service={service}&form.field1.earliest=-30d%40d&form.field1.latest=now&form.instance={instance}&form.cluster={cluster}"
+        f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters"
     )
+
+    return output
+
+
+def collect_flink_job_details(
+    status: Mapping[str, Any],
+    overview: Optional[FlinkClusterOverview],
+    jobs: List[FlinkJobDetails],
+) -> Mapping[str, Any]:
+    """Collect job, pod, and resource information.
+
+    :param status: Status dict from flink CR containing state and pod_status
+    :param overview: Flink cluster overview (or None if not running)
+    :param jobs: List of Flink job details
+    :returns: Dictionary containing:
+        - state: Cluster state string
+        - pod_counts: Dict with running, evicted, other, total pod counts
+        - job_counts: Dict with running, finished, failed, cancelled, total job counts (or None)
+        - taskmanagers: Number of taskmanagers (or None)
+        - slots_available: Number of available slots (or None)
+        - slots_total: Total number of slots (or None)
+        - jobs: List of FlinkJobDetails
+    """
+    # Collect pod counts
+    pod_running_count = 0
+    pod_evicted_count = 0
+    pod_other_count = 0
+
+    for pod in status.get("pod_status", []):
+        if pod["phase"] == "Running":
+            pod_running_count += 1
+        elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
+            pod_evicted_count += 1
+        else:
+            pod_other_count += 1
+
+    pods_total_count = pod_running_count + pod_evicted_count + pod_other_count
+
+    pod_counts = {
+        "running": pod_running_count,
+        "evicted": pod_evicted_count,
+        "other": pod_other_count,
+        "total": pods_total_count,
+    }
+
+    # Collect job counts if overview is available
+    job_counts = None
+    taskmanagers = None
+    slots_available = None
+    slots_total = None
+
+    if overview:
+        jobs_total_count = (
+            overview.jobs_running
+            + overview.jobs_finished
+            + overview.jobs_failed
+            + overview.jobs_cancelled
+        )
+        job_counts = {
+            "running": overview.jobs_running,
+            "finished": overview.jobs_finished,
+            "failed": overview.jobs_failed,
+            "cancelled": overview.jobs_cancelled,
+            "total": jobs_total_count,
+        }
+        taskmanagers = overview.taskmanagers
+        slots_available = overview.slots_available
+        slots_total = overview.slots_total
+
+    return {
+        "state": status["state"],
+        "pod_counts": pod_counts,
+        "job_counts": job_counts,
+        "taskmanagers": taskmanagers,
+        "slots_available": slots_available,
+        "slots_total": slots_total,
+        "jobs": jobs,
+    }
+
+
+def format_flink_state_and_pods(
+    state: str,
+    pod_counts: Mapping[str, int],
+    job_counts: Optional[Mapping[str, int]],
+    taskmanagers: Optional[int],
+    slots_available: Optional[int],
+    slots_total: Optional[int],
+) -> List[str]:
+    """Format state, pods, jobs summary, taskmanagers, and slots.
+
+    :param state: Flink cluster state (e.g., "running", "stopped")
+    :param pod_counts: Dict with running, evicted, other, total pod counts
+    :param job_counts: Dict with running, finished, failed, cancelled, total job counts (or None)
+    :param taskmanagers: Number of taskmanagers (or None)
+    :param slots_available: Number of available slots (or None)
+    :param slots_total: Total number of slots (or None)
+    :returns: List of formatted strings like:
+        State: Running
+        Pods: 3 running, 0 evicted, 0 other, 3 total
+        Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total
+        1 taskmanagers, 0/1 slots available
+    """
+    output: List[str] = []
+
+    # Format state with color
+    color = PaastaColors.green if state == "running" else PaastaColors.yellow
+    output.append(f"    State: {color(state.title())}")
+
+    # Format pod counts
+    evicted_str = (
+        PaastaColors.red(f"{pod_counts['evicted']}")
+        if pod_counts["evicted"] > 0
+        else f"{pod_counts['evicted']}"
+    )
+    output.append(
+        "    Pods:"
+        f" {pod_counts['running']} running,"
+        f" {evicted_str} evicted,"
+        f" {pod_counts['other']} other,"
+        f" {pod_counts['total']} total"
+    )
+
+    # Format job counts if available
+    if job_counts is not None:
+        output.append(
+            "    Jobs:"
+            f" {job_counts['running']} running,"
+            f" {job_counts['finished']} finished,"
+            f" {job_counts['failed']} failed,"
+            f" {job_counts['cancelled']} cancelled,"
+            f" {job_counts['total']} total"
+        )
+
+    # Format taskmanagers and slots if available
+    if (
+        taskmanagers is not None
+        and slots_available is not None
+        and slots_total is not None
+    ):
+        output.append(
+            "   "
+            f" {taskmanagers} taskmanagers,"
+            f" {slots_available}/{slots_total} slots available"
+        )
+
+    return output
+
+
+def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
+    """Extract the job name from a Flink job details object.
+
+    :param flink_job: Flink job details
+    :returns: Job name extracted from the full job name
+    """
+    return flink_job["name"].split(".", 2)[-1]
+
+
+def format_flink_jobs_table(
+    jobs: List[FlinkJobDetails],
+    dashboard_url: str,
+    verbose: int,
+) -> List[str]:
+    """Format jobs table with job details.
+
+    :param jobs: List of Flink job details
+    :param dashboard_url: Base Flink dashboard URL
+    :param verbose: Verbosity level (>1 shows job ID and dashboard URL)
+    :returns: Formatted table lines like:
+        Jobs:
+          Job Name  State       Job ID                           Started
+          happyhour Running c654f6a0238dc957aa3faf70cd759b0f 2025-11-17 15:20:52 (16 hours ago)
+    """
+    output: List[str] = []
+
+    # Calculate max job name length for column width
+    if jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
+    else:
+        max_job_name_length = 10
+
+    # Limit job name column width based on terminal size
+    allowed_max_job_name_length = min(
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
+    )
+
+    # Print table header
+    output.append("    Jobs:")
+    if verbose > 1:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+        )
+    else:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+        )
+
+    # Get unique jobs (most recent per job name)
+    unique_jobs = (
+        sorted(jobs, key=lambda j: -j["start_time"])[0]  # type: ignore
+        for _, jobs in groupby(
+            sorted(
+                (j for j in jobs if j.get("name") and j.get("start_time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
+        )
+    )
+
+    # Print job rows
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
+
+    for job in unique_jobs:
+        job_id = job["jid"]
+        if verbose > 1:
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+        {dashboard_url}"""
+        else:
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+
+        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
+
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else PaastaColors.red
+                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                else PaastaColors.yellow
+            )
+            job_info_str = fmt.format(
+                job_id=job_id,
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
+                state=color_fn((job.get("state").title() or "Unknown")),
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
+            output.append(job_info_str)
+        else:
+            output.append(
+                PaastaColors.yellow(
+                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
+                )
+            )
+            break
 
     return output
