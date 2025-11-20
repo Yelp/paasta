@@ -470,13 +470,11 @@ def get_flink_instance_details(
     }
 
 
-def format_flink_instance_header(
-    details: Mapping[str, Any], verbose: bool
-) -> List[str]:
+def format_flink_instance_header(details: Mapping[str, Any], verbose: int) -> List[str]:
     """Format basic instance information (config SHA, version, URL).
 
     :param details: Instance details from get_flink_instance_details()
-    :param verbose: Whether to show version revision
+    :param verbose: Verbosity level (>0 shows version revision)
     :returns: List of formatted strings
     """
     output: List[str] = []
@@ -640,7 +638,7 @@ def collect_flink_job_details(
 
     pods_total_count = pod_running_count + pod_evicted_count + pod_other_count
 
-    pod_counts = {
+    pod_counts: PodCounts = {
         "running": pod_running_count,
         "evicted": pod_evicted_count,
         "other": pod_other_count,
@@ -648,7 +646,7 @@ def collect_flink_job_details(
     }
 
     # Collect job counts if overview is available
-    job_counts = None
+    job_counts: Optional[JobCounts] = None
     taskmanagers = None
     slots_available = None
     slots_total = None
