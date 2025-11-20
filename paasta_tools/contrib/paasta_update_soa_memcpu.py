@@ -181,6 +181,9 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
             "date": d["result"]["_time"].split(" ")[0],
             "instance": criteria.split(" ")[2],
             "money": d["result"].get("estimated_monthly_savings", 0),
+            "old_cpus": d["result"].get("current_cpus"),
+            "old_disk": d["result"].get("current_disk"),
+            "old_mem": d["result"].get("current_mem"),
             "owner": d["result"].get("service_owner", "Unavailable"),
             "project": d["result"].get("project", "Unavailable"),
             "service": criteria.split(" ")[0],
@@ -192,24 +195,17 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
             "max_instances": d["result"].get("suggested_max_instances"),
             "mem": d["result"].get("suggested_mem"),
             "min_instances": d["result"].get("suggested_min_instances"),
-            "old_cpus": d["result"].get("current_cpus"),
-            "old_disk": d["result"].get("current_disk"),
-            "old_mem": d["result"].get("current_mem"),
         }
 
         # the report we get is all strings, so we need to convert them to the right types
         field_conversions = {
-            "current_cpus": float,
-            "suggested_cpu_burst_add": float,
-            "suggested_cpus": float,
-            "suggested_disk": int,
-            "suggested_hacheck_cpus": float,
-            "suggested_max_instances": int,
-            "suggested_mem": int,
-            "suggested_min_instances": int,
-            # not quite sure why these are floats...they're ints in soaconfigs
-            "current_disk": _force_str_to_int,
-            "current_mem": _force_str_to_int,
+            "cpus": float,
+            "cpu_burst_add": float,
+            "disk": int,
+            "hacheck_cpus": float,
+            "max_instances": int,
+            "mem": int,
+            "min_instances": int,
         }
 
         # merge results if we've already seen rows for this service
