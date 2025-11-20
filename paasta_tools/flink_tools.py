@@ -65,6 +65,49 @@ class TaskManagerConfig(TypedDict, total=False):
     instances: int
 
 
+class PodCounts(TypedDict):
+    """Pod count statistics."""
+
+    running: int
+    evicted: int
+    other: int
+    total: int
+
+
+class JobCounts(TypedDict):
+    """Job count statistics."""
+
+    running: int
+    finished: int
+    failed: int
+    cancelled: int
+    total: int
+
+
+class FlinkJobDetailsDict(TypedDict, total=False):
+    """Collected Flink job details dictionary."""
+
+    state: str
+    pod_counts: PodCounts
+    job_counts: Optional[JobCounts]
+    taskmanagers: Optional[int]
+    slots_available: Optional[int]
+    slots_total: Optional[int]
+    jobs: List[FlinkJobDetails]
+
+
+class FlinkInstanceDetails(TypedDict, total=False):
+    """Flink instance metadata dictionary."""
+
+    config_sha: str
+    version: Optional[str]
+    version_revision: Optional[str]
+    dashboard_url: Optional[str]
+    pool: str
+    team: str
+    runbook: str
+
+
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
     spot: bool
@@ -374,7 +417,7 @@ def get_flink_instance_details(
     flink_instance_config: Any,
     service: str,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> Mapping[str, Any]:
+) -> FlinkInstanceDetails:
     """Collect Flink instance metadata and configuration details.
 
     :param metadata: Kubernetes metadata from flink status
@@ -567,7 +610,7 @@ def collect_flink_job_details(
     status: Mapping[str, Any],
     overview: Optional[FlinkClusterOverview],
     jobs: List[FlinkJobDetails],
-) -> Mapping[str, Any]:
+) -> FlinkJobDetailsDict:
     """Collect job, pod, and resource information.
 
     :param status: Status dict from flink CR containing state and pod_status
@@ -590,7 +633,7 @@ def collect_flink_job_details(
     for pod in status.get("pod_status", []):
         if pod["phase"] == "Running":
             pod_running_count += 1
-        elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
+        elif pod["phase"] == "Failed" and pod.get("reason") == "Evicted":
             pod_evicted_count += 1
         else:
             pod_other_count += 1
@@ -641,8 +684,8 @@ def collect_flink_job_details(
 
 def format_flink_state_and_pods(
     state: str,
-    pod_counts: Mapping[str, int],
-    job_counts: Optional[Mapping[str, int]],
+    pod_counts: PodCounts,
+    job_counts: Optional[JobCounts],
     taskmanagers: Optional[int],
     slots_available: Optional[int],
     slots_total: Optional[int],

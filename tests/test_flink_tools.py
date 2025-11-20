@@ -379,6 +379,25 @@ class TestCollectFlinkJobDetails:
         assert result["pod_counts"]["other"] == 1
         assert result["pod_counts"]["total"] == 4
 
+    def test_collect_with_failed_pod_no_reason(self):
+        """Test collecting pod details with Failed pod without reason field."""
+        status = {
+            "state": "running",
+            "pod_status": [
+                {"phase": "Running"},
+                {"phase": "Failed"},  # No "reason" field
+                {"phase": "Failed", "reason": "Evicted"},
+            ],
+        }
+        overview = None
+
+        result = flink_tools.collect_flink_job_details(status, overview, [])
+
+        assert result["pod_counts"]["running"] == 1
+        assert result["pod_counts"]["evicted"] == 1
+        assert result["pod_counts"]["other"] == 1  # Failed pod without reason
+        assert result["pod_counts"]["total"] == 3
+
     def test_collect_with_overview_and_jobs(self):
         """Test collecting complete job details with overview."""
         status = {
