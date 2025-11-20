@@ -769,6 +769,12 @@ Basic HTTP and TCP options
 
        proxied_through: servicename.main
 
+ * ``routing``: Optional map of routing-related flags.
+
+   - ``external``: Set to ``true`` to opt this namespace into Kubernetes Service
+     management for per-namespace routing (defaults to ``false``). When enabled,
+     Paasta will create a headless Service in the service’s Kubernetes namespace
+     that selects pods registered under this Smartstack namespace.
 
 Advertisement/Discovery
 ```````````````````````

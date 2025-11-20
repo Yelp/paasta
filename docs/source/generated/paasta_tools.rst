@@ -88,7 +88,7 @@ Submodules
    paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.run-paasta-api-playground
    paasta_tools.secret_tools
-   paasta_tools.setup_istio_mesh
+   paasta_tools.setup_smartstack_namespace_k8s_svcs
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
    paasta_tools.setup_kubernetes_internal_crd
