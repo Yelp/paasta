@@ -13,8 +13,8 @@
 # limitations under the License.
 from datetime import datetime
 from datetime import timezone
+from unittest import mock
 
-import mock
 import pytest
 from pyramid.request import Request
 from pyramid.response import Response

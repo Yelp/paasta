@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools import puppet_service_tools
 from paasta_tools.utils import compose_job_id

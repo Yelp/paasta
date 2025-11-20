@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import socket
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import generate_services_file

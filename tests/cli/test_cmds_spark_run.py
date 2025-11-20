@@ -14,8 +14,8 @@
 import argparse
 import io
 import os
+from unittest import mock
 
-import mock
 import pytest
 from service_configuration_lib.spark_config import AWS_CREDENTIALS_DIR
 from service_configuration_lib.spark_config import get_aws_credentials

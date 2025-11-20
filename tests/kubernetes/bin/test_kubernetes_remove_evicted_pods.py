@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 from kubernetes.client import V1DeleteOptions
 from pysensu_yelp import Status
 

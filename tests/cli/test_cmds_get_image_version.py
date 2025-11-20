@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
-from mock import MagicMock
-from mock import patch
 
 from paasta_tools.cli.cmds.get_image_version import get_latest_image_version
 from paasta_tools.cli.cmds.get_image_version import paasta_get_image_version

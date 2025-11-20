@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 from pytest import raises
 
 from paasta_tools.delete_kubernetes_deployments import get_deployment_names_from_list

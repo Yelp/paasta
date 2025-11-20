@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
-from mock import MagicMock
-from mock import Mock
-from mock import patch
 
 from paasta_tools.oom_logger import capture_oom_events_from_stdin
 from paasta_tools.oom_logger import log_to_clog
@@ -443,7 +443,9 @@ def test_send_sfx_event(mock_get_instance_config):
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.clog", autospec=True)
+@patch(
+    "paasta_tools.oom_logger.clog"
+)  # we don't autospec here since there's some funky stuff going on with attribute access
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
@@ -481,7 +483,9 @@ def test_main(
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.clog", autospec=True)
+@patch(
+    "paasta_tools.oom_logger.clog"
+)  # we don't autospec here since there's some funky stuff going on with attribute access
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)

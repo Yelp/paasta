@@ -14,11 +14,11 @@
 import argparse
 import getpass
 from socket import gaierror
+from unittest import mock
+from unittest.mock import call
+from unittest.mock import patch
 
 import ephemeral_port_reserve
-import mock
-from mock import call
-from mock import patch
 from pytest import mark
 from pytest import raises
 

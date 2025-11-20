@@ -1,6 +1,6 @@
 import os
+from unittest import mock
 
-import mock
 import pytest
 
 import paasta_tools.config_utils as config_utils
