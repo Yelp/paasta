@@ -1,7 +1,9 @@
 import contextlib
+from unittest import mock
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import Mock
 
-import asynctest
-import mock
 import pytest
 
 from paasta_tools import hacheck
@@ -9,7 +11,7 @@ from paasta_tools import hacheck
 
 @contextlib.contextmanager
 def mock_ClientSession(**fake_session_kwargs):
-    fake_session = asynctest.MagicMock(name="session", **fake_session_kwargs)
+    fake_session = MagicMock(name="session", **fake_session_kwargs)
 
     class FakeClientSession:
         def __init__(self, *args, **kwargs):
@@ -29,7 +31,7 @@ def mock_ClientSession(**fake_session_kwargs):
 async def test_get_spool():
     fake_response = mock.Mock(
         status=503,
-        text=asynctest.CoroutineMock(
+        text=AsyncMock(
             return_value="Service service in down state since 1435694078.778886 "
             "until 1435694178.780000: Drained by Paasta"
         ),
@@ -37,10 +39,8 @@ async def test_get_spool():
     fake_task = mock.Mock(host="fake_host", ports=[54321])
 
     with mock_ClientSession(
-        get=asynctest.Mock(
-            return_value=asynctest.MagicMock(
-                __aenter__=asynctest.CoroutineMock(return_value=fake_response)
-            )
+        get=Mock(
+            return_value=MagicMock(__aenter__=AsyncMock(return_value=fake_response))
         )
     ):
         actual = await hacheck.get_spool(fake_task)

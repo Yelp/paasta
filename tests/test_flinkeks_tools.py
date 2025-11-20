@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 

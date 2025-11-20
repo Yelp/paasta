@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest import mock
+from unittest.mock import AsyncMock
 
-import asynctest
-import mock
 import pytest
 from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException
@@ -55,18 +55,18 @@ from tests.conftest import wrap_value_in_task
     ),
 )
 async def test_kubernetes_smartstack_status(mock_job_config):
-    with asynctest.patch(
+    with mock.patch(
         "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
-    ) as mock_match_backends_and_pods, asynctest.patch(
+    ) as mock_match_backends_and_pods, mock.patch(
         "paasta_tools.api.views.instance.pik.smartstack_tools.get_backends",
         autospec=True,
-    ), asynctest.patch(
+    ), mock.patch(
         "paasta_tools.api.views.instance.pik.KubeSmartstackEnvoyReplicationChecker",
         autospec=True,
-    ) as mock_kube_smartstack_replication_checker, asynctest.patch(
+    ) as mock_kube_smartstack_replication_checker, mock.patch(
         "paasta_tools.api.views.instance.pik.kubernetes_tools.get_all_nodes",
         autospec=True,
-    ) as mock_get_all_nodes, asynctest.patch(
+    ) as mock_get_all_nodes, mock.patch(
         "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
         autospec=True,
     ) as mock_get_expected_instance_count_for_namespace:
@@ -172,9 +172,9 @@ def test_add_executor_info():
     }
     mock_task = mock.Mock(
         _Task__items={"a": "thing"},
-        executor=asynctest.CoroutineMock(
+        executor=AsyncMock(
             return_value=mock_executor,
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
         ),
     )
     ret = instance.add_executor_info(mock_task)
@@ -189,9 +189,9 @@ def test_add_executor_info():
 
 
 def test_add_slave_info():
-    mock_slave = asynctest.CoroutineMock(
+    mock_slave = AsyncMock(
         return_value=mock.Mock(_MesosSlave__items={"some": "thing"}),
-        func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
     )
     mock_task = mock.Mock(_Task__items={"a": "thing"}, slave=mock_slave)
     expected = {"a": "thing", "slave": {"some": "thing"}}
@@ -249,22 +249,25 @@ def test_tron_instance_status(
 
 
 def test_kubernetes_instance_status_bounce_method():
-    with asynctest.patch(
+    with mock.patch(
         "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
         autospec=True,
-    ) as mock_get_kubernetes_app_by_name, asynctest.patch(
+    ) as mock_get_kubernetes_app_by_name, mock.patch(
         "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.get_active_versions_for_service",
         autospec=True,
-    ), asynctest.patch(
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
-        autospec=True,
-    ), asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ), asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ), mock.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
     ) as mock_long_running_instance_type_handlers:
@@ -290,19 +293,22 @@ def test_kubernetes_instance_status_bounce_method():
 
 
 def test_kubernetes_instance_status_evicted_nodes():
-    with asynctest.patch(
+    with mock.patch(
         "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.get_active_versions_for_service",
         autospec=True,
-    ), asynctest.patch(
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
-        autospec=True,
-    ), asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ) as mock_pods_for_service_instance, asynctest.patch(
+        new_callable=AsyncMock,
+        autospec=None,
+    ) as mock_pods_for_service_instance, mock.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
     ):

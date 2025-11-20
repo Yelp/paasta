@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
-from mock import Mock
-from mock import patch
 from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment

@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.setup_istio_mesh import cleanup_paasta_namespace_services

@@ -13,10 +13,10 @@
 # limitations under the License.
 import datetime
 import os
+from unittest import mock
+from unittest.mock import patch
 
-import mock
 import pytest
-from mock import patch
 
 from paasta_tools.cli.cmds.validate import _check_advertise_discover
 from paasta_tools.cli.cmds.validate import _check_proxy_port_in_use

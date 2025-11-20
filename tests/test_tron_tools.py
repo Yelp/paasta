@@ -3,8 +3,8 @@ import hashlib
 import json
 import os
 import tempfile
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import tron_tools

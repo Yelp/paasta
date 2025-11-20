@@ -2,8 +2,8 @@ import asyncio
 import os
 import sys
 import time
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools.flink_tools import FlinkDeploymentConfig

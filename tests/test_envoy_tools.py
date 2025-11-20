@@ -13,8 +13,8 @@
 # limitations under the License.
 import json
 import os
+from unittest import mock
 
-import mock
 import pytest
 import requests
 
