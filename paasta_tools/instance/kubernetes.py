@@ -143,6 +143,54 @@ def set_cr_desired_state(
         raise RuntimeError(error_message)
 
 
+def can_restart_replica(instance_type: str) -> bool:
+    """Check if replica restart is supported for this instance type."""
+    return instance_type in INSTANCE_TYPES_K8S
+
+
+def restart_replica_by_name(
+    service: str,
+    instance: str,
+    instance_type: str,
+    replica_name: str,
+    settings: Any,
+) -> bool:
+    """Restart a specific replica by name within a service instance.
+
+    Follows the same pattern as kubernetes_status - gets job config,
+    determines namespace, then calls kubernetes_tools function.
+    """
+    if not can_restart_replica(instance_type):
+        raise RuntimeError(
+            f"Replica restart not supported for instance type {instance_type}"
+        )
+
+    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
+    job_config = config_loader(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=False,
+    )
+
+    kube_client = settings.kubernetes_client
+    if kube_client is None:
+        raise RuntimeError("Kubernetes client not available")
+
+    # Note: We are not actually fully 'restarting' a replica for k8s instances
+    # Instead, we arae deleting the existing pod, then k8s will automatically create a
+    # replacement pod to maintain the desired replica count.
+
+    return kubernetes_tools.delete_pod_by_name(
+        pod_name=replica_name,
+        service=service,
+        instance=instance,
+        namespace=job_config.get_kubernetes_namespace(),
+        kube_client=kube_client,
+    )
+
+
 async def autoscaling_status(
     kube_client: kubernetes_tools.KubeClient,
     job_config: LongRunningServiceConfig,

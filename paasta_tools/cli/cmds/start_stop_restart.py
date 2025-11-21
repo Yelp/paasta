@@ -66,6 +66,17 @@ def add_subparser(subparsers):
             default=DEFAULT_SOA_DIR,
             help="define a different soa config directory",
         )
+
+        if command == "restart":
+            status_parser.add_argument(
+                "--replica",
+                dest="replica",
+                metavar="POD_NAME",
+                help="Restart only a specific replica (pod) instead of the entire service instance. "
+                "Provide the full pod name (e.g., 'myservice-main-12345abcde-xyz67'). "
+                "Only works with Kubernetes-based deployments currently.",
+            )
+
         status_parser.set_defaults(command=cmd_func)
 
 
@@ -334,6 +345,10 @@ def paasta_start(args):
 
 
 def paasta_restart(args):
+    # Handle single replica restart
+    if args.replica:
+        return paasta_restart_replica(args)
+
     pargs = apply_args_filters(args)
     soa_dir = args.soa_dir
 
@@ -399,3 +414,142 @@ def paasta_stop(args):
         print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
         return 1
     return paasta_start_or_stop(args, "stop")
+
+
+def paasta_restart_replica(args):
+    """Restart a specific replica (pod) by deleting it and letting Kubernetes create a replacement."""
+    # Validate required arguments
+    pargs = apply_args_filters(args)
+    if len(pargs) == 0:
+        return 1
+
+    # For replica restart, we need exactly one service/instance/cluster combination
+    if len(pargs) > 1:
+        print(
+            PaastaColors.red("Error: --replica can only be used with a single cluster.")
+        )
+        return 1
+
+    cluster = list(pargs.keys())[0]
+    services_instances = pargs[cluster]
+
+    if len(services_instances) > 1:
+        print(
+            PaastaColors.red("Error: --replica can only be used with a single service.")
+        )
+        return 1
+
+    service = list(services_instances.keys())[0]
+    instances = services_instances[service]
+
+    if len(instances) > 1:
+        print(
+            PaastaColors.red(
+                "Error: --replica can only be used with a single instance."
+            )
+        )
+        return 1
+
+    instance = list(instances.keys())[0]
+    replica_name = args.replica
+    soa_dir = args.soa_dir
+
+    # Validate service/instance configuration
+    service_config = get_instance_config(
+        service=service,
+        cluster=cluster,
+        instance=instance,
+        soa_dir=soa_dir,
+        load_deployments=False,
+    )
+
+    # Check if this is a supported instance type (Kubernetes only)
+    if not isinstance(service_config, KubernetesDeploymentConfig):
+        print(
+            PaastaColors.red(
+                f"Error: --replica only works with Kubernetes deployments. "
+                f"Instance {service}.{instance} is not a Kubernetes deployment."
+            )
+        )
+        return 1
+
+    # Check user permissions (same as regular restart)
+    if not can_user_deploy_service(get_deploy_info(service, soa_dir), service):
+        print(PaastaColors.red("Exiting due to missing deploy permissions"))
+        return 1
+
+    # Log the action for audit trail
+    user = utils.get_username()
+    host = socket.getfqdn()
+    line = f"Issued request to restart replica '{replica_name}' of {service}.{instance} by {user}@{host}"
+    utils._log(
+        service=service,
+        level="event",
+        cluster=cluster,
+        instance=instance,
+        component="deploy",
+        line=line,
+    )
+    utils._log_audit(
+        action="restart_replica",
+        service=service,
+        cluster=cluster,
+        instance=instance,
+    )
+
+    # Get API client and make the request
+    system_paasta_config = load_system_paasta_config()
+    is_eks = isinstance(
+        service_config, KubernetesDeploymentConfig
+    ) and cluster.startswith("eks")
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        system_paasta_config=system_paasta_config,
+    )
+
+    if not client:
+        print("Cannot get a paasta-api client")
+        return 1
+
+    try:
+        response = client.service.instance_replica_restart(
+            service=service,
+            instance=instance,
+            replica_name=replica_name,
+        )
+
+        print(response)
+        print(
+            PaastaColors.green(
+                f"✓ Successfully initiated restart of replica '{replica_name}'"
+            )
+        )
+        print(f"  Service: {service}")
+        print(f"  Instance: {instance}")
+        print(f"  Cluster: {cluster}")
+        print(f"  Replica: {replica_name}")
+        print()
+        print("Kubernetes will automatically create a replacement pod.")
+
+        return 0
+
+    except Exception as exc:
+        error_msg = str(exc)
+        if "404" in error_msg:
+            print(
+                PaastaColors.red(
+                    f"Error: Replica '{replica_name}' not found in {service}.{instance}. "
+                    f"Please check the replica name and try again."
+                )
+            )
+        elif "500" in error_msg:
+            print(
+                PaastaColors.red(
+                    f"Error: Server error while restarting replica: {error_msg}"
+                )
+            )
+        else:
+            print(PaastaColors.red(f"Error: {error_msg}"))
+
+        return 1
