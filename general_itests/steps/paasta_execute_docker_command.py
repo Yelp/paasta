@@ -20,6 +20,7 @@ from docker.errors import APIError
 
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import is_using_unprivileged_containers
 
 
 @given("Docker is available")
@@ -69,6 +70,9 @@ def check_container_exec_instances(context, num):
     """Modern docker versions remove ExecIDs after they finished, but older
     docker versions leave ExecIDs behind. This test is for asserting that
     the ExecIDs are cleaned up one way or another"""
+    if is_using_unprivileged_containers():
+        # podman doesn't re-use these exec instances, so skip this test
+        return
     container_info = context.docker_client.inspect_container(
         context.running_container_id
     )
