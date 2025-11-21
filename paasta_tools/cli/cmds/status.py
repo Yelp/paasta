@@ -789,7 +789,9 @@ def _print_flink_status_from_job_manager(
     metadata = flink.get("metadata")
     ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
 
-    # Get flink config, overview, and jobs if running
+    # Get flink config, overview, and jobs
+    # A flink cluster can be in STATES: starting, running, stopping, stopped, error
+    # But we can only provide additional data for clusters in a running state
     flink_config = None
     overview = None
     jobs: List[FlinkJobDetails] = []
