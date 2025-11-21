@@ -431,7 +431,12 @@ def get_flink_instance_details(
     """
     labels = metadata.get("labels", {})
     annotations = metadata.get("annotations", {})
+
+    # Validate that config_sha exists
     config_sha = labels.get(paasta_prefixed("config_sha"))
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+
     version = flink_config.flink_version if flink_config else None
     version_revision = flink_config.flink_revision if flink_config else None
 
