@@ -1923,6 +1923,51 @@ paths:
       summary: Get mesos task of service_name.instance_name by task_id
       tags:
       - service
+  /services/{service}/{instance}/replicas/{replica_name}/restart:
+    post:
+      operationId: instance_replica_restart
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Replica name to restart
+        in: path
+        name: replica_name
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  instance:
+                    type: string
+                  replica_name:
+                    type: string
+                type: object
+          description: Replica restart initiated successfully
+        "404":
+          description: Replica not found or service/instance not found
+        "500":
+          description: Replica restart failed or instance type not supported
+      summary: Restart a specific replica for service_name.instance_name
+      tags:
+      - service
   /version:
     get:
       operationId: showVersion

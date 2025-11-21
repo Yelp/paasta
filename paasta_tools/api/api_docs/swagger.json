@@ -1157,6 +1157,66 @@
                     }
                 ]
             }
+        },
+        "/services/{service}/{instance}/replicas/{replica_name}/restart": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "Replica restart initiated successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                },
+                                "service": {
+                                    "type": "string"
+                                },
+                                "instance": {
+                                    "type": "string"
+                                },
+                                "replica_name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Replica not found or service/instance not found"
+                    },
+                    "500": {
+                        "description": "Replica restart failed or instance type not supported"
+                    }
+                },
+                "summary": "Restart a specific replica for service_name.instance_name",
+                "operationId": "instance_replica_restart",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Replica name to restart",
+                        "name": "replica_name",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
         }
     },
     "definitions": {

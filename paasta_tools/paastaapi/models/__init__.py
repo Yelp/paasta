@@ -29,6 +29,7 @@ from paasta_tools.paastaapi.model.hpa_metric import HPAMetric
 from paasta_tools.paastaapi.model.inline_object import InlineObject
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
+from paasta_tools.paastaapi.model.inline_response2002 import InlineResponse2002
 from paasta_tools.paastaapi.model.inline_response202 import InlineResponse202
 from paasta_tools.paastaapi.model.inline_response403 import InlineResponse403
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
