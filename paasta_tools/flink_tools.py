@@ -413,8 +413,8 @@ def get_flink_overview_from_paasta_api_client(
 
 def get_flink_instance_details(
     metadata: Mapping[str, Any],
-    flink_config: Optional[Any],
-    flink_instance_config: Any,
+    flink_config: Optional[FlinkConfig],
+    flink_instance_config: FlinkDeploymentConfig,
     service: str,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> FlinkInstanceDetails:
