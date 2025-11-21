@@ -431,23 +431,12 @@ def get_flink_instance_details(
     """
     labels = metadata.get("labels", {})
     annotations = metadata.get("annotations", {})
-
-    # Extract config SHA
     config_sha = labels.get(paasta_prefixed("config_sha"))
+    version = flink_config.flink_version if flink_config else None
+    version_revision = flink_config.flink_revision if flink_config else None
 
-    # Extract version and dashboard URL
-    version = None
-    version_revision = None
-    dashboard_url = None
+    dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
 
-    if flink_config:
-        version = flink_config.flink_version
-        version_revision = flink_config.flink_revision
-
-    if annotations:
-        dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
-
-    # Get pool, team, runbook
     pool = flink_instance_config.get_pool()
     team = flink_instance_config.get_team() or get_team(
         overrides={}, service=service, soa_dir=soa_dir
