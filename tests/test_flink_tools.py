@@ -657,7 +657,7 @@ class TestGetFlinkInstanceDetails:
             metadata, flink_config, instance_config, "test-service"
         )
 
-        assert result["config_sha"] == "123456"
+        assert result["config_sha"] == "config123456"
         assert result["version"] == "1.17.2"
         assert result["version_revision"] == "abc123def"
         assert result["dashboard_url"] == "http://dashboard.example.com"
@@ -689,7 +689,7 @@ class TestGetFlinkInstanceDetails:
             metadata, flink_config, instance_config, "test-service"
         )
 
-        assert result["config_sha"] == "abc123"
+        assert result["config_sha"] == "configabc123"
         assert result["version"] is None
         assert result["version_revision"] is None
         assert result["dashboard_url"] is None

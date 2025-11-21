@@ -434,8 +434,6 @@ def get_flink_instance_details(
 
     # Extract config SHA
     config_sha = labels.get(paasta_prefixed("config_sha"))
-    if config_sha and config_sha.startswith("config"):
-        config_sha = config_sha[6:]
 
     # Extract version and dashboard URL
     version = None
