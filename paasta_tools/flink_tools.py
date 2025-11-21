@@ -34,6 +34,8 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.monitoring_tools import get_runbook
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
@@ -427,9 +429,6 @@ def get_flink_instance_details(
     :param soa_dir: SOA directory path
     :returns: Dict with instance details
     """
-    from paasta_tools.monitoring_tools import get_runbook
-    from paasta_tools.monitoring_tools import get_team
-
     labels = metadata.get("labels", {})
     annotations = metadata.get("annotations", {})
 

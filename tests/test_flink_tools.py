@@ -629,8 +629,8 @@ class TestFormatFlinkJobsTable:
 class TestGetFlinkInstanceDetails:
     """Tests for get_flink_instance_details function."""
 
-    @mock.patch("paasta_tools.monitoring_tools.get_runbook", autospec=True)
-    @mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True)
+    @mock.patch("paasta_tools.flink_tools.get_runbook", autospec=True)
+    @mock.patch("paasta_tools.flink_tools.get_team", autospec=True)
     def test_get_instance_details_with_running_cluster(
         self, mock_get_team, mock_get_runbook
     ):
@@ -665,8 +665,8 @@ class TestGetFlinkInstanceDetails:
         assert result["team"] == "test-team"
         assert result["runbook"] == "y/rb-test"
 
-    @mock.patch("paasta_tools.monitoring_tools.get_runbook", autospec=True)
-    @mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True)
+    @mock.patch("paasta_tools.flink_tools.get_runbook", autospec=True)
+    @mock.patch("paasta_tools.flink_tools.get_team", autospec=True)
     def test_get_instance_details_with_stopped_cluster(
         self, mock_get_team, mock_get_runbook
     ):
