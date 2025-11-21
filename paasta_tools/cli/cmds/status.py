@@ -789,28 +789,15 @@ def _print_flink_status_from_job_manager(
     metadata = flink.get("metadata")
     ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
 
-    # Get flink config if running
+    # Get flink config, overview, and jobs if running
     flink_config = None
+    overview = None
+    jobs: List[FlinkJobDetails] = []
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
-        except Exception as e:
-            output.append(PaastaColors.red("Exception when talking to the API:"))
-            output.append(str(e))
-            return 1
-
-    # Collect instance details
-    instance_details = flink_tools.get_flink_instance_details(
-        metadata, flink_config, flink_instance_config, service
-    )
-
-    # Get overview and jobs if running
-    overview = None
-    jobs: List[FlinkJobDetails] = []
-    if status["state"] == "running":
-        try:
             overview = get_flink_overview_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
@@ -825,6 +812,11 @@ def _print_flink_status_from_job_manager(
             output.append(PaastaColors.red("Exception when talking to the API:"))
             output.append(str(e))
             return 1
+
+    # Collect instance details
+    instance_details = flink_tools.get_flink_instance_details(
+        metadata, flink_config, flink_instance_config, service
+    )
 
     # Collect job details
     job_details = flink_tools.collect_flink_job_details(status, overview, jobs)

@@ -2758,7 +2758,7 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
         expected_output = [
-            "    Config SHA: 00000",
+            "    Config SHA: config00000",
             f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
             "    Repo(git): https://github.yelpcorp.com/services/fake_service",
             "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
@@ -2832,7 +2832,7 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
         expected_output = [
-            "    Config SHA: 00000",
+            "    Config SHA: config00000",
             f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
             "    Repo(git): https://github.yelpcorp.com/services/fake_service",
             "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
@@ -2971,7 +2971,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
 
 def _get_flink_base_status_verbose_0(metadata):
     return [
-        "    Config SHA: 00000",
+        "    Config SHA: config00000",
         f"    Flink version: {config_obj.flink_version}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
@@ -2979,7 +2979,7 @@ def _get_flink_base_status_verbose_0(metadata):
 
 def _get_flink_base_status_verbose_1(metadata):
     return [
-        "    Config SHA: 00000",
+        "    Config SHA: config00000",
         f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
         "    Repo(git): https://github.yelpcorp.com/services/fake_service",
