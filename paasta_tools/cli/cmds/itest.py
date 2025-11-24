@@ -41,6 +41,8 @@ def add_subparser(subparsers):
         help="Test and build docker image for this service. Leading "
         '"services-", as included in a Jenkins job name, '
         "will be stripped.",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
         required=True,
     )
     list_parser.add_argument(

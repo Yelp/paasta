@@ -328,7 +328,11 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        "-s", "--service", help="The name of the service you wish to inspect"
+        "-s",
+        "--service",
+        help="The name of the service you wish to inspect",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         "-c",

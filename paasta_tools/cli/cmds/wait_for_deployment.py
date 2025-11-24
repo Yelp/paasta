@@ -102,6 +102,8 @@ def add_subparser(subparsers):
         help="Name of the service which you wish to wait for deployment. "
         'Leading "services-" will be stripped.',
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         "-t",

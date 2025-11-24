@@ -54,6 +54,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--service",
         help="Name of the service which you want to get the image version for.",
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     parser.add_argument(

@@ -246,6 +246,8 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         "--service",
         required=not allow_shared,
         help="The name of the service on which you wish to act",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
 
     if allow_shared:

@@ -62,6 +62,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help='Name of service for which you wish to upload a docker image. Leading "services-", '
         "as included in a Jenkins job name, will be stripped.",
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     list_parser.add_argument(
         "-c",
