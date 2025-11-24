@@ -48,7 +48,6 @@ pysensu-yelp >= 0.3.4
 PyStaticConfiguration
 python-crontab>=2.1.1
 python-dateutil >= 2.4.0
-python-iptables
 pytimeparse >= 1.1.0
 pytz >= 2014.10
 # the upper-bound is required for older docker-py (<=7.0.0)

@@ -46,25 +46,44 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@pytest.fixture
+def mock_shutil_which():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.shutil.which",
+        autospec=True,
+        return_value="/usr/bin/docker",
+    ) as m:
+        yield m
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=31337,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
 def test_dry_run(
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
+    mock_get_docker_client,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     mock_should_reexec_as_root,
+    mock_pick_random_port,
     capfd,
     system_paasta_config,
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_validate_service_instance.return_value = "marathon"
     mock_paasta_cook_image.return_value = 0
+    mock_get_docker_client.return_value = None
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_figure_out_service_name.return_value = "fake_service"
     mock_should_reexec_as_root.return_value = False
@@ -90,19 +109,27 @@ def test_dry_run(
     assert isinstance(expected_out, list)
 
 
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=31337,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
 def test_dry_run_json_dict(
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
+    mock_get_docker_client,
     mock_load_system_paasta_config,
     mock_figure_out_service_name,
     mock_should_reexec_as_root,
+    mock_pick_random_port,
     capfd,
     system_paasta_config,
 ):
@@ -113,6 +140,7 @@ def test_dry_run_json_dict(
     mock_get_instance_config.return_value.get_disk.return_value = 123
     mock_get_instance_config.return_value.get_cpu.return_value = 123
     mock_get_instance_config.return_value.get_cluster.return_value = "fake_cluster"
+    mock_get_docker_client.return_value = None
     mock_get_instance_config.return_value.get_net.return_value = "fake_net"
     mock_get_instance_config.return_value.get_docker_image.return_value = (
         "fake_docker_image"
@@ -167,24 +195,29 @@ def test_perform_cmd_healthcheck_success(mock_exec_container):
     )
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_success(mock_socket_connect):
+@mock.patch("socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_success(mock_socket_cls):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 0
+    mock_socket = mock_socket_cls.return_value
+    mock_socket.connect_ex.return_value = 0
     assert perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
-    mock_socket_connect.assert_called_with(("fakehost", 1234))
+    mock_socket.connect_ex.assert_called_with(("fakehost", 1234))
+    mock_socket.settimeout.assert_called_with(fake_timeout)
+    assert mock_socket.close.called
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_failure(mock_socket_connect):
+@mock.patch("socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_failure(mock_socket_cls):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 1
+    mock_socket = mock_socket_cls.return_value
+    mock_socket.connect_ex.return_value = 1
     actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
     assert actual[0] is False
     assert "timeout" in actual[1]
     assert "10 seconds" in actual[1]
+    mock_socket.connect_ex.assert_called_with(("fakehost", 1234))
 
 
 @mock.patch("requests.get", autospec=True)
@@ -810,19 +843,27 @@ def test_run_success(
         ("pnw-prod", "dev", "dev"),
     ],
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=31337,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
 )
 def test_assume_role_aws_account(
     mock_run_docker_container,
+    mock_get_docker_client,
     mock_validate_service_name,
     mock_figure_out_service_name,
     mock_system_paasta_config,
     mock_should_reexec_as_root,
+    mock_pick_random_port,
     cluster,
     aws_account,
     expected_aws_account,
@@ -830,6 +871,7 @@ def test_assume_role_aws_account(
 ):
     mock_system_paasta_config.return_value = system_paasta_config
     mock_should_reexec_as_root.return_value = False
+    mock_get_docker_client.return_value = None
 
     args = mock.MagicMock()
     args.cluster = cluster
@@ -905,6 +947,7 @@ def test_get_docker_run_cmd_without_additional_args():
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
     assert actual[-1] == docker_url
+    assert any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_cmd_with_env_vars():
@@ -936,6 +979,7 @@ def test_get_docker_run_cmd_with_env_vars():
     )
     assert actual[actual.index("foo") - 1] == "--env"
     assert actual[actual.index("baz") - 1] == "--env"
+    assert any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_cmd_interactive_false():
@@ -973,6 +1017,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert "--tty=true" not in actual
     assert docker_url in actual
     assert command in " ".join(actual)
+    assert any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_cmd_interactive_true():
@@ -1004,6 +1049,7 @@ def test_get_docker_run_cmd_interactive_true():
     )
     assert "--interactive=true" in actual
     assert "--detach" not in actual
+    assert any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_docker_params():
@@ -1040,6 +1086,7 @@ def test_get_docker_run_docker_params():
     assert "--memory-swap=555m" in actual
     assert "--cpu-period=200000" in actual
     assert "--cpu-quota=150000" in actual
+    assert any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_cmd_host_networking():
@@ -1070,6 +1117,7 @@ def test_get_docker_run_cmd_host_networking():
         detach,
     )
     assert "--net=host" in actual
+    assert not any(arg.startswith("--hostname=") for arg in actual)
 
 
 def test_get_docker_run_cmd_quote_cmd():
@@ -1239,6 +1287,7 @@ def test_run_docker_container_interactive(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    mock_shutil_which,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
@@ -2124,6 +2173,7 @@ def test_run_docker_container_assume_aws_role(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    mock_shutil_which,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
@@ -2226,6 +2276,7 @@ def test_run_docker_container_secret_volumes(
     mock_pick_random_port,
     original_service_name,
     override_service_name,
+    mock_shutil_which,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
@@ -2335,6 +2386,7 @@ def test_run_docker_container_secret_volumes_for_teams(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    mock_shutil_which,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
@@ -2428,6 +2480,7 @@ def test_run_docker_container_secret_volumes_raises(
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     capsys,
+    mock_shutil_which,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
@@ -2506,6 +2559,7 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     capsys,
+    mock_shutil_which,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)

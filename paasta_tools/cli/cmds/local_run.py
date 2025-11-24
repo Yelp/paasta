@@ -16,6 +16,7 @@ import base64
 import datetime
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -26,7 +27,9 @@ import time
 import uuid
 from os import execlpe
 from random import randint
+from typing import Dict
 from typing import Optional
+from typing import Tuple
 from urllib.parse import urlparse
 
 import boto3
@@ -75,6 +78,8 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
+MAX_DOCKER_HOSTNAME_LENGTH = 60
 
 
 class AWSSessionCreds(TypedDict):
@@ -567,6 +572,17 @@ def get_container_name():
     return "paasta_local_run_{}_{}".format(get_username(), randint(1, 999999))
 
 
+def _generate_container_hostname(env: Dict[str, str]) -> Tuple[str, str]:
+    fqdn = socket.getfqdn()
+    env.setdefault("PAASTA_HOST", fqdn)
+    short_hostname = fqdn.partition(".")[0] or fqdn
+    hostname = re.sub("[^a-zA-Z0-9-]+", "-", short_hostname)[
+        :MAX_DOCKER_HOSTNAME_LENGTH
+    ]
+    hostname = hostname.rstrip("-") or short_hostname
+    return hostname, fqdn
+
+
 def get_docker_run_cmd(
     memory,
     chosen_port,
@@ -581,7 +597,8 @@ def get_docker_run_cmd(
     docker_params,
     detach,
 ):
-    cmd = ["paasta_docker_wrapper", "run"]
+    cmd = ["docker", "run"]
+    hostname_value, _ = _generate_container_hostname(env)
     for k in env.keys():
         cmd.append("--env")
         cmd.append(f"{k}")
@@ -592,6 +609,11 @@ def get_docker_run_cmd(
         cmd.append("--publish=%d:%d" % (chosen_port, container_port))
     elif net == "host":
         cmd.append("--net=host")
+    else:
+        cmd.append(f"--net={net}")
+
+    if net != "host":
+        cmd.append(f"--hostname={hostname_value}")
     cmd.append("--name=%s" % container_name)
     for volume in volumes:
         cmd.append("--volume=%s" % volume)
@@ -1081,11 +1103,13 @@ def run_docker_container(
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        wrapper_path = shutil.which("paasta_docker_wrapper")
+        docker_binary = shutil.which("docker")
+        if not docker_binary:
+            raise RuntimeError("Unable to locate the 'docker' executable in PATH")
         # To properly simulate mesos, we pop the PATH, which is not available to
         # The executor
-        merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        merged_env.pop("PATH", None)
+        execlpe(docker_binary, *docker_run_cmd, merged_env)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0

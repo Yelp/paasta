@@ -94,7 +94,6 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         params: List[str] = [
             "cpus",
             "mem",
-            "security",
             "dependencies_reference",
             "deploy_group",
         ],
