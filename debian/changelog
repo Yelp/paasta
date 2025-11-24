@@ -1,3 +1,17 @@
+paasta-tools (1.35.5) xenial; urgency=medium
+
+  * 1.35.5 tagged with 'make release'
+    Commit: Correctly merge fields in autotune (#4166)  I did dumb
+    things when I refactored the initial commit from Yelp/paasta#4056: I
+    swapped things to filter/convert the original field names - but I
+    want to use the field names as they exist in `serv`  I believe that
+    what ended up happening here is that autotune would only ever use
+    the first result row it encountered, since we"d never see mergeable
+    keys from `field_conversions` once we populated `services_to_update`
+    on the first encounter of a service.instance row
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 24 Nov 2025 07:25:00 -0800
+
 paasta-tools (1.35.4) xenial; urgency=medium
 
   * 1.35.4 tagged with 'make release'
