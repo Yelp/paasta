@@ -14,9 +14,9 @@
 import json
 import os
 import re
+from unittest import mock
 
 import docker
-import mock
 import pytest
 from pytest import mark
 from pytest import raises
@@ -1855,7 +1855,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
         ret = simulate_healthcheck_on_service(
             fake_service_manifest,
             mock_client,
-            mock.sentinel.container_id,
+            "fake_container_123",
             "http",
             "http://fake_host/status",
             True,

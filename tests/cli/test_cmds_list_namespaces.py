@@ -1,6 +1,6 @@
 # tests/cli/cmds/test_list_namespaces.py
-from mock import MagicMock
-from mock import patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from paasta_tools.cli.cmds.list_namespaces import paasta_list_namespaces
 from paasta_tools.spark_tools import SPARK_EXECUTOR_NAMESPACE

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
 
 from paasta_tools import remote_git
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
@@ -532,10 +532,6 @@ def test_start_or_stop_bad_refs(
     mock_confirm_to_continue.return_value = True
     assert args.command(args) == 1
     assert "deployed there yet?" in capfd.readouterr()[0]
-
-
-def test_cluster_list_defaults_to_all():
-    return True
 
 
 @mock.patch(

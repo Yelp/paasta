@@ -14,8 +14,8 @@
 import os
 import shutil
 import tempfile
+from unittest import mock
 
-import mock
 from behave import given
 from behave import then
 from behave import when

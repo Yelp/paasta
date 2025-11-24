@@ -1,5 +1,4 @@
 astroid
-asynctest
 coverage
 # VSCode debugging requirement
 # See https://code.visualstudio.com/docs/python/debugging#_local-script-debugging
@@ -8,7 +7,6 @@ docutils
 flake8
 freezegun
 hypothesis
-mock
 mypy
 path.py
 pep8

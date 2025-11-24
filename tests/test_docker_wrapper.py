@@ -1,7 +1,7 @@
 import socket
 from contextlib import contextmanager
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import docker_wrapper

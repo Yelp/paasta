@@ -1,7 +1,7 @@
 import os
 from subprocess import CalledProcessError
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools.apply_external_resources import main

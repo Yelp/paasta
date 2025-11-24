@@ -16,9 +16,9 @@ import datetime
 import json
 from multiprocessing import Queue
 from queue import Empty
+from unittest import mock
 
 import isodate
-import mock
 import pytest
 import pytz
 from pytest import raises

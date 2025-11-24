@@ -2,8 +2,8 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
+from unittest import mock
 
-import mock
 import pytest
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
