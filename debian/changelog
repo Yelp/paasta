@@ -1,3 +1,19 @@
+paasta-tools (1.35.6) xenial; urgency=medium
+
+  * 1.35.6 tagged with 'make release'
+    Commit: Refactor comment-based validation opt-out code (#4170)  The
+    fight against YAML continues :p  It looks like my original code here
+    didn"t always correctly capture comments depending on how YAML
+    templates/anchors were used.  `claude` has been trained on more
+    ruamel.yaml code than I have, so I used it to iterate on this until
+    we can correctly validate the change that spawned this PR + still
+    validate all the existing files.  For those wishing to verify this
+    themselves: `paasta list | xargs -P10 -n1 --no-run-if-empty paasta
+    validate -y $SOACONFIGS  -s 2>&1 | rg -C10 "(✗|Traceback)"` shows no
+    validation errors against the branch that spawned this PR :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 24 Nov 2025 08:56:48 -0800
+
 paasta-tools (1.35.5) xenial; urgency=medium
 
   * 1.35.5 tagged with 'make release'
