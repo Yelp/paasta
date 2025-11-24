@@ -369,11 +369,9 @@ def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, 
                 # sets disk: 100 -> an instance uses that template and overwrites
                 # it with disk: 1000)
                 ruamel_loader.allow_duplicate_keys = True
-                # we want to actually expand out all anchors so that we still get
-                # comments from the original block
-                ruamel_loader.Constructor.flatten_mapping = (
-                    SafeConstructor.flatten_mapping
-                )
+                # Note: we do NOT use flatten_mapping here because it breaks simple
+                # override patterns. For nested merge patterns, we load a flattened
+                # version separately for comment detection only.
                 return ruamel_loader.load(config_file)
             else:
                 return yaml.safe_load(config_file)
@@ -637,7 +635,22 @@ def validate_unique_instance_names(service_path):
     return check_passed
 
 
-def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
+def _get_config_flattened(file_path: str) -> CommentedMap:
+    """Load config with flatten_mapping enabled (for nested merge pattern comment detection)"""
+    config_file = get_file_contents(file_path)
+    ruamel_loader = YAML(typ="rt")
+    ruamel_loader.allow_duplicate_keys = True
+    ruamel_loader.Constructor.flatten_mapping = SafeConstructor.flatten_mapping
+    return ruamel_loader.load(config_file)
+
+
+def _get_comments_for_key(
+    data: CommentedMap,
+    key: Any,
+    full_config: Optional[Dict[Any, Any]] = None,
+    key_value: Any = None,
+    full_config_flattened: Optional[Dict[Any, Any]] = None,
+) -> Optional[str]:
     # this is a little weird, but ruamel is returning a list that looks like:
     # [None, None, CommentToken(...), None] for some reason instead of just a
     # single string
@@ -654,6 +667,31 @@ def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
 
     raw_comments = [*_flatten_comments(data.ca.items.get(key, []))]
     if not raw_comments:
+        # If we didn't find a comment in the instance itself, check if this key
+        # might be inherited from a template. Look for ANY other instance/template
+        # in the config that has the same key with the same value and a comment.
+        if full_config is not None and key_value is not None:
+            for config_key, config_value in full_config.items():
+                if isinstance(config_value, CommentedMap):
+                    if config_value.get(key) == key_value:
+                        other_comments = [
+                            *_flatten_comments(config_value.ca.items.get(key, []))
+                        ]
+                        if other_comments:
+                            return "".join(other_comments)
+
+        # If still not found and we have a flattened config, check there
+        # (flattened config is needed for nested merges)
+        if full_config_flattened is not None:
+            for config_key, config_value in full_config_flattened.items():
+                if isinstance(config_value, CommentedMap):
+                    if config_value.get(key) == key_value:
+                        flattened_comments = [
+                            *_flatten_comments(config_value.ca.items.get(key, []))
+                        ]
+                        if flattened_comments:
+                            return "".join(flattened_comments)
+
         # return None so that we don't return an empty string below if there really aren't
         # any comments
         return None
@@ -802,12 +840,13 @@ def validate_autoscaling_configs(service_path: str) -> bool:
 
                             # we need access to the comments, so we need to read the config with ruamel to be able
                             # to actually get them in a "nice" automated fashion
+                            config_file_path = os.path.join(
+                                soa_dir,
+                                service,
+                                f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                            )
                             config = get_config_file_dict(
-                                os.path.join(
-                                    soa_dir,
-                                    service,
-                                    f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                                ),
+                                config_file_path,
                                 use_ruamel=True,
                             )
                             if config[instance].get("cpus") is None:
@@ -822,8 +861,15 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                                 # cpu autoscaled, but using autotuned values - can skip
                                 continue
 
+                            # Load flattened config for comment detection (handles nested merges)
+                            config_flattened = _get_config_flattened(config_file_path)
+
                             cpu_comment = _get_comments_for_key(
-                                data=config[instance], key="cpus"
+                                data=config[instance],
+                                key="cpus",
+                                full_config=config,
+                                key_value=config[instance].get("cpus"),
+                                full_config_flattened=config_flattened,
                             )
                             # we could probably have a separate error message if there's a comment that doesn't match
                             # the ack pattern, but that seems like overkill - especially for something that could cause
@@ -965,12 +1011,13 @@ def validate_cpu_burst(service_path: str) -> bool:
             if is_k8s_service and not should_skip_cpu_burst_validation:
                 # we need access to the comments, so we need to read the config with ruamel to be able
                 # to actually get them in a "nice" automated fashion
+                config_file_path = os.path.join(
+                    soa_dir,
+                    service,
+                    f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                )
                 config = get_config_file_dict(
-                    os.path.join(
-                        soa_dir,
-                        service,
-                        f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                    ),
+                    config_file_path,
                     use_ruamel=True,
                 )
 
@@ -981,8 +1028,15 @@ def validate_cpu_burst(service_path: str) -> bool:
                     # under the threshold - can also skip
                     continue
 
+                # Load flattened config for comment detection (handles nested merges)
+                config_flattened = _get_config_flattened(config_file_path)
+
                 burst_comment = _get_comments_for_key(
-                    data=config[instance], key="cpu_burst_add"
+                    data=config[instance],
+                    key="cpu_burst_add",
+                    full_config=config,
+                    key_value=config[instance].get("cpu_burst_add"),
+                    full_config_flattened=config_flattened,
                 )
                 # we could probably have a separate error message if there's a comment that doesn't match
                 # the ack pattern, but that seems like overkill - especially for something that could cause
