@@ -16,7 +16,7 @@ import base64
 import datetime
 import json
 import os
-import shutil
+import re
 import socket
 import subprocess
 import sys
@@ -27,13 +27,13 @@ import uuid
 from os import execlpe
 from random import randint
 from typing import Optional
+from typing import TypedDict
 from urllib.parse import urlparse
 
 import boto3
 import requests
 from docker import errors
 from docker.api.client import APIClient
-from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
@@ -58,6 +58,7 @@ from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -75,6 +76,8 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
+MAX_DOCKER_HOSTNAME_LENGTH = 60
 
 
 class AWSSessionCreds(TypedDict):
@@ -95,6 +98,10 @@ def perform_http_healthcheck(url, timeout):
     :param timeout: timeout in seconds
     :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
     """
+    # K8s treats HTTP probes as success for 200 <= status < 400:
+    # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#http-probes
+    # (Note: production PaaSTA pods usually expose readiness via the hacheck sidecar) so this is only
+    # an approximation for local runs.)
     try:
         with Timeout(seconds=timeout):
             try:
@@ -104,16 +111,7 @@ def perform_http_healthcheck(url, timeout):
     except TimeoutError:
         return (False, "http request timed out after %d seconds" % timeout)
 
-    if "content-type" in res.headers and "," in res.headers["content-type"]:
-        print(
-            PaastaColors.yellow(
-                "Multiple content-type headers detected in response."
-                " The Mesos healthcheck system will treat this as a failure!"
-            )
-        )
-        return (False, "http request succeeded, code %d" % res.status_code)
-    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
-    elif res.status_code >= 200 and res.status_code < 400:
+    if res.status_code >= 200 and res.status_code < 400:
         return (True, "http request succeeded, code %d" % res.status_code)
     else:
         return (False, "http request failed, code %s" % str(res.status_code))
@@ -193,7 +191,7 @@ def simulate_healthcheck_on_service(
     healthcheck_data,
     healthcheck_enabled,
 ):
-    """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
+    """Simulates Kubernetes-style readiness/liveness checks locally if enabled
 
     :param instance_config: service manifest
     :param docker_client: Docker client object
@@ -571,6 +569,25 @@ def get_container_name():
     return "paasta_local_run_{}_{}".format(get_username(), randint(1, 999999))
 
 
+def _get_container_hostname(preferred_hostname: Optional[str]) -> str:
+    fqdn = socket.getfqdn()
+    short_hostname = fqdn.partition(".")[0] or fqdn
+    if preferred_hostname:
+        hostname = _k8s_style_hostname(preferred_hostname, short_hostname)
+    else:
+        hostname = short_hostname
+    return hostname
+
+
+def _k8s_style_hostname(candidate: str, fallback: str) -> str:
+    """Kubernetes sets pod hostnames to their names (RFC 1123 label, <=63 chars)."""
+    hostname = candidate.lower()
+    hostname = re.sub("[^a-z0-9-]", "-", hostname)
+    hostname = hostname.strip("-")
+    hostname = hostname[:MAX_DOCKER_HOSTNAME_LENGTH]
+    return hostname or fallback
+
+
 def get_docker_run_cmd(
     memory,
     chosen_port,
@@ -585,8 +602,12 @@ def get_docker_run_cmd(
     docker_params,
     detach,
 ):
-    cmd = ["paasta_docker_wrapper", "run"]
-    for k in env.keys():
+    cmd = ["docker", "run"]
+    hostname_value = _get_container_hostname(container_name)
+    fqdn = socket.getfqdn()
+    env_with_defaults = env.copy()
+    env_with_defaults.setdefault("PAASTA_HOST", fqdn)
+    for k in env_with_defaults.keys():
         cmd.append("--env")
         cmd.append(f"{k}")
     cmd.append("--memory=%dm" % memory)
@@ -596,6 +617,11 @@ def get_docker_run_cmd(
         cmd.append("--publish=%d:%d" % (chosen_port, container_port))
     elif net == "host":
         cmd.append("--net=host")
+    else:
+        cmd.append(f"--net={net}")
+
+    if net != "host":
+        cmd.append(f"--hostname={hostname_value}")
     cmd.append("--name=%s" % container_name)
     for volume in volumes:
         cmd.append("--volume=%s" % volume)
@@ -739,7 +765,9 @@ def _cleanup_container(docker_client, container_id):
         )
 
 
-def get_local_run_environment_vars(instance_config, port0, framework):
+def get_local_run_environment_vars(
+    instance_config: InstanceConfig, port0: int, framework: str, container_hostname: str
+) -> dict[str, str]:
     """Returns a dictionary of environment variables to simulate what would be available to
     a paasta service running in a container"""
     hostname = socket.getfqdn()
@@ -749,6 +777,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         # so we can fall-back to the injected DOCKER_TAG per the paasta contract
         docker_image = os.environ["DOCKER_TAG"]
     env = {
+        "HOSTNAME": container_hostname,
         "HOST": hostname,
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
@@ -933,6 +962,8 @@ def run_docker_container(
             sys.exit(1)
     else:
         chosen_port = pick_random_port(service)
+    container_name = get_container_name()
+    container_hostname = _get_container_hostname(container_name)
     environment = instance_config.get_env()
     secret_volumes = {}  # type: ignore
     if not skip_secrets:
@@ -1006,12 +1037,14 @@ def run_docker_container(
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
 
     local_run_environment = get_local_run_environment_vars(
-        instance_config=instance_config, port0=chosen_port, framework=framework
+        instance_config=instance_config,
+        port0=chosen_port,
+        framework=framework,
+        container_hostname=container_hostname,
     )
     environment.update(local_run_environment)
     net = instance_config.get_net()
     memory = instance_config.get_mem()
-    container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
 
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
@@ -1085,11 +1118,7 @@ def run_docker_container(
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        wrapper_path = shutil.which("paasta_docker_wrapper")
-        # To properly simulate mesos, we pop the PATH, which is not available to
-        # The executor
-        merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        execlpe(get_docker_binary(), *docker_run_cmd, merged_env)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0

@@ -261,6 +261,7 @@ def test_get_spark_env(
     mock_get_possible_launced_by_user_variable_from_env,
 ):
     spark_conf_str = "--conf spark.ui.port=1234"
+    fake_host = "fake-host"
     expected_output = {
         "SPARK_USER": "root",
         "SPARK_OPTS": "--conf spark.ui.port=1234",
@@ -268,6 +269,7 @@ def test_get_spark_env(
         "PAASTA_INSTANCE_TYPE": "spark",
         "AWS_DEFAULT_REGION": "test-region",
         "KUBECONFIG": "/etc/kubernetes/spark.conf",
+        "PAASTA_HOST": fake_host,
         **extra_expected,
         **expected_aws,
     }
@@ -277,16 +279,21 @@ def test_get_spark_env(
         ),
         "fake_dir",
     )
-    assert (
-        spark_run.get_spark_env(
-            args,
-            spark_conf_str,
-            aws,
-            "1234",
-            system_paasta_config=fake_system_paasta_config,
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.socket.getfqdn",
+        autospec=True,
+        return_value=fake_host,
+    ):
+        assert (
+            spark_run.get_spark_env(
+                args,
+                spark_conf_str,
+                aws,
+                "1234",
+                system_paasta_config=fake_system_paasta_config,
+            )
+            == expected_output
         )
-        == expected_output
-    )
 
 
 def test_get_spark_env_load_iam_creds():
@@ -386,9 +393,19 @@ def mock_os_execlpe():
         yield m
 
 
+@pytest.fixture
+def mock_shutil_which():
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.get_docker_binary",
+        autospec=True,
+        return_value="/usr/bin/docker",
+    ) as m:
+        yield m
+
+
 @pytest.mark.parametrize("dry_run", [True, False])
 def test_run_docker_container(
-    mock_get_docker_run_cmd, mock_os_execlpe, dry_run, capsys
+    mock_get_docker_run_cmd, mock_os_execlpe, mock_shutil_which, dry_run, capsys
 ):
     container_name = "test-container-name"
     volumes = [{"hostPath": "/host", "containerPath": "/container", "mode": "RO"}]
@@ -430,7 +447,7 @@ def test_run_docker_container(
 
         else:
             mock_os_execlpe.assert_called_once_with(
-                "paasta_docker_wrapper",
+                mock_shutil_which.return_value,
                 "docker",
                 "run",
                 "commands",
@@ -532,8 +549,13 @@ class TestConfigureAndRunDockerContainer:
         args.job_id = None
         args.use_service_auth_token = False
         args.get_eks_token_via_iam_user = None
+        fake_host = "fake-host"
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
+        ), mock.patch(
+            "paasta_tools.cli.cmds.spark_run.socket.getfqdn",
+            autospec=True,
+            return_value=fake_host,
         ):
             retcode = configure_and_run_docker_container(
                 args=args,
@@ -571,6 +593,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "PAASTA_HOST": fake_host,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
@@ -648,8 +671,13 @@ class TestConfigureAndRunDockerContainer:
         args.docker_shm_size = "1g"
         args.use_service_auth_token = False
         args.get_eks_token_via_iam_user = None
+        fake_host = "fake-host"
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
+        ), mock.patch(
+            "paasta_tools.cli.cmds.spark_run.socket.getfqdn",
+            autospec=True,
+            return_value=fake_host,
         ):
             retcode = configure_and_run_docker_container(
                 args=args,
@@ -687,6 +715,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "PAASTA_HOST": fake_host,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
@@ -764,8 +793,13 @@ class TestConfigureAndRunDockerContainer:
         args.docker_shm_size = False
         args.use_service_auth_token = False
         args.get_eks_token_via_iam_user = None
+        fake_host = "fake-host"
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
+        ), mock.patch(
+            "paasta_tools.cli.cmds.spark_run.socket.getfqdn",
+            autospec=True,
+            return_value=fake_host,
         ):
             retcode = configure_and_run_docker_container(
                 args=args,
@@ -804,6 +838,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "PAASTA_HOST": fake_host,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
