@@ -132,8 +132,8 @@ async def check_max_instances(
                         # suggest fixing their autoscaling config
                         output = f'{service}.{instance}: Service is at max_instances, and there is an error fetching your {metrics_provider_config["type"]} metric. Check your autoscaling configs or reach out to #paasta.'
                     else:
-                        # target_value can be 100*setpoint (for cpu), 1 (for uwsgi, piscina, gunicorn,
-                        # active_requests), or setpoint (for promql).
+                        # target_value can be 100*setpoint (for cpu), 1 (for worker-load, piscina, or active-requests),
+                        # or setpoint (for promql).
                         # Here we divide current_value by target_value to find the ratio of utilization to setpoint,
                         # and then multiply by setpoint to find the actual utilization in the same units as setpoint.
                         utilization = setpoint * current_value / target_value
