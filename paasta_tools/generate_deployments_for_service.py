@@ -101,6 +101,8 @@ def parse_args() -> argparse.Namespace:
         "--service",
         required=True,
         help="Service name to make the deployments.json for",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     args = parser.parse_args()
     return args

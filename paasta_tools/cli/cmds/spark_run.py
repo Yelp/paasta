@@ -238,6 +238,8 @@ def add_subparser(subparsers):
         "--service",
         help="The name of the service from which the Spark image is built.",
         default=DEFAULT_SPARK_SERVICE,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
 
     list_parser.add_argument(

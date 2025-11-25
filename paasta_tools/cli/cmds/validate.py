@@ -458,6 +458,8 @@ def add_subparser(subparsers):
         "--service",
         required=False,
         help="Service that you want to validate. Like 'example_service'.",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     validate_parser.add_argument(
         "-v",

@@ -107,7 +107,11 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
 
     arg_service = list_parser.add_argument(
-        "-s", "--service", help='Name of the service to rollback (e.g. "service1")'
+        "-s",
+        "--service",
+        help='Name of the service to rollback (e.g. "service1")',
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     list_parser.add_argument(

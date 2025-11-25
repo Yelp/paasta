@@ -117,6 +117,8 @@ def add_subparser(subparsers) -> None:
         "-s",
         "--service",
         help="The name of the service you wish to inspect. Defaults to autodetect.",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         "-c",

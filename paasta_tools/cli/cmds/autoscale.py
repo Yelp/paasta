@@ -48,6 +48,8 @@ def add_subparser(subparsers):
         "-s",
         "--service",
         help="Service that you want to autoscale. Like 'example_service'.",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     autoscale_parser.add_argument(
         "-i",
