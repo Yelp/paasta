@@ -171,11 +171,11 @@ These options are only applicable to tasks scheduled on Kubernetes.
 
   * ``unhealthy_pod_eviction_policy``: An option to control when unhealthy Pods can be evicted under a PodDisruptionBudget (PDB).
 
-    The default is ``IfHealthyBudget``, which prevents disrupting unhealthy Pods if their eviction would violate the PDB constraints.
+    The default is ``AlwaysAllow``, which essentially excludes unhealthy Pods from the PDB and allow eviction.
 
-    This can also be set to ``AlwaysAllow`` to essentially exclude unhealthy Pods from the PDB and allow eviction.
+    This can also be set to ``IfHealthyBudget`` which prevents disrupting unhealthy Pods if their eviction would violate the PDB constraints.
     For example::
-      unhealthy_pod_eviction_policy: AlwaysAllow
+      unhealthy_pod_eviction_policy: IfHealthyBudget
 
     This value is generally configured by PaaSTA globally, but can be overridden per-instance as a power-user override - you should generally **not** be configuring this yourself.
     For more information, see the official Kubernetes
