@@ -77,6 +77,7 @@ from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
+from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
@@ -398,6 +399,7 @@ def validate_schema(file_path: str, file_type: str) -> bool:
 
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
+
     try:
         validator.validate(config_file_object)
         if file_type in K8S_TYPES and not validate_instance_names(
@@ -1231,6 +1233,9 @@ def validate_smartstack(service_path: str) -> bool:
             )
         )
         return False
+
+    # Filter out template stanzas (keys starting with "_")
+    config = filter_templates_from_config(config)
 
     soa_dir, service = path_to_soa_dir_service(service_path)
     for namespace, namespace_config in config.items():
