@@ -1,3 +1,12 @@
+paasta-tools (1.35.7) xenial; urgency=medium
+
+  * 1.35.7 tagged with 'make release'
+    Commit: Upgrade urllib3 to remove a couple warnings about
+    deprecations (#4159)  This is a pretty common transitive dependency,
+    so there were a couple other things that had to be upgraded :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Nov 2025 05:52:46 -0800
+
 paasta-tools (1.35.6) xenial; urgency=medium
 
   * 1.35.6 tagged with 'make release'
