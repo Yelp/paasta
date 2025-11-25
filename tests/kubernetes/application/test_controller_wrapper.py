@@ -331,3 +331,67 @@ def test_job_wrapper_deep_delete():
         "mock_namespace",
         body=V1DeleteOptions(propagation_policy="Foreground"),
     )
+
+
+def test_sync_service_creates_service_when_configured():
+    """Test sync_service creates a Service when k8s_service is configured."""
+    mock_client = mock.MagicMock()
+    config_dict = {
+        "k8s_service": {
+            "headless": True,
+            "port": 8888,
+            "annotations": {
+                "external-dns.alpha.kubernetes.io/hostname": "test1.example.com"
+            },
+        }
+    }
+    app = setup_app(config_dict, True)
+    app.exists_service = mock.Mock(return_value=False)
+    app.sync_service(kube_client=mock_client)
+    mock_client.core.create_namespaced_service.assert_called_once()
+    assert mock_client.core.replace_namespaced_service.call_count == 0
+    assert mock_client.core.delete_namespaced_service.call_count == 0
+
+
+def test_sync_service_updates_existing_service():
+    """Test sync_service updates a Service when it already exists."""
+    mock_client = mock.MagicMock()
+    config_dict = {
+        "k8s_service": {
+            "headless": True,
+            "port": 8889,
+            "annotations": {
+                "external-dns.alpha.kubernetes.io/hostname": "test2.example.com"
+            },
+        }
+    }
+    app = setup_app(config_dict, True)
+    app.exists_service = mock.Mock(return_value=True)
+    app.sync_service(kube_client=mock_client)
+    mock_client.core.replace_namespaced_service.assert_called_once()
+    assert mock_client.core.create_namespaced_service.call_count == 0
+    assert mock_client.core.delete_namespaced_service.call_count == 0
+
+
+def test_sync_service_deletes_when_config_removed():
+    """Test sync_service deletes Service when k8s_service config is removed."""
+    mock_client = mock.MagicMock()
+    config_dict = {}
+    app = setup_app(config_dict, True)
+    app.exists_service = mock.Mock(return_value=True)
+    app.sync_service(kube_client=mock_client)
+    mock_client.core.delete_namespaced_service.assert_called_once()
+    assert mock_client.core.create_namespaced_service.call_count == 0
+    assert mock_client.core.replace_namespaced_service.call_count == 0
+
+
+def test_sync_service_noop_when_not_configured_and_doesnt_exist():
+    """Test sync_service does nothing when not configured and doesn't exist."""
+    mock_client = mock.MagicMock()
+    config_dict = {}
+    app = setup_app(config_dict, True)
+    app.exists_service = mock.Mock(return_value=False)
+    app.sync_service(kube_client=mock_client)
+    assert mock_client.core.create_namespaced_service.call_count == 0
+    assert mock_client.core.replace_namespaced_service.call_count == 0
+    assert mock_client.core.delete_namespaced_service.call_count == 0
