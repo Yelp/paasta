@@ -49,7 +49,7 @@ from paasta_tools.utils import TimeoutError
 @pytest.fixture
 def mock_shutil_which():
     with mock.patch(
-        "paasta_tools.cli.cmds.local_run.shutil.which",
+        "paasta_tools.cli.cmds.local_run.get_docker_binary",
         autospec=True,
         return_value="/usr/bin/docker",
     ) as m:
@@ -276,8 +276,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
         headers={"content-type": "fake_content_type_1, fake_content_type_2"},
     )
     actual = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert actual[0] is False
-    assert "200" in actual[1]
+    assert actual == (True, "http request succeeded, code 200")
     mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
@@ -947,7 +946,10 @@ def test_get_docker_run_cmd_without_additional_args():
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
     assert actual[-1] == docker_url
-    assert any(arg.startswith("--hostname=") for arg in actual)
+    hostname_args = [arg for arg in actual if arg.startswith("--hostname=")]
+    expected_hostname = re.sub("[^a-z0-9-]", "-", container_name.lower()).strip("-")
+    expected_hostname = expected_hostname[:63] or container_name.lower()
+    assert hostname_args == [f"--hostname={expected_hostname}"]
 
 
 def test_get_docker_run_cmd_with_env_vars():
@@ -1986,9 +1988,14 @@ def test_get_local_run_environment_vars_kubernetes(
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
     actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="not-marathon"
+        instance_config=mock_instance_config,
+        port0=1234,
+        framework="not-marathon",
+        container_hostname="fake-pod",
     )
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
+    assert actual["PAASTA_HOST"] == "fake_host"
     assert "MARATHON_PORT" not in actual
 
 
@@ -2008,10 +2015,14 @@ def test_get_local_run_environment_vars_adhoc(
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
     actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="adhoc"
+        instance_config=mock_instance_config,
+        port0=1234,
+        framework="adhoc",
+        container_hostname="fake-pod",
     )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
     assert "PAASTA_PORT" not in actual
 
 

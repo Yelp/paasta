@@ -4,11 +4,9 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import socket
 import sys
 from configparser import ConfigParser
-from functools import lru_cache
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -47,6 +45,7 @@ from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -505,17 +504,9 @@ def sanitize_container_name(container_name):
     return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
 
 
-@lru_cache(maxsize=1)
-def _get_docker_binary() -> str:
-    docker_binary = shutil.which("docker")
-    if not docker_binary:
-        raise RuntimeError("Unable to locate the 'docker' executable in PATH")
-    return docker_binary
-
-
 def _format_docker_command(subcommand: str, sudo: bool = False) -> str:
     prefix = "sudo -H " if sudo else ""
-    return f"{prefix}{_get_docker_binary()} {subcommand}"
+    return f"{prefix}{get_docker_binary()} {subcommand}"
 
 
 def get_docker_run_cmd(
@@ -532,7 +523,7 @@ def get_docker_run_cmd(
     print(
         f"Setting docker memory, shared memory, and cpu limits as {docker_memory_limit}, {docker_shm_size}, and {docker_cpu_limit} core(s) respectively."
     )
-    cmd = [_get_docker_binary(), "run"]
+    cmd = [get_docker_binary(), "run"]
     cmd.append(f"--memory={docker_memory_limit}")
     if docker_shm_size is not None:
         cmd.append(f"--shm-size={docker_shm_size}")
@@ -775,7 +766,7 @@ def run_docker_container(
         return 0
 
     merged_env = {**os.environ, **environment}
-    docker_binary = _get_docker_binary()
+    docker_binary = get_docker_binary()
     os.execlpe(docker_binary, *docker_run_cmd, merged_env)
     return 0
 

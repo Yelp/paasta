@@ -395,14 +395,12 @@ def mock_os_execlpe():
 
 @pytest.fixture
 def mock_shutil_which():
-    spark_run._get_docker_binary.cache_clear()
     with mock.patch(
-        "paasta_tools.cli.cmds.spark_run.shutil.which",
+        "paasta_tools.cli.cmds.spark_run.get_docker_binary",
         autospec=True,
         return_value="/usr/bin/docker",
     ) as m:
         yield m
-    spark_run._get_docker_binary.cache_clear()
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
