@@ -316,7 +316,7 @@ def create_instance_active_requests_scaling_rule(
                 paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
                 "kube_deployment", "{deployment_name}", "", ""
             )
-        ) by (kube_deployment)
+        ) by (kube_deployment) or vector(0)
     )
     """
     desired_instances_at_each_point_in_time = f"""
