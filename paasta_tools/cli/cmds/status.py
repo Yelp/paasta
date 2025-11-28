@@ -827,7 +827,9 @@ def _print_flink_status_from_job_manager(
     # overview and jobs are empty when cluster is not running
     job_details = flink_tools.collect_flink_job_details(status, overview, jobs)
 
-    output.extend(flink_tools.format_flink_instance_header(instance_details, verbose))
+    output.extend(
+        flink_tools.format_flink_instance_header(instance_details, verbose > 0)
+    )
 
     if verbose:
         output.extend(

@@ -129,7 +129,6 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,
             instance=instance,
@@ -729,8 +728,7 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
         and slots_total is not None
     ):
         output.append(
-            "    "
-            f" {taskmanagers} taskmanagers,"
+            f"    {taskmanagers} taskmanagers,"
             f" {slots_available}/{slots_total} slots available"
         )
 
