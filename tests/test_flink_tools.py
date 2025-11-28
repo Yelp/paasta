@@ -16,6 +16,7 @@ import mock
 import paasta_tools.flink_tools as flink_tools
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
+from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 
 
 def test_get_flink_ingress_url_root():
@@ -321,9 +322,6 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
         assert flink_deployment_config.get_pool() == "flink-spot"
 
 
-# Tests for newly added formatting and data collection functions
-
-
 class TestCollectFlinkJobDetails:
     """Tests for collect_flink_job_details function."""
 
@@ -363,7 +361,7 @@ class TestCollectFlinkJobDetails:
                 {"phase": "Pending"},
             ],
         }
-        overview = mock.Mock(autospec=True)
+        overview = mock.Mock(spec=FlinkClusterOverview)
         overview.jobs_running = 1
         overview.jobs_finished = 2
         overview.jobs_failed = 0
@@ -404,7 +402,7 @@ class TestCollectFlinkJobDetails:
             "state": "running",
             "pod_status": [{"phase": "Running"}],
         }
-        overview = mock.Mock(autospec=True)
+        overview = mock.Mock(spec=FlinkClusterOverview)
         overview.jobs_running = 2
         overview.jobs_finished = 3
         overview.jobs_failed = 1
@@ -413,7 +411,7 @@ class TestCollectFlinkJobDetails:
         overview.slots_available = 10
         overview.slots_total = 25
 
-        mock_jobs = [mock.Mock(autospec=True), mock.Mock(autospec=True)]
+        mock_jobs = [{}, {}]  # Jobs are passed through without inspection
 
         result = flink_tools.collect_flink_job_details(status, overview, mock_jobs)
 

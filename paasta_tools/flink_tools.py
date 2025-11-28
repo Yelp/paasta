@@ -698,7 +698,7 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
     output.append(f"    State: {color(state.title())}")
 
     # Format pod counts
-    evicted_str = (
+    formatted_evictions = (
         PaastaColors.red(f"{pod_counts['evicted']}")
         if pod_counts["evicted"] > 0
         else f"{pod_counts['evicted']}"
@@ -706,7 +706,7 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
     output.append(
         "    Pods:"
         f" {pod_counts['running']} running,"
-        f" {evicted_str} evicted,"
+        f" {formatted_evictions} evicted,"
         f" {pod_counts['other']} other,"
         f" {pod_counts['total']} total"
     )
@@ -729,7 +729,7 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
         and slots_total is not None
     ):
         output.append(
-            "   "
+            "    "
             f" {taskmanagers} taskmanagers,"
             f" {slots_available}/{slots_total} slots available"
         )
@@ -825,7 +825,7 @@ def format_flink_jobs_table(
                 job_id=job_id,
                 job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
+                state=color_fn((job.get("state") or "Unknown").title()),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
