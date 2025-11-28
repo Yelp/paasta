@@ -235,6 +235,8 @@ PROJECTED_SA_TOKEN_PATH = "token"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
 
+CONTAINER_PORT_NAME = "application"
+
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -1433,7 +1435,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         include_liveness_probe: bool = True,
         include_readiness_probe: bool = True,
     ) -> Sequence[V1Container]:
-        ports = [self.get_container_port()]
+        ports = [
+            V1ContainerPort(
+                container_port=self.get_container_port(), name=CONTAINER_PORT_NAME
+            )
+        ]
         # MONK-1130
         # The prometheus_port is used for scraping metrics from the main
         # container in the pod. Prometheus discovers ports using the kubernetes
@@ -1442,8 +1448,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # annotations but this is not currently supported.
         # https://github.com/prometheus/prometheus/issues/3756
         prometheus_port = self.get_prometheus_port()
-        if prometheus_port and prometheus_port not in ports:
-            ports.append(prometheus_port)
+        if prometheus_port and all(
+            port.container_port != prometheus_port for port in ports
+        ):
+            ports.append(V1ContainerPort(container_port=prometheus_port))
 
         service_container = V1Container(
             image=self.get_docker_url(),
@@ -1467,7 +1475,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 if include_readiness_probe
                 else None
             ),
-            ports=[V1ContainerPort(container_port=port) for port in ports],
+            ports=ports,
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
                 docker_volumes=docker_volumes,
