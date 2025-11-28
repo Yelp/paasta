@@ -463,12 +463,12 @@ def get_flink_instance_details(
 
 
 def format_flink_instance_header(
-    details: FlinkInstanceDetails, verbose: int
+    details: FlinkInstanceDetails, verbose: bool
 ) -> List[str]:
     """Format basic instance information (config SHA, version, URL).
 
     :param details: Instance details from get_flink_instance_details()
-    :param verbose: Verbosity level (>0 shows version revision)
+    :param verbose: If True, show version revision
     :returns: List of formatted strings
     """
     output: List[str] = []
