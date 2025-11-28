@@ -434,19 +434,23 @@ class TestFormatFlinkStateAndPods:
 
     def test_format_running_state_no_evictions(self):
         """Test formatting running state with no evicted pods."""
-        state = "running"
-        pod_counts = {"running": 3, "evicted": 0, "other": 0, "total": 3}
-        job_counts = {
-            "running": 1,
-            "finished": 0,
-            "failed": 0,
-            "cancelled": 0,
-            "total": 1,
+        job_details = {
+            "state": "running",
+            "pod_counts": {"running": 3, "evicted": 0, "other": 0, "total": 3},
+            "job_counts": {
+                "running": 1,
+                "finished": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1,
+            },
+            "taskmanagers": 2,
+            "slots_available": 5,
+            "slots_total": 10,
+            "jobs": [],
         }
 
-        output = flink_tools.format_flink_state_and_pods(
-            state, pod_counts, job_counts, 2, 5, 10
-        )
+        output = flink_tools.format_flink_state_and_pods(job_details)
 
         output_text = "\n".join(output)
         assert "State:" in output_text
@@ -460,13 +464,17 @@ class TestFormatFlinkStateAndPods:
 
     def test_format_stopped_state_with_evictions(self):
         """Test formatting stopped state with evicted pods."""
-        state = "stopped"
-        pod_counts = {"running": 1, "evicted": 2, "other": 1, "total": 4}
-        job_counts = None
+        job_details = {
+            "state": "stopped",
+            "pod_counts": {"running": 1, "evicted": 2, "other": 1, "total": 4},
+            "job_counts": None,
+            "taskmanagers": None,
+            "slots_available": None,
+            "slots_total": None,
+            "jobs": [],
+        }
 
-        output = flink_tools.format_flink_state_and_pods(
-            state, pod_counts, job_counts, None, None, None
-        )
+        output = flink_tools.format_flink_state_and_pods(job_details)
 
         output_text = "\n".join(output)
         assert "State:" in output_text
@@ -481,19 +489,23 @@ class TestFormatFlinkStateAndPods:
 
     def test_format_with_job_counts_only(self):
         """Test formatting with job counts but no taskmanager info."""
-        state = "running"
-        pod_counts = {"running": 2, "evicted": 0, "other": 0, "total": 2}
-        job_counts = {
-            "running": 3,
-            "finished": 5,
-            "failed": 1,
-            "cancelled": 2,
-            "total": 11,
+        job_details = {
+            "state": "running",
+            "pod_counts": {"running": 2, "evicted": 0, "other": 0, "total": 2},
+            "job_counts": {
+                "running": 3,
+                "finished": 5,
+                "failed": 1,
+                "cancelled": 2,
+                "total": 11,
+            },
+            "taskmanagers": None,
+            "slots_available": None,
+            "slots_total": None,
+            "jobs": [],
         }
 
-        output = flink_tools.format_flink_state_and_pods(
-            state, pod_counts, job_counts, None, None, None
-        )
+        output = flink_tools.format_flink_state_and_pods(job_details)
 
         output_text = "\n".join(output)
         assert "3 running" in output_text

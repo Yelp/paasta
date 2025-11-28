@@ -462,7 +462,9 @@ def get_flink_instance_details(
     }
 
 
-def format_flink_instance_header(details: Mapping[str, Any], verbose: int) -> List[str]:
+def format_flink_instance_header(
+    details: FlinkInstanceDetails, verbose: int
+) -> List[str]:
     """Format basic instance information (config SHA, version, URL).
 
     :param details: Instance details from get_flink_instance_details()
@@ -492,7 +494,7 @@ def format_flink_instance_header(details: Mapping[str, Any], verbose: int) -> Li
 
 
 def format_flink_instance_metadata(
-    details: Mapping[str, Any], service: str
+    details: FlinkInstanceDetails, service: str
 ) -> List[str]:
     """Format verbose instance metadata (repo links, pool, owner, runbook).
 
@@ -672,22 +674,10 @@ def collect_flink_job_details(
     }
 
 
-def format_flink_state_and_pods(
-    state: str,
-    pod_counts: PodCounts,
-    job_counts: Optional[JobCounts],
-    taskmanagers: Optional[int],
-    slots_available: Optional[int],
-    slots_total: Optional[int],
-) -> List[str]:
+def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
     """Format state, pods, jobs summary, taskmanagers, and slots.
 
-    :param state: Flink cluster state (e.g., "running", "stopped")
-    :param pod_counts: Dict with running, evicted, other, total pod counts
-    :param job_counts: Dict with running, finished, failed, cancelled, total job counts (or None)
-    :param taskmanagers: Number of taskmanagers (or None)
-    :param slots_available: Number of available slots (or None)
-    :param slots_total: Total number of slots (or None)
+    :param job_details: Collected job details from collect_flink_job_details()
     :returns: List of formatted strings like:
         State: Running
         Pods: 3 running, 0 evicted, 0 other, 3 total
@@ -695,6 +685,13 @@ def format_flink_state_and_pods(
         1 taskmanagers, 0/1 slots available
     """
     output: List[str] = []
+
+    state = job_details["state"]
+    pod_counts = job_details["pod_counts"]
+    job_counts = job_details.get("job_counts")
+    taskmanagers = job_details.get("taskmanagers")
+    slots_available = job_details.get("slots_available")
+    slots_total = job_details.get("slots_total")
 
     # Format state with color
     color = PaastaColors.green if state == "running" else PaastaColors.yellow

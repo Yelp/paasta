@@ -842,17 +842,7 @@ def _print_flink_status_from_job_manager(
         )
         output.append(OUTPUT_HORIZONTAL_RULE)
 
-    # State and pods
-    output.extend(
-        flink_tools.format_flink_state_and_pods(
-            job_details["state"],
-            job_details["pod_counts"],
-            job_details.get("job_counts"),
-            job_details.get("taskmanagers"),
-            job_details.get("slots_available"),
-            job_details.get("slots_total"),
-        )
-    )
+    output.extend(flink_tools.format_flink_state_and_pods(job_details))
 
     # Early return if not running.
     # Even when not running, we show pods in verbose mode so that paasta status -v
