@@ -86,7 +86,7 @@ class JobCounts(TypedDict):
     total: int
 
 
-class FlinkJobDetailsDict(TypedDict, total=False):
+class FlinkJobDetailsDict(TypedDict):
     """Collected Flink job details dictionary."""
 
     state: str
@@ -98,7 +98,7 @@ class FlinkJobDetailsDict(TypedDict, total=False):
     jobs: List[FlinkJobDetails]
 
 
-class FlinkInstanceDetails(TypedDict, total=False):
+class FlinkInstanceDetails(TypedDict):
     """Flink instance metadata dictionary."""
 
     config_sha: str
@@ -772,7 +772,8 @@ def format_flink_jobs_table(
     else:
         max_job_name_length = 10
 
-    # Limit job name column width based on terminal size
+    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
+    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
