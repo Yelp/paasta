@@ -861,7 +861,9 @@ def _print_flink_status_from_job_manager(
     output.extend(
         flink_tools.format_flink_jobs_table(
             job_details["jobs"],
-            instance_details["dashboard_url"] if instance_details["dashboard_url"] is not None else "",
+            instance_details["dashboard_url"]
+            if instance_details["dashboard_url"] is not None
+            else "",
             verbose,
         )
     )
