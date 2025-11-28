@@ -815,18 +815,16 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-    # Collect instance details
+    # flink_config is None when cluster is not running; version info will be omitted
     instance_details = flink_tools.get_flink_instance_details(
         metadata, flink_config, flink_instance_config, service
     )
 
-    # Collect job details
+    # overview and jobs are empty when cluster is not running
     job_details = flink_tools.collect_flink_job_details(status, overview, jobs)
 
-    # Header section
     output.extend(flink_tools.format_flink_instance_header(instance_details, verbose))
 
-    # Verbose metadata
     if verbose:
         output.extend(
             flink_tools.format_flink_instance_metadata(instance_details, service)

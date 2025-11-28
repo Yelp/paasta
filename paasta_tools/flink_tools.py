@@ -443,6 +443,7 @@ def get_flink_instance_details(
     dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
 
     pool = flink_instance_config.get_pool()
+    # Use per-instance monitoring config if set, otherwise fall back to service-level config
     team = flink_instance_config.get_team() or get_team(
         overrides={}, service=service, soa_dir=soa_dir
     )
