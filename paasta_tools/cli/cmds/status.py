@@ -199,7 +199,11 @@ def add_subparser(
 
 def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     status_parser.add_argument(
-        "-s", "--service", help=f"The name of the service you wish to {verb}"
+        "-s",
+        "--service",
+        help=f"The name of the service you wish to {verb}",
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         "-c",

@@ -31,6 +31,8 @@ def add_subparser(subparsers) -> None:
         "--service",
         help="Name of the service which you want to list the namespaces for.",
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     # Most services likely don't need to filter by cluster/instance, and can add namespaces from all instances
     list_parser.add_argument(

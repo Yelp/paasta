@@ -1,6 +1,6 @@
 from typing import Optional
+from unittest import mock
 
-import mock
 import pytest
 from kubernetes.client.rest import ApiException
 

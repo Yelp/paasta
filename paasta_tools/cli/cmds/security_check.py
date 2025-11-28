@@ -28,6 +28,8 @@ def add_subparser(subparsers):
         help='Name of service for which you wish to check. Leading "services-", as included in a '
         "Jenkins job name, will be stripped.",
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     list_parser.add_argument(
         "-c", "--commit", help="Git sha of the image to check", required=True

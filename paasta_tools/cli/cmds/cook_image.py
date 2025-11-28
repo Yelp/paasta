@@ -48,6 +48,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
             '"services-", as included in a Jenkins job name, '
             "will be stripped."
         ),
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
         required=True,
     )
     list_parser.add_argument(

@@ -13,10 +13,10 @@
 # limitations under the License.
 import asyncio
 import datetime
+from unittest import mock
 from unittest.mock import AsyncMock
 
 import a_sync
-import mock
 import pytest
 import requests.exceptions
 

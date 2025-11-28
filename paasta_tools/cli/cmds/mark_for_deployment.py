@@ -157,6 +157,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Name of the service which you wish to mark for deployment. Leading "
         '"services-" will be stripped.',
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     )
     arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     list_parser.add_argument(
@@ -1851,7 +1853,7 @@ async def wait_for_deployment(
             system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
         )
 
-    with progressbar.ProgressBar(maxval=total_instances) as bar:
+    with progressbar.ProgressBar(max_value=total_instances) as bar:
         instance_done_futures = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for cluster, instance_configs in instance_configs_per_cluster.items():

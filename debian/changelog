@@ -1,3 +1,42 @@
+paasta-tools (1.35.7) xenial; urgency=medium
+
+  * 1.35.7 tagged with 'make release'
+    Commit: Upgrade urllib3 to remove a couple warnings about
+    deprecations (#4159)  This is a pretty common transitive dependency,
+    so there were a couple other things that had to be upgraded :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Nov 2025 05:52:46 -0800
+
+paasta-tools (1.35.6) xenial; urgency=medium
+
+  * 1.35.6 tagged with 'make release'
+    Commit: Refactor comment-based validation opt-out code (#4170)  The
+    fight against YAML continues :p  It looks like my original code here
+    didn"t always correctly capture comments depending on how YAML
+    templates/anchors were used.  `claude` has been trained on more
+    ruamel.yaml code than I have, so I used it to iterate on this until
+    we can correctly validate the change that spawned this PR + still
+    validate all the existing files.  For those wishing to verify this
+    themselves: `paasta list | xargs -P10 -n1 --no-run-if-empty paasta
+    validate -y $SOACONFIGS  -s 2>&1 | rg -C10 "(✗|Traceback)"` shows no
+    validation errors against the branch that spawned this PR :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 24 Nov 2025 08:56:48 -0800
+
+paasta-tools (1.35.5) xenial; urgency=medium
+
+  * 1.35.5 tagged with 'make release'
+    Commit: Correctly merge fields in autotune (#4166)  I did dumb
+    things when I refactored the initial commit from Yelp/paasta#4056: I
+    swapped things to filter/convert the original field names - but I
+    want to use the field names as they exist in `serv`  I believe that
+    what ended up happening here is that autotune would only ever use
+    the first result row it encountered, since we"d never see mergeable
+    keys from `field_conversions` once we populated `services_to_update`
+    on the first encounter of a service.instance row
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 24 Nov 2025 07:25:00 -0800
+
 paasta-tools (1.35.4) xenial; urgency=medium
 
   * 1.35.4 tagged with 'make release'

@@ -296,7 +296,8 @@ def paasta_remote_run_stop(
 
 def add_common_args_to_parser(parser: argparse.ArgumentParser):
     def _validate_service_name(name: str) -> str:
-        if name not in _list_services_and_toolboxes():
+        # remove trailing slash if present for folks tab-completing directories
+        if name.rstrip("/") not in _list_services_and_toolboxes():
             raise ValueError(f"{name} is not a known service name")
         return name
 

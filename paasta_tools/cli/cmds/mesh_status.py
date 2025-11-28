@@ -44,9 +44,10 @@ def add_subparser(subparsers) -> None:
     mesh_status_parser.add_argument(
         "-s",
         "--service",
-        type=str,
         help="The name of the service you wish to inspect",
         required=True,
+        # strip any potential trailing / for folks tab-completing directories
+        type=lambda x: x.rstrip("/"),
     ).completer = lazy_choices_completer(list_services)
     mesh_status_parser.add_argument(
         "-i",

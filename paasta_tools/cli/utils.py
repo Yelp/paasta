@@ -577,7 +577,8 @@ def lazy_choices_completer(list_func):
 
 def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     """Figures out and validates the input service name"""
-    service = args.service or guess_service_name()
+    # most cmds should be doing this rstrip already - but just in case this is called from some other path...
+    service = args.service.rstrip("/") if args.service else guess_service_name()
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:

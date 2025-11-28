@@ -1,7 +1,7 @@
 from collections import namedtuple
+from unittest import mock
 
 import iptc
-import mock
 import pytest
 
 from paasta_tools import iptables
