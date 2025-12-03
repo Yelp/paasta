@@ -1,3 +1,13 @@
+paasta-tools (1.36.1) xenial; urgency=medium
+
+  * 1.36.1 tagged with 'make release'
+    Commit: Revert "Merge pull request #4151 from
+    Yelp/timma/upgrade_spark_configuration_lib_to_3.3.7" (#4174)  This
+    reverts commit 8ebcbca2197af757f68ece9d24b68d0af1ad042d, reversing
+    changes made to e02acdb0ff250f025a6518531f6a003c9eeaa071.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 03 Dec 2025 08:39:15 -0800
+
 paasta-tools (1.36.0) xenial; urgency=medium
 
   * 1.36.0 tagged with 'make release'
