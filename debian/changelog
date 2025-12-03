@@ -1,3 +1,11 @@
+paasta-tools (1.36.2) xenial; urgency=medium
+
+  * 1.36.2 tagged with 'make release'
+    Commit: Merge pull request #4175 from Yelp/revert-4169-
+    u/robj/cleanup-firewall  Revert "remove some unused code."
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 03 Dec 2025 12:18:11 -0800
+
 paasta-tools (1.36.1) xenial; urgency=medium
 
   * 1.36.1 tagged with 'make release'
