@@ -1,3 +1,11 @@
+paasta-tools (1.36.0) xenial; urgency=medium
+
+  * 1.36.0 tagged with 'make release'
+    Commit: Merge pull request #4169 from Yelp/u/robj/cleanup-firewall
+    remove some unused code.
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 03 Dec 2025 04:05:43 -0800
+
 paasta-tools (1.35.8) xenial; urgency=medium
 
   * 1.35.8 tagged with 'make release'
