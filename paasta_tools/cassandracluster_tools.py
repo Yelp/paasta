@@ -128,6 +128,7 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         self,
         params: List[str] = [
             "cpus",
+            "security",
             "dependencies_reference",
             "deploy_group",
         ],

@@ -255,6 +255,8 @@ Constraint = Sequence[str]
 # e.g. ['GROUP_BY', 'habitat', 2]. Tron doesn't like that so we'll convert to Constraint later.
 UnstringifiedConstraint = Sequence[Union[str, int, float]]
 
+SecurityConfigDict = Dict  # Todo: define me.
+
 
 class VolumeWithMode(TypedDict):
     mode: str
@@ -343,6 +345,7 @@ class InstanceConfigDict(TypedDict, total=False):
     aws_ebs_volumes: List[AwsEbsVolume]
     secret_volumes: List[SecretVolume]
     projected_sa_volumes: List[ProjectedSAVolume]
+    security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
     constraints: List[UnstringifiedConstraint]
@@ -859,6 +862,37 @@ class InstanceConfig:
                 )
         return True, ""
 
+    def check_security(self) -> Tuple[bool, str]:
+        security = self.config_dict.get("security")
+        if security is None:
+            return True, ""
+
+        outbound_firewall = security.get("outbound_firewall")
+
+        if outbound_firewall is None:
+            return True, ""
+
+        if outbound_firewall is not None and outbound_firewall not in (
+            "block",
+            "monitor",
+        ):
+            return (
+                False,
+                'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
+            )
+
+        unknown_keys = set(security.keys()) - {
+            "outbound_firewall",
+        }
+        if unknown_keys:
+            return (
+                False,
+                'Unrecognized items in security dict of service config: "%s"'
+                % ",".join(unknown_keys),
+            )
+
+        return True, ""
+
     def check_dependencies_reference(self) -> Tuple[bool, str]:
         dependencies_reference = self.config_dict.get("dependencies_reference")
         if dependencies_reference is None:
@@ -885,6 +919,7 @@ class InstanceConfig:
         check_methods = {
             "cpus": self.check_cpus,
             "mem": self.check_mem,
+            "security": self.check_security,
             "dependencies_reference": self.check_dependencies_reference,
             "deploy_group": self.check_deploy_group,
         }
@@ -905,6 +940,7 @@ class InstanceConfig:
             params = [
                 "cpus",
                 "mem",
+                "security",
                 "dependencies_reference",
                 "deploy_group",
             ]
@@ -1031,6 +1067,17 @@ class InstanceConfig:
             return None
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
+
+    def get_outbound_firewall(self) -> Optional[str]:
+        """Return 'block', 'monitor', or None as configured in security->outbound_firewall
+
+        Defaults to None if not specified in the config
+
+        :returns: A string specified in the config, None if not specified"""
+        security = self.config_dict.get("security")
+        if not security:
+            return None
+        return security.get("outbound_firewall")
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
@@ -1244,6 +1291,13 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             {
                 "color": PaastaColors.yellow,
                 "help": "Stderr from a service's running processes.",
+            },
+        ),
+        (
+            "security",
+            {
+                "color": PaastaColors.red,
+                "help": "Logs from security-related services such as firewall monitoring",
             },
         ),
         ("oom", {"color": PaastaColors.red, "help": "Kernel OOM events."}),
@@ -3421,17 +3475,6 @@ def load_service_instance_auto_configs(
 
 def get_docker_host() -> str:
     return os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
-
-
-@lru_cache(maxsize=1)
-def get_docker_binary() -> str:
-    """Locate the docker executable in PATH."""
-    import shutil
-
-    docker_binary = shutil.which("docker")
-    if not docker_binary:
-        raise RuntimeError("Unable to locate the 'docker' executable in PATH")
-    return docker_binary
 
 
 def get_docker_client() -> APIClient:

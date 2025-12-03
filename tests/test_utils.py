@@ -2286,6 +2286,51 @@ class TestInstanceConfig:
         fake_conf.get_dependencies() == expected
 
     @pytest.mark.parametrize(
+        ("security", "expected"),
+        [
+            ({}, None),
+            (None, None),
+            ({"outbound_firewall": "monitor"}, "monitor"),
+            ({"outbound_firewall": "foo"}, "foo"),
+        ],
+    )
+    def test_get_outbound_firewall(self, security, expected):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"security": security},
+            branch_dict=None,
+        )
+        fake_conf.get_outbound_firewall() == expected
+
+    @pytest.mark.parametrize(
+        ("security", "expected"),
+        [
+            ({}, (True, "")),
+            ({"outbound_firewall": "monitor"}, (True, "")),
+            ({"outbound_firewall": "block"}, (True, "")),
+            (
+                {"outbound_firewall": "foo"},
+                (False, 'Unrecognized outbound_firewall value "foo"'),
+            ),
+            (
+                {"outbound_firewall": "monitor", "foo": 1},
+                (False, 'Unrecognized items in security dict of service config: "foo"'),
+            ),
+        ],
+    )
+    def test_check_security(self, security, expected):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"security": security},
+            branch_dict=None,
+        )
+        assert fake_conf.check_security() == expected
+
+    @pytest.mark.parametrize(
         ("dependencies_reference", "dependencies", "expected"),
         [
             (None, None, (True, "")),
