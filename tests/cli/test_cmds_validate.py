@@ -548,6 +548,35 @@ def test_kubernetes_validate_schema_keys_outside_instance_blocks_bad(
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_kubernetes_validate_schema_security_good(mock_get_file_contents, capsys):
+    mock_get_file_contents.return_value = """
+main:
+    dependencies_reference: main
+    security:
+        outbound_firewall: block
+"""
+    assert validate_schema("unused_service_path.yaml", "kubernetes")
+
+    output, _ = capsys.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_kubernetes_validate_schema_security_bad(mock_get_file_contents, capsys):
+    mock_get_file_contents.return_value = """
+main:
+    dependencies_reference: main
+    security:
+        outbound_firewall: bblock
+"""
+    for schema_type in ["kubernetes", "eks"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
+
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_kubernetes_validate_invalid_key_bad(mock_get_file_contents, capsys):
     mock_get_file_contents.return_value = """
 {

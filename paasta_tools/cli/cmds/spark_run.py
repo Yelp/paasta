@@ -45,7 +45,6 @@ from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -506,11 +505,6 @@ def sanitize_container_name(container_name):
     return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
 
 
-def _format_docker_command(subcommand: str, sudo: bool = False) -> str:
-    prefix = "sudo -H " if sudo else ""
-    return f"{prefix}{get_docker_binary()} {subcommand}"
-
-
 def get_docker_run_cmd(
     container_name,
     volumes,
@@ -525,7 +519,7 @@ def get_docker_run_cmd(
     print(
         f"Setting docker memory, shared memory, and cpu limits as {docker_memory_limit}, {docker_shm_size}, and {docker_cpu_limit} core(s) respectively."
     )
-    cmd = [get_docker_binary(), "run"]
+    cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
     if docker_shm_size is not None:
         cmd.append(f"--shm-size={docker_shm_size}")
@@ -608,8 +602,8 @@ def get_docker_image(
     # Need sudo for credentials when pulling images from paasta docker registry (docker-paasta.yelpcorp.com)
     # However, in CI env, we can't connect to docker via root and we can pull with user `jenkins`
     is_ci_env = "CI" in os.environ
-    command = _format_docker_command(f"pull {docker_url}", sudo=not is_ci_env)
-    retcode, _ = _run(command, stream=True, timeout=300)
+    cmd_prefix = "" if is_ci_env else "sudo -H "
+    retcode, _ = _run(f"{cmd_prefix}docker pull {docker_url}", stream=True, timeout=300)
     if retcode != 0:
         print(
             "\nPull failed. Are you authorized to run docker commands?",
@@ -656,9 +650,9 @@ def get_spark_env(
 
     spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
-    spark_env["PAASTA_HOST"] = socket.getfqdn()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
+    # Run spark (and mesos framework) as root.
     spark_env["SPARK_USER"] = "root"
     spark_env["SPARK_OPTS"] = spark_conf_str
 
@@ -768,8 +762,7 @@ def run_docker_container(
         return 0
 
     merged_env = {**os.environ, **environment}
-    docker_binary = get_docker_binary()
-    os.execlpe(docker_binary, *docker_run_cmd, merged_env)
+    os.execlpe("paasta_docker_wrapper", *docker_run_cmd, merged_env)
     return 0
 
 
@@ -1038,15 +1031,16 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     )
 
     docker_url = f"{registry_uri}/{docker_tag}"
-    command = _format_docker_command(f"tag {docker_tag} {docker_url}")
+    command = f"docker tag {docker_tag} {docker_url}"
     print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
 
-    command = _format_docker_command(
-        f"push {docker_url}", sudo=registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY
-    )
+    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
+        command = "sudo -H docker push %s" % docker_url
+    else:
+        command = "docker push %s" % docker_url
 
     print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=False)
@@ -1079,7 +1073,7 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     # To work around this, we can proactively `sudo docker pull` here so that
     # the image exists locally and can be `docker run` without sudo
     if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
-        command = _format_docker_command(f"pull {image_url}", sudo=True)
+        command = f"sudo -H docker pull {image_url}"
         print(PaastaColors.grey(command))
         retcode, output = _run(command, stream=False)
         if retcode != 0:

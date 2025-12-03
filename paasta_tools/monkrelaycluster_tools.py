@@ -67,6 +67,7 @@ class MonkRelayClusterDeploymentConfig(LongRunningServiceConfig):
         if params is None:
             params = [
                 "cpus",
+                "security",
                 "dependencies_reference",
                 "deploy_group",
             ]
