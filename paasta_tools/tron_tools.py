@@ -496,6 +496,8 @@ class TronActionConfig(InstanceConfig):
             # Required by some sdks like boto3 client. Throws NoRegionError otherwise.
             # AWS_REGION takes precedence if set.
             env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
+            env["AWS_CREDENTIALS_PROVIDER"] = spark_tools.SPARK_AWS_CREDS_PROVIDER
+
             env["PAASTA_INSTANCE_TYPE"] = "spark"
             # XXX: is this actually necessary? every PR that's added this hasn't really mentioned why,
             # and Chesterton's Fence makes me very wary about removing it
@@ -1093,6 +1095,12 @@ def format_tron_action_dict(action_config: TronActionConfig):
             system_paasta_config.get_volumes(),
         )
         if executor == "spark":
+            # Pop out scs_conf from action_spark_config and store it in the environment, otherwise
+            # tronfig validate will fail while formatting the spark command
+            result["env"]["SCS_CONF_STR"] = action_config.action_spark_config.pop(
+                "scs_conf", None
+            )
+
             is_mrjob = action_config.config_dict.get("mrjob", False)
             # inject additional Spark configs in case of Spark commands
             result["command"] = spark_tools.build_spark_command(

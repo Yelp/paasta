@@ -18,6 +18,7 @@ from unittest import mock
 
 import pytest
 from service_configuration_lib.spark_config import AWS_CREDENTIALS_DIR
+from service_configuration_lib.spark_config import AWS_DEFAULT_CREDENTIALS_PROVIDER
 from service_configuration_lib.spark_config import get_aws_credentials
 
 from paasta_tools import spark_tools
@@ -267,6 +268,7 @@ def test_get_spark_env(
         "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
         "PAASTA_INSTANCE_TYPE": "spark",
         "AWS_DEFAULT_REGION": "test-region",
+        "AWS_CREDENTIALS_PROVIDER": AWS_DEFAULT_CREDENTIALS_PROVIDER,
         "KUBECONFIG": "/etc/kubernetes/spark.conf",
         **extra_expected,
         **expected_aws,
@@ -567,8 +569,10 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
+                "AWS_CREDENTIALS_PROVIDER": AWS_DEFAULT_CREDENTIALS_PROVIDER,
                 "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
+                "SCS_CONF_STR": None,
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
@@ -683,8 +687,10 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
+                "AWS_CREDENTIALS_PROVIDER": AWS_DEFAULT_CREDENTIALS_PROVIDER,
                 "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
+                "SCS_CONF_STR": None,
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
@@ -800,8 +806,10 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
+                "AWS_CREDENTIALS_PROVIDER": AWS_DEFAULT_CREDENTIALS_PROVIDER,
                 "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
+                "SCS_CONF_STR": None,
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
