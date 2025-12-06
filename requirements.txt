@@ -114,7 +114,7 @@ translationstring==1.3
 typing-extensions==4.13.2
 tzlocal==1.2
 url-normalize==1.4.2
-urllib3==2.5.0
+urllib3==2.6.0
 utaw==0.2.0
 venusian==1.1.0
 webcolors==1.7
