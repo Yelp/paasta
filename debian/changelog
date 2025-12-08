@@ -1,3 +1,14 @@
+paasta-tools (1.36.3) xenial; urgency=medium
+
+  * 1.36.3 tagged with 'make release'
+    Commit: Moved the scs conf from --conf to env var (#4177)  1. Moved
+    the scs conf from --conf to env var 2. Adjusted the test cases
+    accordingly 3. Added the other required AWS properties to env var 4.
+    Upgraded `service_configuration_lib` to `3.3.7` 5. `paasta validate`
+    ran **_successfully_**
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Dec 2025 10:03:56 -0800
+
 paasta-tools (1.36.2) xenial; urgency=medium
 
   * 1.36.2 tagged with 'make release'
