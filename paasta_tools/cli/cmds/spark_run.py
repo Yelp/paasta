@@ -45,6 +45,7 @@ from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -519,7 +520,7 @@ def get_docker_run_cmd(
     print(
         f"Setting docker memory, shared memory, and cpu limits as {docker_memory_limit}, {docker_shm_size}, and {docker_cpu_limit} core(s) respectively."
     )
-    cmd = ["paasta_docker_wrapper", "run"]
+    cmd = [get_docker_binary(), "run"]
     cmd.append(f"--memory={docker_memory_limit}")
     if docker_shm_size is not None:
         cmd.append(f"--shm-size={docker_shm_size}")
@@ -762,7 +763,7 @@ def run_docker_container(
         return 0
 
     merged_env = {**os.environ, **environment}
-    os.execlpe("paasta_docker_wrapper", *docker_run_cmd, merged_env)
+    os.execlpe(get_docker_binary(), *docker_run_cmd, merged_env)
     return 0
 
 

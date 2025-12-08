@@ -46,6 +46,16 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@pytest.fixture(autouse=True)
+def mock_get_docker_binary():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_binary",
+        autospec=True,
+        return_value="docker",
+    ) as m:
+        yield m
+
+
 @mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
@@ -257,8 +267,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
         headers={"content-type": "fake_content_type_1, fake_content_type_2"},
     )
     actual = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert actual[0] is False
-    assert "200" in actual[1]
+    assert actual == (True, "http request succeeded, code 200")
     mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
@@ -896,19 +905,21 @@ def test_get_docker_run_cmd_without_additional_args():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = None
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -918,9 +929,9 @@ def test_get_docker_run_cmd_without_additional_args():
         docker_params,
         detach,
     )
-    # Since we can't assert that the command isn't present in the output, we do
-    # the next best thing and check that the docker hash is the last thing in
-    # the docker run command (the command would have to be after it if it existed)
+    assert actual[0] == "docker"
+    hostname_args = [arg for arg in actual if arg.startswith("--hostname=")]
+    assert hostname_args == [f"--hostname={container_hostname}"]
     assert actual[-1] == docker_url
 
 
@@ -929,19 +940,21 @@ def test_get_docker_run_cmd_with_env_vars():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
     env = {"foo": "bar", "baz": "qux", "x": " with spaces"}
     interactive = False
     docker_url = "8" * 40
     command = None
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -960,19 +973,21 @@ def test_get_docker_run_cmd_interactive_false():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -997,19 +1012,21 @@ def test_get_docker_run_cmd_interactive_true():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1028,13 +1045,14 @@ def test_get_docker_run_docker_params():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = [
+    docker_params: list[dict[str, str]] = [
         {"key": "memory-swap", "value": "%sm" % memory},
         {"key": "cpu-period", "value": "200000"},
         {"key": "cpu-quota", "value": "150000"},
@@ -1045,6 +1063,7 @@ def test_get_docker_run_docker_params():
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1064,19 +1083,21 @@ def test_get_docker_run_cmd_host_networking():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1095,19 +1116,21 @@ def test_get_docker_run_cmd_quote_cmd():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "make test"
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1126,19 +1149,21 @@ def test_get_docker_run_cmd_quote_list():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = "docker-doc"
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = ["zsh", "-c", "make test"]
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1954,8 +1979,12 @@ def test_get_local_run_environment_vars_kubernetes(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(instance_config=mock_instance_config)
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config, container_hostname="fake-pod"
+    )
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
+    assert actual["PAASTA_HOST"] == "fake_host"
     assert "MARATHON_PORT" not in actual
 
 
@@ -1974,9 +2003,12 @@ def test_get_local_run_environment_vars_adhoc(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(instance_config=mock_instance_config)
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config, container_hostname="fake-pod"
+    )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
     assert "PAASTA_PORT" not in actual
 
 
@@ -2675,7 +2707,7 @@ def test_assume_aws_role_with_web_identity(
     os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
     os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
 
-    env = assume_aws_role(mock_config, mock_service, False, False, False, "dev")
+    env = assume_aws_role(mock_config, mock_service, "", False, False, "dev")
 
     os.environ.pop("AWS_ROLE_ARN")
     os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")

@@ -16,7 +16,7 @@ import base64
 import datetime
 import json
 import os
-import shutil
+import re
 import socket
 import subprocess
 import sys
@@ -62,6 +62,7 @@ from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -81,6 +82,9 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
+MAX_DOCKER_HOSTNAME_LENGTH = 63
+
+
 class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
@@ -91,7 +95,7 @@ class AWSSessionCreds(TypedDict):
 class LocalRunEnvironment(TypedDict):
     """Required environment variables set by local-run itself."""
 
-    HOST: str
+    HOSTNAME: str
     PAASTA_DOCKER_IMAGE: str
     PAASTA_LAUNCHED_BY: str
     PAASTA_HOST: str
@@ -103,11 +107,9 @@ def parse_date(date_string):
 
 
 def perform_http_healthcheck(url, timeout):
-    """Returns true if healthcheck on url succeeds, false otherwise
+    """Returns true if healthcheck on url succeeds, false otherwise.
 
-    :param url: the healthcheck url
-    :param timeout: timeout in seconds
-    :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
+    Kubernetes treats HTTP probes as success for 200 <= status < 400.
     """
     try:
         with Timeout(seconds=timeout):
@@ -118,16 +120,7 @@ def perform_http_healthcheck(url, timeout):
     except TimeoutError:
         return (False, "http request timed out after %d seconds" % timeout)
 
-    if "content-type" in res.headers and "," in res.headers["content-type"]:
-        print(
-            PaastaColors.yellow(
-                "Multiple content-type headers detected in response."
-                " The Mesos healthcheck system will treat this as a failure!"
-            )
-        )
-        return (False, "http request succeeded, code %d" % res.status_code)
-    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
-    elif res.status_code >= 200 and res.status_code < 400:
+    if res.status_code >= 200 and res.status_code < 400:
         return (True, "http request succeeded, code %d" % res.status_code)
     else:
         return (False, "http request failed, code %s" % str(res.status_code))
@@ -207,7 +200,7 @@ def simulate_healthcheck_on_service(
     healthcheck_data,
     healthcheck_enabled,
 ):
-    """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
+    """Simulates Kubernetes-style healthcheck locally if enabled.
 
     :param instance_config: service manifest
     :param docker_client: Docker client object
@@ -585,11 +578,21 @@ def get_container_name():
     return "paasta_local_run_{}_{}".format(get_username(), randint(1, 999999))
 
 
+def _pod_style_hostname(candidate: str) -> str:
+    """Return the sanitized, Kubernetes-style hostname derived from the container name."""
+    hostname = candidate.lower()
+    hostname = re.sub("[^a-z0-9-]", "-", hostname)
+    hostname = hostname.strip("-")
+    hostname = hostname[:MAX_DOCKER_HOSTNAME_LENGTH]
+    return hostname
+
+
 def get_docker_run_cmd(
     memory,
     chosen_port,
     container_port,
     container_name,
+    container_hostname,
     volumes,
     env,
     interactive,
@@ -599,10 +602,18 @@ def get_docker_run_cmd(
     docker_params,
     detach,
 ):
-    cmd = ["paasta_docker_wrapper", "run"]
-    for k in env.keys():
+    cmd = [get_docker_binary(), "run"]
+    if not container_hostname:
+        raise ValueError(
+            f"Unable to derive a valid hostname from container name '{container_name}'"
+        )
+    fqdn = socket.getfqdn()
+    env_with_defaults = env.copy()
+    env_with_defaults.setdefault("PAASTA_HOST", fqdn)
+    for k in env_with_defaults.keys():
         cmd.append("--env")
         cmd.append(f"{k}")
+    cmd.append(f"--hostname={container_hostname}")
     cmd.append("--memory=%dm" % memory)
     for i in docker_params:
         cmd.append(f"--{i['key']}={i['value']}")
@@ -713,10 +724,7 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
 
 
 def get_container_id(docker_client, container_name):
-    """Use 'docker_client' to find the container we started, identifiable by
-    its 'container_name'. If we can't find the id, raise
-    LostContainerException.
-    """
+    """Return the Docker container ID for the given container name."""
     containers = docker_client.containers(all=False)
     for container in containers:
         if "/%s" % container_name in container.get("Names", []):
@@ -754,7 +762,7 @@ def _cleanup_container(docker_client, container_id):
 
 
 def get_local_run_environment_vars(
-    instance_config: InstanceConfig,
+    instance_config: InstanceConfig, container_hostname: str
 ) -> LocalRunEnvironment:
     """Returns a dictionary of environment variables to simulate what would be available to
     a paasta service running in a container"""
@@ -765,21 +773,27 @@ def get_local_run_environment_vars(
         # so we can fall-back to the injected DOCKER_TAG per the paasta contract
         docker_image = os.environ["DOCKER_TAG"]
     env: LocalRunEnvironment = {
-        "HOST": hostname,
+        "HOSTNAME": container_hostname,
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
         "PAASTA_HOST": hostname,
-        # Kubernetes instances remove PAASTA_CLUSTER, so we need to re-add it ourselves
         "PAASTA_CLUSTER": instance_config.get_cluster(),
     }
 
     return env
 
 
-def build_base_env(instance_config: InstanceConfig) -> dict[str, str]:
+def build_base_env(
+    instance_config: InstanceConfig, container_hostname: str
+) -> dict[str, str]:
     base_env: dict[str, str] = dict(instance_config.get_env())
     base_env.update(
-        cast(Dict[str, str], get_local_run_environment_vars(instance_config))
+        cast(
+            Dict[str, str],
+            get_local_run_environment_vars(
+                instance_config=instance_config, container_hostname=container_hostname
+            ),
+        )
     )
     return base_env
 
@@ -1055,7 +1069,15 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
 
-    base_env = build_base_env(instance_config=instance_config)
+    container_name = get_container_name()
+    container_hostname = _pod_style_hostname(container_name)
+    if not container_hostname:
+        raise ValueError(
+            f"Unable to derive a valid hostname from container name '{container_name}'"
+        )
+    base_env = build_base_env(
+        instance_config=instance_config, container_hostname=container_hostname
+    )
     secret_env, secret_volumes = build_secret_env_and_volumes(
         instance_config=instance_config,
         base_env=base_env,
@@ -1071,10 +1093,9 @@ def run_docker_container(
         use_service_auth_token=use_service_auth_token,
         use_sso_service_auth_token=use_sso_service_auth_token,
     )
-    environment = {**cast(Dict[str, str], base_env), **secret_env}
+    environment = {**base_env, **secret_env}
     net = instance_config.get_net()
     memory = instance_config.get_mem()
-    container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
 
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
@@ -1122,6 +1143,7 @@ def run_docker_container(
         chosen_port=chosen_port,
         container_port=container_port,
         container_name=container_name,
+        container_hostname=container_hostname,
         volumes=volumes,
         env=environment,
         interactive=interactive,
@@ -1146,13 +1168,7 @@ def run_docker_container(
     merged_env = {**os.environ, **environment}
 
     if interactive or not simulate_healthcheck:
-        # NOTE: This immediately replaces us with the docker run cmd. Docker
-        # run knows how to clean up the running container in this situation.
-        wrapper_path = shutil.which("paasta_docker_wrapper")
-        # To properly simulate mesos, we pop the PATH, which is not available to
-        # The executor
-        merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        execlpe(get_docker_binary(), *docker_run_cmd, merged_env)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
@@ -1236,10 +1252,7 @@ def run_docker_container(
 
 
 def format_command_for_type(command, instance_type, date):
-    """
-    Given an instance_type, return a function that appropriately formats
-    the command to be run.
-    """
+    """Return the command formatted appropriately for the instance type."""
     if instance_type == "tron":
         interpolated_command = parse_time_variables(command, date)
         return interpolated_command
@@ -1260,10 +1273,6 @@ def configure_and_run_docker_container(
     pull_image=False,
     dry_run=False,
 ):
-    """
-    Run Docker container by image hash with args set in command line.
-    Function prints the output of run command in stdout.
-    """
 
     if instance is None and args.healthcheck_only:
         print("With --healthcheck-only, --instance MUST be provided!", file=sys.stderr)
