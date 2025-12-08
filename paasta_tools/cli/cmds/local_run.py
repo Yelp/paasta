@@ -26,14 +26,18 @@ import time
 import uuid
 from os import execlpe
 from random import randint
+from typing import cast
+from typing import Dict
+from typing import Mapping
 from typing import Optional
+from typing import TypedDict
+from typing import Union
 from urllib.parse import urlparse
 
 import boto3
 import requests
 from docker import errors
 from docker.api.client import APIClient
-from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
@@ -82,6 +86,16 @@ class AWSSessionCreds(TypedDict):
     AWS_SECRET_ACCESS_KEY: str
     AWS_SESSION_TOKEN: str
     AWS_SECURITY_TOKEN: str
+
+
+class LocalRunEnvironment(TypedDict):
+    """Required environment variables set by local-run itself."""
+
+    HOST: str
+    PAASTA_DOCKER_IMAGE: str
+    PAASTA_LAUNCHED_BY: str
+    PAASTA_HOST: str
+    PAASTA_CLUSTER: str
 
 
 def parse_date(date_string):
@@ -739,7 +753,9 @@ def _cleanup_container(docker_client, container_id):
         )
 
 
-def get_local_run_environment_vars(instance_config, port0, framework):
+def get_local_run_environment_vars(
+    instance_config: InstanceConfig,
+) -> LocalRunEnvironment:
     """Returns a dictionary of environment variables to simulate what would be available to
     a paasta service running in a container"""
     hostname = socket.getfqdn()
@@ -748,7 +764,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         # In a local_run environment, the docker_image may not be available
         # so we can fall-back to the injected DOCKER_TAG per the paasta contract
         docker_image = os.environ["DOCKER_TAG"]
-    env = {
+    env: LocalRunEnvironment = {
         "HOST": hostname,
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
@@ -758,6 +774,111 @@ def get_local_run_environment_vars(instance_config, port0, framework):
     }
 
     return env
+
+
+def build_base_env(instance_config: InstanceConfig) -> dict[str, str]:
+    base_env: dict[str, str] = dict(instance_config.get_env())
+    base_env.update(
+        cast(Dict[str, str], get_local_run_environment_vars(instance_config))
+    )
+    return base_env
+
+
+def build_secret_env_and_volumes(
+    *,
+    base_env: Mapping[str, str],
+    instance_config: InstanceConfig,
+    service: str,
+    soa_dir: str,
+    secret_provider_name: str,
+    secret_provider_kwargs: dict,
+    skip_secrets: bool,
+    assume_role_arn: str,
+    assume_pod_identity: bool,
+    use_okta_role: bool,
+    assume_role_aws_account: Optional[str],
+    use_service_auth_token: bool,
+    use_sso_service_auth_token: bool,
+) -> tuple[dict[str, str], dict[str, Union[str, bytes]]]:
+    """Build secret env vars and secret volumes based on the base env."""
+
+    secret_env: dict[str, str] = {}
+    secret_volumes: dict[str, Union[str, bytes]] = {}
+
+    if not skip_secrets:
+        if is_secrets_for_teams_enabled(service, soa_dir):
+            try:
+                kube_client = KubeClient(
+                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                )
+                secret_environment = get_kubernetes_secret_env_variables(
+                    kube_client,
+                    dict(base_env),
+                    service,
+                    instance_config.get_namespace(),
+                )
+                secret_volumes = get_kubernetes_secret_volumes(
+                    kube_client,
+                    instance_config.get_secret_volumes(),
+                    service,
+                    instance_config.get_namespace(),
+                )
+            except Exception as e:
+                print(
+                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
+                )
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        else:
+            try:
+                secret_environment = decrypt_secret_environment_variables(
+                    secret_provider_name=secret_provider_name,
+                    environment=dict(base_env),
+                    soa_dir=soa_dir,
+                    service_name=instance_config.get_service(),
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+                secret_volumes = decrypt_secret_volumes(
+                    secret_provider_name=secret_provider_name,
+                    secret_volumes_config=instance_config.get_secret_volumes(),
+                    soa_dir=soa_dir,
+                    service_name=instance_config.get_service(),
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+            except Exception as e:
+                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        secret_env.update(dict(secret_environment))
+
+    if (
+        assume_role_arn
+        or assume_pod_identity
+        or use_okta_role
+        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+    ):
+        aws_creds = assume_aws_role(
+            instance_config,
+            service,
+            assume_role_arn,
+            assume_pod_identity,
+            use_okta_role,
+            assume_role_aws_account,
+        )
+        secret_env.update(cast(Dict[str, str], aws_creds))
+
+    if use_service_auth_token:
+        secret_env["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
+    elif use_sso_service_auth_token:
+        secret_env["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
+
+    return secret_env, secret_volumes
 
 
 def check_if_port_free(port):
@@ -933,82 +1054,24 @@ def run_docker_container(
             sys.exit(1)
     else:
         chosen_port = pick_random_port(service)
-    environment = instance_config.get_env()
-    secret_volumes = {}  # type: ignore
-    if not skip_secrets:
-        # if secrets_for_owner_team enabled in yelpsoa for service
-        if is_secrets_for_teams_enabled(service, soa_dir):
-            try:
-                kube_client = KubeClient(
-                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
-                )
-                secret_environment = get_kubernetes_secret_env_variables(
-                    kube_client, environment, service, instance_config.get_namespace()
-                )
-                secret_volumes = get_kubernetes_secret_volumes(
-                    kube_client,
-                    instance_config.get_secret_volumes(),
-                    service,
-                    instance_config.get_namespace(),
-                )
-            except Exception as e:
-                print(
-                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
-                )
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
-                sys.exit(1)
-        else:
-            try:
-                secret_environment = decrypt_secret_environment_variables(
-                    secret_provider_name=secret_provider_name,
-                    environment=environment,
-                    soa_dir=soa_dir,
-                    service_name=instance_config.get_service(),
-                    cluster_name=instance_config.cluster,
-                    secret_provider_kwargs=secret_provider_kwargs,
-                )
-                secret_volumes = decrypt_secret_volumes(
-                    secret_provider_name=secret_provider_name,
-                    secret_volumes_config=instance_config.get_secret_volumes(),
-                    soa_dir=soa_dir,
-                    service_name=instance_config.get_service(),
-                    cluster_name=instance_config.cluster,
-                    secret_provider_kwargs=secret_provider_kwargs,
-                )
-            except Exception as e:
-                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
-                sys.exit(1)
-        environment.update(secret_environment)
-    if (
-        assume_role_arn
-        or assume_pod_identity
-        or use_okta_role
-        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
-    ):
-        aws_creds = assume_aws_role(
-            instance_config,
-            service,
-            assume_role_arn,
-            assume_pod_identity,
-            use_okta_role,
-            assume_role_aws_account,
-        )
-        environment.update(aws_creds)
 
-    if use_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
-    elif use_sso_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
-
-    local_run_environment = get_local_run_environment_vars(
-        instance_config=instance_config, port0=chosen_port, framework=framework
+    base_env = build_base_env(instance_config=instance_config)
+    secret_env, secret_volumes = build_secret_env_and_volumes(
+        instance_config=instance_config,
+        base_env=base_env,
+        service=service,
+        soa_dir=soa_dir,
+        secret_provider_name=secret_provider_name,
+        secret_provider_kwargs=secret_provider_kwargs,
+        skip_secrets=skip_secrets,
+        assume_role_arn=assume_role_arn,
+        assume_pod_identity=assume_pod_identity,
+        use_okta_role=use_okta_role,
+        assume_role_aws_account=assume_role_aws_account,
+        use_service_auth_token=use_service_auth_token,
+        use_sso_service_auth_token=use_sso_service_auth_token,
     )
-    environment.update(local_run_environment)
+    environment = {**cast(Dict[str, str], base_env), **secret_env}
     net = instance_config.get_net()
     memory = instance_config.get_mem()
     container_name = get_container_name()

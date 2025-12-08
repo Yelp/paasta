@@ -52,7 +52,11 @@ from paasta_tools.utils import TimeoutError
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
 def test_dry_run(
+    mock_pick_random_port,
+    mock_get_docker_client,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -62,6 +66,8 @@ def test_dry_run(
     capfd,
     system_paasta_config,
 ):
+    mock_pick_random_port.return_value = 9876
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_validate_service_instance.return_value = "marathon"
     mock_paasta_cook_image.return_value = 0
@@ -96,7 +102,11 @@ def test_dry_run(
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
 def test_dry_run_json_dict(
+    mock_pick_random_port,
+    mock_get_docker_client,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -106,6 +116,8 @@ def test_dry_run_json_dict(
     capfd,
     system_paasta_config,
 ):
+    mock_pick_random_port.return_value = 9876
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
     mock_get_instance_config.return_value.get_env.return_value = {}
@@ -167,20 +179,22 @@ def test_perform_cmd_healthcheck_success(mock_exec_container):
     )
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_success(mock_socket_connect):
+@mock.patch("paasta_tools.cli.cmds.local_run.socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_success(mock_socket):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 0
+    mock_socket_instance = mock_socket.return_value
+    mock_socket_instance.connect_ex.return_value = 0
     assert perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
-    mock_socket_connect.assert_called_with(("fakehost", 1234))
+    mock_socket_instance.connect_ex.assert_called_with(("fakehost", 1234))
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_failure(mock_socket_connect):
+@mock.patch("paasta_tools.cli.cmds.local_run.socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_failure(mock_socket):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 1
+    mock_socket_instance = mock_socket.return_value
+    mock_socket_instance.connect_ex.return_value = 1
     actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
     assert actual[0] is False
     assert "timeout" in actual[1]
@@ -817,7 +831,9 @@ def test_run_success(
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
 )
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
 def test_assume_role_aws_account(
+    mock_get_docker_client,
     mock_run_docker_container,
     mock_validate_service_name,
     mock_figure_out_service_name,
@@ -829,6 +845,7 @@ def test_assume_role_aws_account(
     system_paasta_config,
 ):
     mock_system_paasta_config.return_value = system_paasta_config
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_should_reexec_as_root.return_value = False
 
     args = mock.MagicMock()
@@ -1197,6 +1214,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     }
     mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
+    mock_service_manifest.get_env.return_value = {}
     run_docker_container(
         docker_client=mock_docker_client,
         service="fake_service",
@@ -1936,9 +1954,7 @@ def test_get_local_run_environment_vars_kubernetes(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="not-marathon"
-    )
+    actual = get_local_run_environment_vars(instance_config=mock_instance_config)
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
     assert "MARATHON_PORT" not in actual
 
@@ -1958,9 +1974,7 @@ def test_get_local_run_environment_vars_adhoc(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="adhoc"
-    )
+    actual = get_local_run_environment_vars(instance_config=mock_instance_config)
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
     assert "PAASTA_PORT" not in actual
@@ -2167,11 +2181,9 @@ def test_run_docker_container_assume_aws_role(
 
     _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
     environment = the_kwargs["env"]
-    assert 3 == environment.update.call_count
-    assert {
-        "access_key": "abcdefg",
-        "secret_key": "abcdefg",
-    } == environment.update.call_args_list[1][0][0]
+    assert environment["access_key"] == "abcdefg"
+    assert environment["secret_key"] == "abcdefg"
+    assert "PAASTA_HOST" in environment
     assert 0 == return_code
 
 
