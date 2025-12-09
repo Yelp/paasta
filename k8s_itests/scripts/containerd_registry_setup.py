@@ -1,11 +1,16 @@
 import json
 import sys
 
-import toml
+import tomli
+import tomli_w
 
 containerdcfg_file_path = sys.argv[1]
-containerdcfg = toml.load(containerdcfg_file_path)
-dockercfg = json.load(open("/nail/etc/docker-registry-ro"))
+with open(containerdcfg_file_path, "rb") as containerdcfg_file:
+    containerdcfg = tomli.load(containerdcfg_file)
+
+with open("/nail/etc/docker-registry-ro") as dockercfg_file:
+    dockercfg = json.load(dockercfg_file)
+
 registry = list(dockercfg.keys())[0]
 
 containerdcfg["plugins"]["io.containerd.grpc.v1.cri"]["registry"] = {
@@ -13,5 +18,5 @@ containerdcfg["plugins"]["io.containerd.grpc.v1.cri"]["registry"] = {
     "mirrors": {registry: {"endpoint": [f"https://{registry}"]}},
 }
 
-with open(containerdcfg_file_path, "w") as containerdcfg_file:
-    containerdcfg_file.write(toml.dumps(containerdcfg))
+with open(containerdcfg_file_path, "wb") as containerdcfg_file:
+    tomli_w.dump(containerdcfg, containerdcfg_file)

@@ -18,6 +18,7 @@ pytest-asyncio
 requirements-tools
 Sphinx
 sphinx-rtd-theme
+tomli-w
 types-cachetools
 types-croniter
 types-python-dateutil
