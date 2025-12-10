@@ -90,6 +90,7 @@ from paasta_tools.contrib.get_running_task_allocation import (
 )
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
+from paasta_tools.kubernetes_tools import CONTAINER_PORT_NAME
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
@@ -926,7 +927,15 @@ class TestKubernetesDeploymentConfig:
             mock_hacheck_sidecar_volumes: Sequence[DockerVolume] = []
             mock_aws_ebs_volumes: Sequence[AwsEbsVolume] = []
             mock_secret_volumes: Sequence[SecretVolume] = []
-            ports = [V1ContainerPort(container_port=port) for port in expected_ports]
+            ports = []
+            if expected_ports:
+                ports.append(
+                    V1ContainerPort(
+                        container_port=expected_ports[0], name=CONTAINER_PORT_NAME
+                    )
+                )
+                for port in expected_ports[1:]:
+                    ports.append(V1ContainerPort(container_port=port))
             expected = [
                 V1Container(
                     args=mock_get_args.return_value,
@@ -4975,7 +4984,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configeed84480"
+            == "configc4ed70ba"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -5021,7 +5030,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c86f676"
+            == "config9423ad77"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -5068,7 +5077,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config0e657f9b"
+            == "config2c6212ff"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
