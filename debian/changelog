@@ -1,3 +1,49 @@
+paasta-tools (1.36.3) xenial; urgency=medium
+
+  * 1.36.3 tagged with 'make release'
+    Commit: Moved the scs conf from --conf to env var (#4177)  1. Moved
+    the scs conf from --conf to env var 2. Adjusted the test cases
+    accordingly 3. Added the other required AWS properties to env var 4.
+    Upgraded `service_configuration_lib` to `3.3.7` 5. `paasta validate`
+    ran **_successfully_**
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Dec 2025 10:03:56 -0800
+
+paasta-tools (1.36.2) xenial; urgency=medium
+
+  * 1.36.2 tagged with 'make release'
+    Commit: Merge pull request #4175 from Yelp/revert-4169-
+    u/robj/cleanup-firewall  Revert "remove some unused code."
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 03 Dec 2025 12:18:11 -0800
+
+paasta-tools (1.36.1) xenial; urgency=medium
+
+  * 1.36.1 tagged with 'make release'
+    Commit: Revert "Merge pull request #4151 from
+    Yelp/timma/upgrade_spark_configuration_lib_to_3.3.7" (#4174)  This
+    reverts commit 8ebcbca2197af757f68ece9d24b68d0af1ad042d, reversing
+    changes made to e02acdb0ff250f025a6518531f6a003c9eeaa071.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 03 Dec 2025 08:39:15 -0800
+
+paasta-tools (1.36.0) xenial; urgency=medium
+
+  * 1.36.0 tagged with 'make release'
+    Commit: Merge pull request #4169 from Yelp/u/robj/cleanup-firewall
+    remove some unused code.
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 03 Dec 2025 04:05:43 -0800
+
+paasta-tools (1.35.8) xenial; urgency=medium
+
+  * 1.35.8 tagged with 'make release'
+    Commit: Merge pull request #4151 from
+    Yelp/timma/upgrade_spark_configuration_lib_to_3.3.7  Upgraded
+    service configuration lib to 3.3.7
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Dec 2025 07:50:27 -0800
+
 paasta-tools (1.35.7) xenial; urgency=medium
 
   * 1.35.7 tagged with 'make release'
