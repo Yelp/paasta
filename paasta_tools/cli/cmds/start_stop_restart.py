@@ -29,11 +29,14 @@ from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
+from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
+from paasta_tools.cli.utils import parse_error
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -454,7 +457,6 @@ def paasta_restart_replica(args):
     replica_name = args.replica
     soa_dir = args.soa_dir
 
-    # Validate service/instance configuration
     service_config = get_instance_config(
         service=service,
         cluster=cluster,
@@ -463,7 +465,6 @@ def paasta_restart_replica(args):
         load_deployments=False,
     )
 
-    # Check if this is a supported instance type (Kubernetes only)
     if not isinstance(service_config, KubernetesDeploymentConfig):
         print(
             PaastaColors.red(
@@ -473,7 +474,7 @@ def paasta_restart_replica(args):
         )
         return 1
 
-    # Check user permissions (same as regular restart)
+    # TODO: Remove once OPA rules are configured, and leave it only to API side authz
     if not can_user_deploy_service(get_deploy_info(service, soa_dir), service):
         print(PaastaColors.red("Exiting due to missing deploy permissions"))
         return 1
@@ -497,13 +498,13 @@ def paasta_restart_replica(args):
         instance=instance,
     )
 
-    # Get API client and make the request
     system_paasta_config = load_system_paasta_config()
     is_eks = isinstance(
         service_config, KubernetesDeploymentConfig
     ) and cluster.startswith("eks")
 
-    client = get_paasta_oapi_client(
+    # We will restrict who can restart replicas in OPA, typically for service owners
+    client = get_paasta_oapi_client_with_auth(
         cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
         system_paasta_config=system_paasta_config,
     )
@@ -534,22 +535,41 @@ def paasta_restart_replica(args):
 
         return 0
 
-    except Exception as exc:
-        error_msg = str(exc)
-        if "404" in error_msg:
+    except ApiException as e:
+        error_msg = parse_error(e.body)
+        if e.status == 401:
+            print(
+                PaastaColors.red(
+                    "Error: Authentication failed. You may not have permission to restart replicas for this service."
+                )
+            )
+        elif e.status == 403:
+            print(
+                PaastaColors.red(
+                    f"Error: Access denied. You do not have permission to restart replicas for {service}.{instance}."
+                )
+            )
+        elif e.status == 404:
             print(
                 PaastaColors.red(
                     f"Error: Replica '{replica_name}' not found in {service}.{instance}. "
                     f"Please check the replica name and try again."
                 )
             )
-        elif "500" in error_msg:
+        elif e.status == 500:
             print(
                 PaastaColors.red(
                     f"Error: Server error while restarting replica: {error_msg}"
                 )
             )
         else:
-            print(PaastaColors.red(f"Error: {error_msg}"))
+            print(
+                PaastaColors.red(
+                    f"Error from PaaSTA API while restarting replica: {error_msg}"
+                )
+            )
+    except Exception as exc:
+        # Catch any other unexpected errors
+        print(PaastaColors.red(f"Unexpected error: {str(exc)}"))
 
         return 1

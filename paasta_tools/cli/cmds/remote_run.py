@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import json
 import os
 import shutil
 import subprocess
@@ -24,6 +23,7 @@ from typing import List
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import parse_error
 from paasta_tools.cli.utils import run_interactive_cli
 from paasta_tools.kubernetes.remote_run import format_remote_run_job_name
 from paasta_tools.kubernetes.remote_run import load_eks_or_adhoc_deployment_config
@@ -73,18 +73,6 @@ def _get_kubectl_wrapper(cluster: str) -> str:
     if not shutil.which(kubectl_wrapper):
         kubectl_wrapper = f"kubectl-{cluster}"
     return kubectl_wrapper
-
-
-def parse_error(body: str) -> str:
-    try:
-        body_object = json.loads(body)
-    except json.decoder.JSONDecodeError:
-        return body
-    return (
-        body_object.get("reason")
-        or body_object.get("message")
-        or json.dumps(body_object, indent=4)
-    )
 
 
 def paasta_remote_run_copy(
