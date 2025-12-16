@@ -3100,6 +3100,19 @@ class TestFormatKubernetesPodTable:
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
 
+    def test_terminating(
+        self,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        mock_kubernetes_pod.phase = "Running"
+        mock_kubernetes_pod.ready = True
+        mock_kubernetes_pod.delete_timestamp = 1234567890.0
+        mock_kubernetes_pod.events = []
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan("Terminating")
+
     def test_no_health(
         self,
         mock_naturaltime,
