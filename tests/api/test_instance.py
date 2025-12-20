@@ -492,3 +492,155 @@ class TestBounceStatus:
             excinfo.value.msg
             == "Temporary issue fetching bounce status. Please try again."
         )
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.instance.pik.restart_replica_by_name", autospec=True
+)
+@mock.patch("paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True)
+class TestInstanceReplicaRestart:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.instance.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            _mock_settings.soa_dir = "/test/soa/dir"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+            "replica_name": "test-pod-12345",
+        }
+        return request
+
+    def test_success(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test successful replica restart."""
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_can_restart_replica.return_value = True
+        mock_restart_replica_by_name.return_value = True
+
+        response = instance.instance_replica_restart(mock_request)
+
+        expected_response = {
+            "message": "Initiated replica restart of test-pod-12345 successfully",
+            "service": "test_service",
+            "instance": "test_instance",
+            "replica_name": "test-pod-12345",
+        }
+        assert response == expected_response
+
+        mock_validate_service_instance.assert_called_once_with(
+            "test_service", "test_instance", "test_cluster", "/test/soa/dir"
+        )
+        mock_can_restart_replica.assert_called_once_with("kubernetes")
+        mock_restart_replica_by_name.assert_called_once_with(
+            service="test_service",
+            instance="test_instance",
+            instance_type="kubernetes",
+            replica_name="test-pod-12345",
+            settings=mock.ANY,
+        )
+
+    def test_service_not_found(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test replica restart when service/instance doesn't exist."""
+        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_replica_restart(mock_request)
+
+        assert excinfo.value.err == 404
+        # Functions should not be called when validation fails early
+
+    def test_replica_not_found(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test replica restart when replica doesn't exist."""
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_can_restart_replica.return_value = True
+        mock_restart_replica_by_name.return_value = False
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_replica_restart(mock_request)
+
+        assert excinfo.value.err == 404
+        assert (
+            "Replica test-pod-12345 not found in service test_service.test_instance"
+            in excinfo.value.msg
+        )
+
+    def test_instance_type_not_supported(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test replica restart with unsupported instance type."""
+        mock_validate_service_instance.return_value = "tron"
+        mock_can_restart_replica.return_value = False
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_replica_restart(mock_request)
+
+        assert excinfo.value.err == 500
+        assert (
+            "instance_type tron of test_service.test_instance doesn't support replica restart"
+            in excinfo.value.msg
+        )
+
+    def test_runtime_error(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test replica restart when operation fails."""
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_can_restart_replica.return_value = True
+        mock_restart_replica_by_name.side_effect = RuntimeError(
+            "Kubernetes client not available"
+        )
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_replica_restart(mock_request)
+
+        assert excinfo.value.err == 500
+        assert "Kubernetes client not available" in excinfo.value.msg
+
+    def test_generic_exception(
+        self,
+        mock_can_restart_replica,
+        mock_restart_replica_by_name,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        """Test replica restart with generic validation exception throws ApiFailure."""
+        mock_validate_service_instance.side_effect = Exception("Unexpected error")
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_replica_restart(mock_request)
+
+        assert excinfo.value.err == 500
