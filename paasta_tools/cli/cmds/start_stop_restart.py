@@ -419,7 +419,7 @@ def paasta_stop(args):
     return paasta_start_or_stop(args, "stop")
 
 
-def paasta_restart_replica(args):
+def paasta_restart_replica(args: argparse.Namespace) -> int:
     """Restart a specific replica (pod) by deleting it and letting Kubernetes create a replacement."""
     # Validate required arguments
     pargs = apply_args_filters(args)
