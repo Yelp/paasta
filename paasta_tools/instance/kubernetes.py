@@ -157,8 +157,7 @@ def restart_replica_by_name(
 ) -> bool:
     """Restart a specific replica by name within a service instance.
 
-    Follows the same pattern as kubernetes_status - gets job config,
-    determines namespace, then calls kubernetes_tools function.
+    NOTE: will actually delete the replica and let Kubernetes replace it
     """
     if not can_restart_replica(instance_type):
         raise RuntimeError(
