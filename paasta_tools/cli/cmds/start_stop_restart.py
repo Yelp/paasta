@@ -568,6 +568,7 @@ def paasta_restart_replica(args):
                     f"Error from PaaSTA API while restarting replica: {error_msg}"
                 )
             )
+        return 1
     except Exception as exc:
         # Catch any other unexpected errors
         print(PaastaColors.red(f"Unexpected error: {str(exc)}"))
