@@ -500,8 +500,8 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
 
     system_paasta_config = load_system_paasta_config()
     is_eks = isinstance(
-        service_config, KubernetesDeploymentConfig
-    ) and cluster.startswith("eks")
+        service_config, EksDeploymentConfig
+    )
 
     # We will restrict who can restart replicas in OPA, typically for service owners
     client = get_paasta_oapi_client_with_auth(
