@@ -400,3 +400,61 @@ def instance_mesh_status(
         raise ApiFailure(error_message, 500)
 
     return instance_mesh
+
+
+@view_config(
+    route_name="service.instance.replica.restart",
+    request_method="POST",
+    renderer="json",
+)
+def instance_replica_restart(
+    request: Request,
+) -> dict[str, Any]:
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    replica_name = request.swagger_data.get("replica_name")
+
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = no_configuration_for_service_message(
+            settings.cluster,
+            service,
+            instance,
+        )
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    if pik.can_restart_replica(instance_type):
+        try:
+            replica_restarted = pik.restart_replica_by_name(
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
+                replica_name=replica_name,
+                settings=settings,
+            )
+            if replica_restarted:
+                return {
+                    "message": f"Initiated replica restart of {replica_name} successfully",
+                    "service": service,
+                    "instance": instance,
+                    "replica_name": replica_name,
+                }
+            else:
+                raise ApiFailure(
+                    f"Replica {replica_name} not found in service {service}.{instance}",
+                    404,
+                )
+        except RuntimeError as e:
+            raise ApiFailure(str(e), 500)
+    else:
+        error_message = (
+            f"instance_type {instance_type} of {service}.{instance} doesn't "
+            "support replica restart"
+        )
+        raise ApiFailure(error_message, 500)

@@ -5843,3 +5843,108 @@ def test_group_pods_by_service_instance_with_none_labels():
     pod1 = V1Pod(metadata=V1ObjectMeta(name="pod1", labels=None))
 
     assert group_pods_by_service_instance([pod1]) == {}
+
+
+def test_delete_pod_by_name_success():
+    """Test successful deletion of a pod by name."""
+    mock_pod_1 = mock.MagicMock(spec=V1Pod)
+    mock_pod_1.metadata.name = "target-pod-12345"
+
+    mock_pod_2 = mock.MagicMock(spec=V1Pod)
+    mock_pod_2.metadata.name = "other-pod-67890"
+
+    mock_pods = [mock_pod_1, mock_pod_2]
+    mock_client = mock.Mock()
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=mock_pods,
+    ):
+        result = kubernetes_tools.delete_pod_by_name(
+            pod_name="target-pod-12345",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_client,
+        )
+
+        assert result is True
+        mock_client.core.delete_namespaced_pod.assert_called_once_with(
+            "target-pod-12345",
+            "test-namespace",
+            body=V1DeleteOptions(),
+            grace_period_seconds=0,
+        )
+
+
+def test_delete_pod_by_name_pod_not_found():
+    """Test deletion when pod does not exist in service instance."""
+    mock_pod_1 = mock.MagicMock(spec=V1Pod)
+    mock_pod_1.metadata.name = "other-pod-12345"
+
+    mock_pod_2 = mock.MagicMock(spec=V1Pod)
+    mock_pod_2.metadata.name = "another-pod-67890"
+
+    mock_pods = [mock_pod_1, mock_pod_2]
+    mock_client = mock.Mock()
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=mock_pods,
+    ):
+        result = kubernetes_tools.delete_pod_by_name(
+            pod_name="nonexistent-pod-99999",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_client,
+        )
+
+        assert result is False
+        mock_client.core.delete_namespaced_pod.assert_not_called()
+
+
+def test_delete_pod_by_name_deletion_fails():
+    """Test deletion when Kubernetes API call fails."""
+    mock_pod = mock.MagicMock(spec=V1Pod)
+    mock_pod.metadata.name = "target-pod-12345"
+
+    mock_pods = [mock_pod]
+    mock_client = mock.Mock()
+    mock_client.core.delete_namespaced_pod.side_effect = ApiException("Delete failed")
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=mock_pods,
+    ), pytest.raises(RuntimeError, match="Failed to delete pod target-pod-12345"):
+        kubernetes_tools.delete_pod_by_name(
+            pod_name="target-pod-12345",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_client,
+        )
+
+
+def test_delete_pod_by_name_no_pods():
+    """Test deletion when service instance has no pods."""
+    mock_client = mock.Mock()
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=[],
+    ):
+        result = kubernetes_tools.delete_pod_by_name(
+            pod_name="target-pod-12345",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_client,
+        )
+
+        assert result is False
+        mock_client.core.delete_namespaced_pod.assert_not_called()
