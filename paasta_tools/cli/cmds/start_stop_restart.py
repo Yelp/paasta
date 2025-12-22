@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import datetime
 import socket
 import sys
@@ -32,6 +33,7 @@ from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import parse_error
 from paasta_tools.cli.utils import trigger_deploys
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
@@ -499,9 +501,7 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
     )
 
     system_paasta_config = load_system_paasta_config()
-    is_eks = isinstance(
-        service_config, EksDeploymentConfig
-    )
+    is_eks = isinstance(service_config, EksDeploymentConfig)
 
     # We will restrict who can restart replicas in OPA, typically for service owners
     client = get_paasta_oapi_client_with_auth(
