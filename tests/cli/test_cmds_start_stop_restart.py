@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest import mock
+import pytest
 
 from paasta_tools import remote_git
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
@@ -779,6 +780,7 @@ class TestRestartCmd:
         assert "paasta restart is currently unsupported for Flink instances" in out
 
 
+@pytest.mark.parametrize("force_flag", [False, True])
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
     autospec=True,
@@ -791,7 +793,7 @@ class TestRestartCmd:
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
 )
-@mock.patch("socket.getfqdn", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.socket.getfqdn", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
 )
@@ -813,12 +815,14 @@ def test_paasta_restart_replica_success(
     mock_log_audit,
     mock_load_system_paasta_config,
     mock_get_paasta_oapi_client_with_auth,
+    force_flag,
 ):
-    """Test successful replica restart."""
+    """Test successful replica restart with and without force flag."""
     # Mock CLI args
     args = mock.Mock()
     args.replica = "test-pod-12345"
     args.soa_dir = "/test/soa/dir"
+    args.force = force_flag
 
     # Mock apply_args_filters to return single service/instance/cluster
     mock_apply_args_filters.return_value = {
@@ -839,7 +843,7 @@ def test_paasta_restart_replica_success(
     mock_get_deploy_info.return_value = {"deploy_groups": []}
     mock_can_user_deploy_service.return_value = True
 
-    # Mock logging
+    # Mock username and hostname
     mock_get_username.return_value = "test-user"
     mock_getfqdn.return_value = "test-host.example.com"
 
@@ -857,6 +861,14 @@ def test_paasta_restart_replica_success(
     result = start_stop_restart.paasta_restart_replica(args)
 
     assert result == 0
+
+    # Verify API call was made with correct parameters
+    mock_client.service.instance_replica_restart.assert_called_once_with(
+        service="test-service",
+        instance="main",
+        replica_name="test-pod-12345",
+        force=force_flag,
+    )
 
 
 @mock.patch(
