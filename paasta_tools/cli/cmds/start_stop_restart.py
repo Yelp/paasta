@@ -442,7 +442,7 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
         )
         return 1
 
-    cluster = list(pargs.keys())[0]
+    (cluster,) = pargs.keys()
     services_instances = pargs[cluster]
 
     if len(services_instances) > 1:
