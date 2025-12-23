@@ -204,7 +204,7 @@ def restart_replica_by_name(
             grace_period_seconds = None
 
     # Note: We are not actually fully 'restarting' a replica for k8s instances
-    # Instead, we arae deleting the existing pod, then k8s will automatically create a
+    # Instead, we are deleting the existing pod, then k8s will automatically create a
     # replacement pod to maintain the desired replica count.
 
     return kubernetes_tools.delete_pod_by_name(
