@@ -81,6 +81,13 @@ def add_subparser(subparsers):
                 "Provide the full pod name (e.g., 'myservice-main-12345abcde-xyz67'). "
                 "Only works with Kubernetes-based deployments currently.",
             )
+            status_parser.add_argument(
+                "--force",
+                dest="force",
+                action="store_true",
+                help="Force immediate deletion (grace_period_seconds=0) instead of graceful termination. "
+                "Only applies when used with --replica.",
+            )
 
         status_parser.set_defaults(command=cmd_func)
 
@@ -514,13 +521,13 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        response = client.service.instance_replica_restart(
+        client.service.instance_replica_restart(
             service=service,
             instance=instance,
             replica_name=replica_name,
+            force=args.force,
         )
 
-        print(response)
         print(
             PaastaColors.green(
                 f"✓ Successfully initiated restart of replica '{replica_name}'"
@@ -530,8 +537,6 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
         print(f"  Instance: {instance}")
         print(f"  Cluster: {cluster}")
         print(f"  Replica: {replica_name}")
-        print()
-        print("Kubernetes will automatically create a replacement pod.")
 
         return 0
 

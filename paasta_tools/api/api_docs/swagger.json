@@ -1164,21 +1164,7 @@
                     "200": {
                         "description": "Replica restart initiated successfully",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string"
-                                },
-                                "service": {
-                                    "type": "string"
-                                },
-                                "instance": {
-                                    "type": "string"
-                                },
-                                "replica_name": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/InstanceReplicaRestartOutcome"
                         }
                     },
                     "404": {
@@ -1214,6 +1200,14 @@
                         "name": "replica_name",
                         "required": true,
                         "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Force immediate deletion (grace_period_seconds=0) instead of graceful termination",
+                        "name": "force",
+                        "required": false,
+                        "type": "boolean",
+                        "default": false
                     }
                 ]
             }
@@ -1253,6 +1247,23 @@
                 "envoy": {
                     "$ref": "#/definitions/EnvoyStatus",
                     "description": "Status of the service in Envoy"
+                }
+            }
+        },
+        "InstanceReplicaRestartOutcome": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "instance": {
+                    "type": "string"
+                },
+                "replica_name": {
+                    "type": "string"
                 }
             }
         },

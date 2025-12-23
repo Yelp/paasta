@@ -29,9 +29,9 @@ from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
-from paasta_tools.paastaapi.model.inline_response2002 import InlineResponse2002
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
 from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
+from paasta_tools.paastaapi.model.instance_replica_restart_outcome import InstanceReplicaRestartOutcome
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus
 from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 
@@ -709,6 +709,7 @@ class ServiceApi(object):
                 replica_name (str): Replica name to restart
 
             Keyword Args:
+                force (bool): Force immediate deletion (grace_period_seconds&#x3D;0) instead of graceful termination. [optional] if omitted the server will use the default value of False
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -730,7 +731,7 @@ class ServiceApi(object):
                 async_req (bool): execute request asynchronously
 
             Returns:
-                InlineResponse2002
+                InstanceReplicaRestartOutcome
                     If the method is called asynchronously, returns the request
                     thread.
             """
@@ -763,7 +764,7 @@ class ServiceApi(object):
 
         self.instance_replica_restart = Endpoint(
             settings={
-                'response_type': (InlineResponse2002,),
+                'response_type': (InstanceReplicaRestartOutcome,),
                 'auth': [],
                 'endpoint_path': '/services/{service}/{instance}/replicas/{replica_name}/restart',
                 'operation_id': 'instance_replica_restart',
@@ -775,6 +776,7 @@ class ServiceApi(object):
                     'service',
                     'instance',
                     'replica_name',
+                    'force',
                 ],
                 'required': [
                     'service',
@@ -800,16 +802,20 @@ class ServiceApi(object):
                         (str,),
                     'replica_name':
                         (str,),
+                    'force':
+                        (bool,),
                 },
                 'attribute_map': {
                     'service': 'service',
                     'instance': 'instance',
                     'replica_name': 'replica_name',
+                    'force': 'force',
                 },
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
                     'replica_name': 'path',
+                    'force': 'query',
                 },
                 'collection_format_map': {
                 }

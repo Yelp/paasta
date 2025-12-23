@@ -358,6 +358,17 @@ components:
     InstanceSpecCassandraCluster:
       description: Cassandra instance spec
       type: object
+    InstanceReplicaRestartOutcome:
+      properties:
+        message:
+          type: string
+        service:
+          type: string
+        instance:
+          type: string
+        replica_name:
+          type: string
+      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -1945,21 +1956,19 @@ paths:
         required: true
         schema:
           type: string
+      - description: Force immediate deletion (grace_period_seconds=0) instead of graceful termination
+        in: query
+        name: force
+        required: false
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           content:
             application/json:
               schema:
-                properties:
-                  message:
-                    type: string
-                  service:
-                    type: string
-                  instance:
-                    type: string
-                  replica_name:
-                    type: string
-                type: object
+                $ref: '#/components/schemas/InstanceReplicaRestartOutcome'
           description: Replica restart initiated successfully
         "404":
           description: Replica not found or service/instance not found

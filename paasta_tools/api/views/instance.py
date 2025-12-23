@@ -413,6 +413,7 @@ def instance_replica_restart(
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     replica_name = request.swagger_data.get("replica_name")
+    force = request.swagger_data.get("force", False)
 
     try:
         instance_type = validate_service_instance(
@@ -437,6 +438,7 @@ def instance_replica_restart(
                 instance_type=instance_type,
                 replica_name=replica_name,
                 settings=settings,
+                force=force,
             )
             if replica_restarted:
                 return {

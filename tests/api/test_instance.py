@@ -519,19 +519,30 @@ class TestInstanceReplicaRestart:
         }
         return request
 
+    @pytest.mark.parametrize("force_flag", [False, True])
     def test_success(
         self,
         mock_can_restart_replica,
         mock_restart_replica_by_name,
         mock_validate_service_instance,
-        mock_request,
+        force_flag,
     ):
-        """Test successful replica restart."""
+        """Test successful replica restart with and without force flag."""
         mock_validate_service_instance.return_value = "kubernetes"
         mock_can_restart_replica.return_value = True
         mock_restart_replica_by_name.return_value = True
 
-        response = instance.instance_replica_restart(mock_request)
+        # Create request with optional force flag
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+            "replica_name": "test-pod-12345",
+        }
+        if force_flag:
+            request.swagger_data["force"] = force_flag
+
+        response = instance.instance_replica_restart(request)
 
         expected_response = {
             "message": "Initiated replica restart of test-pod-12345 successfully",
@@ -551,6 +562,7 @@ class TestInstanceReplicaRestart:
             instance_type="kubernetes",
             replica_name="test-pod-12345",
             settings=mock.ANY,
+            force=force_flag,
         )
 
     def test_service_not_found(
