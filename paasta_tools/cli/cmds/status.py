@@ -459,7 +459,24 @@ def format_kubernetes_pod_table(pods, verbose: int):
         hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
         phase = pod.phase
         reason = pod.reason
-        if phase is None or phase == "Pending":
+        # Check if pod is terminating (has deletion timestamp)
+        delete_timestamp = getattr(pod, "delete_timestamp", None)
+        if delete_timestamp:
+            now = datetime.now()
+            deletion_time = datetime.fromtimestamp(delete_timestamp)
+            time_diff = deletion_time - now
+            if time_diff.total_seconds() > 0:
+                time_remaining_str = humanize.naturaldelta(time_diff)
+                health_check_status = PaastaColors.cyan(
+                    f"Terminating (in {time_remaining_str})"
+                )
+            else:
+                time_elapsed = now - deletion_time
+                time_elapsed_str = humanize.naturaldelta(time_elapsed)
+                health_check_status = PaastaColors.cyan(
+                    f"Terminating ({time_elapsed_str} ago)"
+                )
+        elif phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")

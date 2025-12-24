@@ -233,6 +233,11 @@ async def pod_info(
         "events": pod_event_messages,
         "git_sha": pod.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": pod.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "delete_timestamp": (
+            pod.metadata.deletion_timestamp.timestamp()
+            if pod.metadata.deletion_timestamp
+            else None
+        ),
     }
 
 
@@ -493,11 +498,28 @@ def cr_status(
 
 def filter_actually_running_replicasets(
     replicaset_list: Sequence[V1ReplicaSet],
+    pod_status_by_replicaset: Optional[Mapping[str, Sequence[Any]]] = None,
 ) -> List[V1ReplicaSet]:
+    """Filter replicasets to only include those that are actually running.
+
+    A replicaset is considered "actually running" if:
+    - It has non-zero desired replicas OR non-zero ready replicas, OR
+    - It has pods associated with it (e.g., terminating pods)
+
+    This ensures that replicasets with only terminating pods are still shown
+    in status output until all pods are fully removed.
+    """
     return [
         rs
         for rs in replicaset_list
-        if not (rs.spec.replicas == 0 and ready_replicas_from_replicaset(rs) == 0)
+        if not (
+            rs.spec.replicas == 0
+            and ready_replicas_from_replicaset(rs) == 0
+            and (
+                pod_status_by_replicaset is None
+                or not pod_status_by_replicaset.get(rs.metadata.name)
+            )
+        )
     ]
 
 
@@ -831,10 +853,11 @@ async def get_versions_for_replicasets(
         replicaset_list.extend(await coro)
 
     # For the purpose of active_versions/app_count, don't count replicasets that
-    # are at 0/0.
-    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-
+    # are at 0/0 unless they have terminating pods.
     pod_status_by_replicaset = await pod_status_by_replicaset_task
+    actually_running_replicasets = filter_actually_running_replicasets(
+        replicaset_list, pod_status_by_replicaset
+    )
     versions = await asyncio.gather(
         *[
             get_replicaset_status(

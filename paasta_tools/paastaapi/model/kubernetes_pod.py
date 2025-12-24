@@ -92,6 +92,7 @@ class KubernetesPod(ModelNormal):
             'ready': (bool,),  # noqa: E501
             'reason': (str, none_type,),  # noqa: E501
             'events': ([KubernetesPodEvent],),  # noqa: E501
+            'delete_timestamp': (float, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -109,6 +110,7 @@ class KubernetesPod(ModelNormal):
         'ready': 'ready',  # noqa: E501
         'reason': 'reason',  # noqa: E501
         'events': 'events',  # noqa: E501
+        'delete_timestamp': 'delete_timestamp',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -166,6 +168,7 @@ class KubernetesPod(ModelNormal):
             ready (bool): Whether or not the pod is ready (i.e. all containers up). [optional]  # noqa: E501
             reason (str, none_type): short message explaining the pod&#39;s state. [optional]  # noqa: E501
             events ([KubernetesPodEvent]): Kubernetes pod events. [optional]  # noqa: E501
+            delete_timestamp (float, none_type): Unix timestamp at which pod deletion was requested (indicates terminating state). [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
