@@ -3100,18 +3100,47 @@ class TestFormatKubernetesPodTable:
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_terminating(
         self,
+        mock_datetime_module,
         mock_naturaltime,
         mock_kubernetes_pod,
     ):
-        mock_kubernetes_pod.phase = "Running"
-        mock_kubernetes_pod.ready = True
-        mock_kubernetes_pod.delete_timestamp = 1234567890.0
-        mock_kubernetes_pod.events = []
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567890.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567830.0
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
-        assert pod_table_dict["Health"] == PaastaColors.cyan("Terminating")
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (a minute ago)"
+        )
+
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
+    def test_terminating_future(
+        self,
+        mock_datetime_module,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567830.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567890.0
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (in a minute)"
+        )
 
     def test_no_health(
         self,
