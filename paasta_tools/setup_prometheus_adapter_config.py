@@ -313,7 +313,7 @@ def create_instance_active_requests_scaling_rule(
     (
         sum(
             label_replace(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
+                envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
                 "kube_deployment", "{deployment_name}", "", ""
             )
         ) by (kube_deployment)
