@@ -229,7 +229,6 @@ def _get_flink_state(
         status = client.service.status_instance(
             service=service,
             instance=instance,
-            verbose=False,
         )
         # Flink status is in status.flink or status.flinkeks
         flink_status = getattr(status, "flink", None) or getattr(
