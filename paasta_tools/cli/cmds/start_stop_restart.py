@@ -160,6 +160,47 @@ def print_flink_message(desired_state):
         )
 
 
+def print_flink_restart_message():
+    print(
+        "Restart initiated. The Flink cluster will gracefully stop then start.\n"
+        "This may take several minutes. Monitor progress with 'paasta status'."
+    )
+
+
+def _set_flink_desired_state(
+    service_config: FlinkDeploymentConfig,
+    desired_state: str,
+    system_paasta_config,
+) -> int:
+    """Set desired state for a Flink instance via paasta API.
+
+    Returns 0 on success, non-zero on failure.
+    """
+    cluster = service_config.cluster
+    service = service_config.service
+    instance = service_config.instance
+    is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        print("Cannot get a paasta-api client")
+        return 1
+
+    try:
+        client.service.instance_set_state(
+            service=service,
+            instance=instance,
+            desired_state=desired_state,
+        )
+        return 0
+    except client.api_error as exc:
+        print(exc.reason)
+        return exc.status
+
+
 def confirm_to_continue(cluster_service_instances, desired_state):
     print(f"You are about to {desired_state} the following instances:")
     print("Either --instances or --clusters not specified. Asking for confirmation.")
@@ -355,35 +396,32 @@ def paasta_restart(args):
                     affected_non_flinks.append(service_config)
 
     if affected_flinks:
-        flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_flinks])
-        print(
-            f"WARN: paasta restart is currently unsupported for Flink instances ({flinks_info})."
-        )
-        print("To restart, please run:", end="\n\n")
-        for flink in affected_flinks:
+        print_flink_restart_message()
+        system_paasta_config = load_system_paasta_config()
+
+        for flink_config in affected_flinks:
+            # Issue stop then start - the flink-operator handles the state
+            # transitions when desired_state=start while cluster is stopping
+            ret = _set_flink_desired_state(flink_config, "stop", system_paasta_config)
+            if ret != 0:
+                return ret
+            ret = _set_flink_desired_state(flink_config, "start", system_paasta_config)
+            if ret != 0:
+                return ret
+
             print(
-                f"paasta stop -s {flink.service} -i {flink.instance} -c {flink.cluster}"
+                f"Restart initiated for {flink_config.service}.{flink_config.instance}"
             )
             print(
-                f"paasta start -s {flink.service} -i {flink.instance} -c {flink.cluster}",
-                end="\n\n",
+                f"Monitor with: paasta status -s {flink_config.service} "
+                f"-i {flink_config.instance} -c {flink_config.cluster}"
             )
 
-        if not affected_non_flinks:
-            return 1
+    # Handle non-flink instances
+    if affected_non_flinks:
+        return paasta_start(args)
 
-        non_flinks_info = ", ".join(
-            [f"{f.service}.{f.instance}" for f in affected_non_flinks]
-        )
-        proceed = choice.Binary(
-            f"Would you like to restart the other instances ({non_flinks_info}) anyway?",
-            False,
-        ).ask()
-
-        if not proceed:
-            return 1
-
-    return paasta_start(args)
+    return 0
 
 
 PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(

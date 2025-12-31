@@ -20,6 +20,7 @@ from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import start_stop_restart
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
+from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
@@ -659,8 +660,12 @@ def test_error_if_no_deploy_permissions(
     assert not mock_issue_state_change_for_service.called
 
 
-@mock.patch("choice.basicterm.BasicTermBinaryChoice", autospec=True)
-@mock.patch("choice.Binary", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart._set_flink_desired_state", autospec=True
+)
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
@@ -674,8 +679,8 @@ class TestRestartCmd:
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -697,9 +702,8 @@ class TestRestartCmd:
                 None,
             ),
         ]
-        mock_paasta_start.return_value = 1
-        mock_binary_choice.ask.return_value = True
-        mock_binary.return_value = mock_binary_choice
+        mock_paasta_start.return_value = 0
+        mock_set_flink_desired_state.return_value = 0
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance,cas_instance -d /soa/dir".split(
@@ -709,17 +713,20 @@ class TestRestartCmd:
         ret = args.command(args)
         out, _ = capfd.readouterr()
 
-        assert ret == 1
+        # Both Flink and non-Flink instances are restarted
+        assert ret == 0
         assert mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" in out
+        # Flink API called twice (stop, then start)
+        assert mock_set_flink_desired_state.call_count == 2
+        assert "Restart initiated" in out
 
     def test_only_non_flink_instances(
         self,
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -744,15 +751,16 @@ class TestRestartCmd:
 
         assert ret == 1
         assert mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" not in out
+        # No Flink API calls
+        assert not mock_set_flink_desired_state.called
 
     def test_only_flink_instances(
         self,
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -767,6 +775,7 @@ class TestRestartCmd:
                 None,
             ),
         ]
+        mock_set_flink_desired_state.return_value = 0
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
@@ -774,6 +783,271 @@ class TestRestartCmd:
         ret = args.command(args)
         out, _ = capfd.readouterr()
 
-        assert ret == 1
+        assert ret == 0
         assert not mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" in out
+        # API called twice: stop then start
+        assert mock_set_flink_desired_state.call_count == 2
+        assert "Restart initiated" in out
+        assert "paasta status" in out
+
+    def test_flink_restart_api_error_on_stop(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"flink_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkDeploymentConfig(
+                "service",
+                "cluster",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        # Fail on first call (stop)
+        mock_set_flink_desired_state.return_value = 500
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+
+        assert ret == 500
+        assert not mock_paasta_start.called
+        # Only one call (stop failed)
+        assert mock_set_flink_desired_state.call_count == 1
+
+    def test_flink_restart_api_error_on_start(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"flink_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkDeploymentConfig(
+                "service",
+                "cluster",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        # Succeed on stop (first call), fail on start (second call)
+        mock_set_flink_desired_state.side_effect = [0, 500]
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+
+        assert ret == 500
+        assert not mock_paasta_start.called
+        # Two calls (stop succeeded, start failed)
+        assert mock_set_flink_desired_state.call_count == 2
+
+    def test_flinkeks_instances_restart(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_set_flink_desired_state,
+        mock_load_system_paasta_config,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "flinkeks-pnw-devc": {"service": {"flink_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkEksDeploymentConfig(
+                "service",
+                "flinkeks-pnw-devc",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        mock_set_flink_desired_state.return_value = 0
+
+        args, _ = parse_args(
+            "restart -s service -c flinkeks-pnw-devc -i flink_instance -d /soa/dir".split(
+                " "
+            )
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 0
+        assert not mock_paasta_start.called
+        # API called twice: stop then start
+        assert mock_set_flink_desired_state.call_count == 2
+        assert "Restart initiated" in out
+
+
+class TestSetFlinkDesiredState:
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_set_flink_desired_state_success(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        ret = start_stop_restart._set_flink_desired_state(
+            flink_config, "stop", system_paasta_config
+        )
+
+        assert ret == 0
+        mock_client.service.instance_set_state.assert_called_once_with(
+            service="service",
+            instance="instance",
+            desired_state="stop",
+        )
+        mock_get_clustername.assert_called_once_with(cluster="pnw-devc", is_eks=False)
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_set_flink_desired_state_eks_cluster(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "flinkeks-pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        flink_config = FlinkEksDeploymentConfig(
+            "service",
+            "flinkeks-pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        ret = start_stop_restart._set_flink_desired_state(
+            flink_config, "start", system_paasta_config
+        )
+
+        assert ret == 0
+        mock_client.service.instance_set_state.assert_called_once_with(
+            service="service",
+            instance="instance",
+            desired_state="start",
+        )
+        mock_get_clustername.assert_called_once_with(
+            cluster="flinkeks-pnw-devc", is_eks=True
+        )
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_set_flink_desired_state_no_client(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+        capfd,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_get_client.return_value = None
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        ret = start_stop_restart._set_flink_desired_state(
+            flink_config, "stop", system_paasta_config
+        )
+
+        assert ret == 1
+        out, _ = capfd.readouterr()
+        assert "Cannot get a paasta-api client" in out
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_set_flink_desired_state_api_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+        capfd,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Create a mock API error
+        mock_error = mock.Mock()
+        mock_error.reason = "Internal Server Error"
+        mock_error.status = 500
+        mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.service.instance_set_state.side_effect = mock_client.api_error()
+        # Set the attributes on the raised exception
+        mock_client.service.instance_set_state.side_effect.reason = (
+            "Internal Server Error"
+        )
+        mock_client.service.instance_set_state.side_effect.status = 500
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        ret = start_stop_restart._set_flink_desired_state(
+            flink_config, "stop", system_paasta_config
+        )
+
+        assert ret == 500
+        out, _ = capfd.readouterr()
+        assert "Internal Server Error" in out
