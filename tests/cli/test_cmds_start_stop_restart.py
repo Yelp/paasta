@@ -664,6 +664,9 @@ def test_error_if_no_deploy_permissions(
     "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
 )
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart._wait_for_flink_stopped", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart._set_flink_desired_state", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
@@ -680,6 +683,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -704,6 +708,10 @@ class TestRestartCmd:
         ]
         mock_paasta_start.return_value = 0
         mock_set_flink_desired_state.return_value = 0
+        mock_wait_for_flink_stopped.return_value = (
+            True,
+            "Cluster stopped successfully",
+        )
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance,cas_instance -d /soa/dir".split(
@@ -718,7 +726,9 @@ class TestRestartCmd:
         assert mock_paasta_start.called
         # Flink API called twice (stop, then start)
         assert mock_set_flink_desired_state.call_count == 2
-        assert "Restart initiated" in out
+        # Wait for stopped was called once
+        assert mock_wait_for_flink_stopped.call_count == 1
+        assert "Restart complete" in out
 
     def test_only_non_flink_instances(
         self,
@@ -726,6 +736,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -760,6 +771,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -776,6 +788,10 @@ class TestRestartCmd:
             ),
         ]
         mock_set_flink_desired_state.return_value = 0
+        mock_wait_for_flink_stopped.return_value = (
+            True,
+            "Cluster stopped successfully",
+        )
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
@@ -787,7 +803,9 @@ class TestRestartCmd:
         assert not mock_paasta_start.called
         # API called twice: stop then start
         assert mock_set_flink_desired_state.call_count == 2
-        assert "Restart initiated" in out
+        # Wait for stopped was called once
+        assert mock_wait_for_flink_stopped.call_count == 1
+        assert "Restart complete" in out
         assert "paasta status" in out
 
     def test_flink_restart_api_error_on_stop(
@@ -796,6 +814,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -823,6 +842,8 @@ class TestRestartCmd:
         assert not mock_paasta_start.called
         # Only one call (stop failed)
         assert mock_set_flink_desired_state.call_count == 1
+        # Wait for stopped should not be called since stop failed
+        assert not mock_wait_for_flink_stopped.called
 
     def test_flink_restart_api_error_on_start(
         self,
@@ -830,6 +851,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -847,6 +869,10 @@ class TestRestartCmd:
         ]
         # Succeed on stop (first call), fail on start (second call)
         mock_set_flink_desired_state.side_effect = [0, 500]
+        mock_wait_for_flink_stopped.return_value = (
+            True,
+            "Cluster stopped successfully",
+        )
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
@@ -857,6 +883,8 @@ class TestRestartCmd:
         assert not mock_paasta_start.called
         # Two calls (stop succeeded, start failed)
         assert mock_set_flink_desired_state.call_count == 2
+        # Wait for stopped was called once
+        assert mock_wait_for_flink_stopped.call_count == 1
 
     def test_flinkeks_instances_restart(
         self,
@@ -864,6 +892,7 @@ class TestRestartCmd:
         mock_get_instance_config,
         mock_paasta_start,
         mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
         mock_load_system_paasta_config,
         capfd,
     ):
@@ -880,6 +909,10 @@ class TestRestartCmd:
             ),
         ]
         mock_set_flink_desired_state.return_value = 0
+        mock_wait_for_flink_stopped.return_value = (
+            True,
+            "Cluster stopped successfully",
+        )
 
         args, _ = parse_args(
             "restart -s service -c flinkeks-pnw-devc -i flink_instance -d /soa/dir".split(
@@ -893,7 +926,9 @@ class TestRestartCmd:
         assert not mock_paasta_start.called
         # API called twice: stop then start
         assert mock_set_flink_desired_state.call_count == 2
-        assert "Restart initiated" in out
+        # Wait for stopped was called once
+        assert mock_wait_for_flink_stopped.call_count == 1
+        assert "Restart complete" in out
 
 
 class TestSetFlinkDesiredState:
