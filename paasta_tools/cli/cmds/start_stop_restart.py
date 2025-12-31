@@ -234,8 +234,8 @@ def _get_flink_state(
         flink_status = getattr(status, "flink", None) or getattr(
             status, "flinkeks", None
         )
-        if flink_status and hasattr(flink_status, "state"):
-            return flink_status.state, None
+        if flink_status and hasattr(flink_status, "status"):
+            return flink_status.status.get("state"), None
         return None, "Could not get Flink state from status response"
     except client.api_error as exc:
         return None, exc.reason

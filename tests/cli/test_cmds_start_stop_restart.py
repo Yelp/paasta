@@ -1086,3 +1086,233 @@ class TestSetFlinkDesiredState:
         assert ret == 500
         out, _ = capfd.readouterr()
         assert "Internal Server Error" in out
+
+
+class TestGetFlinkState:
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_success(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the status response with the correct structure
+        mock_flink_status = mock.Mock()
+        mock_flink_status.status = {"state": "running", "pod_status": []}
+        mock_status = mock.Mock()
+        mock_status.flink = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state == "running"
+        assert error is None
+        mock_client.service.status_instance.assert_called_once_with(
+            service="service",
+            instance="instance",
+        )
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_stopped(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the status response for stopped state
+        mock_flink_status = mock.Mock()
+        mock_flink_status.status = {"state": "stopped", "pod_status": []}
+        mock_status = mock.Mock()
+        mock_status.flink = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state == "stopped"
+        assert error is None
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_flinkeks(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "flinkeks-pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the status response for flinkeks
+        mock_flink_status = mock.Mock()
+        mock_flink_status.status = {"state": "running", "pod_status": []}
+        mock_status = mock.Mock()
+        mock_status.flink = None
+        mock_status.flinkeks = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+
+        flink_config = FlinkEksDeploymentConfig(
+            "service",
+            "flinkeks-pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state == "running"
+        assert error is None
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_no_client(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_get_client.return_value = None
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert error == "Cannot get a paasta-api client"
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_no_status_attribute(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the status response without status attribute
+        mock_flink_status = mock.Mock(spec=[])  # Empty spec means no attributes
+        mock_status = mock.Mock()
+        mock_status.flink = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert error == "Could not get Flink state from status response"
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_api_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Create a mock API error
+        mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.service.status_instance.side_effect = mock_client.api_error()
+        mock_client.service.status_instance.side_effect.reason = "Not Found"
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert error == "Not Found"
