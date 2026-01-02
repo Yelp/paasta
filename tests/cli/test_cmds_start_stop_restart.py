@@ -1039,7 +1039,7 @@ class TestSetFlinkDesiredState:
 
         assert ret == 1
         out, _ = capfd.readouterr()
-        assert "Cannot get a paasta-api client" in out
+        assert "Cannot get a paasta-api client for service.instance on pnw-devc" in out
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1085,7 +1085,7 @@ class TestSetFlinkDesiredState:
 
         assert ret == 500
         out, _ = capfd.readouterr()
-        assert "Internal Server Error" in out
+        assert "Failed to set service.instance to 'stop': Internal Server Error" in out
 
 
 class TestGetFlinkState:
@@ -1240,7 +1240,9 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert error == "Cannot get a paasta-api client"
+        assert (
+            error == "Cannot get a paasta-api client for service.instance on pnw-devc"
+        )
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1315,4 +1317,329 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert error == "Not Found"
+        assert error == "API error for service.instance: Not Found"
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_malformed_response_key_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        """Test handling of malformed API responses that raise KeyError."""
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Mock a response where accessing status raises KeyError
+        mock_flink_status = mock.Mock()
+        # Use a PropertyMock to raise KeyError when status is accessed
+        type(mock_flink_status).status = mock.PropertyMock(
+            side_effect=KeyError("status not found")
+        )
+        mock_status = mock.Mock()
+        mock_status.flink = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+        # Set up api_error as an exception class
+        mock_client.api_error = type("ApiError", (Exception,), {})
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert "Unexpected response format for service.instance" in error
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_get_flink_state_malformed_response_type_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        """Test handling of malformed API responses that raise TypeError."""
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Set up api_error as a proper exception class
+        mock_client.api_error = type("ApiError", (Exception,), {})
+
+        # Mock a response where .get() raises TypeError (e.g., status is not a dict)
+        mock_flink_status = mock.Mock()
+        mock_flink_status.status = mock.Mock()
+        mock_flink_status.status.get = mock.Mock(side_effect=TypeError("not a dict"))
+        mock_status = mock.Mock()
+        mock_status.flink = mock_flink_status
+        mock_client.service.status_instance.return_value = mock_status
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert "Unexpected response format for service.instance" in error
+
+
+class TestWaitForFlinkStopped:
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.sleep", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.time", autospec=True)
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._get_flink_state", autospec=True
+    )
+    def test_wait_for_flink_stopped_success(
+        self,
+        mock_get_flink_state,
+        mock_time,
+        mock_sleep,
+        capfd,
+    ):
+        """Test successful wait when cluster transitions to stopped."""
+        # Simulate time progression: 0, 10, 20 seconds
+        mock_time.side_effect = [0, 0, 10, 10, 20]
+        # First call returns "running", second call returns "stopped"
+        mock_get_flink_state.side_effect = [
+            ("running", None),
+            ("stopped", None),
+        ]
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        success, message = start_stop_restart._wait_for_flink_stopped(
+            flink_config,
+            system_paasta_config,
+            timeout_seconds=60,
+            poll_interval_seconds=10,
+        )
+
+        assert success is True
+        assert message == "Cluster stopped successfully"
+        # Should have slept once between the two state checks
+        assert mock_sleep.call_count == 1
+
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.sleep", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.time", autospec=True)
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._get_flink_state", autospec=True
+    )
+    def test_wait_for_flink_stopped_case_insensitive(
+        self,
+        mock_get_flink_state,
+        mock_time,
+        mock_sleep,
+        capfd,
+    ):
+        """Test that state comparison is case-insensitive (STOPPED vs stopped)."""
+        # Need enough time values for: start_time, while check, elapsed, state change print
+        mock_time.side_effect = [0, 0, 0, 0]
+        # Return uppercase "STOPPED"
+        mock_get_flink_state.return_value = ("STOPPED", None)
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        success, message = start_stop_restart._wait_for_flink_stopped(
+            flink_config,
+            system_paasta_config,
+            timeout_seconds=60,
+            poll_interval_seconds=10,
+        )
+
+        assert success is True
+        assert message == "Cluster stopped successfully"
+
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.sleep", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.time", autospec=True)
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._get_flink_state", autospec=True
+    )
+    def test_wait_for_flink_stopped_timeout(
+        self,
+        mock_get_flink_state,
+        mock_time,
+        mock_sleep,
+        capfd,
+    ):
+        """Test timeout when cluster doesn't stop in time."""
+        # Simulate time progression past timeout
+        mock_time.side_effect = [0, 0, 10, 10, 100, 100, 700]
+        # Always return "running", never reaches "stopped"
+        mock_get_flink_state.return_value = ("running", None)
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        success, message = start_stop_restart._wait_for_flink_stopped(
+            flink_config,
+            system_paasta_config,
+            timeout_seconds=600,
+            poll_interval_seconds=10,
+        )
+
+        assert success is False
+        assert "Timeout waiting for service.instance on pnw-devc to stop" in message
+
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.sleep", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.time.time", autospec=True)
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._get_flink_state", autospec=True
+    )
+    def test_wait_for_flink_stopped_error_propagation(
+        self,
+        mock_get_flink_state,
+        mock_time,
+        mock_sleep,
+    ):
+        """Test that errors from _get_flink_state are propagated."""
+        mock_time.side_effect = [0, 0]
+        mock_get_flink_state.return_value = (None, "API error occurred")
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        success, message = start_stop_restart._wait_for_flink_stopped(
+            flink_config,
+            system_paasta_config,
+            timeout_seconds=60,
+            poll_interval_seconds=10,
+        )
+
+        assert success is False
+        assert "Error getting state: API error occurred" in message
+
+
+class TestRestartCmdAdditional:
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    )
+    def test_paasta_restart_empty_pargs(
+        self,
+        mock_apply_args_filters,
+        capfd,
+    ):
+        """Test that paasta_restart returns 1 when no instances match filters."""
+        mock_apply_args_filters.return_value = {}
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 1
+        assert "No instances matched the specified filters" in out
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._wait_for_flink_stopped",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart._set_flink_desired_state",
+        autospec=True,
+    )
+    @mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    )
+    def test_flink_restart_wait_timeout(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_set_flink_desired_state,
+        mock_wait_for_flink_stopped,
+        mock_load_system_paasta_config,
+        capfd,
+    ):
+        """Test that restart fails when _wait_for_flink_stopped times out."""
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"flink_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkDeploymentConfig(
+                "service",
+                "cluster",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        # Stop succeeds
+        mock_set_flink_desired_state.return_value = 0
+        # But wait times out
+        mock_wait_for_flink_stopped.return_value = (
+            False,
+            "Timeout waiting for service.flink_instance on cluster to stop",
+        )
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 1
+        assert "Timeout waiting for" in out
+        # Should have called stop but not start
+        assert mock_set_flink_desired_state.call_count == 1
+        mock_set_flink_desired_state.assert_called_once_with(mock.ANY, "stop", mock.ANY)

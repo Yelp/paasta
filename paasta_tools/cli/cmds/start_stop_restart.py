@@ -20,6 +20,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import choice
 
@@ -40,6 +41,10 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
+
+# Type alias for Flink configuration types
+FlinkConfig = Union[FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
 
 def add_subparser(subparsers):
@@ -158,7 +163,7 @@ def print_flink_message(desired_state):
         print("'Start' will tell Flink operator to start the cluster.")
     elif desired_state == "stop":
         print(
-            "'Stop' will put Flink cluster in stopping mode, it may"
+            "'Stop' will put Flink cluster in stopping mode, it may "
             "take some time before shutdown is completed."
         )
 
@@ -170,7 +175,10 @@ def print_flink_restart_message():
     )
 
 
-def _get_paasta_api_client(service_config: FlinkDeploymentConfig, system_paasta_config):
+def _get_paasta_api_client(
+    service_config: FlinkConfig,
+    system_paasta_config: SystemPaastaConfig,
+):
     """Get a paasta API client for a Flink instance."""
     cluster = service_config.cluster
     is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
@@ -182,9 +190,9 @@ def _get_paasta_api_client(service_config: FlinkDeploymentConfig, system_paasta_
 
 
 def _set_flink_desired_state(
-    service_config: FlinkDeploymentConfig,
+    service_config: FlinkConfig,
     desired_state: str,
-    system_paasta_config,
+    system_paasta_config: SystemPaastaConfig,
 ) -> int:
     """Set desired state for a Flink instance via paasta API.
 
@@ -192,10 +200,11 @@ def _set_flink_desired_state(
     """
     service = service_config.service
     instance = service_config.instance
+    cluster = service_config.cluster
 
     client = _get_paasta_api_client(service_config, system_paasta_config)
     if not client:
-        print("Cannot get a paasta-api client")
+        print(f"Cannot get a paasta-api client for {service}.{instance} on {cluster}")
         return 1
 
     try:
@@ -206,13 +215,13 @@ def _set_flink_desired_state(
         )
         return 0
     except client.api_error as exc:
-        print(exc.reason)
+        print(f"Failed to set {service}.{instance} to '{desired_state}': {exc.reason}")
         return exc.status
 
 
 def _get_flink_state(
-    service_config: FlinkDeploymentConfig,
-    system_paasta_config,
+    service_config: FlinkConfig,
+    system_paasta_config: SystemPaastaConfig,
 ) -> Tuple[Optional[str], Optional[str]]:
     """Get the current state of a Flink instance.
 
@@ -220,10 +229,14 @@ def _get_flink_state(
     """
     service = service_config.service
     instance = service_config.instance
+    cluster = service_config.cluster
 
     client = _get_paasta_api_client(service_config, system_paasta_config)
     if not client:
-        return None, "Cannot get a paasta-api client"
+        return (
+            None,
+            f"Cannot get a paasta-api client for {service}.{instance} on {cluster}",
+        )
 
     try:
         status = client.service.status_instance(
@@ -238,14 +251,15 @@ def _get_flink_state(
             return flink_status.status.get("state"), None
         return None, "Could not get Flink state from status response"
     except client.api_error as exc:
-        return None, exc.reason
-    except Exception as exc:
-        return None, str(exc)
+        return None, f"API error for {service}.{instance}: {exc.reason}"
+    except (KeyError, AttributeError, TypeError) as exc:
+        # Handle malformed API responses
+        return None, f"Unexpected response format for {service}.{instance}: {exc}"
 
 
 def _wait_for_flink_stopped(
-    service_config: FlinkDeploymentConfig,
-    system_paasta_config,
+    service_config: FlinkConfig,
+    system_paasta_config: SystemPaastaConfig,
     timeout_seconds: int = 600,
     poll_interval_seconds: int = 10,
 ) -> Tuple[bool, str]:
@@ -425,8 +439,10 @@ def paasta_start_or_stop(args, desired_state):
                 system_paasta_config=system_paasta_config,
             )
             if not client:
-                print("Cannot get a paasta-api client")
-                exit(1)
+                print(
+                    f"Cannot get a paasta-api client for {service}.{instance} on {cluster}"
+                )
+                return 1
 
             try:
                 client.service.instance_set_state(
@@ -435,7 +451,9 @@ def paasta_start_or_stop(args, desired_state):
                     desired_state=desired_state,
                 )
             except client.api_error as exc:
-                print(exc.reason)
+                print(
+                    f"Failed to set {service}.{instance} to '{desired_state}': {exc.reason}"
+                )
                 return exc.status
 
             return_val = 0
@@ -453,7 +471,16 @@ def paasta_start(args):
 
 
 def paasta_restart(args):
+    """Restarts a PaaSTA service.
+
+    For Flink services, performs a graceful stop-wait-start cycle.
+    For other services, delegates to paasta_start.
+    """
     pargs = apply_args_filters(args)
+    if not pargs:
+        print("No instances matched the specified filters.")
+        return 1
+
     soa_dir = args.soa_dir
 
     affected_flinks = []
