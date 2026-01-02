@@ -1087,6 +1087,49 @@ class TestSetFlinkDesiredState:
         out, _ = capfd.readouterr()
         assert "Failed to set service.instance to 'stop': Internal Server Error" in out
 
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
+    def test_set_flink_desired_state_connection_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+        capfd,
+    ):
+        """Test handling of connection/timeout errors."""
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Create mock error types
+        mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.connection_error = type("ConnectionError", (Exception,), {})
+        mock_client.timeout_error = type("TimeoutError", (Exception,), {})
+        mock_client.service.instance_set_state.side_effect = (
+            mock_client.connection_error("Connection refused")
+        )
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        ret = start_stop_restart._set_flink_desired_state(
+            flink_config, "stop", system_paasta_config
+        )
+
+        assert ret == 1
+        out, _ = capfd.readouterr()
+        assert "Connection error setting service.instance to 'stop'" in out
+
 
 class TestGetFlinkState:
     @mock.patch(

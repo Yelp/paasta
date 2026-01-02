@@ -27,6 +27,7 @@ import choice
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
@@ -178,7 +179,7 @@ def print_flink_restart_message():
 def _get_paasta_api_client(
     service_config: FlinkConfig,
     system_paasta_config: SystemPaastaConfig,
-):
+) -> Optional["PaastaOApiClient"]:
     """Get a paasta API client for a Flink instance."""
     cluster = service_config.cluster
     is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
@@ -217,6 +218,11 @@ def _set_flink_desired_state(
     except client.api_error as exc:
         print(f"Failed to set {service}.{instance} to '{desired_state}': {exc.reason}")
         return exc.status
+    except (client.connection_error, client.timeout_error) as exc:
+        print(
+            f"Connection error setting {service}.{instance} to '{desired_state}': {exc}"
+        )
+        return 1
 
 
 def _get_flink_state(
