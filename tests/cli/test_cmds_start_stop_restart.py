@@ -1326,6 +1326,47 @@ class TestGetFlinkState:
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
         autospec=True,
     )
+    def test_get_flink_state_connection_error(
+        self,
+        mock_get_clustername,
+        mock_get_client,
+    ):
+        """Test handling of connection/timeout errors."""
+        mock_get_clustername.return_value = "pnw-devc"
+        mock_client = mock.Mock()
+        mock_get_client.return_value = mock_client
+
+        # Create mock connection and timeout error types
+        mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.connection_error = type("ConnectionError", (Exception,), {})
+        mock_client.timeout_error = type("TimeoutError", (Exception,), {})
+        mock_client.service.status_instance.side_effect = mock_client.connection_error(
+            "Connection refused"
+        )
+
+        flink_config = FlinkDeploymentConfig(
+            "service",
+            "pnw-devc",
+            "instance",
+            FlinkDeploymentConfigDict(),
+            None,
+        )
+        system_paasta_config = mock.Mock()
+
+        state, error = start_stop_restart._get_flink_state(
+            flink_config, system_paasta_config
+        )
+
+        assert state is None
+        assert "Connection error for service.instance" in error
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_api_clustername",
+        autospec=True,
+    )
     def test_get_flink_state_malformed_response_key_error(
         self,
         mock_get_clustername,
@@ -1345,8 +1386,10 @@ class TestGetFlinkState:
         mock_status = mock.Mock()
         mock_status.flink = mock_flink_status
         mock_client.service.status_instance.return_value = mock_status
-        # Set up api_error as an exception class
+        # Set up api_error and network error types as exception classes
         mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.connection_error = type("ConnectionError", (Exception,), {})
+        mock_client.timeout_error = type("TimeoutError", (Exception,), {})
 
         flink_config = FlinkDeploymentConfig(
             "service",
@@ -1381,8 +1424,10 @@ class TestGetFlinkState:
         mock_client = mock.Mock()
         mock_get_client.return_value = mock_client
 
-        # Set up api_error as a proper exception class
+        # Set up api_error and network error types as proper exception classes
         mock_client.api_error = type("ApiError", (Exception,), {})
+        mock_client.connection_error = type("ConnectionError", (Exception,), {})
+        mock_client.timeout_error = type("TimeoutError", (Exception,), {})
 
         # Mock a response where .get() raises TypeError (e.g., status is not a dict)
         mock_flink_status = mock.Mock()

@@ -252,6 +252,8 @@ def _get_flink_state(
         return None, "Could not get Flink state from status response"
     except client.api_error as exc:
         return None, f"API error for {service}.{instance}: {exc.reason}"
+    except (client.connection_error, client.timeout_error) as exc:
+        return None, f"Connection error for {service}.{instance}: {exc}"
     except (KeyError, AttributeError, TypeError) as exc:
         # Handle malformed API responses
         return None, f"Unexpected response format for {service}.{instance}: {exc}"
