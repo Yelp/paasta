@@ -16,7 +16,7 @@ import base64
 import datetime
 import json
 import os
-import shutil
+import re
 import socket
 import subprocess
 import sys
@@ -24,16 +24,22 @@ import tempfile
 import threading
 import time
 import uuid
+from dataclasses import dataclass
 from os import execlpe
 from random import randint
+from typing import cast
+from typing import Dict
+from typing import Mapping
+from typing import NewType
 from typing import Optional
+from typing import TypedDict
+from typing import Union
 from urllib.parse import urlparse
 
 import boto3
 import requests
 from docker import errors
 from docker.api.client import APIClient
-from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
@@ -58,6 +64,7 @@ from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_binary
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
@@ -77,6 +84,12 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
+MAX_DOCKER_HOSTNAME_LENGTH = 63
+
+# A validated, Kubernetes-style hostname. Use _pod_style_hostname() to create.
+PodHostname = NewType("PodHostname", str)
+
+
 class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
@@ -84,16 +97,74 @@ class AWSSessionCreds(TypedDict):
     AWS_SECURITY_TOKEN: str
 
 
+class BaseEnvironment(TypedDict):
+    """Environment variables that local-run always provides."""
+
+    HOSTNAME: str
+    PAASTA_DOCKER_IMAGE: str
+    PAASTA_LAUNCHED_BY: str
+    PAASTA_HOST: str
+    PAASTA_CLUSTER: str
+
+
+class InstanceRequiredEnvironment(TypedDict):
+    """Required environment variables provided by instance_config.get_env()."""
+
+    PAASTA_SERVICE: str
+    PAASTA_INSTANCE: str
+    PAASTA_DEPLOY_GROUP: str
+
+
+class RequiredEnvironment(BaseEnvironment, InstanceRequiredEnvironment):
+    """Required environment variables in the final container environment."""
+
+    pass
+
+
+BASE_ENVIRONMENT_KEYS: frozenset[str] = frozenset(
+    {
+        "HOSTNAME",
+        "PAASTA_DOCKER_IMAGE",
+        "PAASTA_LAUNCHED_BY",
+        "PAASTA_HOST",
+        "PAASTA_CLUSTER",
+    }
+)
+
+
+@dataclass(frozen=True)
+class EnvLayers:
+    """Container environment split into required keys vs everything else.
+
+    TypedDicts can't express "these required keys + arbitrary other keys", so we
+    carry the required mapping separately and merge only at the boundary.
+    """
+
+    required: RequiredEnvironment
+    extras: dict[str, str]
+
+    def to_dict(self) -> dict[str, str]:
+        return {**self.required, **self.extras}
+
+    def with_extras(self, patch: Mapping[str, str]) -> "EnvLayers":
+        forbidden = BASE_ENVIRONMENT_KEYS.intersection(patch)
+        if forbidden:
+            raise ValueError(
+                f"Refusing to overwrite base env keys: {', '.join(sorted(forbidden))}"
+            )
+        updated_extras = dict(self.extras)
+        updated_extras.update(patch)
+        return EnvLayers(required=self.required, extras=updated_extras)
+
+
 def parse_date(date_string):
     return datetime.datetime.strptime(date_string, "%Y-%m-%d")
 
 
 def perform_http_healthcheck(url, timeout):
-    """Returns true if healthcheck on url succeeds, false otherwise
+    """Returns true if healthcheck on url succeeds, false otherwise.
 
-    :param url: the healthcheck url
-    :param timeout: timeout in seconds
-    :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
+    Kubernetes treats HTTP probes as success for 200 <= status < 400.
     """
     try:
         with Timeout(seconds=timeout):
@@ -104,16 +175,7 @@ def perform_http_healthcheck(url, timeout):
     except TimeoutError:
         return (False, "http request timed out after %d seconds" % timeout)
 
-    if "content-type" in res.headers and "," in res.headers["content-type"]:
-        print(
-            PaastaColors.yellow(
-                "Multiple content-type headers detected in response."
-                " The Mesos healthcheck system will treat this as a failure!"
-            )
-        )
-        return (False, "http request succeeded, code %d" % res.status_code)
-    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
-    elif res.status_code >= 200 and res.status_code < 400:
+    if res.status_code >= 200 and res.status_code < 400:
         return (True, "http request succeeded, code %d" % res.status_code)
     else:
         return (False, "http request failed, code %s" % str(res.status_code))
@@ -193,7 +255,7 @@ def simulate_healthcheck_on_service(
     healthcheck_data,
     healthcheck_enabled,
 ):
-    """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
+    """Simulates Kubernetes-style healthcheck locally if enabled.
 
     :param instance_config: service manifest
     :param docker_client: Docker client object
@@ -571,24 +633,42 @@ def get_container_name():
     return "paasta_local_run_{}_{}".format(get_username(), randint(1, 999999))
 
 
+def _pod_style_hostname(candidate: str) -> PodHostname:
+    """Return a validated, Kubernetes-style hostname derived from the container name.
+
+    Raises ValueError if the candidate cannot be converted to a valid hostname.
+    """
+    hostname = candidate.lower()
+    hostname = re.sub("[^a-z0-9-]", "-", hostname)
+    hostname = hostname.strip("-")
+    hostname = hostname[:MAX_DOCKER_HOSTNAME_LENGTH].rstrip("-")
+    if not hostname:
+        raise ValueError(
+            f"Unable to derive a valid hostname from container name '{candidate}'"
+        )
+    return PodHostname(hostname)
+
+
 def get_docker_run_cmd(
-    memory,
-    chosen_port,
-    container_port,
-    container_name,
-    volumes,
-    env,
-    interactive,
-    docker_hash,
-    command,
-    net,
-    docker_params,
-    detach,
-):
-    cmd = ["paasta_docker_wrapper", "run"]
+    memory: int,
+    chosen_port: int,
+    container_port: Optional[int],
+    container_name: str,
+    container_hostname: PodHostname,
+    volumes: list,
+    env: dict,
+    interactive: bool,
+    docker_hash: str,
+    command: Optional[str | list],
+    net: str,
+    docker_params: list,
+    detach: bool,
+) -> list[str]:
+    cmd = [get_docker_binary(), "run"]
     for k in env.keys():
         cmd.append("--env")
         cmd.append(f"{k}")
+    cmd.append(f"--hostname={container_hostname}")
     cmd.append("--memory=%dm" % memory)
     for i in docker_params:
         cmd.append(f"--{i['key']}={i['value']}")
@@ -699,10 +779,7 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
 
 
 def get_container_id(docker_client, container_name):
-    """Use 'docker_client' to find the container we started, identifiable by
-    its 'container_name'. If we can't find the id, raise
-    LostContainerException.
-    """
+    """Return the Docker container ID for the given container name."""
     containers = docker_client.containers(all=False)
     for container in containers:
         if "/%s" % container_name in container.get("Names", []):
@@ -739,25 +816,172 @@ def _cleanup_container(docker_client, container_id):
         )
 
 
-def get_local_run_environment_vars(instance_config, port0, framework):
-    """Returns a dictionary of environment variables to simulate what would be available to
-    a paasta service running in a container"""
+def build_base_environment(
+    instance_config: InstanceConfig, container_hostname: PodHostname
+) -> BaseEnvironment:
+    """Return env vars that local-run provides to simulate a PaaSTA container."""
+
     hostname = socket.getfqdn()
     docker_image = instance_config.get_docker_image()
     if docker_image == "":
-        # In a local_run environment, the docker_image may not be available
-        # so we can fall-back to the injected DOCKER_TAG per the paasta contract
+        # In a local_run environment, the docker_image may not be available so
+        # we can fall-back to the injected DOCKER_TAG per the paasta contract.
         docker_image = os.environ["DOCKER_TAG"]
-    env = {
-        "HOST": hostname,
+
+    env: BaseEnvironment = {
+        "HOSTNAME": container_hostname,
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
         "PAASTA_HOST": hostname,
-        # Kubernetes instances remove PAASTA_CLUSTER, so we need to re-add it ourselves
         "PAASTA_CLUSTER": instance_config.get_cluster(),
     }
-
     return env
+
+
+def build_required_environment(
+    instance_config: InstanceConfig,
+    container_hostname: PodHostname,
+    service: str,
+    instance: str,
+    instance_env: Mapping[str, str],
+) -> RequiredEnvironment:
+    """Return the required env keys in the final container environment."""
+
+    base_env = build_base_environment(
+        instance_config=instance_config, container_hostname=container_hostname
+    )
+
+    deploy_group = instance_env.get("PAASTA_DEPLOY_GROUP")
+    if not deploy_group:
+        deploy_group = str(instance_config.get_deploy_group())
+
+    env: RequiredEnvironment = {
+        **base_env,
+        "PAASTA_SERVICE": service,
+        "PAASTA_INSTANCE": instance,
+        "PAASTA_DEPLOY_GROUP": deploy_group,
+    }
+    return env
+
+
+def build_env_layers(
+    instance_config: InstanceConfig,
+    container_hostname: PodHostname,
+    service: str,
+    instance: str,
+) -> EnvLayers:
+    instance_env = dict(instance_config.get_env())
+    required = build_required_environment(
+        instance_config=instance_config,
+        container_hostname=container_hostname,
+        service=service,
+        instance=instance,
+        instance_env=instance_env,
+    )
+
+    extras = {k: v for k, v in instance_env.items() if k not in BASE_ENVIRONMENT_KEYS}
+    return EnvLayers(required=required, extras=extras)
+
+
+def apply_secret_env_and_volumes(
+    env: EnvLayers,
+    instance_config: InstanceConfig,
+    service: str,
+    soa_dir: str,
+    secret_provider_name: str,
+    secret_provider_kwargs: dict,
+    skip_secrets: bool,
+    assume_role_arn: str,
+    assume_pod_identity: bool,
+    use_okta_role: bool,
+    assume_role_aws_account: Optional[str],
+    use_service_auth_token: bool,
+    use_sso_service_auth_token: bool,
+) -> tuple[EnvLayers, dict[str, Union[str, bytes]]]:
+    """Resolve secrets and other runtime-only env, returning an updated EnvLayers."""
+
+    secret_provider_kwargs = dict(secret_provider_kwargs)
+    secret_env: dict[str, str] = {}
+    secret_volumes: dict[str, Union[str, bytes]] = {}
+
+    if not skip_secrets:
+        if is_secrets_for_teams_enabled(service, soa_dir):
+            try:
+                kube_client = KubeClient(
+                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                )
+                secret_environment = get_kubernetes_secret_env_variables(
+                    kube_client,
+                    env.to_dict(),
+                    service,
+                    instance_config.get_namespace(),
+                )
+                secret_volumes = get_kubernetes_secret_volumes(
+                    kube_client,
+                    instance_config.get_secret_volumes(),
+                    service,
+                    instance_config.get_namespace(),
+                )
+            except Exception as e:
+                print(
+                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
+                )
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        else:
+            try:
+                secret_environment = decrypt_secret_environment_variables(
+                    secret_provider_name=secret_provider_name,
+                    environment=env.to_dict(),
+                    soa_dir=soa_dir,
+                    service_name=instance_config.get_service(),
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+                secret_volumes = decrypt_secret_volumes(
+                    secret_provider_name=secret_provider_name,
+                    secret_volumes_config=instance_config.get_secret_volumes(),
+                    soa_dir=soa_dir,
+                    service_name=instance_config.get_service(),
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+            except Exception as e:
+                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        secret_env = dict(secret_environment)
+
+    aws_env: dict[str, str] = {}
+    if (
+        assume_role_arn
+        or assume_pod_identity
+        or use_okta_role
+        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+    ):
+        aws_creds = assume_aws_role(
+            instance_config,
+            service,
+            assume_role_arn,
+            assume_pod_identity,
+            use_okta_role,
+            assume_role_aws_account,
+        )
+        aws_env = cast(Dict[str, str], aws_creds)
+
+    service_auth_env: dict[str, str] = {}
+    if use_service_auth_token:
+        service_auth_env["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
+    elif use_sso_service_auth_token:
+        service_auth_env["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
+
+    env_patch = {**secret_env, **aws_env, **service_auth_env}
+    updated_env = env.with_extras(env_patch)
+    return updated_env, secret_volumes
 
 
 def check_if_port_free(port):
@@ -933,85 +1157,33 @@ def run_docker_container(
             sys.exit(1)
     else:
         chosen_port = pick_random_port(service)
-    environment = instance_config.get_env()
-    secret_volumes = {}  # type: ignore
-    if not skip_secrets:
-        # if secrets_for_owner_team enabled in yelpsoa for service
-        if is_secrets_for_teams_enabled(service, soa_dir):
-            try:
-                kube_client = KubeClient(
-                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
-                )
-                secret_environment = get_kubernetes_secret_env_variables(
-                    kube_client, environment, service, instance_config.get_namespace()
-                )
-                secret_volumes = get_kubernetes_secret_volumes(
-                    kube_client,
-                    instance_config.get_secret_volumes(),
-                    service,
-                    instance_config.get_namespace(),
-                )
-            except Exception as e:
-                print(
-                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
-                )
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
-                sys.exit(1)
-        else:
-            try:
-                secret_environment = decrypt_secret_environment_variables(
-                    secret_provider_name=secret_provider_name,
-                    environment=environment,
-                    soa_dir=soa_dir,
-                    service_name=instance_config.get_service(),
-                    cluster_name=instance_config.cluster,
-                    secret_provider_kwargs=secret_provider_kwargs,
-                )
-                secret_volumes = decrypt_secret_volumes(
-                    secret_provider_name=secret_provider_name,
-                    secret_volumes_config=instance_config.get_secret_volumes(),
-                    soa_dir=soa_dir,
-                    service_name=instance_config.get_service(),
-                    cluster_name=instance_config.cluster,
-                    secret_provider_kwargs=secret_provider_kwargs,
-                )
-            except Exception as e:
-                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
-                sys.exit(1)
-        environment.update(secret_environment)
-    if (
-        assume_role_arn
-        or assume_pod_identity
-        or use_okta_role
-        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
-    ):
-        aws_creds = assume_aws_role(
-            instance_config,
-            service,
-            assume_role_arn,
-            assume_pod_identity,
-            use_okta_role,
-            assume_role_aws_account,
-        )
-        environment.update(aws_creds)
 
-    if use_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
-    elif use_sso_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
-
-    local_run_environment = get_local_run_environment_vars(
-        instance_config=instance_config, port0=chosen_port, framework=framework
+    container_name = get_container_name()
+    container_hostname = _pod_style_hostname(container_name)
+    env = build_env_layers(
+        instance_config=instance_config,
+        container_hostname=container_hostname,
+        service=service,
+        instance=instance,
     )
-    environment.update(local_run_environment)
+    env_after_secrets, secret_volumes = apply_secret_env_and_volumes(
+        instance_config=instance_config,
+        env=env,
+        service=service,
+        soa_dir=soa_dir,
+        secret_provider_name=secret_provider_name,
+        secret_provider_kwargs=secret_provider_kwargs,
+        skip_secrets=skip_secrets,
+        assume_role_arn=assume_role_arn,
+        assume_pod_identity=assume_pod_identity,
+        use_okta_role=use_okta_role,
+        assume_role_aws_account=assume_role_aws_account,
+        use_service_auth_token=use_service_auth_token,
+        use_sso_service_auth_token=use_sso_service_auth_token,
+    )
+    environment = env_after_secrets.to_dict()
     net = instance_config.get_net()
     memory = instance_config.get_mem()
-    container_name = get_container_name()
     docker_params = instance_config.format_docker_parameters()
 
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
@@ -1059,6 +1231,7 @@ def run_docker_container(
         chosen_port=chosen_port,
         container_port=container_port,
         container_name=container_name,
+        container_hostname=container_hostname,
         volumes=volumes,
         env=environment,
         interactive=interactive,
@@ -1082,14 +1255,19 @@ def run_docker_container(
 
     merged_env = {**os.environ, **environment}
 
+    print("Container environment variables:")
+    for k, v in sorted(environment.items()):
+        # Truncate long values and mask potential secrets
+        display_v = v if len(v) <= 60 else v[:57] + "..."
+        if any(
+            secret in k.upper()
+            for secret in ("SECRET", "TOKEN", "PASSWORD", "KEY", "CRED")
+        ):
+            display_v = "***REDACTED***"
+        print(f"  {k}={display_v}")
+
     if interactive or not simulate_healthcheck:
-        # NOTE: This immediately replaces us with the docker run cmd. Docker
-        # run knows how to clean up the running container in this situation.
-        wrapper_path = shutil.which("paasta_docker_wrapper")
-        # To properly simulate mesos, we pop the PATH, which is not available to
-        # The executor
-        merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        execlpe(get_docker_binary(), *docker_run_cmd, merged_env)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
@@ -1173,10 +1351,7 @@ def run_docker_container(
 
 
 def format_command_for_type(command, instance_type, date):
-    """
-    Given an instance_type, return a function that appropriately formats
-    the command to be run.
-    """
+    """Return the command formatted appropriately for the instance type."""
     if instance_type == "tron":
         interpolated_command = parse_time_variables(command, date)
         return interpolated_command
@@ -1197,10 +1372,6 @@ def configure_and_run_docker_container(
     pull_image=False,
     dry_run=False,
 ):
-    """
-    Run Docker container by image hash with args set in command line.
-    Function prints the output of run command in stdout.
-    """
 
     if instance is None and args.healthcheck_only:
         print("With --healthcheck-only, --instance MUST be provided!", file=sys.stderr)

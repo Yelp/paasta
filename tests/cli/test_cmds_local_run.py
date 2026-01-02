@@ -24,18 +24,19 @@ from pytest import raises
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
 from paasta_tools.cli.cmds.local_run import assume_aws_role
+from paasta_tools.cli.cmds.local_run import build_base_environment
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import format_command_for_type
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
-from paasta_tools.cli.cmds.local_run import get_local_run_environment_vars
 from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import paasta_local_run
 from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
 from paasta_tools.cli.cmds.local_run import perform_http_healthcheck
 from paasta_tools.cli.cmds.local_run import perform_tcp_healthcheck
+from paasta_tools.cli.cmds.local_run import PodHostname
 from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
@@ -46,13 +47,27 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@pytest.fixture(autouse=True)
+def mock_get_docker_binary():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_binary",
+        autospec=True,
+        return_value="docker",
+    ) as m:
+        yield m
+
+
 @mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
 def test_dry_run(
+    mock_pick_random_port,
+    mock_get_docker_client,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -62,6 +77,8 @@ def test_dry_run(
     capfd,
     system_paasta_config,
 ):
+    mock_pick_random_port.return_value = 9876
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_validate_service_instance.return_value = "marathon"
     mock_paasta_cook_image.return_value = 0
@@ -96,7 +113,11 @@ def test_dry_run(
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
 def test_dry_run_json_dict(
+    mock_pick_random_port,
+    mock_get_docker_client,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -106,6 +127,8 @@ def test_dry_run_json_dict(
     capfd,
     system_paasta_config,
 ):
+    mock_pick_random_port.return_value = 9876
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
     mock_get_instance_config.return_value.get_env.return_value = {}
@@ -167,20 +190,22 @@ def test_perform_cmd_healthcheck_success(mock_exec_container):
     )
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_success(mock_socket_connect):
+@mock.patch("paasta_tools.cli.cmds.local_run.socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_success(mock_socket):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 0
+    mock_socket_instance = mock_socket.return_value
+    mock_socket_instance.connect_ex.return_value = 0
     assert perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
-    mock_socket_connect.assert_called_with(("fakehost", 1234))
+    mock_socket_instance.connect_ex.assert_called_with(("fakehost", 1234))
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
-def test_perform_tcp_healthcheck_failure(mock_socket_connect):
+@mock.patch("paasta_tools.cli.cmds.local_run.socket.socket", autospec=True)
+def test_perform_tcp_healthcheck_failure(mock_socket):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
-    mock_socket_connect.return_value = 1
+    mock_socket_instance = mock_socket.return_value
+    mock_socket_instance.connect_ex.return_value = 1
     actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
     assert actual[0] is False
     assert "timeout" in actual[1]
@@ -243,8 +268,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
         headers={"content-type": "fake_content_type_1, fake_content_type_2"},
     )
     actual = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert actual[0] is False
-    assert "200" in actual[1]
+    assert actual == (True, "http request succeeded, code 200")
     mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
@@ -817,7 +841,9 @@ def test_run_success(
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
 )
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_client", autospec=True)
 def test_assume_role_aws_account(
+    mock_get_docker_client,
     mock_run_docker_container,
     mock_validate_service_name,
     mock_figure_out_service_name,
@@ -829,6 +855,7 @@ def test_assume_role_aws_account(
     system_paasta_config,
 ):
     mock_system_paasta_config.return_value = system_paasta_config
+    mock_get_docker_client.return_value = mock.MagicMock(spec_set=docker.APIClient)
     mock_should_reexec_as_root.return_value = False
 
     args = mock.MagicMock()
@@ -879,19 +906,21 @@ def test_get_docker_run_cmd_without_additional_args():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = None
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -901,9 +930,9 @@ def test_get_docker_run_cmd_without_additional_args():
         docker_params,
         detach,
     )
-    # Since we can't assert that the command isn't present in the output, we do
-    # the next best thing and check that the docker hash is the last thing in
-    # the docker run command (the command would have to be after it if it existed)
+    assert actual[0] == "docker"
+    hostname_args = [arg for arg in actual if arg.startswith("--hostname=")]
+    assert hostname_args == [f"--hostname={container_hostname}"]
     assert actual[-1] == docker_url
 
 
@@ -912,19 +941,21 @@ def test_get_docker_run_cmd_with_env_vars():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
     env = {"foo": "bar", "baz": "qux", "x": " with spaces"}
     interactive = False
     docker_url = "8" * 40
     command = None
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -943,19 +974,21 @@ def test_get_docker_run_cmd_interactive_false():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -980,19 +1013,21 @@ def test_get_docker_run_cmd_interactive_true():
     chosen_port = 666
     container_port = 8888
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = False
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1011,13 +1046,14 @@ def test_get_docker_run_docker_params():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = False
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
-    docker_params = [
+    docker_params: list[dict[str, str]] = [
         {"key": "memory-swap", "value": "%sm" % memory},
         {"key": "cpu-period", "value": "200000"},
         {"key": "cpu-quota", "value": "150000"},
@@ -1028,6 +1064,7 @@ def test_get_docker_run_docker_params():
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1047,19 +1084,21 @@ def test_get_docker_run_cmd_host_networking():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1078,19 +1117,21 @@ def test_get_docker_run_cmd_quote_cmd():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = "make test"
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1109,19 +1150,21 @@ def test_get_docker_run_cmd_quote_list():
     container_port = 8888
     chosen_port = 666
     container_name = "Docker" * 6 + "Doc"
+    container_hostname = PodHostname("docker-doc")
     volumes = ["7_Brides_for_7_Brothers", "7-Up", "7-11"]
-    env = {}
+    env: dict[str, str] = {}
     interactive = True
     docker_url = "8" * 40
     command = ["zsh", "-c", "make test"]
     net = "host"
-    docker_params = []
+    docker_params: list[dict[str, str]] = []
     detach = True
     actual = get_docker_run_cmd(
         memory,
         chosen_port,
         container_port,
         container_name,
+        container_hostname,
         volumes,
         env,
         interactive,
@@ -1197,6 +1240,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     }
     mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
+    mock_service_manifest.get_env.return_value = {}
     run_docker_container(
         docker_client=mock_docker_client,
         service="fake_service",
@@ -1926,7 +1970,7 @@ def test_format_command_for_tron(mock_datetime, mock_parse_time_variables):
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_kubernetes(
+def test_build_base_environment_kubernetes(
     mock_getfqdn,
 ):
     mock_instance_config = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
@@ -1936,10 +1980,12 @@ def test_get_local_run_environment_vars_kubernetes(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="not-marathon"
+    actual = build_base_environment(
+        instance_config=mock_instance_config, container_hostname=PodHostname("fake-pod")
     )
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
+    assert actual["PAASTA_HOST"] == "fake_host"
     assert "MARATHON_PORT" not in actual
 
 
@@ -1948,7 +1994,7 @@ def test_get_local_run_environment_vars_kubernetes(
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_adhoc(
+def test_build_base_environment_adhoc(
     mock_getfqdn,
 ):
     mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
@@ -1958,11 +2004,12 @@ def test_get_local_run_environment_vars_adhoc(
     mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="adhoc"
+    actual = build_base_environment(
+        instance_config=mock_instance_config, container_hostname=PodHostname("fake-pod")
     )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
     assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert actual["HOSTNAME"] == "fake-pod"
     assert "PAASTA_PORT" not in actual
 
 
@@ -2167,11 +2214,9 @@ def test_run_docker_container_assume_aws_role(
 
     _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
     environment = the_kwargs["env"]
-    assert 3 == environment.update.call_count
-    assert {
-        "access_key": "abcdefg",
-        "secret_key": "abcdefg",
-    } == environment.update.call_args_list[1][0][0]
+    assert environment["access_key"] == "abcdefg"
+    assert environment["secret_key"] == "abcdefg"
+    assert "PAASTA_HOST" in environment
     assert 0 == return_code
 
 
@@ -2663,7 +2708,7 @@ def test_assume_aws_role_with_web_identity(
     os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
     os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
 
-    env = assume_aws_role(mock_config, mock_service, False, False, False, "dev")
+    env = assume_aws_role(mock_config, mock_service, "", False, False, "dev")
 
     os.environ.pop("AWS_ROLE_ARN")
     os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")
