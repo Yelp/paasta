@@ -1323,7 +1323,7 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert error == "Could not get Flink state from status response"
+        assert error == "Could not get Flink state for service.instance on pnw-devc"
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1360,7 +1360,7 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert error == "API error for service.instance: Not Found"
+        assert error == "API error for service.instance on pnw-devc: Not Found"
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1401,7 +1401,7 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert "Connection error for service.instance" in error
+        assert "Connection error for service.instance on pnw-devc" in error
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1448,7 +1448,7 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert "Unexpected response format for service.instance" in error
+        assert "Unexpected response format for service.instance on pnw-devc" in error
 
     @mock.patch(
         "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
@@ -1494,7 +1494,7 @@ class TestGetFlinkState:
         )
 
         assert state is None
-        assert "Unexpected response format for service.instance" in error
+        assert "Unexpected response format for service.instance on pnw-devc" in error
 
 
 class TestWaitForFlinkStopped:

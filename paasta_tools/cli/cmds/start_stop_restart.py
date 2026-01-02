@@ -255,14 +255,17 @@ def _get_flink_state(
         )
         if flink_status and hasattr(flink_status, "status"):
             return flink_status.status.get("state"), None
-        return None, "Could not get Flink state from status response"
+        return None, f"Could not get Flink state for {service}.{instance} on {cluster}"
     except client.api_error as exc:
-        return None, f"API error for {service}.{instance}: {exc.reason}"
+        return None, f"API error for {service}.{instance} on {cluster}: {exc.reason}"
     except (client.connection_error, client.timeout_error) as exc:
-        return None, f"Connection error for {service}.{instance}: {exc}"
+        return None, f"Connection error for {service}.{instance} on {cluster}: {exc}"
     except (KeyError, AttributeError, TypeError) as exc:
         # Handle malformed API responses
-        return None, f"Unexpected response format for {service}.{instance}: {exc}"
+        return (
+            None,
+            f"Unexpected response format for {service}.{instance} on {cluster}: {exc}",
+        )
 
 
 def _wait_for_flink_stopped(
@@ -463,6 +466,11 @@ def paasta_start_or_stop(args, desired_state):
                     f"Failed to set {service}.{instance} to '{desired_state}': {exc.reason}"
                 )
                 return exc.status
+            except (client.connection_error, client.timeout_error) as exc:
+                print(
+                    f"Connection error setting {service}.{instance} to '{desired_state}': {exc}"
+                )
+                return 1
 
             return_val = 0
 
