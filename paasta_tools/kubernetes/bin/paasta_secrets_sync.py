@@ -32,7 +32,10 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import boto3
+from botocore.exceptions import ClientError
 from kubernetes.client.rest import ApiException
+from typing_extensions import Any
 from typing_extensions import Literal
 
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -42,6 +45,8 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
+from paasta_tools.kubernetes_tools import get_ssm_secret_name
+from paasta_tools.kubernetes_tools import get_ssm_secret_signature_name
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -115,6 +120,7 @@ def parse_args() -> argparse.Namespace:
         choices=[
             "all",
             "paasta-secret",
+            "ssm-secret",
             "boto-key",
             "crypto-key",
             "datastore-credentials",
@@ -316,7 +322,12 @@ def sync_all_secrets(
     soa_dir: str,
     vault_token_file: str,
     secret_type: Literal[
-        "all", "paasta-secret", "crypto-key", "boto-key", "datastore-credentials"
+        "all",
+        "paasta-secret",
+        "ssm-secret",
+        "crypto-key",
+        "boto-key",
+        "datastore-credentials",
     ] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
@@ -350,6 +361,17 @@ def sync_all_secrets(
                     secret_allowlist=secret_allowlist,
                 )
             )
+            sync_service_secrets["ssm-secret"].append(
+                partial(
+                    sync_ssm_secrets,
+                    kube_client=kube_client,
+                    cluster=cluster,
+                    service=service,
+                    soa_dir=soa_dir,
+                    namespace=namespace,
+                )
+            )
+
         sync_service_secrets["boto-key"].append(
             partial(
                 sync_boto_secrets,
@@ -390,6 +412,7 @@ def sync_all_secrets(
             results.append(
                 all(sync() for sync in sync_service_secrets["paasta-secret"])
             )
+            results.append(all(sync() for sync in sync_service_secrets["ssm-secret"]))
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
             # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
@@ -465,6 +488,97 @@ def sync_secrets(
                         secret_signature=secret_signature,
                         kube_client=kube_client,
                         namespace=namespace,
+                    )
+
+    return True
+
+
+def sync_ssm_secrets(
+    kube_client: KubeClient,
+    cluster: str,
+    service: str,
+    soa_dir: str,
+    namespace: str,
+) -> bool:
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    sts_client = boto3.client("sts")
+
+    # Cache key is (role_arn, region) to avoid cross-region collisions
+    ssm_clients: Dict[Tuple[Optional[str], str], Any] = {}
+
+    for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=instance_type_class
+        ):
+            ssm_secrets = instance_config.config_dict.get("ssm_secrets", [])
+            if not ssm_secrets:
+                continue
+
+            for ssm_secret in ssm_secrets:
+                source = ssm_secret.get("source")
+                key = ssm_secret.get("secret_name")
+                role_arn = ssm_secret.get("assume_role_arn")
+
+                if not source or not key or not role_arn:
+                    log.warning(
+                        f"Invalid ssm_secret config in {service}. "
+                        "Missing source, key, or role_arn"
+                    )
+                    continue
+
+                try:
+                    aws_region = source.split(":")[3]
+                except IndexError:
+                    log.warning(
+                        f"Unable to determine source region in {service}: {source}"
+                    )
+                    continue
+
+                client_key = (role_arn, aws_region)
+                client = ssm_clients.get(client_key)
+                if not client:
+                    try:
+                        assumed_role = sts_client.assume_role(
+                            RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
+                        )
+                        creds = assumed_role["Credentials"]
+                        client = boto3.client(
+                            "ssm",
+                            aws_access_key_id=creds["AccessKeyId"],
+                            aws_secret_access_key=creds["SecretAccessKey"],
+                            aws_session_token=creds["SessionToken"],
+                            region_name=aws_region,
+                        )
+                        ssm_clients[client_key] = client
+                    except ClientError as e:
+                        log.warning(
+                            f"Failed to assume role {role_arn} for {service}: {e}"
+                        )
+                        continue
+
+                try:
+                    response = client.get_parameter(Name=source, WithDecryption=True)
+                    value = response["Parameter"]["Value"]
+                    secret_value = base64.b64encode(value.encode("utf-8")).decode(
+                        "utf-8"
+                    )
+
+                    create_or_update_k8s_secret(
+                        service=service,
+                        signature_name=get_ssm_secret_signature_name(
+                            namespace, service, sanitise_kubernetes_name(key)
+                        ),
+                        secret_name=get_ssm_secret_name(
+                            namespace, service, sanitise_kubernetes_name(key)
+                        ),
+                        get_secret_data=(lambda: {key: secret_value}),
+                        secret_signature=_get_dict_signature({key: secret_value}),
+                        kube_client=kube_client,
+                        namespace=namespace,
+                    )
+                except ClientError as e:
+                    log.warning(
+                        f"Failed to fetch SSM parameter {source} for {service}: {e}"
                     )
 
     return True
