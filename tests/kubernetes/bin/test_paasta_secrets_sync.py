@@ -1384,6 +1384,83 @@ def test_ssm_secrets_exists_but_no_signature(ssm_secrets_patches):
     assert not mock_update_kubernetes_secret_signature.called
 
 
+def test_ssm_secrets_default_instance_role(ssm_secrets_patches):
+    (
+        mock_boto3,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = ssm_secrets_patches
+
+    # omit assume_role_arn
+    config_dict = {
+        "ssm_secrets": [
+            {
+                "source": "arn:aws:ssm:us-west-2:123:parameter/my-secret",
+                "secret_name": "my-secret-env",
+            }
+        ]
+    }
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_config_loader_instances.return_value = [deployment]
+
+    mock_sts_client = mock.Mock()
+    mock_ssm_client = mock.Mock()
+
+    def boto_side_effect(service, **kwargs):
+        if service == "sts":
+            return mock_sts_client
+        if service == "ssm":
+            return mock_ssm_client
+        return mock.Mock()
+
+    mock_boto3.client.side_effect = boto_side_effect
+
+    mock_ssm_client.get_parameter.return_value = {
+        "Parameter": {"Value": "super-secret-value"}
+    }
+
+    mock_get_kubernetes_secret_signature.return_value = None
+
+    sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="mega-cluster",
+        service="my-service",
+        soa_dir="/nail/blah",
+        namespace="paasta",
+    )
+
+    # Ensure STS Assume Role was NOT called
+    assert not mock_sts_client.assume_role.called
+
+    # Ensure SSM client was created WITHOUT manual credentials
+    ssm_init_calls = [
+        call for call in mock_boto3.client.call_args_list if call[0][0] == "ssm"
+    ]
+    assert len(ssm_init_calls) == 1
+    _, kwargs = ssm_init_calls[0]
+
+    assert kwargs["region_name"] == "us-west-2"
+    assert "aws_access_key_id" not in kwargs
+    assert "aws_secret_access_key" not in kwargs
+
+    expected_secret_data = {"my-secret-env": "c3VwZXItc2VjcmV0LXZhbHVl"}
+    assert mock_create_secret.called
+    call_args = mock_create_secret.call_args_list[0][1]
+    assert call_args["secret_data"] == expected_secret_data
+
+
 def test_ssm_secrets_secret_aws_exception(ssm_secrets_patches):
     (
         mock_boto3,

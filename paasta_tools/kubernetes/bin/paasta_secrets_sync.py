@@ -504,6 +504,7 @@ def sync_ssm_secrets(
     sts_client = boto3.client("sts")
 
     # Cache key is (role_arn, region) to avoid cross-region collisions
+    # role_arn will be None if using the default instance role
     ssm_clients: Dict[Tuple[Optional[str], str], Any] = {}
 
     for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
@@ -519,10 +520,9 @@ def sync_ssm_secrets(
                 key = ssm_secret.get("secret_name")
                 role_arn = ssm_secret.get("assume_role_arn")
 
-                if not source or not key or not role_arn:
+                if not source or not key:
                     log.warning(
-                        f"Invalid ssm_secret config in {service}. "
-                        "Missing source, key, or role_arn"
+                        f"Invalid ssm_secret config in {service}. Missing source or key"
                     )
                     continue
 
@@ -536,23 +536,29 @@ def sync_ssm_secrets(
 
                 client_key = (role_arn, aws_region)
                 client = ssm_clients.get(client_key)
+
                 if not client:
                     try:
-                        assumed_role = sts_client.assume_role(
-                            RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
-                        )
-                        creds = assumed_role["Credentials"]
-                        client = boto3.client(
-                            "ssm",
-                            aws_access_key_id=creds["AccessKeyId"],
-                            aws_secret_access_key=creds["SecretAccessKey"],
-                            aws_session_token=creds["SessionToken"],
-                            region_name=aws_region,
-                        )
+                        if role_arn:
+                            assumed_role = sts_client.assume_role(
+                                RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
+                            )
+                            creds = assumed_role["Credentials"]
+                            client = boto3.client(
+                                "ssm",
+                                aws_access_key_id=creds["AccessKeyId"],
+                                aws_secret_access_key=creds["SecretAccessKey"],
+                                aws_session_token=creds["SessionToken"],
+                                region_name=aws_region,
+                            )
+                        else:
+                            # Use default credentials
+                            client = boto3.client("ssm", region_name=aws_region)
+
                         ssm_clients[client_key] = client
                     except ClientError as e:
                         log.warning(
-                            f"Failed to assume role {role_arn} for {service}: {e}"
+                            f"Failed to initialize SSM client (Role: {role_arn}) for {service}: {e}"
                         )
                         continue
 
