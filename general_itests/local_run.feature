@@ -6,6 +6,7 @@ Feature: paasta local-run can be used
      When we run paasta local-run on a Kubernetes service in non-interactive mode with environment variable "FOO" set to "BAR"
      Then it should have a return code of "42"
       And we should see the environment variable "FOO" with the value "BAR" in the output
+      And all PaaSTA contract env vars should be present
 
   Scenario: Running paasta local-run against an adhoc job
      Given Docker is available

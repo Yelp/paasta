@@ -18,6 +18,7 @@ from behave import then
 from behave import when
 from path import Path
 
+from paasta_tools.cli.cmds.local_run import RequiredEnvironment
 from paasta_tools.utils import _run
 
 
@@ -40,6 +41,9 @@ def non_interactive_local_run(context, var, val):
         # container dies before it gets a chance to lookup the containerid
         # (which causes jenkins flakes) The sleep can be removed once local-run
         # understands that containers can die quickly.
+        #
+        # We dump the full environment via /proc/self/environ so we can verify
+        # all contract env vars are present.
         localrun_cmd = (
             "paasta local-run "
             "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
@@ -47,8 +51,7 @@ def non_interactive_local_run(context, var, val):
             "--cluster test-cluster "
             "--instance main "
             "--build "
-            """--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' """
-            % (var, var)
+            """--cmd '/bin/sh -c "cat /proc/self/environ | tr \\"\\\\0\\" \\"\\\\n\\" && sleep 2s && exit 42"' """
         )
         context.return_code, context.output = _run(command=localrun_cmd, timeout=90)
 
@@ -58,6 +61,13 @@ def non_interactive_local_run(context, var, val):
 )
 def env_var_in_output(context, var, val):
     assert f"{var}={val}" in context.output
+
+
+@then("all PaaSTA contract env vars should be present")
+def all_contract_env_vars_present(context):
+    """Verify all RequiredEnvironment keys have non-empty values in the output."""
+    for key in RequiredEnvironment.__required_keys__:
+        assert f"{key}=" in context.output, f"Missing contract env var: {key}"
 
 
 @when("we run paasta local-run on an interactive job")
