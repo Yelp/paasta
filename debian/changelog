@@ -1,3 +1,11 @@
+paasta-tools (1.36.6) xenial; urgency=medium
+
+  * 1.36.6 tagged with 'make release'
+    Commit: Merge pull request #4191 from Yelp/joycek/latency-alerting
+    Add new smartstack fields for latency alerting
+
+ -- Joyce Kung <joycek@10-40-30-138-uswest1cdevc.dev.yelpcorp.com>  Wed, 07 Jan 2026 12:36:52 -0800
+
 paasta-tools (1.36.5) xenial; urgency=medium
 
   * 1.36.5 tagged with 'make release'
