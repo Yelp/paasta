@@ -1,3 +1,11 @@
+paasta-tools (1.36.4) xenial; urgency=medium
+
+  * 1.36.4 tagged with 'make release'
+    Commit: spark-run: add warning message when using pod-identity
+    without service name (#4188)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 07 Jan 2026 07:06:40 -0800
+
 paasta-tools (1.36.3) xenial; urgency=medium
 
   * 1.36.3 tagged with 'make release'
