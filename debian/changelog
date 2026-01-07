@@ -1,3 +1,12 @@
+paasta-tools (1.36.5) xenial; urgency=medium
+
+  * 1.36.5 tagged with 'make release'
+    Commit: Bump vault-tools version (#4189)  We"ve deleted an internal
+    ecosystem, and this will stop that ecosystem name from showing up in
+    paasta secret files
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 07 Jan 2026 10:30:32 -0800
+
 paasta-tools (1.36.4) xenial; urgency=medium
 
   * 1.36.4 tagged with 'make release'
