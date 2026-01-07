@@ -40,7 +40,6 @@ try:
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
-from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
@@ -105,7 +104,6 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
     "spark": "tron",
 }
 DEFAULT_TZ = "US/Pacific"
-clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
 DEFAULT_SPARK_EXECUTOR_POOL = "batch"
 
