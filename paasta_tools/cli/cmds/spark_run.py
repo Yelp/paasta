@@ -1319,14 +1319,18 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-
+            if not args.service or args.service == DEFAULT_SPARK_SERVICE:
+                print(
+                    "--service was not specified, this may prevent correctly matching allowed IAM roles",
+                    file=sys.stderr,
+                )
             allowed_iam_roles = get_all_iam_roles_for_service(
                 args.service, args.cluster
             )
             if args.force_pod_identity not in allowed_iam_roles:
                 print(
                     f"{args.force_pod_identity} is not an allowed role for this service. "
-                    f"Allowed roles are: {allowed_iam_roles}.",
+                    f"Allowed roles for {args.service} in {args.cluster} are: {allowed_iam_roles}.",
                     file=sys.stderr,
                 )
                 return 1
