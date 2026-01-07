@@ -29,7 +29,7 @@ def given_simple_service(context):
 
 
 @when(
-    "we run paasta local-run on a Marathon service in non-interactive mode "
+    "we run paasta local-run on a Kubernetes service in non-interactive mode "
     'with environment variable "{var}" set to "{val}"'
 )
 def non_interactive_local_run(context, var, val):
