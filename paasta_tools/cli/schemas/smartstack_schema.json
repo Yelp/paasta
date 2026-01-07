@@ -272,6 +272,10 @@
                         "type": "number",
                         "minimum": 0
                     },
+                    "latency_threshold_ms": {
+                        "type": "number",
+                        "minimum": 0
+                    },
                     "default_endpoint_alerting": {
                         "type": "boolean"
                     },
@@ -298,6 +302,10 @@
                                     "maximum": 1
                                 },
                                 "minimum_error_rps": {
+                                    "type": "number",
+                                    "minimum": 0
+                                },
+                                "latency_threshold_ms": {
                                     "type": "number",
                                     "minimum": 0
                                 },
