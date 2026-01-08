@@ -13,6 +13,8 @@
 # limitations under the License.
 from unittest import mock
 
+import pytest
+
 import paasta_tools.flink_tools as flink_tools
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
@@ -730,6 +732,19 @@ class TestGetFlinkInstanceDetails:
         assert result["pool"] == "flink-reserved"
         assert result["team"] == "override-team"
         assert result["runbook"] == "y/rb-override"
+
+    def test_get_instance_details_raises_when_config_sha_missing(self):
+        """Test that ValueError is raised when config_sha label is missing."""
+        metadata = {
+            "labels": {},  # No config_sha
+            "annotations": {},
+        }
+        instance_config = mock.Mock(autospec=True)
+
+        with pytest.raises(ValueError, match="expected config sha"):
+            flink_tools.get_flink_instance_details(
+                metadata, None, instance_config, "test-service"
+            )
 
 
 class TestFormatFlinkInstanceHeader:
