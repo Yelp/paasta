@@ -624,9 +624,10 @@ def collect_flink_job_details(
     pod_other_count = 0
 
     for pod in status.get("pod_status", []):
-        if pod["phase"] == "Running":
+        phase = pod.get("phase")
+        if phase == "Running":
             pod_running_count += 1
-        elif pod["phase"] == "Failed" and pod.get("reason") == "Evicted":
+        elif phase == "Failed" and pod.get("reason") == "Evicted":
             pod_evicted_count += 1
         else:
             pod_other_count += 1
