@@ -2547,7 +2547,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink config:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2577,7 +2577,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink overview:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2606,7 +2606,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink jobs:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2641,7 +2641,7 @@ class TestPrintFlinkStatus:
         assert return_value == 1
 
         # and output that an error has occurred
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink jobs:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)

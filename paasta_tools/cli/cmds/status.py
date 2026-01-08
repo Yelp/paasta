@@ -804,9 +804,21 @@ def _print_flink_status_from_job_manager(
             flink_config = get_flink_config_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
+        except Exception as e:
+            output.append(PaastaColors.red("Exception getting Flink config:"))
+            output.append(str(e))
+            return 1
+
+        try:
             overview = get_flink_overview_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
+        except Exception as e:
+            output.append(PaastaColors.red("Exception getting Flink overview:"))
+            output.append(str(e))
+            return 1
+
+        try:
             flink_jobs = get_flink_jobs_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
@@ -815,7 +827,7 @@ def _print_flink_status_from_job_manager(
                 get_flink_job_details, service, instance, job_ids, client
             )
         except Exception as e:
-            output.append(PaastaColors.red("Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception getting Flink jobs:"))
             output.append(str(e))
             return 1
 
