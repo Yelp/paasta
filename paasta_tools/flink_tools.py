@@ -497,7 +497,7 @@ def format_flink_instance_header(
 def format_flink_instance_metadata(
     details: FlinkInstanceDetails, service: str
 ) -> List[str]:
-    """Format verbose instance metadata (repo links, pool, owner, runbook).
+    """Format verbose instance metadata.
 
     :param details: Instance details from get_flink_instance_details()
     :param service: Service name
