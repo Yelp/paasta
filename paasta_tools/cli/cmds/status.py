@@ -787,6 +787,10 @@ def _print_flink_status_from_job_manager(
         return 1
 
     metadata = flink.get("metadata")
+    if metadata is None:
+        output.append(PaastaColors.red("    Flink cluster metadata is not available"))
+        return 1
+
     ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
 
     # Get flink config, overview, and jobs
