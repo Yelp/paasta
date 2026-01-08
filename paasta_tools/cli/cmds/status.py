@@ -847,9 +847,7 @@ def _print_flink_status_from_job_manager(
         output.extend(
             flink_tools.format_flink_instance_metadata(instance_details, service)
         )
-        output.extend(
-            flink_tools.format_flink_config_links(service, instance, ecosystem)
-        )
+        output.extend(flink_tools.format_flink_config_links(service, ecosystem))
         output.append(OUTPUT_HORIZONTAL_RULE)
         output.extend(flink_tools.format_flink_log_commands(service, instance, cluster))
         output.append(OUTPUT_HORIZONTAL_RULE)

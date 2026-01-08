@@ -522,11 +522,10 @@ def format_flink_instance_metadata(
     return output
 
 
-def format_flink_config_links(service: str, instance: str, ecosystem: str) -> List[str]:
+def format_flink_config_links(service: str, ecosystem: str) -> List[str]:
     """Format configuration repository links.
 
     :param service: Service name
-    :param instance: Instance name
     :param ecosystem: Ecosystem (prod, devc, etc.)
     :returns: List of formatted strings
     """

@@ -888,9 +888,7 @@ class TestFormatFlinkConfigLinks:
 
     def test_format_config_links(self):
         """Test formatting configuration repository links."""
-        output = flink_tools.format_flink_config_links(
-            "my-service", "main-instance", "prod"
-        )
+        output = flink_tools.format_flink_config_links("my-service", "prod")
 
         output_text = "\n".join(output)
         assert (
