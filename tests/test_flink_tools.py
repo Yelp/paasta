@@ -452,6 +452,23 @@ class TestCollectFlinkJobDetails:
         }
         assert result == expected
 
+    def test_collect_with_missing_pod_status_key(self):
+        """Test collecting when pod_status key is entirely absent."""
+        status = {"state": "starting"}  # No pod_status key
+
+        result = flink_tools.collect_flink_job_details(status, None, [])
+
+        expected = {
+            "state": "starting",
+            "pod_counts": {"running": 0, "evicted": 0, "other": 0, "total": 0},
+            "job_counts": None,
+            "taskmanagers": None,
+            "slots_available": None,
+            "slots_total": None,
+            "jobs": [],
+        }
+        assert result == expected
+
 
 class TestFormatFlinkStateAndPods:
     """Tests for format_flink_state_and_pods function."""
