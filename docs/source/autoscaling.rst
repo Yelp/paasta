@@ -71,20 +71,8 @@ The currently available metrics providers are:
   For example, with a setpoint of 0.8, the autoscaler will try to keep your workers at 80% utilization on average.
 
   .. note::
-    This metric provider is compatible for both uwsgi and gunicorn services and is preferred over the uwsgi/gunicorn metric providers.
+    This metric provider is compatible with both uwsgi and gunicorn services.
     If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
-
-:uwsgi:
-  With the ``uwsgi`` metrics provider, Paasta will configure your Pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
-  We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
-
-  .. note::
-
-    If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
-
-:gunicorn:
-  With the ``gunicorn`` metrics provider, Paasta will configure your Pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
-  This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
 
 :active-requests:
   With the ``active-requests`` metrics provider, Paasta will use Envoy metrics to scale your service based on the amount
@@ -119,7 +107,7 @@ The currently available decicion policies are:
   :moving_average_window_seconds:
     The number of seconds to load data points over in order to calculate the average.
     Defaults to 1800s (30m).
-    Currently, this is only supported for ``metrics_provider: uwsgi``.
+    Currently, this is only supported for ``metrics_provider: worker-load``.
 
 :bespoke:
   Allows a service author to implement their own autoscaling.
