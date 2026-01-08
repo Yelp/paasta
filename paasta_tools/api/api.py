@@ -153,6 +153,10 @@ def make_app(global_config=None):
         "/v1/services/{service}/{instance}/state/{desired_state}",
     )
     config.add_route(
+        "service.instance.replica.restart",
+        "/v1/services/{service}/{instance}/replicas/{replica_name}/restart",
+    )
+    config.add_route(
         "service.instance.delay", "/v1/services/{service}/{instance}/delay"
     )
     config.add_route(
