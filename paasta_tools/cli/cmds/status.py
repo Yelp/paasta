@@ -859,7 +859,6 @@ def _print_flink_status_from_job_manager(
         output.append("    No other information available in non-running state")
         return 0
 
-    # Jobs table
     output.extend(
         flink_tools.format_flink_jobs_table(
             job_details["jobs"],
@@ -870,7 +869,6 @@ def _print_flink_status_from_job_manager(
         )
     )
 
-    # Pod details
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
 
