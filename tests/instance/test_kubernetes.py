@@ -1493,17 +1493,12 @@ def test_restart_replica_by_name_no_kubernetes_client(mock_handlers):
 
 
 @pytest.mark.parametrize(
-    "force,configured_grace_period,expected_grace_period,should_call_config",
+    "force,expected_grace_period",
     [
-        # force=True should use grace_period_seconds=0, skip config lookup
-        (True, 60, 0, False),
-        # force=False with configured grace period should use that value
-        (False, 60, 60, True),
-        # force=False with no configured grace period should pass None
-        (False, None, None, True),
+        (True, 0),
+        (False, None),
     ],
 )
-@mock.patch("paasta_tools.instance.kubernetes.ServiceNamespaceConfig", autospec=True)
 @mock.patch(
     "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
     autospec=True,
@@ -1515,11 +1510,8 @@ def test_restart_replica_by_name_no_kubernetes_client(mock_handlers):
 def test_restart_replica_by_name_force_parameter(
     mock_handlers,
     mock_delete_pod,
-    mock_service_namespace_config,
     force,
-    configured_grace_period,
     expected_grace_period,
-    should_call_config,
 ):
     """Test restart_replica_by_name with different force parameter values."""
     mock_settings = mock.Mock()
@@ -1530,15 +1522,10 @@ def test_restart_replica_by_name_force_parameter(
     mock_loader = mock.Mock()
     mock_job_config = mock.Mock()
     mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
-    mock_job_config.get_termination_grace_period.return_value = configured_grace_period
     mock_loader.return_value = mock_job_config
 
     mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
     mock_delete_pod.return_value = True
-
-    # Mock ServiceNamespaceConfig
-    mock_service_namespace_config_instance = mock.Mock()
-    mock_service_namespace_config.return_value = mock_service_namespace_config_instance
 
     result = pik.restart_replica_by_name(
         service="test-service",
@@ -1550,22 +1537,6 @@ def test_restart_replica_by_name_force_parameter(
     )
 
     assert result is True
-
-    if should_call_config:
-        # Should create ServiceNamespaceConfig and call get_termination_grace_period
-        mock_service_namespace_config.assert_called_once_with(
-            service="test-service",
-            instance="main",
-            soa_dir="/test/soa/dir",
-            cluster="test-cluster",
-        )
-        mock_job_config.get_termination_grace_period.assert_called_once_with(
-            mock_service_namespace_config_instance
-        )
-    else:
-        # When force=True, should skip config lookup
-        mock_service_namespace_config.assert_not_called()
-        mock_job_config.get_termination_grace_period.assert_not_called()
 
     # Should call delete_pod_by_name with expected grace period
     mock_delete_pod.assert_called_once_with(

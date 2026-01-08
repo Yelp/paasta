@@ -5874,7 +5874,7 @@ def test_delete_pod_by_name_success():
             "target-pod-12345",
             "test-namespace",
             body=V1DeleteOptions(),
-            grace_period_seconds=0,
+            grace_period_seconds=None,
         )
 
 
