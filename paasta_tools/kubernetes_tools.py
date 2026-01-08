@@ -2924,7 +2924,7 @@ def delete_pod_by_name(
     instance: str,
     namespace: str,
     kube_client: KubeClient,
-    grace_period_seconds: Optional[int] = 0,
+    grace_period_seconds: Optional[int] = None,
 ) -> bool:
     """Delete a specific pod by name within a service instance.
 
@@ -2935,7 +2935,7 @@ def delete_pod_by_name(
         namespace: Kubernetes namespace
         kube_client: Kubernetes client
         grace_period_seconds: Time to wait before forcefully terminating the pod.
-                            0 means immediate deletion, None uses the pod's configured grace period.
+                              0 means immediate deletion, None uses the pod's configured grace period.
 
     Returns:
         True if pod was found and deleted, False if pod not found
