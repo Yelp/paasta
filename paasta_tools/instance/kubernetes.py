@@ -185,23 +185,8 @@ def restart_replica_by_name(
     if force:
         grace_period_seconds = 0
     else:
-        # Get service namespace config to determine termination grace period
-        # Only call get_termination_grace_period if it exists on this config type
-        if hasattr(job_config, "get_termination_grace_period"):
-            service_namespace_config = ServiceNamespaceConfig(
-                service=service,
-                instance=instance,
-                soa_dir=settings.soa_dir,
-                cluster=settings.cluster,
-            )
-            grace_period_seconds = job_config.get_termination_grace_period(
-                service_namespace_config
-            )
-            # Leave as None if not configured - Kubernetes will use the pod's configured grace period
-        else:
-            # Fallback for config types that don't support termination grace period
-            # This shouldn't happen since can_restart_replica already filtered to K8s types
-            grace_period_seconds = None
+        # Uses the pod's already-configured grace period
+        grace_period_seconds = None
 
     # Note: We are not actually fully 'restarting' a replica for k8s instances
     # Instead, we are deleting the existing pod, then k8s will automatically create a
