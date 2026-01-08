@@ -466,7 +466,7 @@ def get_flink_instance_details(
 def format_flink_instance_header(
     details: FlinkInstanceDetails, verbose: bool
 ) -> List[str]:
-    """Format basic instance information (config SHA, version, URL).
+    """Format basic instance information.
 
     :param details: Instance details from get_flink_instance_details()
     :param verbose: If True, show version revision
