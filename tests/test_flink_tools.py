@@ -678,6 +678,46 @@ class TestFormatFlinkJobsTable:
         assert "job4" in output_text
         assert "Only showing" not in output_text
 
+    @mock.patch("paasta_tools.flink_tools.shutil.get_terminal_size", autospec=True)
+    def test_format_failed_job_state(self, mock_terminal_size):
+        """Test formatting a job with FAILED state."""
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        jobs = [
+            {
+                "jid": "failed123",
+                "name": "service.instance.failedjob",
+                "state": "FAILED",
+                "start_time": 1700000000000,
+            }
+        ]
+        dashboard_url = "http://dashboard.example.com"
+
+        output = flink_tools.format_flink_jobs_table(jobs, dashboard_url, verbose=0)
+
+        output_text = "\n".join(output)
+        assert "failedjob" in output_text
+        assert "Failed" in output_text
+
+    @mock.patch("paasta_tools.flink_tools.shutil.get_terminal_size", autospec=True)
+    def test_format_failing_job_state(self, mock_terminal_size):
+        """Test formatting a job with FAILING state."""
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        jobs = [
+            {
+                "jid": "failing456",
+                "name": "service.instance.failingjob",
+                "state": "FAILING",
+                "start_time": 1700000000000,
+            }
+        ]
+        dashboard_url = "http://dashboard.example.com"
+
+        output = flink_tools.format_flink_jobs_table(jobs, dashboard_url, verbose=0)
+
+        output_text = "\n".join(output)
+        assert "failingjob" in output_text
+        assert "Failing" in output_text
+
 
 class TestGetFlinkInstanceDetails:
     """Tests for get_flink_instance_details function."""
