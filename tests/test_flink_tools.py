@@ -339,16 +339,16 @@ class TestCollectFlinkJobDetails:
 
         result = flink_tools.collect_flink_job_details(status, overview, jobs)
 
-        assert result["state"] == "stopped"
-        assert result["pod_counts"]["running"] == 2
-        assert result["pod_counts"]["evicted"] == 0
-        assert result["pod_counts"]["other"] == 0
-        assert result["pod_counts"]["total"] == 2
-        assert result["job_counts"] is None
-        assert result["taskmanagers"] is None
-        assert result["slots_available"] is None
-        assert result["slots_total"] is None
-        assert result["jobs"] == []
+        expected = {
+            "state": "stopped",
+            "pod_counts": {"running": 2, "evicted": 0, "other": 0, "total": 2},
+            "job_counts": None,
+            "taskmanagers": None,
+            "slots_available": None,
+            "slots_total": None,
+            "jobs": [],
+        }
+        assert result == expected
 
     def test_collect_with_evicted_pods(self):
         """Test collecting pod details with evicted pods."""
@@ -372,10 +372,22 @@ class TestCollectFlinkJobDetails:
 
         result = flink_tools.collect_flink_job_details(status, overview, [])
 
-        assert result["pod_counts"]["running"] == 1
-        assert result["pod_counts"]["evicted"] == 2
-        assert result["pod_counts"]["other"] == 1
-        assert result["pod_counts"]["total"] == 4
+        expected = {
+            "state": "running",
+            "pod_counts": {"running": 1, "evicted": 2, "other": 1, "total": 4},
+            "job_counts": {
+                "running": 1,
+                "finished": 2,
+                "failed": 0,
+                "cancelled": 1,
+                "total": 4,
+            },
+            "taskmanagers": 3,
+            "slots_available": 5,
+            "slots_total": 15,
+            "jobs": [],
+        }
+        assert result == expected
 
     def test_collect_with_failed_pod_no_reason(self):
         """Test collecting pod details with Failed pod without reason field."""
@@ -391,10 +403,16 @@ class TestCollectFlinkJobDetails:
 
         result = flink_tools.collect_flink_job_details(status, overview, [])
 
-        assert result["pod_counts"]["running"] == 1
-        assert result["pod_counts"]["evicted"] == 1
-        assert result["pod_counts"]["other"] == 1  # Failed pod without reason
-        assert result["pod_counts"]["total"] == 3
+        expected = {
+            "state": "running",
+            "pod_counts": {"running": 1, "evicted": 1, "other": 1, "total": 3},
+            "job_counts": None,
+            "taskmanagers": None,
+            "slots_available": None,
+            "slots_total": None,
+            "jobs": [],
+        }
+        assert result == expected
 
     def test_collect_with_overview_and_jobs(self):
         """Test collecting complete job details with overview."""
@@ -415,16 +433,22 @@ class TestCollectFlinkJobDetails:
 
         result = flink_tools.collect_flink_job_details(status, overview, mock_jobs)
 
-        assert result["state"] == "running"
-        assert result["job_counts"]["running"] == 2
-        assert result["job_counts"]["finished"] == 3
-        assert result["job_counts"]["failed"] == 1
-        assert result["job_counts"]["cancelled"] == 0
-        assert result["job_counts"]["total"] == 6
-        assert result["taskmanagers"] == 5
-        assert result["slots_available"] == 10
-        assert result["slots_total"] == 25
-        assert len(result["jobs"]) == 2
+        expected = {
+            "state": "running",
+            "pod_counts": {"running": 1, "evicted": 0, "other": 0, "total": 1},
+            "job_counts": {
+                "running": 2,
+                "finished": 3,
+                "failed": 1,
+                "cancelled": 0,
+                "total": 6,
+            },
+            "taskmanagers": 5,
+            "slots_available": 10,
+            "slots_total": 25,
+            "jobs": mock_jobs,
+        }
+        assert result == expected
 
 
 class TestFormatFlinkStateAndPods:
