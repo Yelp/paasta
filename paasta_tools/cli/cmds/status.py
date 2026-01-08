@@ -707,10 +707,6 @@ def status_kubernetes_job_human(
         )
 
 
-def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
-    return flink_job["name"].split(".", 2)[-1]
-
-
 def should_job_info_be_shown(cluster_state):
     return (
         cluster_state == "running"
