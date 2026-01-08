@@ -431,7 +431,9 @@ def get_flink_instance_details(
     labels = metadata.get("labels", {})
     annotations = metadata.get("annotations", {})
 
-    # Validate that config_sha exists
+    # Validate that config_sha exists.
+    # Since metadata should be available no matter the state, we check this early.
+    # If this errors out, we cannot really recover because the cluster is not in a usable state.
     config_sha = labels.get(paasta_prefixed("config_sha"))
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
