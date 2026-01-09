@@ -65,6 +65,7 @@ repos:
         language: script
         files: ^tests/.*\.py$|^.*_itests/.*\.py
     -   id: ban-patch-decorator
+        args: ['--skip-unused-mock-assignment']
         name: ban @patch decorator (use context manager)
         description: Rewrites @patch decorators to context manager form
         entry: paasta_tools/contrib/ban_patch_decorator.py

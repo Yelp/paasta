@@ -57,12 +57,33 @@ def is_patch_decorator(decorator: cst.Decorator) -> bool:
     return False
 
 
+class VariableUsageCollector(cst.CSTVisitor):
+    """Visitor to collect all variable names used in a function body."""
+
+    def __init__(self):
+        self.used_names: set[str] = set()
+
+    def visit_Name(self, node: cst.Name) -> None:
+        """Collect all Name nodes (variable references)."""
+        self.used_names.add(node.value)
+
+
+def check_variable_usage(body: cst.IndentedBlock, var_names: list[str]) -> set[str]:
+    """Return set of var_names that are actually used in the body."""
+    collector = VariableUsageCollector()
+    body.visit(collector)
+    return {name for name in var_names if name in collector.used_names}
+
+
 class PatchDecoratorRewriter(cst.CSTTransformer):
     """libcst transformer that rewrites @patch decorators to context managers."""
 
-    def __init__(self, line_length: int, check_only: bool = False):
+    def __init__(
+        self, line_length: int, check_only: bool = False, skip_unused: bool = False
+    ):
         self.line_length = line_length
         self.check_only = check_only
+        self.skip_unused = skip_unused
         self.modified = False
         self.violations: list[tuple[int, str]] = []
 
@@ -108,6 +129,13 @@ class PatchDecoratorRewriter(cst.CSTTransformer):
         remaining_params = params[num_patches:]
         new_params = original_node.params.with_changes(params=remaining_params)
 
+        # Detect which mock variables are actually used (if flag enabled)
+        used_mocks = (
+            check_variable_usage(original_node.body, mock_params)
+            if self.skip_unused
+            else set(mock_params)
+        )
+
         # Build with statement items (reversed to match parameter order)
         with_items = []
         for i, (decorator, param_name) in enumerate(
@@ -123,13 +151,22 @@ class PatchDecoratorRewriter(cst.CSTTransformer):
             # Add comma for all but the last item
             comma = cst.Comma() if i < num_patches - 1 else cst.MaybeSentinel.DEFAULT
 
-            with_items.append(
-                cst.WithItem(
-                    item=context_expr,
-                    asname=cst.AsName(name=cst.Name(param_name)),
-                    comma=comma,
+            # Only add 'as' clause if variable is used
+            if param_name in used_mocks:
+                with_items.append(
+                    cst.WithItem(
+                        item=context_expr,
+                        asname=cst.AsName(name=cst.Name(param_name)),
+                        comma=comma,
+                    )
                 )
-            )
+            else:
+                with_items.append(
+                    cst.WithItem(
+                        item=context_expr,
+                        comma=comma,
+                    )
+                )
 
         # Create with statement - use parentheses if multiple items
         if num_patches > 1:
@@ -152,7 +189,9 @@ class PatchDecoratorRewriter(cst.CSTTransformer):
         )
 
 
-def rewrite_file(filename: str, check_only: bool, line_length: int) -> bool:
+def rewrite_file(
+    filename: str, check_only: bool, line_length: int, skip_unused: bool = False
+) -> bool:
     """
     Rewrite patch decorators in a file.
     Returns True if file was modified (or would be modified in check_only mode).
@@ -174,7 +213,9 @@ def rewrite_file(filename: str, check_only: bool, line_length: int) -> bool:
     wrapper = cst.metadata.MetadataWrapper(module)
 
     # Rewrite the module
-    rewriter = PatchDecoratorRewriter(line_length, check_only=check_only)
+    rewriter = PatchDecoratorRewriter(
+        line_length, check_only=check_only, skip_unused=skip_unused
+    )
 
     try:
         new_module = wrapper.visit(rewriter)
@@ -217,6 +258,11 @@ def main():
         action="store_true",
         help="Check for violations without modifying files",
     )
+    parser.add_argument(
+        "--skip-unused-mock-assignment",
+        action="store_true",
+        help="Skip 'as var_name' for mocks that are not used in the function body",
+    )
     parser.add_argument("filenames", nargs="+", help="Files to check/fix")
 
     args = parser.parse_args()
@@ -231,7 +277,9 @@ def main():
 
     for filename in args.filenames:
         try:
-            if rewrite_file(filename, args.check_only, line_length):
+            if rewrite_file(
+                filename, args.check_only, line_length, args.skip_unused_mock_assignment
+            ):
                 violations_found = True
         except Exception as e:
             print(f"Error processing {filename}: {e}", file=sys.stderr)
