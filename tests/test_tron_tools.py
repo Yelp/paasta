@@ -1442,6 +1442,7 @@ class TestTronTools:
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SCS_CONF_STR": expected_scs_conf,
+                "SERVICE_ACCOUNT_NAME": "paasta--arn-aws-iam-000000000000-role-some-role",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
                 "SPARK_DRIVER_TYPE": "tron",
