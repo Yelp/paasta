@@ -832,9 +832,13 @@ def _print_flink_status_from_job_manager(
             return 1
 
     # flink_config is None when cluster is not running; version info will be omitted
-    instance_details = flink_tools.get_flink_instance_details(
-        metadata, flink_config, flink_instance_config, service
-    )
+    try:
+        instance_details = flink_tools.get_flink_instance_details(
+            metadata, flink_config, flink_instance_config, service
+        )
+    except ValueError as e:
+        output.append(PaastaColors.red(f"    Error getting instance details: {e}"))
+        return 1
 
     # overview and jobs are empty when cluster is not running
     job_details = flink_tools.collect_flink_job_details(status, overview, jobs)
@@ -864,8 +868,8 @@ def _print_flink_status_from_job_manager(
     # Even when not running, we show pods in verbose mode so that paasta status -v
     # and kubectl get pods show consistent results (e.g., when jobmanager is in CrashLoopBackOff)
     if not should_job_info_be_shown(status["state"]):
-        if verbose and len(status["pod_status"]) > 0:
-            append_pod_status(status["pod_status"], output)
+        if verbose and len(status.get("pod_status", [])) > 0:
+            append_pod_status(status.get("pod_status", []), output)
         output.append("    No other information available in non-running state")
         return 0
 
