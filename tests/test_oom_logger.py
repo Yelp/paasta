@@ -255,277 +255,276 @@ def log_line_containerd():
     )
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-def test_capture_oom_events_from_stdin(mock_sys_stdin, sys_stdin):
-    mock_sys_stdin.readline.side_effect = sys_stdin
-    test_output = []
-    for a_tuple in capture_oom_events_from_stdin():
-        test_output.append(a_tuple)
+def test_capture_oom_events_from_stdin(sys_stdin):
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = sys_stdin
+        test_output = []
+        for a_tuple in capture_oom_events_from_stdin():
+            test_output.append(a_tuple)
 
-    assert test_output == [(1500316300, "dev37-devc", "a687af92e281", "apache2")]
+        assert test_output == [(1500316300, "dev37-devc", "a687af92e281", "apache2")]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_kubernetes_qos(
-    mock_sys_stdin,
     sys_stdin_kubernetes_besteffort_qos,
     sys_stdin_kubernetes_burstable_qos,
     sys_stdin_kubernetes_guaranteed_qos,
 ):
-    for qos in (
-        sys_stdin_kubernetes_besteffort_qos,
-        sys_stdin_kubernetes_burstable_qos,
-        sys_stdin_kubernetes_guaranteed_qos,
-    ):
-        mock_sys_stdin.readline.side_effect = qos
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        for qos in (
+            sys_stdin_kubernetes_besteffort_qos,
+            sys_stdin_kubernetes_burstable_qos,
+            sys_stdin_kubernetes_guaranteed_qos,
+        ):
+            mock_sys_stdin.readline.side_effect = qos
+            test_output = []
+            for a_tuple in capture_oom_events_from_stdin():
+                test_output.append(a_tuple)
+            assert test_output == [
+                (1500316300, "dev37-devc", "0e4a814eda03", "apache2")
+            ]
+
+
+def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
+    sys_stdin_kubernetes_structured_burstable_qos,
+):
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = (
+            sys_stdin_kubernetes_structured_burstable_qos
+        )
         test_output = []
         for a_tuple in capture_oom_events_from_stdin():
             test_output.append(a_tuple)
         assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
-    mock_sys_stdin,
-    sys_stdin_kubernetes_structured_burstable_qos,
-):
-    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_structured_burstable_qos
-    test_output = []
-    for a_tuple in capture_oom_events_from_stdin():
-        test_output.append(a_tuple)
-    assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
-
-
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_kubernetes_structured_burstable_systemd_cgroup(
-    mock_sys_stdin,
     sys_stdin_kubernetes_structured_burstable_systemd_cgroup,
 ):
-    mock_sys_stdin.readline.side_effect = (
-        sys_stdin_kubernetes_structured_burstable_systemd_cgroup
-    )
-    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
-    assert test_output == [(1500316300, "dev37-devc", "e7ba37bd3708", "apache2")]
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = (
+            sys_stdin_kubernetes_structured_burstable_systemd_cgroup
+        )
+        test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+        assert test_output == [(1500316300, "dev37-devc", "e7ba37bd3708", "apache2")]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup(
-    mock_sys_stdin,
     sys_stdin_kubernetes_containerd_systemd_cgroup,
 ):
-    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_containerd_systemd_cgroup
-    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
-    assert test_output == [
-        (
-            1720128512,
-            "dev208-uswest1adevc",
-            "52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199",
-            "python3",
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = (
+            sys_stdin_kubernetes_containerd_systemd_cgroup
         )
-    ]
+        test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+        assert test_output == [
+            (
+                1720128512,
+                "dev208-uswest1adevc",
+                "52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199",
+                "python3",
+            )
+        ]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup_structured(
-    mock_sys_stdin,
     sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
 ):
-    mock_sys_stdin.readline.side_effect = (
-        sys_stdin_kubernetes_containerd_systemd_cgroup_structured
-    )
-    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
-    assert test_output == [
-        (
-            1720128512,
-            "dev37-devc",
-            "e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
-            "python3",
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = (
+            sys_stdin_kubernetes_containerd_systemd_cgroup_structured
         )
-    ]
+        test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+        assert test_output == [
+            (
+                1720128512,
+                "dev37-devc",
+                "e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
+                "python3",
+            )
+        ]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_with_slashes(
-    mock_sys_stdin, sys_stdin_process_name_with_slashes
+    sys_stdin_process_name_with_slashes,
 ):
-    mock_sys_stdin.readline.side_effect = sys_stdin_process_name_with_slashes
-    test_output = []
-    for a_tuple in capture_oom_events_from_stdin():
-        test_output.append(a_tuple)
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = sys_stdin_process_name_with_slashes
+        test_output = []
+        for a_tuple in capture_oom_events_from_stdin():
+            test_output.append(a_tuple)
 
-    assert test_output == [
-        (1500316300, "dev37-devc", "a687af92e281", "/nail/live/yelp")
-    ]
-
-
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-def test_capture_oom_events_from_stdin_with_spaces(
-    mock_sys_stdin, sys_stdin_process_name_with_spaces
-):
-    mock_sys_stdin.readline.side_effect = sys_stdin_process_name_with_spaces
-    test_output = []
-    for a_tuple in capture_oom_events_from_stdin():
-        test_output.append(a_tuple)
-
-    assert test_output == [
-        (1500316300, "dev37-devc", "a687af92e281", "python batch/ke")
-    ]
+        assert test_output == [
+            (1500316300, "dev37-devc", "a687af92e281", "/nail/live/yelp")
+        ]
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_with_spaces(sys_stdin_process_name_with_spaces):
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = sys_stdin_process_name_with_spaces
+        test_output = []
+        for a_tuple in capture_oom_events_from_stdin():
+            test_output.append(a_tuple)
+
+        assert test_output == [
+            (1500316300, "dev37-devc", "a687af92e281", "python batch/ke")
+        ]
+
+
 def test_capture_oom_events_from_stdin_without_process_name(
-    mock_sys_stdin, sys_stdin_without_process_name
+    sys_stdin_without_process_name,
 ):
-    mock_sys_stdin.readline.side_effect = sys_stdin_without_process_name
-    test_output = []
-    for a_tuple in capture_oom_events_from_stdin():
-        test_output.append(a_tuple)
+    with patch("paasta_tools.oom_logger.sys.stdin", autospec=True) as mock_sys_stdin:
+        mock_sys_stdin.readline.side_effect = sys_stdin_without_process_name
+        test_output = []
+        for a_tuple in capture_oom_events_from_stdin():
+            test_output.append(a_tuple)
 
-    assert test_output == [
-        (1500216300, "dev37-devc", "e3a1057fdd48", ""),
-        (1500316300, "dev37-devc", "a687af92e281", ""),
-    ]
-
-
-@patch("paasta_tools.oom_logger.clog", autospec=True)
-def test_log_to_clog(mock_clog, log_line):
-    log_to_clog(log_line)
-    mock_clog.log_line.assert_called_once_with(
-        "tmp_paasta_oom_events",
-        json.dumps(
-            {
-                "timestamp": log_line.timestamp,
-                "hostname": log_line.hostname,
-                "container_id": log_line.container_id,
-                "cluster": log_line.cluster,
-                "service": log_line.service,
-                "instance": log_line.instance,
-                "process_name": log_line.process_name,
-                "mesos_container_id": log_line.mesos_container_id,
-                "mem_limit": log_line.mem_limit,
-            }
-        ),
-    )
+        assert test_output == [
+            (1500216300, "dev37-devc", "e3a1057fdd48", ""),
+            (1500316300, "dev37-devc", "a687af92e281", ""),
+        ]
 
 
-@patch("paasta_tools.oom_logger.get_instance_config", autospec=True)
-def test_send_sfx_event(mock_get_instance_config):
-    service = "foo"
-    instance = "bar"
-    cluster = "baz"
+def test_log_to_clog(log_line):
+    with patch("paasta_tools.oom_logger.clog", autospec=True) as mock_clog:
+        log_to_clog(log_line)
+        mock_clog.log_line.assert_called_once_with(
+            "tmp_paasta_oom_events",
+            json.dumps(
+                {
+                    "timestamp": log_line.timestamp,
+                    "hostname": log_line.hostname,
+                    "container_id": log_line.container_id,
+                    "cluster": log_line.cluster,
+                    "service": log_line.service,
+                    "instance": log_line.instance,
+                    "process_name": log_line.process_name,
+                    "mesos_container_id": log_line.mesos_container_id,
+                    "mem_limit": log_line.mem_limit,
+                }
+            ),
+        )
 
-    # Try to use the autospec if it's available
-    from paasta_tools.oom_logger import yelp_meteorite
 
-    if yelp_meteorite is None:
-        autospec = None
-    else:
-        autospec = True
-
+def test_send_sfx_event():
     with patch(
-        "paasta_tools.oom_logger.yelp_meteorite", autospec=autospec
-    ) as mock_meteorite:
-        send_sfx_event(service, instance, cluster)
+        "paasta_tools.oom_logger.get_instance_config", autospec=True
+    ) as mock_get_instance_config:
+        service = "foo"
+        instance = "bar"
+        cluster = "baz"
 
-        expected_dimensions = {
-            "paasta_service": service,
-            "paasta_instance": instance,
-            "paasta_cluster": cluster,
-            "paasta_pool": mock_get_instance_config.return_value.get_pool.return_value,
-        }
-        mock_meteorite.events.emit_event.assert_called_once_with(
-            "paasta.service.oom_events", dimensions=expected_dimensions
-        )
-        mock_meteorite.create_counter.assert_called_once_with(
-            "paasta.service.oom_count", default_dimensions=expected_dimensions
-        )
-        assert mock_meteorite.create_counter.return_value.count.call_count == 1
+        # Try to use the autospec if it's available
+        from paasta_tools.oom_logger import yelp_meteorite
+
+        if yelp_meteorite is None:
+            autospec = None
+        else:
+            autospec = True
+
+        with patch(
+            "paasta_tools.oom_logger.yelp_meteorite", autospec=autospec
+        ) as mock_meteorite:
+            send_sfx_event(service, instance, cluster)
+
+            expected_dimensions = {
+                "paasta_service": service,
+                "paasta_instance": instance,
+                "paasta_cluster": cluster,
+                "paasta_pool": mock_get_instance_config.return_value.get_pool.return_value,
+            }
+            mock_meteorite.events.emit_event.assert_called_once_with(
+                "paasta.service.oom_events", dimensions=expected_dimensions
+            )
+            mock_meteorite.create_counter.assert_called_once_with(
+                "paasta.service.oom_count", default_dimensions=expected_dimensions
+            )
+            assert mock_meteorite.create_counter.return_value.count.call_count == 1
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch(
-    "paasta_tools.oom_logger.clog"
-)  # we don't autospec here since there's some funky stuff going on with attribute access
-@patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
-@patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
-@patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
-@patch("paasta_tools.oom_logger.parse_args", autospec=True)
 def test_main(
-    mock_parse_args,
-    mock_get_docker_client,
-    mock_log_to_paasta,
-    mock_log_to_clog,
-    mock_load_system_paasta_config,
-    mock_send_sfx_event,
-    mock_clog,
-    mock_sys_stdin,
     sys_stdin,
     docker_inspect,
     log_line,
 ):
+    with patch(
+        "paasta_tools.oom_logger.parse_args", autospec=True
+    ) as mock_parse_args, patch(
+        "paasta_tools.oom_logger.get_docker_client", autospec=True
+    ) as mock_get_docker_client, patch(
+        "paasta_tools.oom_logger.log_to_paasta", autospec=True
+    ) as mock_log_to_paasta, patch(
+        "paasta_tools.oom_logger.log_to_clog", autospec=True
+    ) as mock_log_to_clog, patch(
+        "paasta_tools.oom_logger.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.oom_logger.send_sfx_event", autospec=True
+    ) as mock_send_sfx_event, patch(
+        "paasta_tools.oom_logger.clog"
+    ), patch(
+        "paasta_tools.oom_logger.sys.stdin", autospec=True
+    ) as mock_sys_stdin:
 
-    mock_sys_stdin.readline.side_effect = sys_stdin
-    mock_parse_args.return_value.containerd = False
-    docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
-    mock_get_docker_client.return_value = docker_client
-    mock_load_system_paasta_config.return_value.get_cluster.return_value = (
-        "fake_cluster"
-    )
+        mock_sys_stdin.readline.side_effect = sys_stdin
+        mock_parse_args.return_value.containerd = False
+        docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
+        mock_get_docker_client.return_value = docker_client
+        mock_load_system_paasta_config.return_value.get_cluster.return_value = (
+            "fake_cluster"
+        )
 
-    main()
-    mock_log_to_paasta.assert_called_once_with(log_line)
-    mock_log_to_clog.assert_called_once_with(log_line)
-    mock_send_sfx_event.assert_called_once_with(
-        "fake_service", "fake_instance", "fake_cluster"
-    )
+        main()
+        mock_log_to_paasta.assert_called_once_with(log_line)
+        mock_log_to_clog.assert_called_once_with(log_line)
+        mock_send_sfx_event.assert_called_once_with(
+            "fake_service", "fake_instance", "fake_cluster"
+        )
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch(
-    "paasta_tools.oom_logger.clog"
-)  # we don't autospec here since there's some funky stuff going on with attribute access
-@patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
-@patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
-@patch("paasta_tools.oom_logger.parse_args", autospec=True)
-@patch("paasta_tools.oom_logger.get_containerd_container", autospec=True)
-@patch("paasta_tools.oom_logger.json.loads", autospec=True)
 def test_main_containerd(
-    mock_json_loads,
-    mock_get_containerd_container,
-    mock_parse_args,
-    mock_log_to_paasta,
-    mock_log_to_clog,
-    mock_load_system_paasta_config,
-    mock_send_sfx_event,
-    mock_clog,
-    mock_sys_stdin,
     sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
     log_line_containerd,
     containerd_inspect,
 ):
+    with patch(
+        "paasta_tools.oom_logger.json.loads", autospec=True
+    ) as mock_json_loads, patch(
+        "paasta_tools.oom_logger.get_containerd_container", autospec=True
+    ) as mock_get_containerd_container, patch(
+        "paasta_tools.oom_logger.parse_args", autospec=True
+    ) as mock_parse_args, patch(
+        "paasta_tools.oom_logger.log_to_paasta", autospec=True
+    ) as mock_log_to_paasta, patch(
+        "paasta_tools.oom_logger.log_to_clog", autospec=True
+    ) as mock_log_to_clog, patch(
+        "paasta_tools.oom_logger.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.oom_logger.send_sfx_event", autospec=True
+    ) as mock_send_sfx_event, patch(
+        "paasta_tools.oom_logger.clog"
+    ), patch(
+        "paasta_tools.oom_logger.sys.stdin", autospec=True
+    ) as mock_sys_stdin:
 
-    mock_sys_stdin.readline.side_effect = (
-        sys_stdin_kubernetes_containerd_systemd_cgroup_structured
-    )
-    mock_parse_args.return_value.containerd = True
+        mock_sys_stdin.readline.side_effect = (
+            sys_stdin_kubernetes_containerd_systemd_cgroup_structured
+        )
+        mock_parse_args.return_value.containerd = True
 
-    mock_container_info = MagicMock()
-    mock_container_info.spec.value.decode.return_value = str(containerd_inspect)
+        mock_container_info = MagicMock()
+        mock_container_info.spec.value.decode.return_value = str(containerd_inspect)
 
-    mock_get_containerd_container.return_value = mock_container_info
-    mock_json_loads.return_value = containerd_inspect
+        mock_get_containerd_container.return_value = mock_container_info
+        mock_json_loads.return_value = containerd_inspect
 
-    mock_load_system_paasta_config.return_value.get_cluster.return_value = (
-        "fake_cluster"
-    )
+        mock_load_system_paasta_config.return_value.get_cluster.return_value = (
+            "fake_cluster"
+        )
 
-    main()
-    mock_log_to_paasta.assert_called_once_with(log_line_containerd)
-    mock_log_to_clog.assert_called_once_with(log_line_containerd)
-    mock_send_sfx_event.assert_called_once_with(
-        "fake_service", "fake_instance", "fake_cluster"
-    )
+        main()
+        mock_log_to_paasta.assert_called_once_with(log_line_containerd)
+        mock_log_to_clog.assert_called_once_with(log_line_containerd)
+        mock_send_sfx_event.assert_called_once_with(
+            "fake_service", "fake_instance", "fake_cluster"
+        )

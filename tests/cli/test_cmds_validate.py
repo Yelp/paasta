@@ -64,92 +64,91 @@ def clear_get_config_file_dict_cache():
     get_config_file_dict.cache_clear()
 
 
-@patch("paasta_tools.cli.cmds.validate.validate_cpu_burst", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_all_schemas", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_tron", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.get_service_path", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.check_service_path", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
-def test_paasta_validate_calls_everything(
-    mock_validate_service_name,
-    mock_validate_smartstack,
-    mock_validate_secrets,
-    mock_check_service_path,
-    mock_get_service_path,
-    mock_validate_tron,
-    mock_validate_all_schemas,
-    mock_validate_paasta_objects,
-    mock_validate_min_max_instances,
-    mock_validate_unique_instance_names,
-    mock_validate_autoscaling_configs,
-    mock_validate_cpu_burst,
-):
-    # Ensure each check in 'paasta_validate' is called
-    mock_validate_cpu_burst.return_value = True
-    mock_validate_autoscaling_configs.return_value = True
-    mock_validate_secrets.return_value = True
-    mock_check_service_path.return_value = True
-    mock_get_service_path.return_value = "unused_path"
-    mock_validate_all_schemas.return_value = True
-    mock_validate_tron.return_value = True
-    mock_validate_paasta_objects.return_value = True
-    mock_validate_unique_instance_names.return_value = True
-    mock_validate_min_max_instances.return_value = True
-    mock_validate_smartstack.return_value = True
-    mock_validate_service_name.return_value = True
+def test_paasta_validate_calls_everything():
+    with patch(
+        "paasta_tools.cli.cmds.validate.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True
+    ) as mock_validate_smartstack, patch(
+        "paasta_tools.cli.cmds.validate.validate_secrets", autospec=True
+    ) as mock_validate_secrets, patch(
+        "paasta_tools.cli.cmds.validate.check_service_path", autospec=True
+    ) as mock_check_service_path, patch(
+        "paasta_tools.cli.cmds.validate.get_service_path", autospec=True
+    ) as mock_get_service_path, patch(
+        "paasta_tools.cli.cmds.validate.validate_tron", autospec=True
+    ) as mock_validate_tron, patch(
+        "paasta_tools.cli.cmds.validate.validate_all_schemas", autospec=True
+    ) as mock_validate_all_schemas, patch(
+        "paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True
+    ) as mock_validate_paasta_objects, patch(
+        "paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True
+    ) as mock_validate_min_max_instances, patch(
+        "paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True
+    ) as mock_validate_unique_instance_names, patch(
+        "paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True
+    ) as mock_validate_autoscaling_configs, patch(
+        "paasta_tools.cli.cmds.validate.validate_cpu_burst", autospec=True
+    ) as mock_validate_cpu_burst:
+        # Ensure each check in 'paasta_validate' is called
+        mock_validate_cpu_burst.return_value = True
+        mock_validate_autoscaling_configs.return_value = True
+        mock_validate_secrets.return_value = True
+        mock_check_service_path.return_value = True
+        mock_get_service_path.return_value = "unused_path"
+        mock_validate_all_schemas.return_value = True
+        mock_validate_tron.return_value = True
+        mock_validate_paasta_objects.return_value = True
+        mock_validate_unique_instance_names.return_value = True
+        mock_validate_min_max_instances.return_value = True
+        mock_validate_smartstack.return_value = True
+        mock_validate_service_name.return_value = True
 
-    args = mock.MagicMock()
-    args.service = "test"
-    args.soa_dir = None
+        args = mock.MagicMock()
+        args.service = "test"
+        args.soa_dir = None
 
-    paasta_validate(args)
+        paasta_validate(args)
 
-    assert mock_validate_all_schemas.called
-    assert mock_validate_tron.called
-    assert mock_validate_unique_instance_names.called
-    assert mock_validate_paasta_objects.called
-    assert mock_validate_secrets.called
-    assert mock_validate_autoscaling_configs.called
-    assert mock_validate_cpu_burst.called
-    assert mock_validate_smartstack.called
-    assert mock_validate_service_name.called
+        assert mock_validate_all_schemas.called
+        assert mock_validate_tron.called
+        assert mock_validate_unique_instance_names.called
+        assert mock_validate_paasta_objects.called
+        assert mock_validate_secrets.called
+        assert mock_validate_autoscaling_configs.called
+        assert mock_validate_cpu_burst.called
+        assert mock_validate_smartstack.called
+        assert mock_validate_service_name.called
 
 
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_paasta_objects(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
     capsys,
 ):
+    with patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True
+    ) as mock_path_to_soa_dir_service, patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+        autospec=True,
+    ) as mock_load_all_instance_configs_for_service:
 
-    fake_service = "fake-service"
-    fake_instance = "fake-instance"
-    fake_cluster = "penguin"
+        fake_service = "fake-service"
+        fake_instance = "fake-instance"
+        fake_cluster = "penguin"
 
-    mock_paasta_instance = mock.Mock(autospec=True)
-    mock_paasta_instance.validate.return_value = ["Something is wrong!"]
+        mock_paasta_instance = mock.Mock(autospec=True)
+        mock_paasta_instance.validate.return_value = ["Something is wrong!"]
 
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
-    mock_list_clusters.return_value = [fake_cluster]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (fake_instance, mock_paasta_instance)
-    ]
+        mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
+        mock_list_clusters.return_value = [fake_cluster]
+        mock_load_all_instance_configs_for_service.return_value = [
+            (fake_instance, mock_paasta_instance)
+        ]
 
-    assert validate_paasta_objects("fake-service-path") is False, capsys
-    captured = capsys.readouterr()
-    assert "Something is wrong!" in captured.out
+        assert validate_paasta_objects("fake-service-path") is False, capsys
+        captured = capsys.readouterr()
+        assert "Something is wrong!" in captured.out
 
 
 def test_get_service_path_unknown(capsys):
@@ -183,70 +182,75 @@ def test_validate_unknown_service_service_path():
     assert not paasta_validate_soa_configs(service, service_path)
 
 
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_min_max_instances_success(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
     capsys,
 ):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value="fake_type"),
-                get_min_instances=mock.Mock(return_value=3),
-                get_max_instances=mock.Mock(return_value=1),
-            ),
+    with patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True
+    ) as mock_path_to_soa_dir_service, patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+        autospec=True,
+    ) as mock_load_all_instance_configs_for_service:
+        mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+        mock_list_clusters.return_value = ["fake_cluster"]
+        mock_load_all_instance_configs_for_service.return_value = [
+            (
+                "fake_instance1",
+                mock.Mock(
+                    get_instance=mock.Mock(return_value="fake_instance1"),
+                    get_instance_type=mock.Mock(return_value="fake_type"),
+                    get_min_instances=mock.Mock(return_value=3),
+                    get_max_instances=mock.Mock(return_value=1),
+                ),
+            )
+        ]
+
+        assert validate_min_max_instances("fake-service-path") is False
+        output, _ = capsys.readouterr()
+        assert (
+            "Instance fake_instance1 on cluster fake_cluster has a greater number of min_instances than max_instances."
+            in output
         )
-    ]
-
-    assert validate_min_max_instances("fake-service-path") is False
-    output, _ = capsys.readouterr()
-    assert (
-        "Instance fake_instance1 on cluster fake_cluster has a greater number of min_instances than max_instances."
-        in output
-    )
-    assert (
-        "The number of min_instances (3) cannot be greater than the max_instances (1)."
-        in output
-    )
+        assert (
+            "The number of min_instances (3) cannot be greater than the max_instances (1)."
+            in output
+        )
 
 
-@patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.glob", autospec=True)
-def test_get_service_path_cwd(mock_glob, mock_isdir):
-    mock_isdir.return_value = True
-    mock_glob.return_value = ["something.yaml"]
+def test_get_service_path_cwd():
+    with patch(
+        "paasta_tools.cli.cmds.validate.glob", autospec=True
+    ) as mock_glob, patch(
+        "paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True
+    ) as mock_isdir:
+        mock_isdir.return_value = True
+        mock_glob.return_value = ["something.yaml"]
 
-    service = None
-    soa_dir = os.getcwd()
+        service = None
+        soa_dir = os.getcwd()
 
-    service_path = get_service_path(service, soa_dir)
+        service_path = get_service_path(service, soa_dir)
 
-    assert service_path == os.getcwd()
+        assert service_path == os.getcwd()
 
 
-@patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.glob", autospec=True)
-def test_get_service_path_soa_dir(mock_glob, mock_isdir):
-    mock_isdir.return_value = True
-    mock_glob.return_value = ["something.yaml"]
+def test_get_service_path_soa_dir():
+    with patch(
+        "paasta_tools.cli.cmds.validate.glob", autospec=True
+    ) as mock_glob, patch(
+        "paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True
+    ) as mock_isdir:
+        mock_isdir.return_value = True
+        mock_glob.return_value = ["something.yaml"]
 
-    service = "some_service"
-    soa_dir = "some/path"
+        service = "some_service"
+        soa_dir = "some/path"
 
-    service_path = get_service_path(service, soa_dir)
+        service_path = get_service_path(service, soa_dir)
 
-    assert service_path == f"{soa_dir}/{service}"
+        assert service_path == f"{soa_dir}/{service}"
 
 
 def test_get_schema_eks_found():
@@ -262,35 +266,41 @@ def test_get_schema_missing():
         get_schema_validator("fake_schema")
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_k8s_namespace_schema_good(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
+def test_k8s_namespace_schema_good(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 main:
     namespace: this-is-good
 """
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
 
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_k8s_namespace_schema_bad(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
+def test_k8s_namespace_schema_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 main:
     namspace: bad_namespace
 """
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.yaml", schema_type)
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.yaml", schema_type)
 
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_list_hashes_good(mock_get_file_contents, capsys):
-    kubernetes_content = """
+def test_kubernetes_validate_schema_list_hashes_good(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        kubernetes_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -307,22 +317,22 @@ _main_http:
   disk: 512
   registrations: ['foo.bar', 'bar.baz']
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
+
+
+def test_validate_instance_names(capsys):
+    with patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True):
+        fake_instances = {
+            "a_________________________________________a": {},
+            "b_________________________________________b": {},
+        }
+        assert not validate_instance_names(fake_instances, "fake_path")
         output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_validate_instance_names(mock_get_file_contents, capsys):
-    fake_instances = {
-        "a_________________________________________a": {},
-        "b_________________________________________b": {},
-    }
-    assert not validate_instance_names(fake_instances, "fake_path")
-    output, _ = capsys.readouterr()
-    assert "Length of instance name" in output
+        assert "Length of instance name" in output
 
 
 @pytest.mark.parametrize(
@@ -355,9 +365,11 @@ def test_validate_rollback_bounds(mock_config, expected):
     )
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_understands_underscores(mock_get_file_contents, capsys):
-    kubernetes_content = """
+def test_kubernetes_validate_understands_underscores(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        kubernetes_content = """
 ---
 _template: &template
   foo: bar
@@ -368,16 +380,18 @@ main:
   env:
     <<: *template
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_healthcheck_non_cmd(mock_get_file_contents, capsys):
-    kubernetes_content = """
+def test_kubernetes_validate_schema_healthcheck_non_cmd(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        kubernetes_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -387,12 +401,12 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
   healthcheck_mode: tcp
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
-        kubernetes_content = """
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
+            kubernetes_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -401,16 +415,18 @@ main_worker:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_id(mock_get_file_contents, capsys):
-    kubernetes_content = """
+def test_kubernetes_validate_id(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        kubernetes_content = """
 ---
 valid:
   cpus: 0.1
@@ -419,13 +435,13 @@ valid:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
-    kubernetes_content = """
+        kubernetes_content = """
 ---
 this_is_okay_too_1:
   cpus: 0.1
@@ -434,13 +450,13 @@ this_is_okay_too_1:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
-    kubernetes_content = """
+        kubernetes_content = """
 ---
 dashes-are-okay-too:
   cpus: 0.1
@@ -449,14 +465,14 @@ dashes-are-okay-too:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
-    kubernetes_content = """
+        kubernetes_content = """
 ---
 main_worker_CAPITALS_INVALID:
   cpus: 0.1
@@ -465,14 +481,14 @@ main_worker_CAPITALS_INVALID:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.yaml", schema_type)
-        get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.yaml", schema_type)
+            get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
-    kubernetes_content = """
+        kubernetes_content = """
 ---
 $^&*()(&*^%&definitely_not_okay:
   cpus: 0.1
@@ -481,18 +497,18 @@ $^&*()(&*^%&definitely_not_okay:
   disk: 512
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.yaml", schema_type)
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.yaml", schema_type)
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_healthcheck_cmd_has_cmd(
-    mock_get_file_contents, capsys
-):
-    kubernetes_content = """
+def test_kubernetes_validate_schema_healthcheck_cmd_has_cmd(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        kubernetes_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -502,13 +518,13 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
   healthcheck_mode: cmd
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.yaml", schema_type)
-        get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
-        kubernetes_content = """
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.yaml", schema_type)
+            get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
+            kubernetes_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -519,19 +535,19 @@ main_worker:
   healthcheck_mode: cmd
   healthcheck_cmd: '/bin/true'
 """
-    mock_get_file_contents.return_value = kubernetes_content
-    for schema_type in ["kubernetes", "eks"]:
-        assert validate_schema("unused_service_path.yaml", schema_type)
-        get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
-        output, _ = capsys.readouterr()
-        assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = kubernetes_content
+        for schema_type in ["kubernetes", "eks"]:
+            assert validate_schema("unused_service_path.yaml", schema_type)
+            get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
+            output, _ = capsys.readouterr()
+            assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_keys_outside_instance_blocks_bad(
-    mock_get_file_contents, capsys
-):
-    mock_get_file_contents.return_value = """
+def test_kubernetes_validate_schema_keys_outside_instance_blocks_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 {
     "main": {
         "instances": 5
@@ -539,57 +555,63 @@ def test_kubernetes_validate_schema_keys_outside_instance_blocks_bad(
     "page": false
 }
 """
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.json", schema_type)
-        get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.json", schema_type)
+            get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
 
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_security_good(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
+def test_kubernetes_validate_schema_security_good(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 main:
     dependencies_reference: main
     security:
         outbound_firewall: block
 """
-    assert validate_schema("unused_service_path.yaml", "kubernetes")
+        assert validate_schema("unused_service_path.yaml", "kubernetes")
 
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_schema_security_bad(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
+def test_kubernetes_validate_schema_security_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 main:
     dependencies_reference: main
     security:
         outbound_firewall: bblock
 """
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.yaml", schema_type)
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.yaml", schema_type)
 
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_kubernetes_validate_invalid_key_bad(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
+def test_kubernetes_validate_invalid_key_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = """
 {
     "main": {
         "fake_key": 5
     }
 }
 """
-    for schema_type in ["kubernetes", "eks"]:
-        assert not validate_schema("unused_service_path.json", schema_type)
+        for schema_type in ["kubernetes", "eks"]:
+            assert not validate_schema("unused_service_path.json", schema_type)
 
-        output, _ = capsys.readouterr()
-        assert SCHEMA_INVALID in output
+            output, _ = capsys.readouterr()
+            assert SCHEMA_INVALID in output
 
 
 @pytest.mark.parametrize(
@@ -656,9 +678,11 @@ test_instance:
         assert expected_output in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_tron_validate_schema_understands_underscores(mock_get_file_contents, capsys):
-    tron_content = """
+def test_tron_validate_schema_understands_underscores(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        tron_content = """
 _my_template: &a_template
   actions:
     first:
@@ -671,15 +695,17 @@ test_job:
     value: "0 7 * * 5"
   <<: *a_template
 """
-    mock_get_file_contents.return_value = tron_content
-    assert validate_schema("unused_service_path.yaml", "tron")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+        mock_get_file_contents.return_value = tron_content
+        assert validate_schema("unused_service_path.yaml", "tron")
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_tron_validate_schema_job_extra_properties_bad(mock_get_file_contents, capsys):
-    tron_content = """
+def test_tron_validate_schema_job_extra_properties_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        tron_content = """
 test_job:
   node: batch_box
   schedule: "daily 04:00:00"
@@ -688,17 +714,17 @@ test_job:
     first:
       command: echo hello world
 """
-    mock_get_file_contents.return_value = tron_content
-    assert not validate_schema("unused_service_path.yaml", "tron")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        mock_get_file_contents.return_value = tron_content
+        assert not validate_schema("unused_service_path.yaml", "tron")
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_tron_validate_schema_actions_extra_properties_bad(
-    mock_get_file_contents, capsys
-):
-    tron_content = """
+def test_tron_validate_schema_actions_extra_properties_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        tron_content = """
 test_job:
   node: batch_box
   schedule: "daily 04:00:00"
@@ -707,17 +733,17 @@ test_job:
       command: echo hello world
       something_else: true
 """
-    mock_get_file_contents.return_value = tron_content
-    assert not validate_schema("unused_service_path.yaml", "tron")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        mock_get_file_contents.return_value = tron_content
+        assert not validate_schema("unused_service_path.yaml", "tron")
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_tron_validate_schema_cleanup_action_extra_properties_bad(
-    mock_get_file_contents, capsys
-):
-    tron_content = """
+def test_tron_validate_schema_cleanup_action_extra_properties_bad(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        tron_content = """
 test_job:
   node: batch_box
   schedule: "daily 04:00:00"
@@ -728,10 +754,10 @@ test_job:
     command: rm output
     other_key: value
 """
-    mock_get_file_contents.return_value = tron_content
-    assert not validate_schema("unused_service_path.yaml", "tron")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        mock_get_file_contents.return_value = tron_content
+        assert not validate_schema("unused_service_path.yaml", "tron")
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
 @pytest.mark.parametrize(
@@ -909,44 +935,46 @@ def test_rollback_validate_schema_invalid(mock_content, capsys):
     assert SCHEMA_INVALID in output
 
 
-@patch("paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True)
-def test_validate_tron_with_service_invalid(
-    mock_validate_tron_config, mock_list_clusters, capsys
-):
-    mock_list_clusters.return_value = ["dev", "stage", "prod"]
-    mock_validate_tron_config.side_effect = [[], ["some error"], []]
+def test_validate_tron_with_service_invalid(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True
+    ) as mock_validate_tron_config, patch(
+        "paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True
+    ) as mock_list_clusters:
+        mock_list_clusters.return_value = ["dev", "stage", "prod"]
+        mock_validate_tron_config.side_effect = [[], ["some error"], []]
 
-    assert not validate_tron("soa/my_service")
-    mock_list_clusters.assert_called_once_with("my_service", "soa")
-    expected_calls = [
-        mock.call("my_service", cluster, "soa")
-        for cluster in mock_list_clusters.return_value
-    ]
-    assert mock_validate_tron_config.call_args_list == expected_calls
+        assert not validate_tron("soa/my_service")
+        mock_list_clusters.assert_called_once_with("my_service", "soa")
+        expected_calls = [
+            mock.call("my_service", cluster, "soa")
+            for cluster in mock_list_clusters.return_value
+        ]
+        assert mock_validate_tron_config.call_args_list == expected_calls
 
-    output, _ = capsys.readouterr()
-    assert "some error" in output
+        output, _ = capsys.readouterr()
+        assert "some error" in output
 
 
-@patch("paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True)
-def test_validate_tron_with_service_valid(
-    mock_validate_tron_config, mock_list_clusters, capsys
-):
-    mock_list_clusters.return_value = ["dev", "prod"]
-    mock_validate_tron_config.side_effect = [[], []]
+def test_validate_tron_with_service_valid(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True
+    ) as mock_validate_tron_config, patch(
+        "paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True
+    ) as mock_list_clusters:
+        mock_list_clusters.return_value = ["dev", "prod"]
+        mock_validate_tron_config.side_effect = [[], []]
 
-    assert validate_tron("soa/my_service")
-    mock_list_clusters.assert_called_once_with("my_service", "soa")
-    expected_calls = [
-        mock.call("my_service", cluster, "soa")
-        for cluster in mock_list_clusters.return_value
-    ]
-    assert mock_validate_tron_config.call_args_list == expected_calls
+        assert validate_tron("soa/my_service")
+        mock_list_clusters.assert_called_once_with("my_service", "soa")
+        expected_calls = [
+            mock.call("my_service", cluster, "soa")
+            for cluster in mock_list_clusters.return_value
+        ]
+        assert mock_validate_tron_config.call_args_list == expected_calls
 
-    output, _ = capsys.readouterr()
-    assert "tron-dev.yaml is valid" in output
+        output, _ = capsys.readouterr()
+        assert "tron-dev.yaml is valid" in output
 
 
 def test_check_service_path_none(capsys):
@@ -957,107 +985,116 @@ def test_check_service_path_none(capsys):
     assert "%s is not a directory" % service_path in output
 
 
-@patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
-def test_check_service_path_empty(mock_isdir, capsys):
-    mock_isdir.return_value = True
-    service_path = "fake/path"
-    assert not check_service_path(service_path)
+def test_check_service_path_empty(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True
+    ) as mock_isdir:
+        mock_isdir.return_value = True
+        service_path = "fake/path"
+        assert not check_service_path(service_path)
 
-    output, _ = capsys.readouterr()
-    assert "%s does not contain any .yaml files" % service_path in output
-
-
-@patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.glob", autospec=True)
-def test_check_service_path_good(mock_glob, mock_isdir):
-    mock_isdir.return_value = True
-    mock_glob.return_value = True
-    service_path = "fake/path"
-    assert check_service_path(service_path)
+        output, _ = capsys.readouterr()
+        assert "%s does not contain any .yaml files" % service_path in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-def test_validate_unique_service_name_success(
-    mock_list_clusters, mock_get_service_instance_list
-):
-    service_name = "service_1"
-    mock_list_clusters.return_value = ["cluster_1"]
-    mock_get_service_instance_list.return_value = [
-        (service_name, "instance_1"),
-        (service_name, "instance_2"),
-        (service_name, "instance_3"),
-    ]
-    assert validate_unique_instance_names(f"soa/{service_name}")
+def test_check_service_path_good():
+    with patch(
+        "paasta_tools.cli.cmds.validate.glob", autospec=True
+    ) as mock_glob, patch(
+        "paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True
+    ) as mock_isdir:
+        mock_isdir.return_value = True
+        mock_glob.return_value = True
+        service_path = "fake/path"
+        assert check_service_path(service_path)
 
 
-@patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-def test_validate_unique_service_name_failure(
-    mock_list_clusters, mock_get_service_instance_list, capsys
-):
-    service_name = "service_1"
-    mock_list_clusters.return_value = ["cluster_1"]
-    mock_get_service_instance_list.return_value = [
-        (service_name, "instance_1"),
-        (service_name, "instance_2"),
-        (service_name, "instance_1"),
-    ]
-    assert not validate_unique_instance_names(f"soa/{service_name}")
-
-    output, _ = capsys.readouterr()
-    assert "instance_1" in output
+def test_validate_unique_service_name_success():
+    with patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True
+    ) as mock_get_service_instance_list:
+        service_name = "service_1"
+        mock_list_clusters.return_value = ["cluster_1"]
+        mock_get_service_instance_list.return_value = [
+            (service_name, "instance_1"),
+            (service_name, "instance_2"),
+            (service_name, "instance_3"),
+        ]
+        assert validate_unique_instance_names(f"soa/{service_name}")
 
 
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.check_secrets_for_instance", autospec=True)
+def test_validate_unique_service_name_failure(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True
+    ) as mock_get_service_instance_list:
+        service_name = "service_1"
+        mock_list_clusters.return_value = ["cluster_1"]
+        mock_get_service_instance_list.return_value = [
+            (service_name, "instance_1"),
+            (service_name, "instance_2"),
+            (service_name, "instance_1"),
+        ]
+        assert not validate_unique_instance_names(f"soa/{service_name}")
+
+        output, _ = capsys.readouterr()
+        assert "instance_1" in output
+
+
 def test_validate_secrets(
-    mock_check_secrets_for_instance,
-    mock_load_system_paasta_config,
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
     capsys,
 ):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_system_paasta_config.return_value = mock.Mock(
-        get_vault_cluster_config=mock.Mock(
-            return_value={"fake_cluster": "fake_vault_env"}
+    with patch(
+        "paasta_tools.cli.cmds.validate.check_secrets_for_instance", autospec=True
+    ) as mock_check_secrets_for_instance, patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True
+    ) as mock_path_to_soa_dir_service, patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+        autospec=True,
+    ) as mock_load_all_instance_configs_for_service:
+        mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+        mock_list_clusters.return_value = ["fake_cluster"]
+        mock_load_system_paasta_config.return_value = mock.Mock(
+            get_vault_cluster_config=mock.Mock(
+                return_value={"fake_cluster": "fake_vault_env"}
+            )
         )
-    )
-    mock_paasta_instance = mock.Mock(
-        config_dict={"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
-    )
-    mock_paasta_instance2 = mock.Mock(
-        config_dict={"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
-    )
-    mock_load_all_instance_configs_for_service.return_value = [
-        ("fake_instance", mock_paasta_instance),
-        ("fake_instance", mock_paasta_instance2),
-    ]
-    mock_check_secrets_for_instance.return_value = True
-    assert validate_secrets("fake-service-path"), capsys
-    captured = capsys.readouterr()
-    assert "No orphan secrets found" in captured.out
-    assert mock_check_secrets_for_instance.call_count == 2
+        mock_paasta_instance = mock.Mock(
+            config_dict={"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+        )
+        mock_paasta_instance2 = mock.Mock(
+            config_dict={"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
+        )
+        mock_load_all_instance_configs_for_service.return_value = [
+            ("fake_instance", mock_paasta_instance),
+            ("fake_instance", mock_paasta_instance2),
+        ]
+        mock_check_secrets_for_instance.return_value = True
+        assert validate_secrets("fake-service-path"), capsys
+        captured = capsys.readouterr()
+        assert "No orphan secrets found" in captured.out
+        assert mock_check_secrets_for_instance.call_count == 2
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True)
-def test_check_secrets_for_instance(mock_isfile, mock_get_file_contents):
-    instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
-    overriding_service = "fake-other-service-name"
-    soa_dir = "fake_soa_dir"
-    service = "fake-service-name"
-    vault_env = "fake_vault_env"
-    secret_content = """
+def test_check_secrets_for_instance():
+    with patch(
+        "paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True
+    ) as mock_isfile, patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+        overriding_service = "fake-other-service-name"
+        soa_dir = "fake_soa_dir"
+        service = "fake-service-name"
+        vault_env = "fake_vault_env"
+        secret_content = """
 {
     "environments": {
         "fake_vault_env": {
@@ -1066,41 +1103,48 @@ def test_check_secrets_for_instance(mock_isfile, mock_get_file_contents):
     }
 }
 """
-    mock_get_file_contents.return_value = secret_content
-    mock_isfile.return_value = True
-    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
-    mock_get_file_contents.assert_called_with(
-        "fake_soa_dir/fake-service-name/secrets/secret1.json"
-    )
-    instance_config_dict = {"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
-    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
-    mock_get_file_contents.assert_called_with(
-        "fake_soa_dir/_shared/secrets/secret1.json"
-    )
+        mock_get_file_contents.return_value = secret_content
+        mock_isfile.return_value = True
+        assert check_secrets_for_instance(
+            instance_config_dict, soa_dir, service, vault_env
+        )
+        mock_get_file_contents.assert_called_with(
+            "fake_soa_dir/fake-service-name/secrets/secret1.json"
+        )
+        instance_config_dict = {"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
+        assert check_secrets_for_instance(
+            instance_config_dict, soa_dir, service, vault_env
+        )
+        mock_get_file_contents.assert_called_with(
+            "fake_soa_dir/_shared/secrets/secret1.json"
+        )
 
-    # validation should also work on instances with service: override.
-    instance_config_dict = {
-        "env": {"SUPER_SECRET1": "SECRET(secret1)"},
-        "service": overriding_service,
-    }
-    mock_get_file_contents.return_value = secret_content
-    mock_isfile.return_value = True
-    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
-    mock_get_file_contents.assert_called_with(
-        f"{soa_dir}/{overriding_service}/secrets/secret1.json"
-    )
+        # validation should also work on instances with service: override.
+        instance_config_dict = {
+            "env": {"SUPER_SECRET1": "SECRET(secret1)"},
+            "service": overriding_service,
+        }
+        mock_get_file_contents.return_value = secret_content
+        mock_isfile.return_value = True
+        assert check_secrets_for_instance(
+            instance_config_dict, soa_dir, service, vault_env
+        )
+        mock_get_file_contents.assert_called_with(
+            f"{soa_dir}/{overriding_service}/secrets/secret1.json"
+        )
 
 
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True)
-def test_check_secrets_for_instance_missing_secret(
-    mock_isfile, mock_get_file_contents, capsys
-):
-    instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
-    soa_dir = "fake_soa_dir"
-    service = "fake-service-name"
-    vault_env = "even_more_fake_vault_env"
-    secret_content = """
+def test_check_secrets_for_instance_missing_secret(capsys):
+    with patch(
+        "paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True
+    ) as mock_isfile, patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+        soa_dir = "fake_soa_dir"
+        service = "fake-service-name"
+        vault_env = "even_more_fake_vault_env"
+        secret_content = """
 {
     "environments": {
         "fake_vault_env": {
@@ -1109,24 +1153,18 @@ def test_check_secrets_for_instance_missing_secret(
     }
 }
 """
-    mock_get_file_contents.return_value = secret_content
-    mock_isfile.return_value = True
-    assert not check_secrets_for_instance(
-        instance_config_dict, soa_dir, service, vault_env
-    ), capsys
-    captured = capsys.readouterr()
-    assert (
-        "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake_soa_dir/fake-service-name/secrets/secret1.json"
-        in captured.out
-    )
+        mock_get_file_contents.return_value = secret_content
+        mock_isfile.return_value = True
+        assert not check_secrets_for_instance(
+            instance_config_dict, soa_dir, service, vault_env
+        ), capsys
+        captured = capsys.readouterr()
+        assert (
+            "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake_soa_dir/fake-service-name/secrets/secret1.json"
+            in captured.out
+        )
 
 
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 @pytest.mark.parametrize(
     "autoscaling_config,registrations,instance_type,expected",
     [
@@ -1232,38 +1270,43 @@ def test_check_secrets_for_instance_missing_secret(
     ],
 )
 def test_validate_autoscaling_configs(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
     autoscaling_config,
     registrations,
     instance_type,
     expected,
 ):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value="kubernetes"),
-                is_autoscaling_enabled=mock.Mock(return_value=True),
-                get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
-                get_registrations=mock.Mock(return_value=registrations),
-            ),
-        )
-    ]
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+    with patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True
+    ) as mock_path_to_soa_dir_service, patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
         autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is expected
+    ) as mock_load_all_instance_configs_for_service:
+        mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+        mock_list_clusters.return_value = ["fake_cluster"]
+        mock_load_all_instance_configs_for_service.return_value = [
+            (
+                "fake_instance1",
+                mock.Mock(
+                    get_instance=mock.Mock(return_value="fake_instance1"),
+                    get_instance_type=mock.Mock(return_value="kubernetes"),
+                    is_autoscaling_enabled=mock.Mock(return_value=True),
+                    get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
+                    get_registrations=mock.Mock(return_value=registrations),
+                ),
+            )
+        ]
+
+        with mock.patch(
+            "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+            autospec=True,
+            return_value=SystemPaastaConfig(
+                config={"skip_cpu_override_validation": ["not-a-real-service"]},
+                directory="/some/test/dir",
+            ),
+        ):
+            assert validate_autoscaling_configs("fake-service-path") is expected
 
 
 @pytest.mark.parametrize(
@@ -1280,64 +1323,63 @@ def test_validate_autoscaling_configs(
         (True, "# override-cpu-setting (PAASTA-17522)", True, "eks"),
     ],
 )
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_cpu_autotune_override(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    mock_get_file_contents,
     has_cpu_override,
     annotation,
     expected,
     instance_type,
 ):
-    metrics_providers = [
-        {"type": METRICS_PROVIDER_CPU, "setpoint": 0.8},
-        {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.4},
-    ]
+    with patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True
+    ) as mock_path_to_soa_dir_service, patch(
+        "paasta_tools.cli.cmds.validate.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+        autospec=True,
+    ) as mock_load_all_instance_configs_for_service, patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        metrics_providers = [
+            {"type": METRICS_PROVIDER_CPU, "setpoint": 0.8},
+            {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.4},
+        ]
 
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value=instance_type),
-                is_autoscaling_enabled=mock.Mock(return_value=True),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_providers": metrics_providers,
-                    }
+        mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+        mock_list_clusters.return_value = ["fake_cluster"]
+        mock_load_all_instance_configs_for_service.return_value = [
+            (
+                "fake_instance1",
+                mock.Mock(
+                    get_instance=mock.Mock(return_value="fake_instance1"),
+                    get_instance_type=mock.Mock(return_value=instance_type),
+                    is_autoscaling_enabled=mock.Mock(return_value=True),
+                    get_autoscaling_params=mock.Mock(
+                        return_value={
+                            "metrics_providers": metrics_providers,
+                        }
+                    ),
                 ),
-            ),
-        )
-    ]
-    mock_get_file_contents.return_value = """
+            )
+        ]
+        mock_get_file_contents.return_value = """
 ---
 fake_instance1:
   mem: 2
 """
-    if has_cpu_override:
-        mock_get_file_contents.return_value += f"""
+        if has_cpu_override:
+            mock_get_file_contents.return_value += f"""
   cpus: 1 {annotation}
 """
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is expected
+        with mock.patch(
+            "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+            autospec=True,
+            return_value=SystemPaastaConfig(
+                config={"skip_cpu_override_validation": ["not-a-real-service"]},
+                directory="/some/test/dir",
+            ),
+        ):
+            assert validate_autoscaling_configs("fake-service-path") is expected
 
 
 @pytest.mark.parametrize(

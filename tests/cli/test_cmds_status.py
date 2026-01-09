@@ -86,279 +86,293 @@ def make_fake_instance_conf(
     return conf
 
 
-@patch("paasta_tools.cli.utils.validate_service_name", autospec=True)
-def test_figure_out_service_name_not_found(mock_validate_service_name, capfd):
-    # paasta_status with invalid -s service_name arg results in error
-    mock_validate_service_name.side_effect = NoSuchService(None)
-    parsed_args = Mock()
-    parsed_args.service = "fake_service"
+def test_figure_out_service_name_not_found(capfd):
+    with patch(
+        "paasta_tools.cli.utils.validate_service_name", autospec=True
+    ) as mock_validate_service_name:
+        # paasta_status with invalid -s service_name arg results in error
+        mock_validate_service_name.side_effect = NoSuchService(None)
+        parsed_args = Mock()
+        parsed_args.service = "fake_service"
 
-    expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
+        expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
-    # Fail if exit(1) does not get called
-    with pytest.raises(SystemExit) as sys_exit:
-        status.figure_out_service_name(parsed_args)
+        # Fail if exit(1) does not get called
+        with pytest.raises(SystemExit) as sys_exit:
+            status.figure_out_service_name(parsed_args)
 
-    output, _ = capfd.readouterr()
-    assert sys_exit.value.code == 1
-    assert output == expected_output
+        output, _ = capfd.readouterr()
+        assert sys_exit.value.code == 1
+        assert output == expected_output
 
 
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.utils.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.utils.guess_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 def test_status_arg_service_not_found(
-    mock_list_services,
-    mock_guess_service_name,
-    mock_validate_service_name,
-    mock_load_system_paasta_config,
-    mock_list_clusters,
     capfd,
     system_paasta_config,
 ):
-    # paasta_status with no args and non-service directory results in error
-    mock_list_services.return_value = []
-    mock_guess_service_name.return_value = "not_a_service"
-    error = NoSuchService("fake_service")
-    mock_validate_service_name.side_effect = error
-    mock_list_clusters.return_value = ["cluster1"]
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    expected_output = str(error) + "\n"
+    with patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.utils.guess_service_name", autospec=True
+    ) as mock_guess_service_name, patch(
+        "paasta_tools.cli.utils.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters:
+        # paasta_status with no args and non-service directory results in error
+        mock_list_services.return_value = []
+        mock_guess_service_name.return_value = "not_a_service"
+        error = NoSuchService("fake_service")
+        mock_validate_service_name.side_effect = error
+        mock_list_clusters.return_value = ["cluster1"]
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        expected_output = str(error) + "\n"
 
-    args = MagicMock()
-    args.service = None
-    args.owner = None
-    args.clusters = None
-    args.instances = None
-    args.deploy_group = None
-    args.registration = None
-    args.service_instance = None
+        args = MagicMock()
+        args.service = None
+        args.owner = None
+        args.clusters = None
+        args.instances = None
+        args.deploy_group = None
+        args.registration = None
+        args.service_instance = None
 
-    # Fail if exit(1) does not get called
-    with pytest.raises(SystemExit) as sys_exit:
-        paasta_status(args)
+        # Fail if exit(1) does not get called
+        with pytest.raises(SystemExit) as sys_exit:
+            paasta_status(args)
 
-    output, _ = capfd.readouterr()
-    assert sys_exit.value.code == 1
-    assert output == expected_output
+        output, _ = capfd.readouterr()
+        assert sys_exit.value.code == 1
+        assert output == expected_output
 
 
-@patch("paasta_tools.cli.cmds.status.paasta_status_on_api_endpoint", autospec=True)
-@patch("paasta_tools.cli.cmds.status.report_invalid_whitelist_values", autospec=True)
 def test_report_status_calls_report_invalid_whitelist_values(
-    mock_report_invalid_whitelist_values,
-    mock_paasta_status_on_api_endpoint,
     system_paasta_config,
 ):
-    service = "fake_service"
-    planned_deployments = ["cluster.instance1", "cluster.instance2"]
-    actual_deployments: Dict[str, str] = {}
-    instance_whitelist: Dict[str, Any] = {}
+    with patch(
+        "paasta_tools.cli.cmds.status.report_invalid_whitelist_values", autospec=True
+    ) as mock_report_invalid_whitelist_values, patch(
+        "paasta_tools.cli.cmds.status.paasta_status_on_api_endpoint", autospec=True
+    ):
+        service = "fake_service"
+        planned_deployments = ["cluster.instance1", "cluster.instance2"]
+        actual_deployments: Dict[str, str] = {}
+        instance_whitelist: Dict[str, Any] = {}
 
-    status.report_status_for_cluster(
-        service=service,
-        cluster="cluster",
-        deploy_pipeline=planned_deployments,
-        actual_deployments=actual_deployments,
-        instance_whitelist=instance_whitelist,
-        system_paasta_config=system_paasta_config,
-        lock=MagicMock(),
-    )
-    mock_report_invalid_whitelist_values.assert_called_once_with(
-        [], ["instance1", "instance2"], "instance"
-    )
+        status.report_status_for_cluster(
+            service=service,
+            cluster="cluster",
+            deploy_pipeline=planned_deployments,
+            actual_deployments=actual_deployments,
+            instance_whitelist=instance_whitelist,
+            system_paasta_config=system_paasta_config,
+            lock=MagicMock(),
+        )
+        mock_report_invalid_whitelist_values.assert_called_once_with(
+            [], ["instance1", "instance2"], "instance"
+        )
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_deploy_info", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_status_pending_pipeline_build_message(
-    mock_list_clusters,
-    mock_validate_service_name,
-    mock_get_actual_deployments,
-    mock_get_deploy_info,
-    mock_figure_out_service_name,
-    mock_load_system_paasta_config,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
     capfd,
     system_paasta_config,
 ):
-    # If deployments.json is missing SERVICE, output the appropriate message
-    service = "fake_service"
-    mock_list_clusters.return_value = ["cluster"]
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = service
-    mock_list_services.return_value = [service]
-    pipeline = [{"instancename": "cluster.instance"}]
-    mock_get_deploy_info.return_value = {"pipeline": pipeline}
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_instance_config = make_fake_instance_conf("cluster", service, "instancename")
-    mock_get_instance_configs_for_service.return_value = [mock_instance_config]
+    with patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True
+    ) as mock_get_actual_deployments, patch(
+        "paasta_tools.cli.cmds.status.get_deploy_info", autospec=True
+    ) as mock_get_deploy_info, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        # If deployments.json is missing SERVICE, output the appropriate message
+        service = "fake_service"
+        mock_list_clusters.return_value = ["cluster"]
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = service
+        mock_list_services.return_value = [service]
+        pipeline = [{"instancename": "cluster.instance"}]
+        mock_get_deploy_info.return_value = {"pipeline": pipeline}
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_instance_config = make_fake_instance_conf(
+            "cluster", service, "instancename"
+        )
+        mock_get_instance_configs_for_service.return_value = [mock_instance_config]
 
-    actual_deployments: Dict[str, str] = {}
-    mock_get_actual_deployments.return_value = actual_deployments
-    expected_output = missing_deployments_message(service)
+        actual_deployments: Dict[str, str] = {}
+        mock_get_actual_deployments.return_value = actual_deployments
+        expected_output = missing_deployments_message(service)
 
-    args = MagicMock()
-    args.service = service
-    args.deploy_group = None
-    args.clusters = None
-    args.instances = None
-    args.owner = None
-    args.soa_dir = utils.DEFAULT_SOA_DIR
-    args.registration = None
-    args.service_instance = None
+        args = MagicMock()
+        args.service = service
+        args.deploy_group = None
+        args.clusters = None
+        args.instances = None
+        args.owner = None
+        args.soa_dir = utils.DEFAULT_SOA_DIR
+        args.registration = None
+        args.service_instance = None
 
-    paasta_status(args)
-    output, _ = capfd.readouterr()
-    assert expected_output in output
+        paasta_status(args)
+        output, _ = capfd.readouterr()
+        assert expected_output in output
 
 
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_get_actual_deployments(
-    mock_list_clusters,
-):
-    mock_list_clusters.return_value = ["a_cluster", "b_cluster"]
+def test_get_actual_deployments():
+    with patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters:
+        mock_list_clusters.return_value = ["a_cluster", "b_cluster"]
 
-    # This will actually return the same 2 instance_configs for every instance type, but sufficient for our tests
-    fake_instance_configs = [
-        make_fake_instance_conf(
-            "a_cluster",
-            "fake_service",
-            "a_instance",
-            deploy_group="deploy_group_a",
-            docker_url="http://docker.registry/fake_service:paasta-somesha123",
-        ),
-        make_fake_instance_conf(
-            "b_cluster",
-            "fake_service",
-            "b_instance",
-            deploy_group="deploy_group_b",
-            docker_url="http://docker.registry/fake_service:paasta-somesha123-20220101T000000",
-        ),
-    ]
+        # This will actually return the same 2 instance_configs for every instance type, but sufficient for our tests
+        fake_instance_configs = [
+            make_fake_instance_conf(
+                "a_cluster",
+                "fake_service",
+                "a_instance",
+                deploy_group="deploy_group_a",
+                docker_url="http://docker.registry/fake_service:paasta-somesha123",
+            ),
+            make_fake_instance_conf(
+                "b_cluster",
+                "fake_service",
+                "b_instance",
+                deploy_group="deploy_group_b",
+                docker_url="http://docker.registry/fake_service:paasta-somesha123-20220101T000000",
+            ),
+        ]
 
-    def mock_instance_config_side_effect(*args, **kwargs):
-        # self, cluster, instance_type_class):
-        print(f"{args} {kwargs}")
+        def mock_instance_config_side_effect(*args, **kwargs):
+            # self, cluster, instance_type_class):
+            print(f"{args} {kwargs}")
 
-        return [e for e in fake_instance_configs if e.cluster == kwargs["cluster"]]
+            return [e for e in fake_instance_configs if e.cluster == kwargs["cluster"]]
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.status.PaastaServiceConfigLoader.instance_configs",
-        autospec=True,
-    ) as mock_instance_configs:
-        mock_instance_configs.side_effect = mock_instance_config_side_effect
+        with mock.patch(
+            "paasta_tools.cli.cmds.status.PaastaServiceConfigLoader.instance_configs",
+            autospec=True,
+        ) as mock_instance_configs:
+            mock_instance_configs.side_effect = mock_instance_config_side_effect
 
-        expected = {
-            "a_cluster.a_instance": DeploymentVersion("somesha123", None),
-            "b_cluster.b_instance": DeploymentVersion("somesha123", "20220101T000000"),
-        }
+            expected = {
+                "a_cluster.a_instance": DeploymentVersion("somesha123", None),
+                "b_cluster.b_instance": DeploymentVersion(
+                    "somesha123", "20220101T000000"
+                ),
+            }
 
-        actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
+            actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
+            assert expected == actual
+
+
+def test_get_deploy_info_exists():
+    with patch(
+        "paasta_tools.cli.cmds.status.read_deploy", autospec=True
+    ) as mock_read_deploy:
+        expected = "fake deploy yaml"
+        mock_read_deploy.return_value = expected
+        actual = status.get_deploy_info("fake_service")
         assert expected == actual
 
 
-@patch("paasta_tools.cli.cmds.status.read_deploy", autospec=True)
-def test_get_deploy_info_exists(mock_read_deploy):
-    expected = "fake deploy yaml"
-    mock_read_deploy.return_value = expected
-    actual = status.get_deploy_info("fake_service")
-    assert expected == actual
+def test_get_deploy_info_does_not_exist(capfd):
+    with patch(
+        "paasta_tools.cli.cmds.status.read_deploy", autospec=True
+    ) as mock_read_deploy:
+        mock_read_deploy.return_value = False
+        with pytest.raises(SystemExit) as sys_exit:
+            status.get_deploy_info("fake_service")
+        output, _ = capfd.readouterr()
+        assert sys_exit.value.code == 1
+        assert output.startswith("Error encountered with")
 
 
-@patch("paasta_tools.cli.cmds.status.read_deploy", autospec=True)
-def test_get_deploy_info_does_not_exist(mock_read_deploy, capfd):
-    mock_read_deploy.return_value = False
-    with pytest.raises(SystemExit) as sys_exit:
-        status.get_deploy_info("fake_service")
-    output, _ = capfd.readouterr()
-    assert sys_exit.value.code == 1
-    assert output.startswith("Error encountered with")
-
-
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_status_calls_sergeants(
-    mock_list_clusters,
-    mock_validate_service_name,
-    mock_report_status,
-    mock_get_planned_deployments,
-    mock_get_actual_deployments,
-    mock_figure_out_service_name,
-    mock_load_system_paasta_config,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
     system_paasta_config,
 ):
-    service = "fake_service"
-    cluster = "fake_cluster"
-    mock_list_clusters.return_value = ["cluster1", "cluster2", "fake_cluster"]
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = service
-    mock_list_services.return_value = [service]
+    with patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True
+    ) as mock_report_status, patch(
+        "paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True
+    ) as mock_get_planned_deployments, patch(
+        "paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True
+    ) as mock_get_actual_deployments, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        service = "fake_service"
+        cluster = "fake_cluster"
+        mock_list_clusters.return_value = ["cluster1", "cluster2", "fake_cluster"]
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = service
+        mock_list_services.return_value = [service]
 
-    mock_instance_config = make_fake_instance_conf(cluster, service, "fi")
-    mock_instance_config.get_service.return_value = service
-    mock_instance_config.get_cluster.return_value = cluster
-    mock_get_instance_configs_for_service.return_value = [mock_instance_config]
+        mock_instance_config = make_fake_instance_conf(cluster, service, "fi")
+        mock_instance_config.get_service.return_value = service
+        mock_instance_config.get_cluster.return_value = cluster
+        mock_get_instance_configs_for_service.return_value = [mock_instance_config]
 
-    planned_deployments = [
-        "cluster1.instance1",
-        "cluster1.instance2",
-        "cluster2.instance1",
-    ]
-    mock_get_planned_deployments.return_value = planned_deployments
+        planned_deployments = [
+            "cluster1.instance1",
+            "cluster1.instance2",
+            "cluster2.instance1",
+        ]
+        mock_get_planned_deployments.return_value = planned_deployments
 
-    actual_deployments = {"fake_service:paasta-cluster.instance": "this_is_a_sha"}
-    mock_get_actual_deployments.return_value = actual_deployments
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_report_status.return_value = 1776, ["dummy", "output"]
+        actual_deployments = {"fake_service:paasta-cluster.instance": "this_is_a_sha"}
+        mock_get_actual_deployments.return_value = actual_deployments
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_report_status.return_value = 1776, ["dummy", "output"]
 
-    args = MagicMock()
-    args.service = service
-    args.clusters = None
-    args.instances = None
-    args.verbose = False
-    args.owner = None
-    args.deploy_group = None
-    args.soa_dir = "/fake/soa/dir"
-    args.registration = None
-    args.service_instance = None
-    args.new = False
-    args.all_namespaces = False
-    return_value = paasta_status(args)
+        args = MagicMock()
+        args.service = service
+        args.clusters = None
+        args.instances = None
+        args.verbose = False
+        args.owner = None
+        args.deploy_group = None
+        args.soa_dir = "/fake/soa/dir"
+        args.registration = None
+        args.service_instance = None
+        args.new = False
+        args.all_namespaces = False
+        return_value = paasta_status(args)
 
-    assert return_value == 1776
+        assert return_value == 1776
 
-    mock_get_actual_deployments.assert_called_once_with(service, "/fake/soa/dir")
-    mock_report_status.assert_called_once_with(
-        service=service,
-        deploy_pipeline=planned_deployments,
-        actual_deployments=actual_deployments,
-        cluster=cluster,
-        instance_whitelist={"fi": mock_instance_config.__class__},
-        system_paasta_config=system_paasta_config,
-        lock=mock.ANY,
-        verbose=False,
-        new=False,
-        all_namespaces=False,
-    )
+        mock_get_actual_deployments.assert_called_once_with(service, "/fake/soa/dir")
+        mock_report_status.assert_called_once_with(
+            service=service,
+            deploy_pipeline=planned_deployments,
+            actual_deployments=actual_deployments,
+            cluster=cluster,
+            instance_whitelist={"fi": mock_instance_config.__class__},
+            system_paasta_config=system_paasta_config,
+            lock=mock.ANY,
+            verbose=False,
+            new=False,
+            all_namespaces=False,
+        )
 
 
 def test_report_invalid_whitelist_values_no_whitelists():
@@ -409,233 +423,229 @@ class StatusArgs:
         self.all_namespaces = all_namespaces
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_group(
-    mock_list_clusters,
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group="fake_deploy_group",
-        clusters="cluster1",
-        instances="instance1,instance3",
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_inst2 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance2", "fake_deploy_group"
-    )
-    mock_inst3 = make_fake_instance_conf(
-        "cluster2", "fake_service", "instance3", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-        mock_inst2,
-        mock_inst3,
-    ]
-
-    pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == ["cluster1"]
-    assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
-
-
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_instances(
-    mock_list_clusters,
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group="fake_deploy_group",
-        clusters=None,
-        instances=None,
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_inst2 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance2", "fake_deploy_group"
-    )
-    mock_inst3 = make_fake_instance_conf(
-        "cluster2", "fake_service", "instance3", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-        mock_inst2,
-        mock_inst3,
-    ]
-
-    pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == ["cluster1", "cluster2"]
-    assert pargs["cluster1"]["fake_service"] == {
-        "instance1": mock_inst1.__class__,
-        "instance2": mock_inst2.__class__,
-    }
-    assert pargs["cluster2"]["fake_service"] == {"instance3": mock_inst3.__class__}
-
-
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_group(
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group="fake_deploy_group",
-        clusters="cluster4",
-        instances=None,
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf(
+def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_group():
+    with patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group="fake_deploy_group",
+            clusters="cluster1",
+            instances="instance1,instance3",
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_inst1 = make_fake_instance_conf(
             "cluster1", "fake_service", "instance1", "fake_deploy_group"
-        ),
-        make_fake_instance_conf(
+        )
+        mock_inst2 = make_fake_instance_conf(
             "cluster1", "fake_service", "instance2", "fake_deploy_group"
-        ),
-        make_fake_instance_conf(
+        )
+        mock_inst3 = make_fake_instance_conf(
             "cluster2", "fake_service", "instance3", "fake_deploy_group"
-        ),
-    ]
+        )
+        mock_get_instance_configs_for_service.return_value = [
+            mock_inst1,
+            mock_inst2,
+            mock_inst3,
+        ]
 
-    assert len(apply_args_filters(args)) == 0
-
-
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group(
-    mock_list_clusters,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-    mock_list_all_instances_for_service,
-):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group="fake_deploy_group",
-        clusters=None,
-        instances="instance5",
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_list_all_instances_for_service.return_value = []
-    mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf(
-            "cluster1", "fake_service", "instance1", "other_fake_deploy_group"
-        ),
-        make_fake_instance_conf(
-            "cluster1", "fake_service", "instance2", "other_fake_deploy_group"
-        ),
-        make_fake_instance_conf(
-            "cluster2", "fake_service", "instance3", "other_fake_deploy_group"
-        ),
-    ]
-
-    assert len(apply_args_filters(args)) == 0
+        pargs = apply_args_filters(args)
+        assert sorted(pargs.keys()) == ["cluster1"]
+        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-def test_apply_args_filters_clusters_and_instances(
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances="instance1,instance3",
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_inst2 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance2", "fake_deploy_group"
-    )
-    mock_inst3 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance3", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-        mock_inst2,
-        mock_inst3,
-    ]
+def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_instances():
+    with patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group="fake_deploy_group",
+            clusters=None,
+            instances=None,
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_inst1 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance1", "fake_deploy_group"
+        )
+        mock_inst2 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance2", "fake_deploy_group"
+        )
+        mock_inst3 = make_fake_instance_conf(
+            "cluster2", "fake_service", "instance3", "fake_deploy_group"
+        )
+        mock_get_instance_configs_for_service.return_value = [
+            mock_inst1,
+            mock_inst2,
+            mock_inst3,
+        ]
 
-    pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == ["cluster1"]
-    assert pargs["cluster1"]["fake_service"] == {
-        "instance1": mock_inst1.__class__,
-        "instance3": mock_inst3.__class__,
-    }
+        pargs = apply_args_filters(args)
+        assert sorted(pargs.keys()) == ["cluster1", "cluster2"]
+        assert pargs["cluster1"]["fake_service"] == {
+            "instance1": mock_inst1.__class__,
+            "instance2": mock_inst2.__class__,
+        }
+        assert pargs["cluster2"]["fake_service"] == {"instance3": mock_inst3.__class__}
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_group():
+    with patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group="fake_deploy_group",
+            clusters="cluster4",
+            instances=None,
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_get_instance_configs_for_service.return_value = [
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance1", "fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance2", "fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster2", "fake_service", "instance3", "fake_deploy_group"
+            ),
+        ]
+
+        assert len(apply_args_filters(args)) == 0
+
+
+def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group():
+    with patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_get_instance_configs_for_service, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_list_all_instances_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group="fake_deploy_group",
+            clusters=None,
+            instances="instance5",
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_list_all_instances_for_service.return_value = []
+        mock_get_instance_configs_for_service.return_value = [
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance1", "other_fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance2", "other_fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster2", "fake_service", "instance3", "other_fake_deploy_group"
+            ),
+        ]
+
+        assert len(apply_args_filters(args)) == 0
+
+
+def test_apply_args_filters_clusters_and_instances():
+    with patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group=None,
+            clusters="cluster1",
+            instances="instance1,instance3",
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_inst1 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance1", "fake_deploy_group"
+        )
+        mock_inst2 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance2", "fake_deploy_group"
+        )
+        mock_inst3 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance3", "fake_deploy_group"
+        )
+        mock_get_instance_configs_for_service.return_value = [
+            mock_inst1,
+            mock_inst2,
+            mock_inst3,
+        ]
+
+        pargs = apply_args_filters(args)
+        assert sorted(pargs.keys()) == ["cluster1"]
+        assert pargs["cluster1"]["fake_service"] == {
+            "instance1": mock_inst1.__class__,
+            "instance3": mock_inst3.__class__,
+        }
+
+
 @pytest.mark.parametrize(
     "service_instance_name",
     [
@@ -645,277 +655,292 @@ def test_apply_args_filters_clusters_and_instances(
     ],
 )
 def test_apply_args_filters_shorthand_notation(
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
     service_instance_name,
 ):
-    args = StatusArgs(
-        service=None,
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances=None,
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=service_instance_name,
-    )
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_inst2 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance2", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-        mock_inst2,
-    ]
+    with patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        args = StatusArgs(
+            service=None,
+            soa_dir="/fake/soa/dir",
+            deploy_group=None,
+            clusters="cluster1",
+            instances=None,
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=service_instance_name,
+        )
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_inst1 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance1", "fake_deploy_group"
+        )
+        mock_inst2 = make_fake_instance_conf(
+            "cluster1", "fake_service", "instance2", "fake_deploy_group"
+        )
+        mock_get_instance_configs_for_service.return_value = [
+            mock_inst1,
+            mock_inst2,
+        ]
 
-    pargs = apply_args_filters(args)
-    if service_instance_name == "fake_service.instance1":
-        assert sorted(pargs.keys()) == ["cluster1"]
-        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
-    elif service_instance_name == "fake_service.instance1,instance2":
-        assert sorted(pargs.keys()) == ["cluster1"]
-        assert pargs["cluster1"]["fake_service"] == {
-            "instance1": mock_inst1.__class__,
-            "instance2": mock_inst2.__class__,
-        }
-    elif service_instance_name == "fake_service.instance3":
-        assert sorted(pargs.keys()) == []
-        assert pargs["cluster1"]["fake_service"] == {}
-
-
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
-    args = StatusArgs(
-        service="fake-service",
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances="instance4,instance5",
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_list_services.return_value = ["fake_service"]
-    pargs = apply_args_filters(args)
-    output, _ = capfd.readouterr()
-    assert len(pargs) == 0
-    assert 'The service "fake-service" does not exist.' in output
-    assert "Did you mean any of these?" in output
-    assert "  fake_service" in output
+        pargs = apply_args_filters(args)
+        if service_instance_name == "fake_service.instance1":
+            assert sorted(pargs.keys()) == ["cluster1"]
+            assert pargs["cluster1"]["fake_service"] == {
+                "instance1": mock_inst1.__class__
+            }
+        elif service_instance_name == "fake_service.instance1,instance2":
+            assert sorted(pargs.keys()) == ["cluster1"]
+            assert pargs["cluster1"]["fake_service"] == {
+                "instance1": mock_inst1.__class__,
+                "instance2": mock_inst2.__class__,
+            }
+        elif service_instance_name == "fake_service.instance3":
+            assert sorted(pargs.keys()) == []
+            assert pargs["cluster1"]["fake_service"] == {}
 
 
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+def test_apply_args_filters_bad_service_name(capfd):
+    with patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services:
+        args = StatusArgs(
+            service="fake-service",
+            soa_dir="/fake/soa/dir",
+            deploy_group=None,
+            clusters="cluster1",
+            instances="instance4,instance5",
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_list_services.return_value = ["fake_service"]
+        pargs = apply_args_filters(args)
+        output, _ = capfd.readouterr()
+        assert len(pargs) == 0
+        assert 'The service "fake-service" does not exist.' in output
+        assert "Did you mean any of these?" in output
+        assert "  fake_service" in output
+
+
 def test_apply_args_filters_no_instances_found(
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-    mock_list_all_instances_for_service,
     capfd,
 ):
-    args = StatusArgs(
-        service="fake_service",
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances="instance4,instance5",
-        owner=None,
-        registration=None,
-        verbose=False,
-        service_instance=None,
-    )
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf(
-            "cluster1", "fake_service", "instance1", "fake_deploy_group"
-        ),
-        make_fake_instance_conf(
-            "cluster1", "fake_service", "instance2", "fake_deploy_group"
-        ),
-        make_fake_instance_conf(
-            "cluster1", "fake_service", "instance3", "fake_deploy_group"
-        ),
-    ]
-    mock_list_all_instances_for_service.return_value = [
-        "instance1",
-        "instance2",
-        "instance3",
-    ]
-    pargs = apply_args_filters(args)
-    output, _ = capfd.readouterr()
-    assert len(pargs.keys()) == 0
-    assert (
-        "fake_service doesn't have any instances matching instance4, instance5 on cluster1."
-        in output
-    )
+    with patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_all_instances_for_service:
+        args = StatusArgs(
+            service="fake_service",
+            soa_dir="/fake/soa/dir",
+            deploy_group=None,
+            clusters="cluster1",
+            instances="instance4,instance5",
+            owner=None,
+            registration=None,
+            verbose=False,
+            service_instance=None,
+        )
+        mock_validate_service_name.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_list_services.return_value = ["fake_service"]
+        mock_get_instance_configs_for_service.return_value = [
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance1", "fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance2", "fake_deploy_group"
+            ),
+            make_fake_instance_conf(
+                "cluster1", "fake_service", "instance3", "fake_deploy_group"
+            ),
+        ]
+        mock_list_all_instances_for_service.return_value = [
+            "instance1",
+            "instance2",
+            "instance3",
+        ]
+        pargs = apply_args_filters(args)
+        output, _ = capfd.readouterr()
+        assert len(pargs.keys()) == 0
+        assert (
+            "fake_service doesn't have any instances matching instance4, instance5 on cluster1."
+            in output
+        )
 
-    assert "Did you mean any of these?" in output
-    for i in ["instance1", "instance2", "instance3"]:
-        assert i in output
+        assert "Did you mean any of these?" in output
+        for i in ["instance1", "instance2", "instance3"]:
+            assert i in output
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True)
 def test_status_with_owner(
-    mock_get_planned_deployments,
-    mock_list_clusters,
-    mock_report_status,
-    mock_load_system_paasta_config,
-    mock_get_actual_deployments,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
     system_paasta_config,
 ):
+    with patch(
+        "paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True
+    ) as mock_get_planned_deployments, patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, patch(
+        "paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True
+    ) as mock_report_status, patch(
+        "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True
+    ) as mock_get_actual_deployments, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ), patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
 
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_list_services.return_value = ["fakeservice", "otherservice"]
-    cluster = "fake_cluster"
-    mock_list_clusters.return_value = [cluster]
-    mock_inst_1 = make_fake_instance_conf(
-        cluster, "fakeservice", "instance1", team="faketeam"
-    )
-    mock_inst_2 = make_fake_instance_conf(
-        cluster, "otherservice", "instance3", team="faketeam"
-    )
-    mock_get_instance_configs_for_service.return_value = [mock_inst_1, mock_inst_2]
-    mock_get_planned_deployments.return_value = [
-        "fakeservice.instance1",
-        "otherservice.instance3",
-    ]
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_list_services.return_value = ["fakeservice", "otherservice"]
+        cluster = "fake_cluster"
+        mock_list_clusters.return_value = [cluster]
+        mock_inst_1 = make_fake_instance_conf(
+            cluster, "fakeservice", "instance1", team="faketeam"
+        )
+        mock_inst_2 = make_fake_instance_conf(
+            cluster, "otherservice", "instance3", team="faketeam"
+        )
+        mock_get_instance_configs_for_service.return_value = [mock_inst_1, mock_inst_2]
+        mock_get_planned_deployments.return_value = [
+            "fakeservice.instance1",
+            "otherservice.instance3",
+        ]
 
-    mock_get_actual_deployments.return_value = {
-        "fakeservice.instance1": "sha1",
-        "fakeservice.instance2": "sha2",
-        "otherservice.instance3": "sha3",
-        "otherservice.instance1": "sha4",
-    }
-    mock_report_status.return_value = 0, ["dummy", "output"]
+        mock_get_actual_deployments.return_value = {
+            "fakeservice.instance1": "sha1",
+            "fakeservice.instance2": "sha2",
+            "otherservice.instance3": "sha3",
+            "otherservice.instance1": "sha4",
+        }
+        mock_report_status.return_value = 0, ["dummy", "output"]
 
-    args = MagicMock()
-    args.service = None
-    args.instances = None
-    args.clusters = None
-    args.deploy_group = None
-    args.owner = "faketeam"
-    args.soa_dir = "/fake/soa/dir"
-    args.registration = None
-    args.service_instance = None
-    return_value = paasta_status(args)
+        args = MagicMock()
+        args.service = None
+        args.instances = None
+        args.clusters = None
+        args.deploy_group = None
+        args.owner = "faketeam"
+        args.soa_dir = "/fake/soa/dir"
+        args.registration = None
+        args.service_instance = None
+        return_value = paasta_status(args)
 
-    assert return_value == 0
-    assert mock_report_status.call_count == 2
+        assert return_value == 0
+        assert mock_report_status.call_count == 2
 
 
-@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
 def test_status_with_registration(
-    mock_validate_service_name,
-    mock_get_planned_deployments,
-    mock_report_status,
-    mock_load_system_paasta_config,
-    mock_get_actual_deployments,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-    mock_list_clusters,
     system_paasta_config,
 ):
-    mock_validate_service_name.return_value = None
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_list_services.return_value = ["fakeservice", "otherservice"]
-    cluster = "fake_cluster"
-    mock_list_clusters.return_value = [cluster]
-    mock_get_planned_deployments.return_value = [
-        "fakeservice.main",
-        "fakeservice.not_main",
-    ]
-    mock_inst_1 = make_fake_instance_conf(
-        cluster, "fakeservice", "instance1", registrations=["fakeservice.main"]
-    )
-    mock_inst_2 = make_fake_instance_conf(
-        cluster, "fakeservice", "instance2", registrations=["fakeservice.not_main"]
-    )
-    mock_inst_3 = make_fake_instance_conf(
-        cluster, "fakeservice", "instance3", registrations=["fakeservice.also_not_main"]
-    )
-    mock_inst_4 = make_fake_instance_conf(
-        cluster, "fakeservice", "instance4", registrations=None
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst_1,
-        mock_inst_2,
-        mock_inst_3,
-        mock_inst_4,
-    ]
+    with patch(
+        "paasta_tools.cli.cmds.status.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True
+    ) as mock_get_planned_deployments, patch(
+        "paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True
+    ) as mock_report_status, patch(
+        "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, patch(
+        "paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True
+    ) as mock_get_actual_deployments, patch(
+        "paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True
+    ), patch(
+        "paasta_tools.cli.cmds.status.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service, patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters:
+        mock_validate_service_name.return_value = None
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_list_services.return_value = ["fakeservice", "otherservice"]
+        cluster = "fake_cluster"
+        mock_list_clusters.return_value = [cluster]
+        mock_get_planned_deployments.return_value = [
+            "fakeservice.main",
+            "fakeservice.not_main",
+        ]
+        mock_inst_1 = make_fake_instance_conf(
+            cluster, "fakeservice", "instance1", registrations=["fakeservice.main"]
+        )
+        mock_inst_2 = make_fake_instance_conf(
+            cluster, "fakeservice", "instance2", registrations=["fakeservice.not_main"]
+        )
+        mock_inst_3 = make_fake_instance_conf(
+            cluster,
+            "fakeservice",
+            "instance3",
+            registrations=["fakeservice.also_not_main"],
+        )
+        mock_inst_4 = make_fake_instance_conf(
+            cluster, "fakeservice", "instance4", registrations=None
+        )
+        mock_get_instance_configs_for_service.return_value = [
+            mock_inst_1,
+            mock_inst_2,
+            mock_inst_3,
+            mock_inst_4,
+        ]
 
-    mock_get_actual_deployments.return_value = {
-        "fakeservice.instance1": "sha1",
-        "fakeservice.instance2": "sha2",
-        "fakeservice.instance3": "sha3",
-    }
-    mock_report_status.return_value = 0, ["dummy", "output"]
+        mock_get_actual_deployments.return_value = {
+            "fakeservice.instance1": "sha1",
+            "fakeservice.instance2": "sha2",
+            "fakeservice.instance3": "sha3",
+        }
+        mock_report_status.return_value = 0, ["dummy", "output"]
 
-    args = StatusArgs(
-        service="fakeservice",
-        instances=None,
-        clusters=None,
-        deploy_group=None,
-        owner=None,
-        registration="main,not_main",
-        soa_dir="/fake/soa/dir",
-        verbose=False,
-        service_instance=None,
-        new=False,
-        all_namespaces=True,  # Bonus all_namespaces test
-    )
-    return_value = paasta_status(args)
+        args = StatusArgs(
+            service="fakeservice",
+            instances=None,
+            clusters=None,
+            deploy_group=None,
+            owner=None,
+            registration="main,not_main",
+            soa_dir="/fake/soa/dir",
+            verbose=False,
+            service_instance=None,
+            new=False,
+            all_namespaces=True,  # Bonus all_namespaces test
+        )
+        return_value = paasta_status(args)
 
-    assert return_value == 0
-    assert mock_report_status.call_count == 1
-    mock_report_status.assert_called_once_with(
-        service="fakeservice",
-        cluster=cluster,
-        deploy_pipeline=ANY,
-        actual_deployments=ANY,
-        instance_whitelist={
-            "instance1": mock_inst_1.__class__,
-            "instance2": mock_inst_2.__class__,
-        },
-        system_paasta_config=system_paasta_config,
-        lock=mock.ANY,
-        verbose=args.verbose,
-        new=False,
-        all_namespaces=True,
-    )
+        assert return_value == 0
+        assert mock_report_status.call_count == 1
+        mock_report_status.assert_called_once_with(
+            service="fakeservice",
+            cluster=cluster,
+            deploy_pipeline=ANY,
+            actual_deployments=ANY,
+            instance_whitelist={
+                "instance1": mock_inst_1.__class__,
+                "instance2": mock_inst_2.__class__,
+            },
+            system_paasta_config=system_paasta_config,
+            lock=mock.ANY,
+            verbose=args.verbose,
+            new=False,
+            all_namespaces=True,
+        )
 
 
 @pytest.fixture
@@ -2183,99 +2208,97 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
-    @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch(
-        "paasta_tools.cli.cmds.status.kubernetes_app_deploy_status_human", autospec=True
-    )
-    @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_output(
-        self,
-        mock_datetime,
-        mock_bouncing_status,
-        mock_desired_state,
-        mock_kubernetes_app_deploy_status_human,
-        mock_naturaltime,
-        mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
         mock_kubernetes_status,
     ):
-        mock_bouncing_status.return_value = "Bouncing (crossover)"
-        specific_datetime = datetime.datetime(2019, 7, 12, 13, 31)
-        mock_datetime.fromtimestamp.return_value = specific_datetime
-        mock_desired_state.return_value = "Started"
-        mock_kubernetes_app_deploy_status_human.return_value = "Running"
-        mock_naturaltime.return_value = "a month ago"
-        mock_kubernetes_status.pods = [
-            paastamodels.KubernetesPod(
-                name="app_1",
-                host="fake_host1",
-                deployed_timestamp=1562963508.0,
-                phase="Running",
-                ready=True,
-                containers=[],
-                message=None,
-            ),
-            paastamodels.KubernetesPod(
-                name="app_2",
-                host="fake_host2",
-                deployed_timestamp=1562963510.0,
-                phase="Running",
-                ready=True,
-                containers=[],
-                message=None,
-            ),
-            paastamodels.KubernetesPod(
-                name="app_3",
-                host="fake_host3",
-                deployed_timestamp=1562963511.0,
-                phase="Failed",
-                ready=False,
-                containers=[],
-                message="Disk quota exceeded",
-                reason="Evicted",
-            ),
-        ]
-        mock_kubernetes_status.replicasets = [
-            paastamodels.KubernetesReplicaSet(
-                name="replicaset_1",
-                replicas=3,
-                ready_replicas=2,
-                create_timestamp=1562963508.0,
-                git_sha=None,
-                config_sha=None,
+        with patch("paasta_tools.cli.cmds.status.datetime", autospec=True), patch(
+            "paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True
+        ) as mock_datetime, patch(
+            "paasta_tools.cli.cmds.status.desired_state_human", autospec=True
+        ) as mock_bouncing_status, patch(
+            "paasta_tools.cli.cmds.status.kubernetes_app_deploy_status_human",
+            autospec=True,
+        ) as mock_desired_state, patch(
+            "paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True
+        ) as mock_kubernetes_app_deploy_status_human, patch(
+            "paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True
+        ) as mock_naturaltime, patch(
+            "paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True
+        ):
+            mock_bouncing_status.return_value = "Bouncing (crossover)"
+            specific_datetime = datetime.datetime(2019, 7, 12, 13, 31)
+            mock_datetime.fromtimestamp.return_value = specific_datetime
+            mock_desired_state.return_value = "Started"
+            mock_kubernetes_app_deploy_status_human.return_value = "Running"
+            mock_naturaltime.return_value = "a month ago"
+            mock_kubernetes_status.pods = [
+                paastamodels.KubernetesPod(
+                    name="app_1",
+                    host="fake_host1",
+                    deployed_timestamp=1562963508.0,
+                    phase="Running",
+                    ready=True,
+                    containers=[],
+                    message=None,
+                ),
+                paastamodels.KubernetesPod(
+                    name="app_2",
+                    host="fake_host2",
+                    deployed_timestamp=1562963510.0,
+                    phase="Running",
+                    ready=True,
+                    containers=[],
+                    message=None,
+                ),
+                paastamodels.KubernetesPod(
+                    name="app_3",
+                    host="fake_host3",
+                    deployed_timestamp=1562963511.0,
+                    phase="Failed",
+                    ready=False,
+                    containers=[],
+                    message="Disk quota exceeded",
+                    reason="Evicted",
+                ),
+            ]
+            mock_kubernetes_status.replicasets = [
+                paastamodels.KubernetesReplicaSet(
+                    name="replicaset_1",
+                    replicas=3,
+                    ready_replicas=2,
+                    create_timestamp=1562963508.0,
+                    git_sha=None,
+                    config_sha=None,
+                )
+            ]
+
+            output = []
+            print_kubernetes_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                kubernetes_status=mock_kubernetes_status,
             )
-        ]
 
-        output = []
-        print_kubernetes_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            kubernetes_status=mock_kubernetes_status,
-        )
+            expected_output = [
+                f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
+                f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
+            ]
+            expected_output += [
+                "      Pods:",
+                "        Pod ID  Host deployed to  Deployed at what localtime      Health",
+                f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+                f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+                f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
+                f"        {PaastaColors.grey('  Disk quota exceeded')}",
+                "      ReplicaSets:",
+                "        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
+                f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
+            ]
 
-        expected_output = [
-            f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
-            f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
-        ]
-        expected_output += [
-            "      Pods:",
-            "        Pod ID  Host deployed to  Deployed at what localtime      Health",
-            f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
-            f"        {PaastaColors.grey('  Disk quota exceeded')}",
-            "      ReplicaSets:",
-            "        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
-            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
-        ]
-
-        assert expected_output == output
+            assert expected_output == output
 
 
 class TestPrintCassandraStatus:
@@ -2413,518 +2436,540 @@ class TestPrintKafkaStatus:
         )
         assert return_value == 0
 
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output(
-        self,
         mock_naturaltime,
         mock_kafka_status,
     ):
-        mock_naturaltime.return_value = "one day ago"
-        output = []
-        print_kafka_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            kafka_status=mock_kafka_status,
-            verbose=0,
-        )
+        with patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True):
+            mock_naturaltime.return_value = "one day ago"
+            output = []
+            print_kafka_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                kafka_status=mock_kafka_status,
+                verbose=0,
+            )
 
-        status = mock_kafka_status["status"]
-        expected_output = [
-            f"    Kafka View Url: {status['kafka_view_url']}",
-            f"    Zookeeper: {status['zookeeper']}",
-            "    State: testing",
-            f"    Ready: {str(status['cluster_ready']).lower()}",
-            f"    Health: {PaastaColors.red('unhealthy')}",
-            f"     Reason: {status['health']['message']}",
-            f"     Offline Partitions: {status['health']['offline_partitions']}",
-            f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
-            "    Brokers:",
-            "     Id  Phase    Started",
-            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
-            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
-        ]
-        assert expected_output == output
+            status = mock_kafka_status["status"]
+            expected_output = [
+                f"    Kafka View Url: {status['kafka_view_url']}",
+                f"    Zookeeper: {status['zookeeper']}",
+                "    State: testing",
+                f"    Ready: {str(status['cluster_ready']).lower()}",
+                f"    Health: {PaastaColors.red('unhealthy')}",
+                f"     Reason: {status['health']['message']}",
+                f"     Offline Partitions: {status['health']['offline_partitions']}",
+                f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
+                "    Brokers:",
+                "     Id  Phase    Started",
+                f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
+                f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21+00:00 ({mock_naturaltime.return_value})",
+            ]
+            assert expected_output == output
 
 
 class TestPrintFlinkStatus:
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-    @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink(
-        self,
-        mock_load_flink_instance_config,
-        mock_get_paasta_oapi_client,
-        mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
         # Fixtures
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config_api.return_value = system_paasta_config
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_flink_status["status"] = None
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_get_paasta_oapi_client.return_value = None
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True
+        ) as mock_load_flink_instance_config, patch(
+            "paasta_tools.api.client.load_system_paasta_config", autospec=True
+        ) as mock_get_paasta_oapi_client, patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_load_system_paasta_config_api:
+            mock_load_system_paasta_config_api.return_value = system_paasta_config
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_flink_status["status"] = None
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_get_paasta_oapi_client.return_value = None
 
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
-
-        assert return_value == 1
-        assert output == [
-            PaastaColors.red(
-                "paasta-api client unavailable - unable to get flink status"
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
             )
-        ]
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+            assert return_value == 1
+            assert output == [
+                PaastaColors.red(
+                    "paasta-api client unavailable - unable to get flink status"
+                )
+            ]
+
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_client(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_get_paasta_oapi_client.return_value = None
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
-
-        assert return_value == 1
-        assert (
-            PaastaColors.red(
-                "paasta-api client unavailable - unable to get flink status"
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_load_flink_instance_config:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_get_paasta_oapi_client.return_value = None
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
             )
-            in output
-        )
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+            assert return_value == 1
+            assert (
+                PaastaColors.red(
+                    "paasta-api client unavailable - unable to get flink status"
+                )
+                in output
+            )
+
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_config(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_load_flink_instance_config:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+            assert return_value == 1
+            assert PaastaColors.red("Exception when talking to the API:") in output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_overview(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_load_flink_instance_config:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+            assert return_value == 1
+            assert PaastaColors.red("Exception when talking to the API:") in output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_jobs(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ):
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+            assert return_value == 1
+            assert PaastaColors.red("Exception when talking to the API:") in output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_error_no_flink_job_details(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ):
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
 
-        # Errors while requesing job details
-        mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
-        output = []
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+            # Errors while requesing job details
+            mock_api.service.get_flink_cluster_job_details.side_effect = Exception(
+                "BOOM"
+            )
+            output = []
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        # should blow up the whole request
-        assert return_value == 1
+            # should blow up the whole request
+            assert return_value == 1
 
-        # and output that an error has occurred
-        assert PaastaColors.red("Exception when talking to the API:") in output
+            # and output that an error has occurred
+            assert PaastaColors.red("Exception when talking to the API:") in output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_successful_return_value(
-        self,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_load_flink_instance_config.return_value = flink_instance_config
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_load_flink_instance_config:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+            mock_api.service.get_flink_cluster_job_details.return_value = (
+                job_details_obj
+            )
+            mock_load_flink_instance_config.return_value = flink_instance_config
 
-        return_value = print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=[],
-            flink=mock_flink_status,
-            verbose=1,
-        )
-        assert return_value == 0
+            return_value = print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=[],
+                flink=mock_flink_status,
+                verbose=1,
+            )
+            assert return_value == 0
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
-        self,
-        mock_load_flink_instance_config,
-        mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_naturaltime.return_value = "one day ago"
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        output = []
-        print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=0,
-        )
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True
+        ) as mock_load_flink_instance_config, patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_naturaltime:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+            mock_api.service.get_flink_cluster_job_details.return_value = (
+                job_details_obj
+            )
+            mock_naturaltime.return_value = "one day ago"
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            output = []
+            print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=0,
+            )
 
-        status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_flink_base_status_verbose_0(metadata) + [
-            f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other, 3 total",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
-            "    1 taskmanagers, 3/4 slots available",
-            "    Jobs:",
-            "      Job Name       State       Started",
-            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
-        ]
-        assert expected_output == output
+            status = mock_flink_status["status"]
+            metadata = mock_flink_status["metadata"]
+            expected_output = _get_flink_base_status_verbose_0(metadata) + [
+                f"    State: {PaastaColors.green(status['state'].title())}",
+                "    Pods: 3 running, 0 evicted, 0 other, 3 total",
+                "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
+                "    1 taskmanagers, 3/4 slots available",
+                "    Jobs:",
+                "      Job Name       State       Started",
+                f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
+            ]
+            assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_jobmanager(
-        self,
-        mock_load_flink_instance_config,
-        mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        # Mock ecosystem lookup
-        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_naturaltime.return_value = "one day ago"
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True
+        ) as mock_load_flink_instance_config, patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_naturaltime:
+            # Mock ecosystem lookup
+            system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+            mock_api.service.get_flink_cluster_job_details.return_value = (
+                job_details_obj
+            )
+            mock_naturaltime.return_value = "one day ago"
 
-        output = []
-        mock_flink_status["status"]["state"] = "Stoppingjobmanager"
-        print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+            output = []
+            mock_flink_status["status"]["state"] = "Stoppingjobmanager"
+            print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        status = mock_flink_status["status"]
-        expected_output = [
-            "    Config SHA: 00000",
-            "    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            "    Flink Pool: flink",
-            "    Owner: fake_owner",
-            "    Flink Runbook: fake_runbook_url",
-            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Log Commands:",
-            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Monitoring:",
-            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    State: {PaastaColors.yellow(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other, 3 total",
-        ]
-        append_pod_status(status["pod_status"], expected_output)
-        expected_output.append(
-            "    No other information available in non-running state"
-        )
-        assert expected_output == output
+            status = mock_flink_status["status"]
+            expected_output = [
+                "    Config SHA: 00000",
+                "    Repo(git): https://github.yelpcorp.com/services/fake_service",
+                "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+                "    Flink Pool: flink",
+                "    Owner: fake_owner",
+                "    Flink Runbook: fake_runbook_url",
+                "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+                "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Log Commands:",
+                "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+                "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+                "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+                "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Monitoring:",
+                "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+                "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                f"    State: {PaastaColors.yellow(status['state'].title())}",
+                "    Pods: 3 running, 0 evicted, 0 other, 3 total",
+            ]
+            append_pod_status(status["pod_status"], expected_output)
+            expected_output.append(
+                "    No other information available in non-running state"
+            )
+            assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_stopping_taskmanagers(
-        self,
-        mock_load_flink_instance_config,
-        mock_naturaltime,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        # Mock ecosystem lookup
-        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
-        flink_instance_config.config_dict["spot"] = "flink"
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_naturaltime.return_value = "one day ago"
+        with patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True
+        ) as mock_load_flink_instance_config, patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ) as mock_naturaltime:
+            # Mock ecosystem lookup
+            system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+            flink_instance_config.config_dict["spot"] = "flink"
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+            mock_api.service.get_flink_cluster_job_details.return_value = (
+                job_details_obj
+            )
+            mock_naturaltime.return_value = "one day ago"
 
-        output = []
-        mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
-        mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
-            "pod_status"
-        ][2:]
-        print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+            output = []
+            mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
+            mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
+                "pod_status"
+            ][2:]
+            print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        status = mock_flink_status["status"]
-        expected_output = [
-            "    Config SHA: 00000",
-            "    Repo(git): https://github.yelpcorp.com/services/fake_service",
-            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-            "    Flink Pool: flink-spot",
-            "    Owner: fake_owner",
-            "    Flink Runbook: fake_runbook_url",
-            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Log Commands:",
-            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Monitoring:",
-            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    State: {PaastaColors.yellow(status['state'].title())}",
-            "    Pods: 1 running, 0 evicted, 0 other, 1 total",
-        ]
-        append_pod_status(status["pod_status"], expected_output)
-        expected_output.append(
-            "    No other information available in non-running state"
-        )
-        assert expected_output == output
+            status = mock_flink_status["status"]
+            expected_output = [
+                "    Config SHA: 00000",
+                "    Repo(git): https://github.yelpcorp.com/services/fake_service",
+                "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
+                "    Flink Pool: flink-spot",
+                "    Owner: fake_owner",
+                "    Flink Runbook: fake_runbook_url",
+                "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+                "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Log Commands:",
+                "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+                "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+                "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+                "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Monitoring:",
+                "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+                "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                f"    State: {PaastaColors.yellow(status['state'].title())}",
+                "    Pods: 1 running, 0 evicted, 0 other, 1 total",
+            ]
+            append_pod_status(status["pod_status"], expected_output)
+            expected_output.append(
+                "    No other information available in non-running state"
+            )
+            assert expected_output == output
 
-    @patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     def test_output_1_verbose(
-        self,
-        mock_load_system_paasta_config,
-        mock_naturaltime,
-        mock_load_flink_instance_config,
         mock_get_paasta_oapi_client,
         mock_flink_status,
         system_paasta_config,
         flink_instance_config,
     ):
-        # Mock ecosystem lookup
-        system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
-        mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_load_flink_instance_config.return_value = flink_instance_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.service.get_flink_cluster_config.return_value = config_obj
-        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
-        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_naturaltime.return_value = "one day ago"
+        with patch(
+            "paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True
+        ), patch(
+            "paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True
+        ) as mock_load_system_paasta_config, patch(
+            "paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True
+        ) as mock_naturaltime, patch(
+            "paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True
+        ) as mock_load_flink_instance_config:
+            # Mock ecosystem lookup
+            system_paasta_config.get_ecosystem_for_cluster = Mock(return_value="devc")
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            mock_load_flink_instance_config.return_value = flink_instance_config
+            mock_api = mock_get_paasta_oapi_client.return_value
+            mock_api.service.get_flink_cluster_config.return_value = config_obj
+            mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+            mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+            mock_api.service.get_flink_cluster_job_details.return_value = (
+                job_details_obj
+            )
+            mock_naturaltime.return_value = "one day ago"
 
-        output = []
-        print_flink_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            flink=mock_flink_status,
-            verbose=1,
-        )
+            output = []
+            print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
 
-        status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        job_start_time = str(
-            datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
-        )
-        expected_output = _get_flink_base_status_verbose_1(metadata) + [
-            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Log Commands:",
-            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Monitoring:",
-            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other, 3 total",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
-            "    1 taskmanagers, 3/4 slots available",
-            "    Jobs:",
-            "      Job Name       State       Started",
-            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
-        ]
-        append_pod_status(status["pod_status"], expected_output)
-        assert expected_output == output
+            status = mock_flink_status["status"]
+            metadata = mock_flink_status["metadata"]
+            job_start_time = str(
+                datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
+            )
+            expected_output = _get_flink_base_status_verbose_1(metadata) + [
+                "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
+                "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Log Commands:",
+                "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
+                "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
+                "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
+                "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                "    Flink Monitoring:",
+                "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
+                "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
+                "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
+                f"{OUTPUT_HORIZONTAL_RULE}",
+                f"    State: {PaastaColors.green(status['state'].title())}",
+                "    Pods: 3 running, 0 evicted, 0 other, 3 total",
+                "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
+                "    1 taskmanagers, 3/4 slots available",
+                "    Jobs:",
+                "      Job Name       State       Started",
+                f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
+            ]
+            append_pod_status(status["pod_status"], expected_output)
+            assert expected_output == output
 
 
 overview_obj = paastamodels.FlinkClusterOverview(
@@ -3023,44 +3068,42 @@ class TestFormatKubernetesPodTable:
             config_sha=None,
         )
 
-    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_pod_table(
-        self,
         mock_datetime,
         mock_naturaltime,
         mock_kubernetes_pod,
     ):
-        mock_date = MagicMock()
-        mock_date.strftime.return_value = "2019-08-12T15:23"
-        mock_datetime.fromtimestamp.return_value = mock_date
-        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
-        pod_table_dict = _formatted_table_to_dict(output)
-        assert pod_table_dict == {
-            "Pod ID": "abc123",
-            "Host deployed to": "paasta.cloud",
-            "Deployed at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
-            "Health": PaastaColors.green("Healthy"),
-        }
+        with patch("paasta_tools.cli.cmds.status.datetime", autospec=True):
+            mock_date = MagicMock()
+            mock_date.strftime.return_value = "2019-08-12T15:23"
+            mock_datetime.fromtimestamp.return_value = mock_date
+            output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+            pod_table_dict = _formatted_table_to_dict(output)
+            assert pod_table_dict == {
+                "Pod ID": "abc123",
+                "Host deployed to": "paasta.cloud",
+                "Deployed at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
+                "Health": PaastaColors.green("Healthy"),
+            }
 
-    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_replicaset_table(
-        self,
         mock_datetime,
         mock_naturaltime,
         mock_kubernetes_replicaset,
     ):
-        mock_date = MagicMock()
-        mock_date.strftime.return_value = "2019-08-12T15:23"
-        mock_datetime.fromtimestamp.return_value = mock_date
-        output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
-        replicaset_table_dict = _formatted_table_to_dict(output)
-        assert replicaset_table_dict == {
-            "ReplicaSet Name": "abc123",
-            "Ready / Desired": PaastaColors.green("3/3"),
-            "Created at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
-            "Service git SHA": "def456",
-            "Config hash": "Unknown",
-        }
+        with patch("paasta_tools.cli.cmds.status.datetime", autospec=True):
+            mock_date = MagicMock()
+            mock_date.strftime.return_value = "2019-08-12T15:23"
+            mock_datetime.fromtimestamp.return_value = mock_date
+            output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
+            replicaset_table_dict = _formatted_table_to_dict(output)
+            assert replicaset_table_dict == {
+                "ReplicaSet Name": "abc123",
+                "Ready / Desired": PaastaColors.green("3/3"),
+                "Created at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
+                "Service git SHA": "def456",
+                "Config hash": "Unknown",
+            }
 
     def test_no_host(
         self,
@@ -3129,48 +3172,49 @@ class TestCreateMesosRunningTasksTable:
         )
 
 
-@patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)
-@patch("paasta_tools.cli.cmds.status.build_smartstack_backends_table", autospec=True)
-def test_get_smartstack_status_human(
-    mock_build_smartstack_backends_table, mock_haproxy_backend_report
-):
-    mock_locations = [
-        Struct(
-            name="location_1",
-            running_backends_count=2,
-            backends=[Struct(hostname="location_1_host")],
-        ),
-        Struct(
-            name="location_2",
-            running_backends_count=5,
-            backends=[
-                Struct(hostname="location_2_host1"),
-                Struct(hostname="location_2_host2"),
-            ],
-        ),
-    ]
-    mock_haproxy_backend_report.side_effect = (
-        lambda expected, running: f"haproxy report: {running}/{expected}"
-    )
-    mock_build_smartstack_backends_table.side_effect = lambda backends: [
-        f"{backend.hostname}" for backend in backends
-    ]
+def test_get_smartstack_status_human():
+    with patch(
+        "paasta_tools.cli.cmds.status.build_smartstack_backends_table", autospec=True
+    ) as mock_build_smartstack_backends_table, patch(
+        "paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True
+    ) as mock_haproxy_backend_report:
+        mock_locations = [
+            Struct(
+                name="location_1",
+                running_backends_count=2,
+                backends=[Struct(hostname="location_1_host")],
+            ),
+            Struct(
+                name="location_2",
+                running_backends_count=5,
+                backends=[
+                    Struct(hostname="location_2_host1"),
+                    Struct(hostname="location_2_host2"),
+                ],
+            ),
+        ]
+        mock_haproxy_backend_report.side_effect = (
+            lambda expected, running: f"haproxy report: {running}/{expected}"
+        )
+        mock_build_smartstack_backends_table.side_effect = lambda backends: [
+            f"{backend.hostname}" for backend in backends
+        ]
 
-    output = get_smartstack_status_human(
-        registration="fake_service.fake_instance",
-        expected_backends_per_location=5,
-        locations=mock_locations,
-    )
-    assert output == [
-        "Smartstack:",
-        "  Haproxy Service Name: fake_service.fake_instance",
-        "  Backends:",
-        "    location_1 - haproxy report: 2/5",
-        "      location_1_host",
-        "    location_2 - haproxy report: 5/5",
-        "      location_2_host1",
-        "      location_2_host2",
-    ]
+        output = get_smartstack_status_human(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=5,
+            locations=mock_locations,
+        )
+        assert output == [
+            "Smartstack:",
+            "  Haproxy Service Name: fake_service.fake_instance",
+            "  Backends:",
+            "    location_1 - haproxy report: 2/5",
+            "      location_1_host",
+            "    location_2 - haproxy report: 5/5",
+            "      location_2_host1",
+            "      location_2_host2",
+        ]
 
 
 def test_get_smartstack_status_human_no_locations():

@@ -31,176 +31,191 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@patch("socket.gethostbyname_ex", autospec=True)
-def test_bad_calculate_remote_master(mock_get_by_hostname, system_paasta_config):
-    mock_get_by_hostname.side_effect = gaierror(42, "bar")
-    ips, output = utils.calculate_remote_masters("myhost", system_paasta_config)
-    assert ips == []
-    assert "ERROR while doing DNS lookup of myhost.paasta:\nbar\n" in output
+def test_bad_calculate_remote_master(system_paasta_config):
+    with patch("socket.gethostbyname_ex", autospec=True) as mock_get_by_hostname:
+        mock_get_by_hostname.side_effect = gaierror(42, "bar")
+        ips, output = utils.calculate_remote_masters("myhost", system_paasta_config)
+        assert ips == []
+        assert "ERROR while doing DNS lookup of myhost.paasta:\nbar\n" in output
 
 
-@patch("socket.gethostbyname_ex", autospec=True)
-def test_ok_remote_masters(mock_get_by_hostname, system_paasta_config):
-    mock_get_by_hostname.return_value = ("myhost", [], ["1.2.3.4", "1.2.3.5"])
-    ips, output = utils.calculate_remote_masters("myhost", system_paasta_config)
-    assert output is None
-    assert ips == ["1.2.3.4", "1.2.3.5"]
+def test_ok_remote_masters(system_paasta_config):
+    with patch("socket.gethostbyname_ex", autospec=True) as mock_get_by_hostname:
+        mock_get_by_hostname.return_value = ("myhost", [], ["1.2.3.4", "1.2.3.5"])
+        ips, output = utils.calculate_remote_masters("myhost", system_paasta_config)
+        assert output is None
+        assert ips == ["1.2.3.4", "1.2.3.5"]
 
 
-@patch("paasta_tools.cli.utils.check_ssh_on_master", autospec=True)
-def test_find_connectable_master_happy_path(mock_check_ssh_on_master):
-    masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
-    timeout = 6.0
-    mock_check_ssh_on_master.return_value = (True, None)
+def test_find_connectable_master_happy_path():
+    with patch(
+        "paasta_tools.cli.utils.check_ssh_on_master", autospec=True
+    ) as mock_check_ssh_on_master:
+        masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
+        timeout = 6.0
+        mock_check_ssh_on_master.return_value = (True, None)
 
-    actual = utils.find_connectable_master(masters)
-    expected = (masters[0], None)
-    assert mock_check_ssh_on_master.call_count == 1
-    mock_check_ssh_on_master.assert_called_once_with(masters[0], timeout=timeout)
-    assert actual == expected
+        actual = utils.find_connectable_master(masters)
+        expected = (masters[0], None)
+        assert mock_check_ssh_on_master.call_count == 1
+        mock_check_ssh_on_master.assert_called_once_with(masters[0], timeout=timeout)
+        assert actual == expected
 
 
-@patch("random.shuffle", autospec=True)
-@patch("paasta_tools.cli.utils.find_connectable_master", autospec=True)
-@patch("paasta_tools.cli.utils.calculate_remote_masters", autospec=True)
 def test_connectable_master_random(
-    mock_calculate_remote_masters,
-    mock_find_connectable_master,
-    mock_shuffle,
     system_paasta_config,
 ):
-    masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
-    mock_calculate_remote_masters.return_value = (masters, None)
-    mock_find_connectable_master.return_value = (masters[0], None)
-    mock_shuffle.return_value = None
+    with patch(
+        "paasta_tools.cli.utils.calculate_remote_masters", autospec=True
+    ) as mock_calculate_remote_masters, patch(
+        "paasta_tools.cli.utils.find_connectable_master", autospec=True
+    ) as mock_find_connectable_master, patch(
+        "random.shuffle", autospec=True
+    ) as mock_shuffle:
+        masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
+        mock_calculate_remote_masters.return_value = (masters, None)
+        mock_find_connectable_master.return_value = (masters[0], None)
+        mock_shuffle.return_value = None
 
-    utils.connectable_master("fake_cluster", system_paasta_config)
-    mock_shuffle.assert_called_once_with(masters)
-
-
-@patch("paasta_tools.cli.utils.check_ssh_on_master", autospec=True)
-def test_find_connectable_master_one_failure(mock_check_ssh_on_master):
-    masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
-    timeout = 6.0
-    # iter() is a workaround
-    # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
-    # for a bug in mock (http://bugs.python.org/issue17826)
-    create_connection_side_effects = iter(
-        [(False, "something bad"), (True, "unused"), (True, "unused")]
-    )
-    mock_check_ssh_on_master.side_effect = create_connection_side_effects
-    mock_check_ssh_on_master.return_value = True
-
-    actual = utils.find_connectable_master(masters)
-    assert mock_check_ssh_on_master.call_count == 2
-    mock_check_ssh_on_master.assert_any_call(masters[0], timeout=timeout)
-    mock_check_ssh_on_master.assert_any_call(masters[1], timeout=timeout)
-    assert actual == ("192.0.2.2", None)
+        utils.connectable_master("fake_cluster", system_paasta_config)
+        mock_shuffle.assert_called_once_with(masters)
 
 
-@patch("paasta_tools.cli.utils.check_ssh_on_master", autospec=True)
-def test_find_connectable_master_all_failures(mock_check_ssh_on_master):
-    masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
-    timeout = 6.0
-    mock_check_ssh_on_master.return_value = (255, "timeout")
+def test_find_connectable_master_one_failure():
+    with patch(
+        "paasta_tools.cli.utils.check_ssh_on_master", autospec=True
+    ) as mock_check_ssh_on_master:
+        masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
+        timeout = 6.0
+        # iter() is a workaround
+        # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
+        # for a bug in mock (http://bugs.python.org/issue17826)
+        create_connection_side_effects = iter(
+            [(False, "something bad"), (True, "unused"), (True, "unused")]
+        )
+        mock_check_ssh_on_master.side_effect = create_connection_side_effects
+        mock_check_ssh_on_master.return_value = True
 
-    actual = utils.find_connectable_master(masters)
-    assert mock_check_ssh_on_master.call_count == 3
-    mock_check_ssh_on_master.assert_any_call((masters[0]), timeout=timeout)
-    mock_check_ssh_on_master.assert_any_call((masters[1]), timeout=timeout)
-    mock_check_ssh_on_master.assert_any_call((masters[2]), timeout=timeout)
-    assert actual[0] is None
-    assert "timeout" in actual[1]
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_check_ssh_on_master_check_successful(mock_run):
-    master = "fake_master"
-    mock_run.return_value = (0, "fake_output")
-    expected_command = "ssh -A -n -o StrictHostKeyChecking=no %s /bin/true" % master
-
-    actual = utils.check_ssh_on_master(master)
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert actual == (True, None)
+        actual = utils.find_connectable_master(masters)
+        assert mock_check_ssh_on_master.call_count == 2
+        mock_check_ssh_on_master.assert_any_call(masters[0], timeout=timeout)
+        mock_check_ssh_on_master.assert_any_call(masters[1], timeout=timeout)
+        assert actual == ("192.0.2.2", None)
 
 
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_check_ssh_on_master_check_ssh_failure(mock_run):
-    master = "fake_master"
-    mock_run.return_value = (255, "fake_output")
+def test_find_connectable_master_all_failures():
+    with patch(
+        "paasta_tools.cli.utils.check_ssh_on_master", autospec=True
+    ) as mock_check_ssh_on_master:
+        masters = ["192.0.2.1", "192.0.2.2", "192.0.2.3"]
+        timeout = 6.0
+        mock_check_ssh_on_master.return_value = (255, "timeout")
 
-    actual = utils.check_ssh_on_master(master)
-    assert actual[0] is False
-    assert "fake_output" in actual[1]
-    assert "255" in actual[1]
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_check_ssh_on_master_check_sudo_failure(mock_run):
-    master = "fake_master"
-    mock_run.return_value = (1, "fake_output")
-
-    actual = utils.check_ssh_on_master(master)
-    assert actual[0] is False
-    assert "1" in actual[1]
-    assert "fake_output" in actual[1]
+        actual = utils.find_connectable_master(masters)
+        assert mock_check_ssh_on_master.call_count == 3
+        mock_check_ssh_on_master.assert_any_call((masters[0]), timeout=timeout)
+        mock_check_ssh_on_master.assert_any_call((masters[1]), timeout=timeout)
+        mock_check_ssh_on_master.assert_any_call((masters[2]), timeout=timeout)
+        assert actual[0] is None
+        assert "timeout" in actual[1]
 
 
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.utils.list_services", autospec=True)
-def test_list_service_instances(mock_list_services, mock_list_instances):
-    mock_list_services.return_value = ["fake_service"]
-    mock_list_instances.return_value = ["canary", "main"]
-    expected = ["fake_service.canary", "fake_service.main"]
-    actual = utils.list_service_instances()
-    assert actual == expected
+def test_check_ssh_on_master_check_successful():
+    with patch("paasta_tools.cli.utils._run", autospec=True) as mock_run:
+        master = "fake_master"
+        mock_run.return_value = (0, "fake_output")
+        expected_command = "ssh -A -n -o StrictHostKeyChecking=no %s /bin/true" % master
+
+        actual = utils.check_ssh_on_master(master)
+        mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+        assert actual == (True, None)
 
 
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.utils.list_services", autospec=True)
-def test_list_paasta_services(mock_list_services, mock_list_instances):
-    mock_list_services.return_value = ["fake_service"]
-    mock_list_instances.return_value = ["canary", "main"]
-    expected = ["fake_service"]
-    actual = utils.list_paasta_services()
-    assert actual == expected
+def test_check_ssh_on_master_check_ssh_failure():
+    with patch("paasta_tools.cli.utils._run", autospec=True) as mock_run:
+        master = "fake_master"
+        mock_run.return_value = (255, "fake_output")
+
+        actual = utils.check_ssh_on_master(master)
+        assert actual[0] is False
+        assert "fake_output" in actual[1]
+        assert "255" in actual[1]
 
 
-@patch("paasta_tools.cli.utils.guess_service_name", autospec=True)
-@patch("paasta_tools.cli.utils.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-def test_list_instances_with_autodetect(
-    mock_list_instance_for_service, mock_validate_service_name, mock_guess_service_name
-):
-    expected = ["instance1", "instance2", "instance3"]
-    mock_guess_service_name.return_value = "fake_service"
-    mock_validate_service_name.return_value = None
-    mock_list_instance_for_service.return_value = expected
-    actual = utils.list_instances()
-    assert actual == expected
-    mock_validate_service_name.assert_called_once_with("fake_service")
-    mock_list_instance_for_service.assert_called_once_with("fake_service")
+def test_check_ssh_on_master_check_sudo_failure():
+    with patch("paasta_tools.cli.utils._run", autospec=True) as mock_run:
+        master = "fake_master"
+        mock_run.return_value = (1, "fake_output")
+
+        actual = utils.check_ssh_on_master(master)
+        assert actual[0] is False
+        assert "1" in actual[1]
+        assert "fake_output" in actual[1]
 
 
-@patch("paasta_tools.cli.utils.guess_service_name", autospec=True)
-@patch("paasta_tools.cli.utils.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.utils.list_services", autospec=True)
-def test_list_instances_no_service(
-    mock_list_services,
-    mock_list_instance_for_service,
-    mock_validate_service_name,
-    mock_guess_service_name,
-):
-    expected = ["instance1", "instance2", "instance3"]
-    mock_guess_service_name.return_value = "unused"
-    mock_list_services.return_value = ["fake_service1"]
-    mock_validate_service_name.side_effect = utils.NoSuchService(None)
-    mock_list_instance_for_service.return_value = expected
-    actual = utils.list_instances()
-    mock_validate_service_name.assert_called_once_with("unused")
-    mock_list_instance_for_service.assert_called_once_with("fake_service1")
-    assert actual == expected
+def test_list_service_instances():
+    with patch(
+        "paasta_tools.cli.utils.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_instances:
+        mock_list_services.return_value = ["fake_service"]
+        mock_list_instances.return_value = ["canary", "main"]
+        expected = ["fake_service.canary", "fake_service.main"]
+        actual = utils.list_service_instances()
+        assert actual == expected
+
+
+def test_list_paasta_services():
+    with patch(
+        "paasta_tools.cli.utils.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_instances:
+        mock_list_services.return_value = ["fake_service"]
+        mock_list_instances.return_value = ["canary", "main"]
+        expected = ["fake_service"]
+        actual = utils.list_paasta_services()
+        assert actual == expected
+
+
+def test_list_instances_with_autodetect():
+    with patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_instance_for_service, patch(
+        "paasta_tools.cli.utils.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.utils.guess_service_name", autospec=True
+    ) as mock_guess_service_name:
+        expected = ["instance1", "instance2", "instance3"]
+        mock_guess_service_name.return_value = "fake_service"
+        mock_validate_service_name.return_value = None
+        mock_list_instance_for_service.return_value = expected
+        actual = utils.list_instances()
+        assert actual == expected
+        mock_validate_service_name.assert_called_once_with("fake_service")
+        mock_list_instance_for_service.assert_called_once_with("fake_service")
+
+
+def test_list_instances_no_service():
+    with patch(
+        "paasta_tools.cli.utils.list_services", autospec=True
+    ) as mock_list_services, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_instance_for_service, patch(
+        "paasta_tools.cli.utils.validate_service_name", autospec=True
+    ) as mock_validate_service_name, patch(
+        "paasta_tools.cli.utils.guess_service_name", autospec=True
+    ) as mock_guess_service_name:
+        expected = ["instance1", "instance2", "instance3"]
+        mock_guess_service_name.return_value = "unused"
+        mock_list_services.return_value = ["fake_service1"]
+        mock_validate_service_name.side_effect = utils.NoSuchService(None)
+        mock_list_instance_for_service.return_value = expected
+        actual = utils.list_instances()
+        mock_validate_service_name.assert_called_once_with("unused")
+        mock_list_instance_for_service.assert_called_once_with("fake_service1")
+        assert actual == expected
 
 
 def test_lazy_choices_completer():
@@ -285,28 +300,28 @@ def test_git_sha_validation():
         utils.validate_short_git_sha("BAD")
 
 
-@patch("paasta_tools.cli.utils.get_instance_configs_for_service", autospec=True)
-def test_list_deploy_groups_parses_configs(
-    mock_get_instance_configs_for_service,
-):
-    mock_get_instance_configs_for_service.return_value = [
-        KubernetesDeploymentConfig(
-            service="foo",
-            cluster="",
-            instance="",
-            config_dict={"deploy_group": "fake_deploy_group"},
-            branch_dict=None,
-        ),
-        KubernetesDeploymentConfig(
-            service="foo",
-            cluster="fake_cluster",
-            instance="fake_instance",
-            config_dict={},
-            branch_dict=None,
-        ),
-    ]
-    actual = utils.list_deploy_groups(service="foo")
-    assert actual == {"fake_deploy_group", "fake_cluster.fake_instance"}
+def test_list_deploy_groups_parses_configs():
+    with patch(
+        "paasta_tools.cli.utils.get_instance_configs_for_service", autospec=True
+    ) as mock_get_instance_configs_for_service:
+        mock_get_instance_configs_for_service.return_value = [
+            KubernetesDeploymentConfig(
+                service="foo",
+                cluster="",
+                instance="",
+                config_dict={"deploy_group": "fake_deploy_group"},
+                branch_dict=None,
+            ),
+            KubernetesDeploymentConfig(
+                service="foo",
+                cluster="fake_cluster",
+                instance="fake_instance",
+                config_dict={},
+                branch_dict=None,
+            ),
+        ]
+        actual = utils.list_deploy_groups(service="foo")
+        assert actual == {"fake_deploy_group", "fake_cluster.fake_instance"}
 
 
 def test_get_container_name():
@@ -351,66 +366,68 @@ def test_trigger_deploys(mock_socket, mock_load_config):
     assert mock_client.close.call_count == 1
 
 
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("builtins.print", autospec=True)
-def test_verify_instances(mock_print, mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+def test_verify_instances():
+    with patch("builtins.print", autospec=True) as mock_print, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_all_instances_for_service:
+        mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
 
-    assert verify_instances("west,esst", "fake_service", []) == ["esst"]
-    assert mock_print.called
-    mock_print.assert_has_calls(
-        [
-            call(
-                "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
-            ),
-            call("Did you mean any of these?"),
-            call("  east"),
-            call("  west"),
-        ]
-    )
-
-
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-@patch("builtins.print", autospec=True)
-def test_verify_instances_with_clusters(
-    mock_print, mock_list_all_instances_for_service
-):
-    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
-
-    assert verify_instances(
-        "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
-    ) == ["esst", "fake"]
-    assert mock_print.called
-    mock_print.assert_has_calls(
-        [
-            call(
-                "\x1b[31mfake_service doesn't have any instances matching esst,"
-                " fake on fake_cluster1, fake_cluster2.\x1b[0m"
-            ),
-            call("Did you mean any of these?"),
-            call("  east"),
-            call("  west"),
-        ]
-    )
-
-
-@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
-def test_verify_instances_with_suffixes(mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = [
-        "fake_instance1",
-        "fake_instance2.jobname",
-    ]
-
-    assert (
-        verify_instances(
-            "fake_instance1.containername", "fake_service", ["fake_cluster"]
+        assert verify_instances("west,esst", "fake_service", []) == ["esst"]
+        assert mock_print.called
+        mock_print.assert_has_calls(
+            [
+                call(
+                    "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
+                ),
+                call("Did you mean any of these?"),
+                call("  east"),
+                call("  west"),
+            ]
         )
-        == []
-    )
-    assert (
-        verify_instances("fake_instance2.jobname", "fake_service", ["fake_cluster"])
-        == []
-    )
+
+
+def test_verify_instances_with_clusters():
+    with patch("builtins.print", autospec=True) as mock_print, patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_all_instances_for_service:
+        mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+
+        assert verify_instances(
+            "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
+        ) == ["esst", "fake"]
+        assert mock_print.called
+        mock_print.assert_has_calls(
+            [
+                call(
+                    "\x1b[31mfake_service doesn't have any instances matching esst,"
+                    " fake on fake_cluster1, fake_cluster2.\x1b[0m"
+                ),
+                call("Did you mean any of these?"),
+                call("  east"),
+                call("  west"),
+            ]
+        )
+
+
+def test_verify_instances_with_suffixes():
+    with patch(
+        "paasta_tools.cli.utils.list_all_instances_for_service", autospec=True
+    ) as mock_list_all_instances_for_service:
+        mock_list_all_instances_for_service.return_value = [
+            "fake_instance1",
+            "fake_instance2.jobname",
+        ]
+
+        assert (
+            verify_instances(
+                "fake_instance1.containername", "fake_service", ["fake_cluster"]
+            )
+            == []
+        )
+        assert (
+            verify_instances("fake_instance2.jobname", "fake_service", ["fake_cluster"])
+            == []
+        )
 
 
 @mark.parametrize(
@@ -479,15 +496,16 @@ def test_select_k8s_secret_namespace():
     assert select_k8s_secret_namespace(namespaces) in {"a", "b"}
 
 
-@patch("paasta_tools.cli.utils.shutil", autospec=True)
-@patch("paasta_tools.cli.utils.pty", autospec=True)
-def test_run_interactive_cli(mock_pty, mock_shutil):
-    mock_shutil.get_terminal_size.return_value = (120, 50)
-    run_interactive_cli("kubectl exec foobar")
-    mock_pty.spawn.assert_called_once_with(
-        [
-            "/bin/bash",
-            "-c",
-            "export SHELL=/bin/bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
-        ]
-    )
+def test_run_interactive_cli():
+    with patch("paasta_tools.cli.utils.pty", autospec=True) as mock_pty, patch(
+        "paasta_tools.cli.utils.shutil", autospec=True
+    ) as mock_shutil:
+        mock_shutil.get_terminal_size.return_value = (120, 50)
+        run_interactive_cli("kubectl exec foobar")
+        mock_pty.spawn.assert_called_once_with(
+            [
+                "/bin/bash",
+                "-c",
+                "export SHELL=/bin/bash;export TERM=xterm-256color;stty columns 120 rows 50;exec kubectl exec foobar",
+            ]
+        )

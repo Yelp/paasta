@@ -201,24 +201,32 @@ def test_assert_mesos_tasks_running():
     assert ok
 
 
-@patch("paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True)
-@patch("paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True)
-def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
-    mock_num_masters.return_value = 5
-    mock_quorum_size.return_value = 3
-    output, health = metastatus_lib.assert_quorum_size()
-    assert health
-    assert "Quorum: masters: 5 configured quorum: 3 " in output
+def test_healthy_asssert_quorum_size():
+    with patch(
+        "paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True
+    ) as mock_num_masters, patch(
+        "paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True
+    ) as mock_quorum_size:
+        mock_num_masters.return_value = 5
+        mock_quorum_size.return_value = 3
+        output, health = metastatus_lib.assert_quorum_size()
+        assert health
+        assert "Quorum: masters: 5 configured quorum: 3 " in output
 
 
-@patch("paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True)
-@patch("paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True)
-def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
-    mock_num_masters.return_value = 1
-    mock_quorum_size.return_value = 3
-    output, health = metastatus_lib.assert_quorum_size()
-    assert not health
-    assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
+def test_unhealthy_asssert_quorum_size():
+    with patch(
+        "paasta_tools.metrics.metastatus_lib.get_num_masters", autospec=True
+    ) as mock_num_masters, patch(
+        "paasta_tools.metrics.metastatus_lib.get_mesos_quorum", autospec=True
+    ) as mock_quorum_size:
+        mock_num_masters.return_value = 1
+        mock_quorum_size.return_value = 3
+        output, health = metastatus_lib.assert_quorum_size()
+        assert not health
+        assert (
+            "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
+        )
 
 
 def test_status_for_results():
@@ -320,36 +328,36 @@ def test_group_slaves_by_key_func():
         assert len(list(v)) == 1
 
 
-@patch("paasta_tools.metrics.metastatus_lib.group_slaves_by_key_func", autospec=True)
-@patch(
-    "paasta_tools.metrics.metastatus_lib.calculate_resource_utilization_for_slaves",
-    autospec=True,
-)
-@patch("paasta_tools.metrics.metastatus_lib.get_all_tasks_from_state", autospec=True)
-def test_get_resource_utilization_by_grouping(
-    mock_get_all_tasks_from_state,
-    mock_calculate_resource_utilization_for_slaves,
-    mock_group_slaves_by_key_func,
-):
-    mock_group_slaves_by_key_func.return_value = {
-        "somenametest-habitat": [{"id": "abcd", "hostname": "test.somewhere.www"}],
-        "somenametest-habitat-2": [{"id": "abcd", "hostname": "test2.somewhere.www"}],
-    }
-    mock_calculate_resource_utilization_for_slaves.return_value = {
-        "free": metastatus_lib.ResourceInfo(cpus=10, mem=10, disk=10),
-        "total": metastatus_lib.ResourceInfo(cpus=20, mem=20, disk=20),
-    }
-    state = {"frameworks": Mock(), "slaves": [{"id": "abcd"}]}
-    actual = metastatus_lib.get_resource_utilization_by_grouping(
-        grouping_func=mock.sentinel.grouping_func, mesos_state=state
-    )
-    mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)
-    assert sorted(actual.keys()) == sorted(
-        ["somenametest-habitat", "somenametest-habitat-2"]
-    )
-    for k, v in actual.items():
-        assert v["total"] == metastatus_lib.ResourceInfo(cpus=20, disk=20, mem=20)
-        assert v["free"] == metastatus_lib.ResourceInfo(cpus=10, disk=10, mem=10)
+def test_get_resource_utilization_by_grouping():
+    with patch(
+        "paasta_tools.metrics.metastatus_lib.get_all_tasks_from_state", autospec=True
+    ) as mock_get_all_tasks_from_state, patch(
+        "paasta_tools.metrics.metastatus_lib.calculate_resource_utilization_for_slaves",
+        autospec=True,
+    ) as mock_calculate_resource_utilization_for_slaves, patch(
+        "paasta_tools.metrics.metastatus_lib.group_slaves_by_key_func", autospec=True
+    ) as mock_group_slaves_by_key_func:
+        mock_group_slaves_by_key_func.return_value = {
+            "somenametest-habitat": [{"id": "abcd", "hostname": "test.somewhere.www"}],
+            "somenametest-habitat-2": [
+                {"id": "abcd", "hostname": "test2.somewhere.www"}
+            ],
+        }
+        mock_calculate_resource_utilization_for_slaves.return_value = {
+            "free": metastatus_lib.ResourceInfo(cpus=10, mem=10, disk=10),
+            "total": metastatus_lib.ResourceInfo(cpus=20, mem=20, disk=20),
+        }
+        state = {"frameworks": Mock(), "slaves": [{"id": "abcd"}]}
+        actual = metastatus_lib.get_resource_utilization_by_grouping(
+            grouping_func=mock.sentinel.grouping_func, mesos_state=state
+        )
+        mock_get_all_tasks_from_state.assert_called_with(state, include_orphans=True)
+        assert sorted(actual.keys()) == sorted(
+            ["somenametest-habitat", "somenametest-habitat-2"]
+        )
+        for k, v in actual.items():
+            assert v["total"] == metastatus_lib.ResourceInfo(cpus=20, disk=20, mem=20)
+            assert v["free"] == metastatus_lib.ResourceInfo(cpus=10, disk=10, mem=10)
 
 
 def test_get_resource_utilization_by_grouping_correctly_groups():
@@ -633,27 +641,29 @@ def test_format_table_column_for_healthcheck_resource_utilization_pair_zero_huma
     )
 
 
-@patch(
-    "paasta_tools.metrics.metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair",
-    autospec=True,
-)
-def test_format_row_for_resource_utilization_checks(mock_format_row):
-    fake_pairs = [(Mock(), Mock()), (Mock(), Mock()), (Mock(), Mock())]
-    assert metastatus_lib.format_row_for_resource_utilization_healthchecks(fake_pairs)
-    assert mock_format_row.call_count == len(fake_pairs)
+def test_format_row_for_resource_utilization_checks():
+    with patch(
+        "paasta_tools.metrics.metastatus_lib.format_table_column_for_healthcheck_resource_utilization_pair",
+        autospec=True,
+    ) as mock_format_row:
+        fake_pairs = [(Mock(), Mock()), (Mock(), Mock()), (Mock(), Mock())]
+        assert metastatus_lib.format_row_for_resource_utilization_healthchecks(
+            fake_pairs
+        )
+        assert mock_format_row.call_count == len(fake_pairs)
 
 
-@patch(
-    "paasta_tools.metrics.metastatus_lib.format_row_for_resource_utilization_healthchecks",
-    autospec=True,
-)
-def test_get_table_rows_for_resource_usage_dict(mock_format_row):
-    fake_pairs = [(Mock(), Mock()), (Mock(), Mock()), (Mock(), Mock())]
-    mock_format_row.return_value = ["10/10", "10/10", "10/10"]
-    actual = metastatus_lib.get_table_rows_for_resource_info_dict(
-        ["myhabitat"], fake_pairs
-    )
-    assert actual == ["myhabitat", "10/10", "10/10", "10/10"]
+def test_get_table_rows_for_resource_usage_dict():
+    with patch(
+        "paasta_tools.metrics.metastatus_lib.format_row_for_resource_utilization_healthchecks",
+        autospec=True,
+    ) as mock_format_row:
+        fake_pairs = [(Mock(), Mock()), (Mock(), Mock()), (Mock(), Mock())]
+        mock_format_row.return_value = ["10/10", "10/10", "10/10"]
+        actual = metastatus_lib.get_table_rows_for_resource_info_dict(
+            ["myhabitat"], fake_pairs
+        )
+        assert actual == ["myhabitat", "10/10", "10/10", "10/10"]
 
 
 def test_key_func_for_attribute():

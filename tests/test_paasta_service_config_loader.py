@@ -114,223 +114,214 @@ def adhoc_cluster_config():
     }
 
 
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
-    autospec=True,
-)
-def test_kubernetes_instances(mock_load_service_instance_configs):
-    mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
-    s = create_test_service()
-    assert list(s.instances(TEST_CLUSTER_NAME, KubernetesDeploymentConfig)) == [
-        "main",
-        "canary",
-        "not_deployed",
-    ]
-    mock_load_service_instance_configs.assert_called_once_with(
-        service=TEST_SERVICE_NAME,
-        instance_type="kubernetes",
-        cluster=TEST_CLUSTER_NAME,
-        soa_dir=TEST_SOA_DIR,
-    )
+def test_kubernetes_instances():
+    with patch(
+        "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
+        autospec=True,
+    ) as mock_load_service_instance_configs:
+        mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
+        s = create_test_service()
+        assert list(s.instances(TEST_CLUSTER_NAME, KubernetesDeploymentConfig)) == [
+            "main",
+            "canary",
+            "not_deployed",
+        ]
+        mock_load_service_instance_configs.assert_called_once_with(
+            service=TEST_SERVICE_NAME,
+            instance_type="kubernetes",
+            cluster=TEST_CLUSTER_NAME,
+            soa_dir=TEST_SOA_DIR,
+        )
 
 
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
-)
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
-    autospec=True,
-)
-def test_kubernetes_instances_configs(
-    mock_load_service_instance_configs, mock_load_deployments_json
-):
-    mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
-    mock_load_deployments_json.return_value = deployment_json()
-    s = create_test_service()
-    expected = [
-        KubernetesDeploymentConfig(
+def test_kubernetes_instances_configs():
+    with patch(
+        "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
+        autospec=True,
+    ) as mock_load_service_instance_configs, patch(
+        "paasta_tools.paasta_service_config_loader.load_v2_deployments_json",
+        autospec=True,
+    ) as mock_load_deployments_json:
+        mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
+        mock_load_deployments_json.return_value = deployment_json()
+        s = create_test_service()
+        expected = [
+            KubernetesDeploymentConfig(
+                service=TEST_SERVICE_NAME,
+                cluster=TEST_CLUSTER_NAME,
+                instance="main",
+                config_dict={
+                    "port": None,
+                    "monitoring": {},
+                    "deploy": {},
+                    "data": {},
+                    "smartstack": {},
+                    "dependencies": {},
+                    "instances": 3,
+                    "deploy_group": f"{TEST_CLUSTER_NAME}.non_canary",
+                    "cpus": 0.1,
+                    "mem": 1000,
+                },
+                branch_dict={
+                    "docker_image": "some_image",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                    "git_sha": "some_sha",
+                    "image_version": None,
+                },
+                soa_dir=TEST_SOA_DIR,
+            ),
+            KubernetesDeploymentConfig(
+                service=TEST_SERVICE_NAME,
+                cluster=TEST_CLUSTER_NAME,
+                instance="canary",
+                config_dict={
+                    "port": None,
+                    "monitoring": {},
+                    "deploy": {},
+                    "data": {},
+                    "smartstack": {},
+                    "dependencies": {},
+                    "instances": 1,
+                    "deploy_group": f"{TEST_CLUSTER_NAME}.canary",
+                    "cpus": 0.1,
+                    "mem": 1000,
+                },
+                branch_dict={
+                    "docker_image": "some_image",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                    "git_sha": "some_sha",
+                    "image_version": None,
+                },
+                soa_dir=TEST_SOA_DIR,
+            ),
+        ]
+        assert (
+            list(s.instance_configs(TEST_CLUSTER_NAME, KubernetesDeploymentConfig))
+            == expected
+        )
+        mock_load_service_instance_configs.assert_called_once_with(
             service=TEST_SERVICE_NAME,
+            instance_type="kubernetes",
             cluster=TEST_CLUSTER_NAME,
-            instance="main",
-            config_dict={
-                "port": None,
-                "monitoring": {},
-                "deploy": {},
-                "data": {},
-                "smartstack": {},
-                "dependencies": {},
-                "instances": 3,
-                "deploy_group": f"{TEST_CLUSTER_NAME}.non_canary",
-                "cpus": 0.1,
-                "mem": 1000,
-            },
-            branch_dict={
-                "docker_image": "some_image",
-                "desired_state": "start",
-                "force_bounce": None,
-                "git_sha": "some_sha",
-                "image_version": None,
-            },
             soa_dir=TEST_SOA_DIR,
-        ),
-        KubernetesDeploymentConfig(
-            service=TEST_SERVICE_NAME,
-            cluster=TEST_CLUSTER_NAME,
-            instance="canary",
-            config_dict={
-                "port": None,
-                "monitoring": {},
-                "deploy": {},
-                "data": {},
-                "smartstack": {},
-                "dependencies": {},
-                "instances": 1,
-                "deploy_group": f"{TEST_CLUSTER_NAME}.canary",
-                "cpus": 0.1,
-                "mem": 1000,
-            },
-            branch_dict={
-                "docker_image": "some_image",
-                "desired_state": "start",
-                "force_bounce": None,
-                "git_sha": "some_sha",
-                "image_version": None,
-            },
-            soa_dir=TEST_SOA_DIR,
-        ),
-    ]
-    assert (
-        list(s.instance_configs(TEST_CLUSTER_NAME, KubernetesDeploymentConfig))
-        == expected
-    )
-    mock_load_service_instance_configs.assert_called_once_with(
-        service=TEST_SERVICE_NAME,
-        instance_type="kubernetes",
-        cluster=TEST_CLUSTER_NAME,
-        soa_dir=TEST_SOA_DIR,
-    )
-    mock_load_deployments_json.assert_called_once_with(
-        TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR
-    )
+        )
+        mock_load_deployments_json.assert_called_once_with(
+            TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR
+        )
 
 
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
-)
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
-    autospec=True,
-)
-def test_adhoc_instances_configs(
-    mock_load_service_instance_configs, mock_load_deployments_json
-):
-    mock_load_service_instance_configs.return_value = adhoc_cluster_config()
-    mock_load_deployments_json.return_value = deployment_json()
-    s = create_test_service()
-    expected = [
-        AdhocJobConfig(
+def test_adhoc_instances_configs():
+    with patch(
+        "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
+        autospec=True,
+    ) as mock_load_service_instance_configs, patch(
+        "paasta_tools.paasta_service_config_loader.load_v2_deployments_json",
+        autospec=True,
+    ) as mock_load_deployments_json:
+        mock_load_service_instance_configs.return_value = adhoc_cluster_config()
+        mock_load_deployments_json.return_value = deployment_json()
+        s = create_test_service()
+        expected = [
+            AdhocJobConfig(
+                service=TEST_SERVICE_NAME,
+                cluster=TEST_CLUSTER_NAME,
+                instance="sample_batch",
+                config_dict={
+                    "port": None,
+                    "monitoring": {},
+                    "deploy": {},
+                    "data": {},
+                    "smartstack": {},
+                    "dependencies": {},
+                    "cmd": "/bin/sleep 5s",
+                    "deploy_group": "cluster.non_canary",
+                    "cpus": 0.1,
+                    "mem": 1000,
+                },
+                branch_dict={
+                    "docker_image": "some_image",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                    "git_sha": "some_sha",
+                    "image_version": None,
+                },
+                soa_dir=TEST_SOA_DIR,
+            ),
+            AdhocJobConfig(
+                service=TEST_SERVICE_NAME,
+                cluster=TEST_CLUSTER_NAME,
+                instance="interactive",
+                config_dict={
+                    "port": None,
+                    "monitoring": {},
+                    "deploy": {},
+                    "data": {},
+                    "smartstack": {},
+                    "dependencies": {},
+                    "deploy_group": "cluster.non_canary",
+                    "mem": 1000,
+                },
+                branch_dict={
+                    "docker_image": "some_image",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                    "git_sha": "some_sha",
+                    "image_version": None,
+                },
+                soa_dir=TEST_SOA_DIR,
+            ),
+        ]
+        for i in s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig):
+            print(i, i.cluster)
+        assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
+        mock_load_service_instance_configs.assert_called_once_with(
             service=TEST_SERVICE_NAME,
+            instance_type="adhoc",
             cluster=TEST_CLUSTER_NAME,
-            instance="sample_batch",
-            config_dict={
-                "port": None,
-                "monitoring": {},
-                "deploy": {},
-                "data": {},
-                "smartstack": {},
-                "dependencies": {},
-                "cmd": "/bin/sleep 5s",
-                "deploy_group": "cluster.non_canary",
-                "cpus": 0.1,
-                "mem": 1000,
-            },
-            branch_dict={
-                "docker_image": "some_image",
-                "desired_state": "start",
-                "force_bounce": None,
-                "git_sha": "some_sha",
-                "image_version": None,
-            },
             soa_dir=TEST_SOA_DIR,
-        ),
-        AdhocJobConfig(
-            service=TEST_SERVICE_NAME,
-            cluster=TEST_CLUSTER_NAME,
-            instance="interactive",
-            config_dict={
-                "port": None,
-                "monitoring": {},
-                "deploy": {},
-                "data": {},
-                "smartstack": {},
-                "dependencies": {},
-                "deploy_group": "cluster.non_canary",
-                "mem": 1000,
-            },
-            branch_dict={
-                "docker_image": "some_image",
-                "desired_state": "start",
-                "force_bounce": None,
-                "git_sha": "some_sha",
-                "image_version": None,
-            },
-            soa_dir=TEST_SOA_DIR,
-        ),
-    ]
-    for i in s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig):
-        print(i, i.cluster)
-    assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
-    mock_load_service_instance_configs.assert_called_once_with(
-        service=TEST_SERVICE_NAME,
-        instance_type="adhoc",
-        cluster=TEST_CLUSTER_NAME,
-        soa_dir=TEST_SOA_DIR,
-    )
-    mock_load_deployments_json.assert_called_once_with(
-        TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR
-    )
+        )
+        mock_load_deployments_json.assert_called_once_with(
+            TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR
+        )
 
 
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
-)
-@patch("paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True)
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
-    autospec=True,
-)
-@patch(
-    "paasta_tools.adhoc_tools.load_service_instance_config",
-    autospec=True,
-)
-def test_old_and_new_ways_load_the_same_adhoc_configs(
-    mock_adhoc_tools_load_service_instance_config,
-    mock_load_service_instance_configs,
-    mock_adhoc_tools_load_deployments_json,
-    mock_load_deployments_json,
-):
-    mock_load_service_instance_configs.return_value = adhoc_cluster_config()
-    mock_adhoc_tools_load_service_instance_config.side_effect = [
-        adhoc_cluster_config().get("sample_batch"),
-        adhoc_cluster_config().get("interactive"),
-    ]
-    mock_load_deployments_json.return_value = deployment_json()
-    mock_adhoc_tools_load_deployments_json.return_value = deployment_json()
-    s = create_test_service()
-    expected = [
-        load_adhoc_job_config(
-            service=TEST_SERVICE_NAME,
-            instance="sample_batch",
-            cluster=TEST_CLUSTER_NAME,
-            load_deployments=True,
-            soa_dir=TEST_SOA_DIR,
-        ),
-        load_adhoc_job_config(
-            service=TEST_SERVICE_NAME,
-            instance="interactive",
-            cluster=TEST_CLUSTER_NAME,
-            load_deployments=True,
-            soa_dir=TEST_SOA_DIR,
-        ),
-    ]
-    assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
+def test_old_and_new_ways_load_the_same_adhoc_configs():
+    with patch(
+        "paasta_tools.adhoc_tools.load_service_instance_config",
+        autospec=True,
+    ) as mock_adhoc_tools_load_service_instance_config, patch(
+        "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
+        autospec=True,
+    ) as mock_load_service_instance_configs, patch(
+        "paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True
+    ) as mock_adhoc_tools_load_deployments_json, patch(
+        "paasta_tools.paasta_service_config_loader.load_v2_deployments_json",
+        autospec=True,
+    ) as mock_load_deployments_json:
+        mock_load_service_instance_configs.return_value = adhoc_cluster_config()
+        mock_adhoc_tools_load_service_instance_config.side_effect = [
+            adhoc_cluster_config().get("sample_batch"),
+            adhoc_cluster_config().get("interactive"),
+        ]
+        mock_load_deployments_json.return_value = deployment_json()
+        mock_adhoc_tools_load_deployments_json.return_value = deployment_json()
+        s = create_test_service()
+        expected = [
+            load_adhoc_job_config(
+                service=TEST_SERVICE_NAME,
+                instance="sample_batch",
+                cluster=TEST_CLUSTER_NAME,
+                load_deployments=True,
+                soa_dir=TEST_SOA_DIR,
+            ),
+            load_adhoc_job_config(
+                service=TEST_SERVICE_NAME,
+                instance="interactive",
+                cluster=TEST_CLUSTER_NAME,
+                load_deployments=True,
+                soa_dir=TEST_SOA_DIR,
+            ),
+        ]
+        assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
