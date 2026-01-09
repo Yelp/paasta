@@ -168,18 +168,8 @@ class PatchDecoratorRewriter(cst.CSTTransformer):
                     )
                 )
 
-        # Create with statement - use parentheses if multiple items
-        if num_patches > 1:
-            # Parenthesized with statement for clean multi-line
-            with_stmt = cst.With(
-                items=with_items,
-                body=original_node.body,  # Use original to preserve comments
-                lpar=cst.LeftParen(),
-                rpar=cst.RightParen(),
-            )
-        else:
-            # Single item, no parentheses needed
-            with_stmt = cst.With(items=with_items, body=original_node.body)
+        # Create with statement (no parentheses - let Black format)
+        with_stmt = cst.With(items=with_items, body=original_node.body)
 
         # Return updated function
         return updated_node.with_changes(
