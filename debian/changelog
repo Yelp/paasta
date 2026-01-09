@@ -1,3 +1,11 @@
+paasta-tools (1.36.7) xenial; urgency=medium
+
+  * 1.36.7 tagged with 'make release'
+    Commit: Merge pull request #4195 from Yelp/joycek/update-endpoint-
+    latency  Update name and field type for endpoint latency
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 09 Jan 2026 11:34:36 -0800
+
 paasta-tools (1.36.6) xenial; urgency=medium
 
   * 1.36.6 tagged with 'make release'
