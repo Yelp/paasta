@@ -305,9 +305,8 @@
                                     "type": "number",
                                     "minimum": 0
                                 },
-                                "latency_threshold_ms": {
-                                    "type": "number",
-                                    "minimum": 0
+                                "latency_threshold": {
+                                    "type": "string"
                                 },
                                 "team": {
                                     "type": "string"
