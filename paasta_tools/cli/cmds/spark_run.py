@@ -20,6 +20,7 @@ from typing import Union
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
+from service_configuration_lib.spark_config import AWS_DEFAULT_CREDENTIALS_PROVIDER
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
@@ -649,6 +650,7 @@ def get_spark_env(
             spark_env["AWS_SESSION_TOKEN"] = session_token
 
     spark_env["AWS_DEFAULT_REGION"] = args.aws_region
+    spark_env["AWS_CREDENTIALS_PROVIDER"] = AWS_DEFAULT_CREDENTIALS_PROVIDER
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
@@ -888,6 +890,10 @@ def configure_and_run_docker_container(
     volumes.append(f"{kubeconfig_dir}:{kubeconfig_dir}:ro")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
+
+    # Pop out scs_conf from spark_conf and store it in the environment, in sync with the tron_tools code
+    environment["SCS_CONF_STR"] = spark_conf.pop("scs_conf", None)
+
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     environment.update(
         get_spark_env(
@@ -1313,14 +1319,18 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-
+            if not args.service or args.service == DEFAULT_SPARK_SERVICE:
+                print(
+                    "--service was not specified, this may prevent correctly matching allowed IAM roles",
+                    file=sys.stderr,
+                )
             allowed_iam_roles = get_all_iam_roles_for_service(
                 args.service, args.cluster
             )
             if args.force_pod_identity not in allowed_iam_roles:
                 print(
                     f"{args.force_pod_identity} is not an allowed role for this service. "
-                    f"Allowed roles are: {allowed_iam_roles}.",
+                    f"Allowed roles for {args.service} in {args.cluster} are: {allowed_iam_roles}.",
                     file=sys.stderr,
                 )
                 return 1
