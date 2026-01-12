@@ -399,7 +399,6 @@ class CryptoKeyConfig(TypedDict):
 class SsmSecretConfig(TypedDict):
     source: str
     secret_name: str
-    assume_role_arn: Optional[str]
 
 
 class NodeSelectorInNotIn(TypedDict):

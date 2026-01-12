@@ -568,6 +568,13 @@ instance MAY have:
     See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
     NOTE: this key is ignored for ``paasta local-run``.
 
+  * ``ssm_secrets``: A list of dictionaries allowing you to sync secrets from AWS SSM Parameter Store into Kubernetes. Each entry requires:
+
+    * ``source``: The name of the parameter in AWS SSM (e.g., ``/my-service/prod/db_password``).
+    * ``secret_name``: The key to be used within the generated Kubernetes Secret.
+
+    Note: This process assumes the paasta-secrets-sync IAM role in the current account to fetch parameters. The AWS region is determined automatically by the target cluster's configuration.
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier

@@ -35,7 +35,6 @@ from typing import Tuple
 import boto3
 from botocore.exceptions import ClientError
 from kubernetes.client.rest import ApiException
-from typing_extensions import Any
 from typing_extensions import Literal
 
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -412,10 +411,10 @@ def sync_all_secrets(
             results.append(
                 all(sync() for sync in sync_service_secrets["paasta-secret"])
             )
-            results.append(all(sync() for sync in sync_service_secrets["ssm-secret"]))
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
             # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
+            # ssm-secret is also omitted as it needs to be run with a specific set of IAM credentials
         else:
             results.append(all(sync() for sync in sync_service_secrets[secret_type]))
 
@@ -501,12 +500,33 @@ def sync_ssm_secrets(
     namespace: str,
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-    sts_client = boto3.client("sts")
 
-    # Cache key is (role_arn, region) to avoid cross-region collisions
-    # role_arn will be None if using the default instance role
-    ssm_clients: Dict[Tuple[Optional[str], str], Any] = {}
+    system_paasta_config = load_system_paasta_config()
+    aws_region = (
+        system_paasta_config.get_kube_clusters().get(cluster, {}).get("aws_region")
+    )
+    if not aws_region:
+        log.warning("No aws_region detected. Defaulting to us-west-2")
+        aws_region = "us-west-2"
 
+    # If client creation fails then no secrets can be fetched so we let it crash
+    sts_client = boto3.client("sts", region_name=aws_region)
+    account_id = sts_client.get_caller_identity()["Account"]
+    role_arn = f"arn:aws:iam::{account_id}:role/paasta-secrets-sync"
+
+    assumed_role_object = sts_client.assume_role(
+        RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
+    )
+    credentials = assumed_role_object["Credentials"]
+    client = boto3.client(
+        "ssm",
+        region_name=aws_region,
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials["SessionToken"],
+    )
+
+    success = True
     for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
         for instance_config in config_loader.instance_configs(
             cluster=cluster, instance_type_class=instance_type_class
@@ -516,51 +536,9 @@ def sync_ssm_secrets(
                 continue
 
             for ssm_secret in ssm_secrets:
+                # eks-schema.json ensures these are always present & valid
                 source = ssm_secret.get("source")
                 key = ssm_secret.get("secret_name")
-                role_arn = ssm_secret.get("assume_role_arn")
-
-                if not source or not key:
-                    log.warning(
-                        f"Invalid ssm_secret config in {service}. Missing source or key"
-                    )
-                    continue
-
-                try:
-                    aws_region = source.split(":")[3]
-                except IndexError:
-                    log.warning(
-                        f"Unable to determine source region in {service}: {source}"
-                    )
-                    continue
-
-                client_key = (role_arn, aws_region)
-                client = ssm_clients.get(client_key)
-
-                if not client:
-                    try:
-                        if role_arn:
-                            assumed_role = sts_client.assume_role(
-                                RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
-                            )
-                            creds = assumed_role["Credentials"]
-                            client = boto3.client(
-                                "ssm",
-                                aws_access_key_id=creds["AccessKeyId"],
-                                aws_secret_access_key=creds["SecretAccessKey"],
-                                aws_session_token=creds["SessionToken"],
-                                region_name=aws_region,
-                            )
-                        else:
-                            # Use default credentials
-                            client = boto3.client("ssm", region_name=aws_region)
-
-                        ssm_clients[client_key] = client
-                    except ClientError as e:
-                        log.warning(
-                            f"Failed to initialize SSM client (Role: {role_arn}) for {service}: {e}"
-                        )
-                        continue
 
                 try:
                     response = client.get_parameter(Name=source, WithDecryption=True)
@@ -568,6 +546,8 @@ def sync_ssm_secrets(
                     secret_value = base64.b64encode(value.encode("utf-8")).decode(
                         "utf-8"
                     )
+
+                    secret_data = {key: secret_value}
 
                     create_or_update_k8s_secret(
                         service=service,
@@ -577,17 +557,18 @@ def sync_ssm_secrets(
                         secret_name=get_ssm_secret_name(
                             namespace, service, sanitise_kubernetes_name(key)
                         ),
-                        get_secret_data=(lambda: {key: secret_value}),
-                        secret_signature=_get_dict_signature({key: secret_value}),
+                        get_secret_data=(lambda: secret_data),
+                        secret_signature=_get_dict_signature(secret_data),
                         kube_client=kube_client,
                         namespace=namespace,
                     )
-                except ClientError as e:
-                    log.warning(
-                        f"Failed to fetch SSM parameter {source} for {service}: {e}"
+                except ClientError:
+                    log.exception(
+                        f"Failed to fetch SSM parameter {source} for {service}"
                     )
+                    success = False
 
-    return True
+    return success
 
 
 def sync_datastore_credentials(

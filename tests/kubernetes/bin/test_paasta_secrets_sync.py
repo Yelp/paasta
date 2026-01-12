@@ -1233,7 +1233,7 @@ def ssm_secrets_patches():
     ) as mock_config_loader, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
         autospec=True,
-    ):
+    ) as mock_load_system_paasta_config:
         yield (
             mock_boto3,
             mock_get_kubernetes_secret_signature,
@@ -1243,7 +1243,34 @@ def ssm_secrets_patches():
             mock_update_kubernetes_secret_signature,
             mock_config_loader,
             mock_config_loader.return_value.instance_configs,
+            mock_load_system_paasta_config,
         )
+
+
+def _setup_boto_mocks(mock_boto3):
+    """Helper to setup STS and SSM mocks with valid credentials."""
+    mock_sts_client = mock.Mock()
+    mock_ssm_client = mock.Mock()
+
+    def client_side_effect(service, **kwargs):
+        if service == "sts":
+            return mock_sts_client
+        elif service == "ssm":
+            return mock_ssm_client
+        return mock.Mock()
+
+    mock_boto3.client.side_effect = client_side_effect
+
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+    mock_sts_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "fake-access-key",
+            "SecretAccessKey": "fake-secret-key",
+            "SessionToken": "fake-session-token",
+        }
+    }
+
+    return mock_sts_client, mock_ssm_client
 
 
 def test_ssm_secrets_not_exist(ssm_secrets_patches):
@@ -1256,14 +1283,14 @@ def test_ssm_secrets_not_exist(ssm_secrets_patches):
         mock_update_kubernetes_secret_signature,
         mock_config_loader,
         mock_config_loader_instances,
+        mock_load_system_paasta_config,
     ) = ssm_secrets_patches
 
     config_dict = {
         "ssm_secrets": [
             {
-                "source": "arn:aws:ssm:us-west-2:123:parameter/my-secret",
+                "source": "/my-service/prod/db_password",
                 "secret_name": "my-secret-env",
-                "assume_role_arn": "arn:aws:iam::123:role/my-role",
             }
         ]
     }
@@ -1276,21 +1303,12 @@ def test_ssm_secrets_not_exist(ssm_secrets_patches):
         soa_dir="/nail/blah",
     )
     mock_config_loader_instances.return_value = [deployment]
-
-    mock_sts_client = mock.Mock()
-    mock_ssm_client = mock.Mock()
-    mock_boto3.client.side_effect = lambda service, **kwargs: {
-        "sts": mock_sts_client,
-        "ssm": mock_ssm_client,
-    }[service]
-
-    mock_sts_client.assume_role.return_value = {
-        "Credentials": {
-            "AccessKeyId": "foo",
-            "SecretAccessKey": "bar",
-            "SessionToken": "baz",
-        }
+    mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {
+        "mega-cluster": {"aws_region": "us-east-1"}
     }
+
+    # Setup AWS Clients
+    mock_sts_client, mock_ssm_client = _setup_boto_mocks(mock_boto3)
     mock_ssm_client.get_parameter.return_value = {
         "Parameter": {"Value": "super-secret-value"}
     }
@@ -1303,6 +1321,21 @@ def test_ssm_secrets_not_exist(ssm_secrets_patches):
         service="my-service",
         soa_dir="/nail/blah",
         namespace="paasta",
+    )
+
+    mock_boto3.client.assert_any_call("sts", region_name="us-east-1")
+    mock_sts_client.assume_role.assert_called_with(
+        RoleArn="arn:aws:iam::123456789012:role/paasta-secrets-sync",
+        RoleSessionName="PaastaSecretsSync",
+    )
+
+    # Verify SSM client created with credentials from AssumeRole
+    mock_boto3.client.assert_called_with(
+        "ssm",
+        region_name="us-east-1",
+        aws_access_key_id="fake-access-key",
+        aws_secret_access_key="fake-secret-key",
+        aws_session_token="fake-session-token",
     )
 
     # b64encoded 'super-secret-value'
@@ -1328,14 +1361,14 @@ def test_ssm_secrets_exists_but_no_signature(ssm_secrets_patches):
         mock_update_kubernetes_secret_signature,
         mock_config_loader,
         mock_config_loader_instances,
+        mock_load_system_paasta_config,
     ) = ssm_secrets_patches
 
     config_dict = {
         "ssm_secrets": [
             {
-                "source": "arn:aws:ssm:us-west-2:123:parameter/my-secret",
+                "source": "/my-service/prod/db_password",
                 "secret_name": "my-secret-env",
-                "assume_role_arn": "arn:aws:iam::123:role/my-role",
             }
         ]
     }
@@ -1349,20 +1382,11 @@ def test_ssm_secrets_exists_but_no_signature(ssm_secrets_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_sts_client = mock.Mock()
-    mock_ssm_client = mock.Mock()
-    mock_boto3.client.side_effect = lambda service, **kwargs: {
-        "sts": mock_sts_client,
-        "ssm": mock_ssm_client,
-    }[service]
-
-    mock_sts_client.assume_role.return_value = {
-        "Credentials": {
-            "AccessKeyId": "foo",
-            "SecretAccessKey": "bar",
-            "SessionToken": "baz",
-        }
+    mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {
+        "mega-cluster": {"aws_region": "us-west-2"}
     }
+
+    mock_sts_client, mock_ssm_client = _setup_boto_mocks(mock_boto3)
     mock_ssm_client.get_parameter.return_value = {
         "Parameter": {"Value": "super-secret-value"}
     }
@@ -1384,7 +1408,7 @@ def test_ssm_secrets_exists_but_no_signature(ssm_secrets_patches):
     assert not mock_update_kubernetes_secret_signature.called
 
 
-def test_ssm_secrets_default_instance_role(ssm_secrets_patches):
+def test_ssm_secrets_aws_exception(ssm_secrets_patches):
     (
         mock_boto3,
         mock_get_kubernetes_secret_signature,
@@ -1394,154 +1418,14 @@ def test_ssm_secrets_default_instance_role(ssm_secrets_patches):
         mock_update_kubernetes_secret_signature,
         mock_config_loader,
         mock_config_loader_instances,
-    ) = ssm_secrets_patches
-
-    # omit assume_role_arn
-    config_dict = {
-        "ssm_secrets": [
-            {
-                "source": "arn:aws:ssm:us-west-2:123:parameter/my-secret",
-                "secret_name": "my-secret-env",
-            }
-        ]
-    }
-    deployment = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="mega-cluster",
-        config_dict=config_dict,
-        branch_dict=None,
-        soa_dir="/nail/blah",
-    )
-    mock_config_loader_instances.return_value = [deployment]
-
-    mock_sts_client = mock.Mock()
-    mock_ssm_client = mock.Mock()
-
-    def boto_side_effect(service, **kwargs):
-        if service == "sts":
-            return mock_sts_client
-        if service == "ssm":
-            return mock_ssm_client
-        return mock.Mock()
-
-    mock_boto3.client.side_effect = boto_side_effect
-
-    mock_ssm_client.get_parameter.return_value = {
-        "Parameter": {"Value": "super-secret-value"}
-    }
-
-    mock_get_kubernetes_secret_signature.return_value = None
-
-    sync_ssm_secrets(
-        kube_client=mock.Mock(),
-        cluster="mega-cluster",
-        service="my-service",
-        soa_dir="/nail/blah",
-        namespace="paasta",
-    )
-
-    # Ensure STS Assume Role was NOT called
-    assert not mock_sts_client.assume_role.called
-
-    # Ensure SSM client was created WITHOUT manual credentials
-    ssm_init_calls = [
-        call for call in mock_boto3.client.call_args_list if call[0][0] == "ssm"
-    ]
-    assert len(ssm_init_calls) == 1
-    _, kwargs = ssm_init_calls[0]
-
-    assert kwargs["region_name"] == "us-west-2"
-    assert "aws_access_key_id" not in kwargs
-    assert "aws_secret_access_key" not in kwargs
-
-    expected_secret_data = {"my-secret-env": "c3VwZXItc2VjcmV0LXZhbHVl"}
-    assert mock_create_secret.called
-    call_args = mock_create_secret.call_args_list[0][1]
-    assert call_args["secret_data"] == expected_secret_data
-
-
-def test_ssm_secrets_secret_aws_exception(ssm_secrets_patches):
-    (
-        mock_boto3,
-        mock_get_kubernetes_secret_signature,
-        mock_create_secret,
-        mock_create_kubernetes_secret_signature,
-        mock_update_secret,
-        mock_update_kubernetes_secret_signature,
-        mock_config_loader,
-        mock_config_loader_instances,
-    ) = ssm_secrets_patches
-
-    # Setup Config (Two secrets, one bad region, one bad role)
-    config_dict = {
-        "ssm_secrets": [
-            {
-                # bad region; this should fail early in the process
-                # before boto is even invoked
-                "source": "bad:arn:format",
-                "secret_name": "bad-region-env",
-                "assume_role_arn": "role1",
-            },
-            {
-                # bad sts role;
-                "source": "arn:aws:ssm:us-west-2:123:parameter/good-format",
-                "secret_name": "bad-role-env",
-                "assume_role_arn": "role2",
-            },
-        ]
-    }
-    deployment = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="mega-cluster",
-        config_dict=config_dict,
-        branch_dict=None,
-        soa_dir="/nail/blah",
-    )
-    mock_config_loader_instances.return_value = [deployment]
-
-    mock_sts_client = mock.Mock()
-    mock_boto3.client.side_effect = lambda service, **kwargs: {
-        "sts": mock_sts_client,
-    }.get(service, mock.Mock())
-
-    # STS Assume Role Fails
-    mock_sts_client.assume_role.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "No role for you"}}, "AssumeRole"
-    )
-
-    sync_ssm_secrets(
-        kube_client=mock.Mock(),
-        cluster="mega-cluster",
-        service="my-service",
-        soa_dir="/nail/blah",
-        namespace="paasta",
-    )
-
-    # Ensure code did not fail and didn't try to sync secrets
-    assert not mock_create_secret.called
-    assert not mock_update_secret.called
-
-
-def test_ssm_secrets_parameter_access_failure(ssm_secrets_patches):
-    (
-        mock_boto3,
-        mock_get_kubernetes_secret_signature,
-        mock_create_secret,
-        mock_create_kubernetes_secret_signature,
-        mock_update_secret,
-        mock_update_kubernetes_secret_signature,
-        mock_config_loader,
-        mock_config_loader_instances,
+        mock_load_system_paasta_config,
     ) = ssm_secrets_patches
 
     config_dict = {
         "ssm_secrets": [
             {
-                "source": "arn:aws:ssm:us-west-2:123:parameter/secret",
+                "source": "/my-service/invalid/db_password",
                 "secret_name": "secret-env",
-                "assume_role_arn": "arn:aws:iam::123:role/my-role",
             }
         ]
     }
@@ -1555,27 +1439,51 @@ def test_ssm_secrets_parameter_access_failure(ssm_secrets_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_sts_client = mock.Mock()
-    mock_ssm_client = mock.Mock()
-    mock_boto3.client.side_effect = lambda service, **kwargs: {
-        "sts": mock_sts_client,
-        "ssm": mock_ssm_client,
-    }[service]
-
-    mock_sts_client.assume_role.return_value = {
-        "Credentials": {
-            "AccessKeyId": "foo",
-            "SecretAccessKey": "bar",
-            "SessionToken": "baz",
-        }
+    mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {
+        "mega-cluster": {"aws_region": "us-west-2"}
     }
 
-    # SSM Parameter not found
+    mock_sts_client, mock_ssm_client = _setup_boto_mocks(mock_boto3)
+
+    # SSM Failure (e.g. Access Denied or Param Not Found)
     mock_ssm_client.get_parameter.side_effect = ClientError(
-        {"Error": {"Code": "ParameterNotFound", "Message": "404 Param not Found"}},
+        {"Error": {"Code": "ParameterNotFound", "Message": "Not found"}},
         "GetParameter",
     )
 
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="mega-cluster",
+        service="my-service",
+        soa_dir="/nail/blah",
+        namespace="paasta",
+    )
+
+    assert not mock_create_secret.called
+    assert not mock_update_secret.called
+
+    # Final result should be False, indicating something failed
+    assert result is False
+
+
+def test_ssm_secrets_no_region(ssm_secrets_patches):
+    (
+        mock_boto3,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        _,
+        _,
+        _,
+        _,
+        _,
+        mock_load_system_paasta_config,
+    ) = ssm_secrets_patches
+
+    # Return empty config to trigger the "Defaulting to us-west-2" logic
+    mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {}
+
+    _setup_boto_mocks(mock_boto3)
+
     sync_ssm_secrets(
         kube_client=mock.Mock(),
         cluster="mega-cluster",
@@ -1584,6 +1492,12 @@ def test_ssm_secrets_parameter_access_failure(ssm_secrets_patches):
         namespace="paasta",
     )
 
-    # Should catch ClientError and skip syncing
-    assert not mock_create_secret.called
-    assert not mock_update_secret.called
+    # Verify fallback to default region
+    mock_boto3.client.assert_any_call("sts", region_name="us-west-2")
+    mock_boto3.client.assert_called_with(
+        "ssm",
+        region_name="us-west-2",
+        aws_access_key_id="fake-access-key",
+        aws_secret_access_key="fake-secret-key",
+        aws_session_token="fake-session-token",
+    )
