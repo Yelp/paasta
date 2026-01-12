@@ -1336,7 +1336,7 @@ class TestTronTools:
             "jira_ticket": None,
             "service_account_name": None,
             "ui_port": 39091,
-            "user": os.getenv("USER"),
+            "user": "TRON",
             "aws_account_id": None,
         }
         expected_scs_conf = json.dumps(expected_scs_conf_json, indent=4)
