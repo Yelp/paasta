@@ -109,7 +109,6 @@ class TestTronActionConfig:
     def test_get_env(
         self, mock_read_soa_metadata, action_config, executor, monkeypatch
     ):
-        monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
         action_config.config_dict["executor"] = executor
         with mock.patch(
             "paasta_tools.utils.get_service_docker_registry",

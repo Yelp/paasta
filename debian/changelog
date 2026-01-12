@@ -1,3 +1,19 @@
+paasta-tools (1.36.8) xenial; urgency=medium
+
+  * 1.36.8 tagged with 'make release'
+    Commit: Merge pull request #4185 from Yelp/u/robj/remove-clusterman-
+    metrics  remove references to clusterman_metrics
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 12 Jan 2026 04:16:14 -0800
+
+paasta-tools (1.36.7) xenial; urgency=medium
+
+  * 1.36.7 tagged with 'make release'
+    Commit: Merge pull request #4195 from Yelp/joycek/update-endpoint-
+    latency  Update name and field type for endpoint latency
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 09 Jan 2026 11:34:36 -0800
+
 paasta-tools (1.36.6) xenial; urgency=medium
 
   * 1.36.6 tagged with 'make release'
