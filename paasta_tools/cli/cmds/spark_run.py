@@ -23,8 +23,6 @@ from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import AWS_DEFAULT_CREDENTIALS_PROVIDER
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.authentication import get_service_auth_token
@@ -33,7 +31,6 @@ from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
@@ -68,7 +65,6 @@ DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
@@ -937,23 +933,6 @@ def configure_and_run_docker_container(
             log.info(history_server_url_msg)
     print(f"Selected cluster manager: {cluster_manager}\n")
 
-    if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
-        resources = get_resources_requested(spark_conf)
-        hourly_cost = get_spark_hourly_cost(
-            clusterman_metrics,
-            resources,
-            spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
-            args.pool,
-        )
-        message = (
-            f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
-            f" is estimated to cost ${hourly_cost} per hour"
-        )
-        if clusterman_metrics.util.costs.should_warn(hourly_cost):
-            print(PaastaColors.red(f"WARNING: {message}"))
-        else:
-            print(message)
-
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
         volumes=volumes,
@@ -965,12 +944,6 @@ def configure_and_run_docker_container(
         docker_memory_limit=docker_memory_limit,
         docker_shm_size=docker_shm_size,
         docker_cpu_limit=docker_cpu_limit,
-    )
-
-
-def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
-    return is_mrjob or any(
-        c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]
     )
 
 
