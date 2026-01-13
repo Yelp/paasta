@@ -5,6 +5,9 @@ import pytest
 from botocore.exceptions import ClientError
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
+    _get_current_region_from_files,
+)
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import _get_dict_signature
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
     get_services_to_k8s_namespaces_to_allowlist,
@@ -1466,10 +1469,14 @@ def test_ssm_secrets_aws_exception(ssm_secrets_patches):
     assert result is False
 
 
-def test_ssm_secrets_no_region(ssm_secrets_patches):
+def test_ssm_secrets_region_fallback_to_file(ssm_secrets_patches):
+    """
+    Tests that if the Paasta config has no region, we fall back to reading
+    the local /nail/etc/region file and parsing it correctly.
+    """
     (
         mock_boto3,
-        mock_get_kubernetes_secret_signature,
+        _,
         mock_create_secret,
         _,
         _,
@@ -1479,20 +1486,23 @@ def test_ssm_secrets_no_region(ssm_secrets_patches):
         mock_load_system_paasta_config,
     ) = ssm_secrets_patches
 
-    # Return empty config to trigger the "Defaulting to us-west-2" logic
+    # Simulate Paasta Config missing the region
     mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {}
 
     _setup_boto_mocks(mock_boto3)
 
-    sync_ssm_secrets(
-        kube_client=mock.Mock(),
-        cluster="mega-cluster",
-        service="my-service",
-        soa_dir="/nail/blah",
-        namespace="paasta",
-    )
+    with mock.patch("pathlib.Path.read_text", return_value="uswest2-devc"):
+        _get_current_region_from_files.cache_clear()
 
-    # Verify fallback to default region
+        sync_ssm_secrets(
+            kube_client=mock.Mock(),
+            cluster="mega-cluster",
+            service="my-service",
+            soa_dir="/nail/blah",
+            namespace="paasta",
+        )
+
+    # Verify that the client was created using the parsed region "us-west-2"
     mock_boto3.client.assert_any_call("sts", region_name="us-west-2")
     mock_boto3.client.assert_called_with(
         "ssm",
@@ -1501,3 +1511,39 @@ def test_ssm_secrets_no_region(ssm_secrets_patches):
         aws_secret_access_key="fake-secret-key",
         aws_session_token="fake-session-token",
     )
+
+
+def test_ssm_secrets_no_region_raises(ssm_secrets_patches):
+    """
+    Tests that if the region is missing from BOTH the Paasta config
+    AND the local file system, a RuntimeError is raised.
+    """
+    (
+        mock_boto3,
+        _,
+        mock_create_secret,
+        _,
+        _,
+        _,
+        _,
+        _,
+        mock_load_system_paasta_config,
+    ) = ssm_secrets_patches
+
+    mock_load_system_paasta_config.return_value.get_kube_clusters.return_value = {}
+
+    _setup_boto_mocks(mock_boto3)
+    with mock.patch("pathlib.Path.read_text", side_effect=OSError):
+        _get_current_region_from_files.cache_clear()
+
+        with pytest.raises(RuntimeError) as excinfo:
+            sync_ssm_secrets(
+                kube_client=mock.Mock(),
+                cluster="mega-cluster",
+                service="my-service",
+                soa_dir="/nail/blah",
+                namespace="paasta",
+            )
+
+    assert "Unable to determine AWS region" in str(excinfo.value)
+    assert not mock_create_secret.called

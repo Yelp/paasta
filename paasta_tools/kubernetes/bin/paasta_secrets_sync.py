@@ -22,7 +22,9 @@ import os
 import sys
 import time
 from collections import defaultdict
+from functools import lru_cache
 from functools import partial
+from pathlib import Path
 from typing import Callable
 from typing import Dict
 from typing import Generator
@@ -492,6 +494,47 @@ def sync_secrets(
     return True
 
 
+@lru_cache(maxsize=1)
+def _get_current_region_from_files() -> Optional[str]:
+    try:
+        yelpy_region = Path("/nail/etc/region").read_text().strip()
+    except OSError:
+        return None
+
+    if not yelpy_region:
+        return None
+
+    dashless_region = yelpy_region.split("-", 1)[0]
+    return f"{dashless_region[0:2]}-{dashless_region[2:-1]}-{dashless_region[-1]}"
+
+
+def _resolve_aws_region(cluster: str) -> str:
+    """
+    Determines the AWS region for the cluster.
+
+    Tries the Paasta config first, then falls back to the local region file.
+    Raises RuntimeError if we can't find region anywhere.
+    """
+    system_paasta_config = load_system_paasta_config()
+    aws_region = (
+        system_paasta_config.get_kube_clusters().get(cluster, {}).get("aws_region")
+    )
+
+    if aws_region:
+        return aws_region
+
+    log.warning(
+        "Unable to determine aws_region from paasta_config. "
+        "Falling back to region file"
+    )
+
+    aws_region = _get_current_region_from_files()
+    if aws_region:
+        return aws_region
+
+    raise RuntimeError(f"Unable to determine AWS region for cluster: {cluster}")
+
+
 def sync_ssm_secrets(
     kube_client: KubeClient,
     cluster: str,
@@ -500,14 +543,7 @@ def sync_ssm_secrets(
     namespace: str,
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-
-    system_paasta_config = load_system_paasta_config()
-    aws_region = (
-        system_paasta_config.get_kube_clusters().get(cluster, {}).get("aws_region")
-    )
-    if not aws_region:
-        log.warning("No aws_region detected. Defaulting to us-west-2")
-        aws_region = "us-west-2"
+    aws_region = _resolve_aws_region(cluster)
 
     # If client creation fails then no secrets can be fetched so we let it crash
     sts_client = boto3.client("sts", region_name=aws_region)
@@ -527,6 +563,7 @@ def sync_ssm_secrets(
     )
 
     success = True
+    ssm_secrets_synced = set()
     for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
         for instance_config in config_loader.instance_configs(
             cluster=cluster, instance_type_class=instance_type_class
@@ -539,6 +576,14 @@ def sync_ssm_secrets(
                 # eks-schema.json ensures these are always present & valid
                 source = ssm_secret.get("source")
                 key = ssm_secret.get("secret_name")
+
+                if key in ssm_secrets_synced:
+                    log.info(
+                        f"Key '{key}' already synced. Skipping to avoid race conditions"
+                    )
+                    continue
+
+                ssm_secrets_synced.add(key)
 
                 try:
                     response = client.get_parameter(Name=source, WithDecryption=True)
@@ -565,6 +610,11 @@ def sync_ssm_secrets(
                 except ClientError:
                     log.exception(
                         f"Failed to fetch SSM parameter {source} for {service}"
+                    )
+                    success = False
+                except ApiException:
+                    log.exception(
+                        f"Kubernetes API failed while syncing {key} for {service}"
                     )
                     success = False
 

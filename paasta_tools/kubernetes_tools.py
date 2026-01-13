@@ -4556,40 +4556,13 @@ def get_paasta_secret_signature_name(
     )
 
 
-def get_ssm_secret_name(namespace: str, service_name: str, key_name: str) -> str:
-    """
-    Used whenever creating or referencing a SSM secret. Follows the same format as
-    PaaSTA secrets for interoperability
+# Used whenever creating or referencing a SSM secret.
+# Follows the same format as PaaSTA secrets for interoperability
+get_ssm_secret_name = get_paasta_secret_name
 
-    :param namespace: Unsanitised namespace of a service that will use the signature
-    :param service_name: Unsanitised service_name
-    :param key_name: Name of the actual secret, typically specified in a configuration file
-    :return: Sanitised SSM secret name
-    """
-    return get_paasta_secret_name(
-        namespace=namespace,
-        service_name=service_name,
-        key_name=key_name,
-    )
-
-
-def get_ssm_secret_signature_name(
-    namespace: str, service_name: str, key_name: str
-) -> str:
-    """
-    Get PaaSTA signature name stored as kubernetes configmap. Follows the same format as
-    PaaSTA secrets for interoperability
-
-    :param namespace: Unsanitised namespace of a service that will use the signature
-    :param service_name: Unsanitised service_name
-    :param key_name: Name of the actual secret, typically specified in a configuration file
-    :return: Sanitised SSM signature name
-    """
-    return get_paasta_secret_signature_name(
-        namespace=namespace,
-        service_name=service_name,
-        key_name=key_name,
-    )
+# Get PaaSTA signature name stored as kubernetes configmap.
+# Follows the same format as PaaSTA secrets for interoperability
+get_ssm_secret_signature_name = get_paasta_secret_signature_name
 
 
 def get_secret(
