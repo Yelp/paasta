@@ -1335,7 +1335,7 @@ class TestTronTools:
             "jira_ticket": None,
             "service_account_name": None,
             "ui_port": 39091,
-            "user": os.getenv("USER"),
+            "user": "TRON",
             "aws_account_id": None,
         }
         expected_scs_conf = json.dumps(expected_scs_conf_json, indent=4)
@@ -1441,6 +1441,7 @@ class TestTronTools:
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SCS_CONF_STR": expected_scs_conf,
+                "SERVICE_ACCOUNT_NAME": "paasta--arn-aws-iam-000000000000-role-some-role",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
                 "SPARK_DRIVER_TYPE": "tron",

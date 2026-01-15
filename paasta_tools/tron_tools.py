@@ -508,6 +508,9 @@ class TronActionConfig(InstanceConfig):
 
             # our internal Spark configuration service needs this to determine if any special behavior is required
             env["SPARK_DRIVER_TYPE"] = "tron"
+            env["SERVICE_ACCOUNT_NAME"] = get_service_account_name(
+                iam_role=self.get_spark_executor_iam_role(),
+            )
 
         return env
 
