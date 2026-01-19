@@ -1,3 +1,12 @@
+paasta-tools (1.36.10) xenial; urgency=medium
+
+  * 1.36.10 tagged with 'make release'
+    Commit: Merge pull request #4184 from Yelp/u/robj/local-run-
+    mesosisms  remove mesosisms from local-run; remove
+    paasta_docker_wrapper
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 19 Jan 2026 06:50:03 -0800
+
 paasta-tools (1.36.9) xenial; urgency=medium
 
   * 1.36.9 tagged with 'make release'
