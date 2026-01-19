@@ -396,6 +396,11 @@ class CryptoKeyConfig(TypedDict):
     decrypt: List[str]
 
 
+class SsmSecretConfig(TypedDict):
+    source: str
+    secret_name: str
+
+
 class NodeSelectorInNotIn(TypedDict):
     operator: Literal["In", "NotIn"]
     values: List[str]
@@ -449,6 +454,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
+    ssm_secrets: List[SsmSecretConfig]
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
@@ -1204,6 +1210,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars, shared_secret_env_vars = self.get_env_vars_that_use_secrets()
+        ssm_secret_env_vars = self.get_ssm_secret_env_vars()
 
         user_env = [
             V1EnvVar(name=name, value=value)
@@ -1215,7 +1222,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             secret_env_vars=secret_env_vars,
             shared_secret_env_vars=shared_secret_env_vars,
         )
-        return user_env + self.get_kubernetes_environment()  # type: ignore
+
+        user_env += self.get_kubernetes_secret_env_vars(
+            secret_env_vars=secret_env_vars,
+            shared_secret_env_vars=shared_secret_env_vars,
+        )
+
+        return user_env + ssm_secret_env_vars + self.get_kubernetes_environment()  # type: ignore
 
     def get_kubernetes_secret_env_vars(
         self,
@@ -1291,6 +1304,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
         ]
         return kubernetes_env
+
+    def get_ssm_secret_env_vars(self) -> Sequence[V1EnvVar]:
+        ssm_secrets = self.config_dict.get("ssm_secrets", [])
+        if not ssm_secrets:
+            return []
+
+        sanitised_deployment_name = self.get_sanitised_deployment_name()
+
+        env_vars = []
+        for ssm_secret in ssm_secrets:
+            secret = ssm_secret["secret_name"]
+            env_vars.append(
+                V1EnvVar(
+                    name=secret,
+                    value_from=V1EnvVarSource(
+                        secret_key_ref=V1SecretKeySelector(
+                            name=get_ssm_secret_name(
+                                self.get_namespace(), sanitised_deployment_name, secret
+                            ),
+                            key=secret,
+                            optional=False,
+                        )
+                    ),
+                )
+            )
+
+        return env_vars
 
     def get_resource_requirements(self) -> V1ResourceRequirements:
         limits = {
@@ -4546,6 +4586,42 @@ def get_paasta_secret_signature_name(
         namespace=namespace,
         secret_identifier="secret",
         service_name=service_name,
+        key_name=key_name,
+    )
+
+
+def get_ssm_secret_name(namespace: str, deployment_name: str, key_name: str) -> str:
+    """
+    Used whenever creating or referencing an SSM secret
+
+    :param namespace: Unsanitised namespace of a service that will use the secret
+    :param deployment_name: Unsanitised deployment_name, typically "{service}-{instance}"
+    :param key_name: Name of the actual secret
+    :return: Sanitised SSM secret name
+    """
+    return _get_secret_name(
+        namespace=namespace,
+        secret_identifier="ssm-secret",
+        service_name=deployment_name,
+        key_name=key_name,
+    )
+
+
+def get_ssm_secret_signature_name(
+    namespace: str, deployment_name: str, key_name: str
+) -> str:
+    """
+    Get SSM signature name stored as kubernetes configmap
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param deployment_name: Unsanitised deployment_name, typically "{service}-{instance}"
+    :param key_name: Name of the actual secret
+    :return: Sanitised SSM signature name
+    """
+    return _get_secret_signature_name(
+        namespace=namespace,
+        secret_identifier="ssm-secret",
+        service_name=deployment_name,
         key_name=key_name,
     )
 
