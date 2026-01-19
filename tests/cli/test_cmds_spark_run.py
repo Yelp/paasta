@@ -44,6 +44,16 @@ from paasta_tools.utils import SystemPaastaConfigDict
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
 
 
+@pytest.fixture(autouse=True)
+def mock_get_docker_binary():
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.get_docker_binary",
+        autospec=True,
+        return_value="docker",
+    ) as m:
+        yield m
+
+
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.is_using_unprivileged_containers",
     lambda: False,
@@ -431,7 +441,7 @@ def test_run_docker_container(
 
         else:
             mock_os_execlpe.assert_called_once_with(
-                "paasta_docker_wrapper",
+                "docker",
                 "docker",
                 "run",
                 "commands",
