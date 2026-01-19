@@ -17,7 +17,6 @@ Submodules
    paasta_tools.contrib.ide_helper
    paasta_tools.contrib.is_pod_healthy_in_proxy
    paasta_tools.contrib.is_pod_healthy_in_smartstack
-   paasta_tools.contrib.kill_bad_containers
    paasta_tools.contrib.mock_patch_checker
    paasta_tools.contrib.paasta_update_soa_memcpu
    paasta_tools.contrib.render_template
