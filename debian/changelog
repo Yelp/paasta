@@ -1,3 +1,12 @@
+paasta-tools (1.36.11) xenial; urgency=medium
+
+  * 1.36.11 tagged with 'make release'
+    Commit: Merge pull request #4201 from Yelp/u/robj/revert-local-run-
+    shift  Revert "Merge pull request #4184 from Yelp/u/robj/local-run-
+    mesosisms"
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 20 Jan 2026 06:55:12 -0800
+
 paasta-tools (1.36.10) xenial; urgency=medium
 
   * 1.36.10 tagged with 'make release'
