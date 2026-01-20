@@ -530,6 +530,9 @@ def sync_ssm_secrets(
         for instance_config in config_loader.instance_configs(
             cluster=cluster, instance_type_class=instance_type_class
         ):
+            if instance_config.get_namespace() != namespace:
+                continue
+
             sanitised_deployment_name = instance_config.get_sanitised_deployment_name()
             ssm_secrets = instance_config.config_dict.get("ssm_secrets", [])
             if not ssm_secrets:

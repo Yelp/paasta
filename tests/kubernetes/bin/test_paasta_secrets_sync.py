@@ -1267,6 +1267,7 @@ def test_sync_ssm_secrets_happy_path(ssm_patches):
             ]
         }
     )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
     mock_instance_config.get_sanitised_deployment_name.return_value = "service-instance"
     mock_config_loader.return_value.instance_configs.return_value = [
         mock_instance_config
@@ -1277,7 +1278,7 @@ def test_sync_ssm_secrets_happy_path(ssm_patches):
         cluster="my-cluster",
         service="my-service",
         soa_dir="/fake/dir",
-        namespace="my-namespace",
+        namespace="paastasvc-my-service",
     )
 
     assert result is True
@@ -1296,7 +1297,7 @@ def test_sync_ssm_secrets_happy_path(ssm_patches):
     assert mock_create_or_update.called
     _, kwargs = mock_create_or_update.call_args
     assert kwargs["service"] == "my-service"
-    assert kwargs["namespace"] == "my-namespace"
+    assert kwargs["namespace"] == "paastasvc-my-service"
 
     # "super_secret_value" in base64 is "c3VwZXJfc2VjcmV0X3ZhbHVl"
     secret_data = kwargs["get_secret_data"]()
@@ -1323,7 +1324,7 @@ def test_sync_ssm_secrets_no_region_raises_error(ssm_patches):
             cluster="my-cluster",
             service="my-service",
             soa_dir="/fake/dir",
-            namespace="my-namespace",
+            namespace="paastasvc-my-service",
         )
     assert "Unable to determine AWS region" in str(excinfo.value)
 
@@ -1349,6 +1350,7 @@ def test_sync_ssm_secrets_client_error(ssm_patches):
             "ssm_secrets": [{"source": "/aws/bad/path", "secret_name": "BAD_SECRET"}]
         }
     )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
     mock_config_loader.return_value.instance_configs.return_value = [
         mock_instance_config
     ]
@@ -1363,7 +1365,7 @@ def test_sync_ssm_secrets_client_error(ssm_patches):
         cluster="my-cluster",
         service="my-service",
         soa_dir="/fake/dir",
-        namespace="my-namespace",
+        namespace="paastasvc-my-service",
     )
 
     # Should return False on failure, but handle the exception gracefully
@@ -1392,6 +1394,7 @@ def test_sync_ssm_secrets_api_exception(ssm_patches):
     mock_instance_config = mock.MagicMock(
         config_dict={"ssm_secrets": [{"source": "/aws/path", "secret_name": "SECRET"}]}
     )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
     mock_instance_config.get_sanitised_deployment_name.return_value = (
         "my-service-instance"
     )
@@ -1408,7 +1411,7 @@ def test_sync_ssm_secrets_api_exception(ssm_patches):
         cluster="my-cluster",
         service="my-service",
         soa_dir="/fake/dir",
-        namespace="my-namespace",
+        namespace="paastasvc-my-service",
     )
 
     assert result is False
@@ -1433,6 +1436,7 @@ def test_sync_ssm_secrets_empty_secrets(ssm_patches):
 
     # empty ssm_secrets
     mock_instance_config = mock.MagicMock(config_dict={"ssm_secrets": []})
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
     mock_config_loader.return_value.instance_configs.return_value = [
         mock_instance_config
     ]
@@ -1442,7 +1446,7 @@ def test_sync_ssm_secrets_empty_secrets(ssm_patches):
         cluster="my-cluster",
         service="my-service",
         soa_dir="/fake/dir",
-        namespace="my-namespace",
+        namespace="paastasvc-my-service",
     )
 
     assert result is True
@@ -1468,6 +1472,7 @@ def test_sync_ssm_secrets_no_secrets_configured(ssm_patches):
 
     # ssm_secrets omitted entirely
     mock_instance_config = mock.MagicMock(config_dict={})
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
     mock_config_loader.return_value.instance_configs.return_value = [
         mock_instance_config
     ]
@@ -1477,9 +1482,81 @@ def test_sync_ssm_secrets_no_secrets_configured(ssm_patches):
         cluster="my-cluster",
         service="my-service",
         soa_dir="/fake/dir",
-        namespace="my-namespace",
+        namespace="paastasvc-my-service",
     )
 
     assert result is True
     assert not mock_ssm_client.get_parameter.called
     assert not mock_create_or_update.called
+
+
+def test_sync_ssm_secrets_skips_non_matching_namespaces(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.Mock()
+    mock_ssm_client = mock.Mock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+    mock_sts_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "fake_key",
+            "SecretAccessKey": "fake_secret",
+            "SessionToken": "fake_token",
+        }
+    }
+    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "val"}}
+
+    # Instance 1: Default paasta service namespace
+    instance_1 = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance-1",
+        cluster="mega-cluster",
+        config_dict={
+            "ssm_secrets": [{"source": "/aws/path1", "secret_name": "SECRET1"}]
+        },
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    # Instance 2: Overridden namespace (should be skipped)
+    instance_2 = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance-2",
+        cluster="mega-cluster",
+        config_dict={
+            "namespace": "default",
+            "ssm_secrets": [{"source": "/aws/path2", "secret_name": "SECRET1"}],
+        },
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader.return_value.instance_configs.side_effect = [
+        [instance_1, instance_2],
+        [],
+    ]
+
+    sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    # Ensure we only fetched the secret for the matching instance
+    mock_ssm_client.get_parameter.assert_called_once_with(
+        Name="/aws/path1", WithDecryption=True
+    )
+
+    # Should only create K8s secret for instance 1
+    assert mock_create_or_update.call_count == 1
+    assert mock_create_or_update.call_args[1]["namespace"] == "paastasvc-my-service"
