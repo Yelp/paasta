@@ -29,7 +29,6 @@ import pwd
 import queue
 import re
 import shlex
-import shutil
 import signal
 import socket
 import ssl
@@ -3476,15 +3475,6 @@ def load_service_instance_auto_configs(
 
 def get_docker_host() -> str:
     return os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
-
-
-@lru_cache(maxsize=1)
-def get_docker_binary() -> str:
-    """Locate the docker executable in PATH."""
-    docker_binary = shutil.which("docker")
-    if not docker_binary:
-        raise RuntimeError("Unable to locate the 'docker' executable in PATH")
-    return docker_binary
 
 
 def get_docker_client() -> APIClient:
