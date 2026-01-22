@@ -19,7 +19,6 @@ from typing import List
 from typing import Optional
 from typing import TypedDict
 
-
 _autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)
 
 

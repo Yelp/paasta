@@ -24,9 +24,8 @@ from urllib.parse import urlparse
 
 import paasta_tools.paastaapi.apis as paastaapis
 from paasta_tools import paastaapi
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
-
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

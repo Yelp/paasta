@@ -47,15 +47,15 @@ from service_configuration_lib import read_deploy
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
-from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.api.client import PaastaOApiClient
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -67,10 +67,10 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
-from paasta_tools.kubernetes_tools import format_pod_event_messages
-from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
+from paasta_tools.kubernetes_tools import format_pod_event_messages
+from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
@@ -83,20 +83,20 @@ from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.paastaapi.models import KubernetesVersion
 from paasta_tools.tron_tools import TronActionConfig
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_deployment_version_from_dockerurl
 from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SystemPaastaConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [

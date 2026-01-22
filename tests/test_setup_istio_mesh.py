@@ -1,14 +1,13 @@
 from unittest import mock
 
 from paasta_tools.kubernetes_tools import registration_label
+from paasta_tools.setup_istio_mesh import UNIFIED_K8S_SVC_NAME
+from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
 from paasta_tools.setup_istio_mesh import cleanup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import sanitise_kubernetes_service_name
 from paasta_tools.setup_istio_mesh import setup_istio_mesh
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import setup_paasta_routing
-from paasta_tools.setup_istio_mesh import UNIFIED_K8S_SVC_NAME
-from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
-
 
 MOCK_PORT_NUMBER = 20508
 

@@ -18,10 +18,11 @@ import re
 
 import a_sync
 
+from paasta_tools.async_utils import async_ttl_cache
+
 from . import exceptions
 from . import framework
 from . import mesos_file
-from paasta_tools.async_utils import async_ttl_cache
 
 
 class Task:

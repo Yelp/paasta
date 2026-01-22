@@ -43,18 +43,17 @@ from fnmatch import fnmatch
 from functools import lru_cache
 from functools import wraps
 from subprocess import PIPE
-from subprocess import Popen
 from subprocess import STDOUT
+from subprocess import Popen
 from types import FrameType
+from typing import IO
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Collection
 from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
-from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -69,6 +68,7 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
+from typing import cast
 
 import choice
 import dateutil.tz
@@ -85,7 +85,6 @@ from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
 from paasta_tools import yaml_tools as yaml
-
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).

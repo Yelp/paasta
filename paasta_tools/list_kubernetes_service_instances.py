@@ -32,8 +32,8 @@ import sys
 from typing import List
 
 from paasta_tools import kubernetes_tools
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 
 

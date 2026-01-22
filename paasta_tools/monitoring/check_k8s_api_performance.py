@@ -20,7 +20,6 @@ from kubernetes import client
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 
-
 NAMESPACE = "paasta"
 LABEL_SELECTOR = None
 

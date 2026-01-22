@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
 import pytest
@@ -27,6 +27,7 @@ from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
+from paasta_tools.kubernetes.remote_run import RemoteRunError
 from paasta_tools.kubernetes.remote_run import bind_role_to_service_account
 from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
@@ -40,7 +41,6 @@ from paasta_tools.kubernetes.remote_run import remote_run_ready
 from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
 from paasta_tools.kubernetes.remote_run import remote_run_token
-from paasta_tools.kubernetes.remote_run import RemoteRunError
 
 
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)

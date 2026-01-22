@@ -16,7 +16,6 @@ import re
 import socket
 import sys
 
-
 if "PATH" not in os.environ:
     # This command is sometimes executed in a sanitized environment
     # which does not have the path, which causes the following imports
@@ -172,11 +171,11 @@ def arg_collision(new_args, current_args):
 
 def add_firewall(argv, service, instance):
     # Delayed import to improve performance when add_firewall is not used
+    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
     from paasta_tools.docker_wrapper_imports import DEFAULT_SYNAPSE_SERVICE_DIR
     from paasta_tools.docker_wrapper_imports import firewall_flock
     from paasta_tools.docker_wrapper_imports import prepare_new_container
     from paasta_tools.docker_wrapper_imports import reserve_unique_mac_address
-    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
 
     output = ""
     try:

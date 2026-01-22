@@ -34,14 +34,13 @@ from typing import Set
 import kubernetes.client as k8s
 
 from paasta_tools import yaml_tools as yaml
-from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.utils import DEFAULT_SOA_DIR
-
 
 log = logging.getLogger(__name__)
 

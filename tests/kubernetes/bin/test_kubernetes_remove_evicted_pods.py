@@ -3,10 +3,10 @@ from unittest import mock
 from kubernetes.client import V1DeleteOptions
 from pysensu_yelp import Status
 
+from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import EvictedPod
 from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import (
     evicted_pods_per_service,
 )
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import EvictedPod
 from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import get_evicted_pods
 from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import get_pod_service
 from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import (

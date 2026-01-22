@@ -18,8 +18,8 @@ import re
 import sys
 from typing import Optional
 
-from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentsJsonV2Dict

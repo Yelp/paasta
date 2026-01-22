@@ -3,9 +3,9 @@ from typing import Optional
 import service_configuration_lib
 
 from paasta_tools.nrtsearchservice_tools import NrtsearchServiceDeploymentConfig
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 

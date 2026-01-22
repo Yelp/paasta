@@ -8,11 +8,11 @@ from inspect import currentframe
 from types import TracebackType
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import Optional
 from typing import Type
 from typing import Union
+from typing import cast
 
 from typing_extensions import Protocol
 

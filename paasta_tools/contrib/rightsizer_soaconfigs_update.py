@@ -2,7 +2,6 @@ import argparse
 import logging
 from collections import defaultdict
 from typing import Any
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Literal
@@ -10,6 +9,7 @@ from typing import Optional
 from typing import Set
 from typing import TypedDict
 from typing import Union
+from typing import cast
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
@@ -18,7 +18,6 @@ from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
-
 
 log = logging.getLogger(__name__)
 

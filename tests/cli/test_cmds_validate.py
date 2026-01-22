@@ -18,6 +18,9 @@ from unittest.mock import patch
 
 import pytest
 
+from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
+from paasta_tools.cli.cmds.validate import SCHEMA_VALID
+from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import _check_advertise_discover
 from paasta_tools.cli.cmds.validate import _check_proxy_port_in_use
 from paasta_tools.cli.cmds.validate import _check_smartstack_name_length
@@ -34,9 +37,6 @@ from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
-from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
-from paasta_tools.cli.cmds.validate import SCHEMA_VALID
-from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_cpu_burst
 from paasta_tools.cli.cmds.validate import validate_instance_names

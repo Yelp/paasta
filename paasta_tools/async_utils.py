@@ -13,7 +13,6 @@ from typing import List
 from typing import Optional
 from typing import TypeVar
 
-
 T = TypeVar("T")
 
 

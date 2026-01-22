@@ -23,12 +23,11 @@ import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import get_all_namespaces
 from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import write_json_configuration_file
 from paasta_tools.utils import write_yaml_configuration_file
-
 
 YOCALHOST = "169.254.255.254"
 

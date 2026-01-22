@@ -8,7 +8,6 @@ import socket
 import sys
 from configparser import ConfigParser
 from typing import Any
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -16,14 +15,15 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import AWS_DEFAULT_CREDENTIALS_PROVIDER
+from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -32,24 +32,16 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.kubernetes_tools import get_service_account_name
-from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
-from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.tron_tools import load_tron_instance_configs
-from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import get_k8s_url_for_cluster
-from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
-from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import is_using_unprivileged_containers
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
@@ -57,8 +49,15 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import _run
+from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
+from paasta_tools.utils import get_username
+from paasta_tools.utils import is_using_unprivileged_containers
+from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import validate_pool
-
 
 DEFAULT_AWS_REGION = "us-west-2"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"

@@ -7,10 +7,10 @@ from typing import Sequence
 from dateutil.tz import tzutc
 from kubernetes.client import V1Pod
 
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_pod_condition
 from paasta_tools.kubernetes_tools import is_pod_completed
-from paasta_tools.kubernetes_tools import KubeClient
 
 log = logging.getLogger(__name__)
 

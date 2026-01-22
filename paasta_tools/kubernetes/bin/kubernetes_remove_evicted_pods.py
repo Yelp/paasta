@@ -29,12 +29,11 @@ from typing import Sequence
 from kubernetes.client import V1DeleteOptions
 from pysensu_yelp import Status
 
-from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
-
 
 log = logging.getLogger(__name__)
 EvictedPod = namedtuple("EvictedPod", ["podname", "namespace", "eviction_msg"])

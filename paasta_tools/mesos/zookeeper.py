@@ -19,7 +19,6 @@ import kazoo.client
 import kazoo.exceptions
 import kazoo.handlers.threading
 
-
 TIMEOUT = 1
 
 # Helper for testing

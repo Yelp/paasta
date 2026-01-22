@@ -25,13 +25,13 @@ from glob import glob
 from pathlib import Path
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 import pytz
 from croniter import croniter
@@ -39,28 +39,27 @@ from environment_tools.type_utils import available_location_types
 from environment_tools.type_utils import compare_types
 from environment_tools.type_utils import convert_location_type
 from jsonschema import Draft4Validator
-from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import RefResolver
 from jsonschema import ValidationError
+from jsonschema import exceptions
 from mypy_extensions import TypedDict
-from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
+from ruamel.yaml import SafeConstructor
 from ruamel.yaml.comments import CommentedMap
 
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -69,17 +68,18 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import DEFAULT_TZ
+from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
-from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services

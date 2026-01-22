@@ -30,10 +30,9 @@ from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
-from paasta_tools.kubernetes_tools import get_or_create_namespaced_configmap
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import get_or_create_namespaced_configmap
 from paasta_tools.kubernetes_tools import patch_namespaced_configmap
-
 
 log = logging.getLogger(__name__)
 

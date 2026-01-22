@@ -29,13 +29,12 @@ from paasta_tools import flinkeks_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.check_services_replication_tools import parse_args
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.monitoring_tools import check_under_replication
 from paasta_tools.monitoring_tools import send_replication_event
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import is_under_replicated
-
 
 log = logging.getLogger(__name__)
 

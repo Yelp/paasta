@@ -18,10 +18,10 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import cast
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -32,11 +32,11 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.eks_tools import EksDeploymentConfig
-from paasta_tools.kubernetes_tools import ensure_namespace
-from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.long_running_service_tools import ALL_METRICS_PROVIDERS
 from paasta_tools.long_running_service_tools import (
     DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,

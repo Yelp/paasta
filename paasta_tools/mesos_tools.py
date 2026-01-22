@@ -55,12 +55,12 @@ from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
-from paasta_tools.utils import format_table
-from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import format_table
+from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import load_system_paasta_config
 
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
 SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "slave"])

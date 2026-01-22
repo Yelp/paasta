@@ -19,7 +19,6 @@ import pytest
 from paasta_tools import generate_services_yaml
 from paasta_tools import utils
 
-
 MOCK_NAMESPACES = [
     ("foo.main", {"proxy_port": 1024}),
     ("bar.canary", {"proxy_port": 1025}),

@@ -18,8 +18,8 @@ import pytest
 import requests
 
 from paasta_tools import smartstack_tools
-from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import DiscoveredHost
+from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_pods

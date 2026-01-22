@@ -26,7 +26,6 @@ from functools import lru_cache
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
-from typing import cast
 from typing import Collection
 from typing import Container
 from typing import Dict
@@ -41,6 +40,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 import a_sync
 import requests
@@ -49,7 +49,6 @@ from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import CoreV1Event
-from kubernetes.client import models
 from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
@@ -129,6 +128,7 @@ from kubernetes.client import V2MetricSpec
 from kubernetes.client import V2MetricTarget
 from kubernetes.client import V2ObjectMetricSource
 from kubernetes.client import V2ResourceMetricSource
+from kubernetes.client import models
 from kubernetes.client.models import V2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -138,12 +138,6 @@ from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
-from paasta_tools.long_running_service_tools import host_passes_blacklist
-from paasta_tools.long_running_service_tools import host_passes_whitelist
-from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
-from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -152,37 +146,42 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.long_running_service_tools import host_passes_blacklist
+from paasta_tools.long_running_service_tools import host_passes_whitelist
+from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.utils import CAPS_DROP
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import CAPS_DROP
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import KubeContainerResourceRequest
-from paasta_tools.utils import load_service_instance_config
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
-
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_git_sha_from_dockerurl
+from paasta_tools.utils import load_service_instance_config
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import time_cache
 
 log = logging.getLogger(__name__)
 
