@@ -1877,6 +1877,12 @@
                     "type": "string",
                     "x-nullable": true,
                     "description": "long message explaining the pod's state"
+                },
+                "delete_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp at which pod deletion was requested (indicates terminating state)",
+                    "x-nullable": true
                 }
             }
         },
