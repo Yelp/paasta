@@ -64,7 +64,7 @@ setup(
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/paasta_execute_docker_command.py",
-        "paasta_tools/setup_istio_mesh.py",
+        "paasta_tools/setup_smartstack_namespace_k8s_svcs.py",
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_kubernetes_crd.py",
         "paasta_tools/setup_kubernetes_internal_crd.py",

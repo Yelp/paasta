@@ -168,6 +168,15 @@
             "clb_proxy": {
                 "type": "string"
             },
+            "routing": {
+                "type": "object",
+                "properties": {
+                    "external": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            },
             "fixed_delay": {
                 "type": "object",
                 "additionalProperties": {
