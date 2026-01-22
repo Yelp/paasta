@@ -1223,11 +1223,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             shared_secret_env_vars=shared_secret_env_vars,
         )
 
-        user_env += self.get_kubernetes_secret_env_vars(
-            secret_env_vars=secret_env_vars,
-            shared_secret_env_vars=shared_secret_env_vars,
-        )
-
         return user_env + ssm_secret_env_vars + self.get_kubernetes_environment()  # type: ignore
 
     def get_kubernetes_secret_env_vars(
