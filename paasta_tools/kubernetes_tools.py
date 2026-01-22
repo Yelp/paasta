@@ -1579,11 +1579,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 #    just as the pod is terminated.
                 # 2. Every second, checks if there are any established connections to the pod. It exits when there are no
                 #    established connections.
-                # It exits when all connections are closed, which should mean the pod can be safely terminated.
+                #
                 # The first four fields of /proc/net/tcp are:
                 # 1. slot number (which is not relevant here, but it's a decimal number left-padded with whitespace)
-                # 2. local address:port (both in hex)
-                # 3. remote address:port (both in hex)
+                # 2. local address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
+                # 3. remote address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
                 # 4. state (in hex)
                 # State 01 means ESTABLISHED.
                 hex_port = f"{self.get_container_port():04X}"
