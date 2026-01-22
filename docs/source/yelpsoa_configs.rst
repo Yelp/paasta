@@ -511,12 +511,7 @@ instance MAY have:
         2. Wait for connections on ``container_port`` (8888 by default) to complete (checking once per second.)
 
       This is useful for services with long-running requests that need to be completed before the container is stopped.
-      Defaults to ``true`` if both of these conditions are true:
-
-        1. Your service is registered in smartstack.
-        2. Your smartstack.yaml specifies a timeout >= 20s, either through ``timeout_server_ms`` or ``endpoint_timeouts``.
-
-      Otherwise, defaults to ``false``.
+      Defaults to ``true`` if your service is registered in smartstack (the mesh). Otherwise, defaults to ``false``.
       You may override this to ``false`` if you don't want to wait for connections to complete.
       You may override this to ``true`` if you do want connections to complete, but your service is not registered in smartstack.
       Note that this will only wait for connections on ``container_port`` to complete.
