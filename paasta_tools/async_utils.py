@@ -1,5 +1,7 @@
 import asyncio
 import functools
+import inspect
+import threading
 import time
 import weakref
 from collections import defaultdict
@@ -11,8 +13,10 @@ from typing import Coroutine
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import ParamSpec
 from typing import TypeVar
 
+P = ParamSpec("P")
 T = TypeVar("T")
 
 
@@ -109,3 +113,74 @@ def async_timeout(
         return inner
 
     return outer
+
+
+def _ensure_coroutine(awaitable: Awaitable[T]) -> Coroutine[Any, Any, T]:
+    # Normalize any awaitable into a coroutine so run_sync can drive it.
+    if inspect.iscoroutine(awaitable):
+        return awaitable
+    if inspect.isawaitable(awaitable):
+
+        async def _await_wrapper() -> T:
+            return await awaitable
+
+        return _await_wrapper()
+    raise TypeError("run_sync expected an awaitable or coroutine")
+
+
+# run_sync must reuse a loop to avoid cached Futures (from async_ttl_cache)
+# being tied to a closed loop on subsequent synchronous calls.
+# Thread-local storage keeps loops isolated per thread.
+_run_sync_loop_local = threading.local()
+
+
+def _get_run_sync_loop() -> asyncio.AbstractEventLoop:
+    # Lazily create one loop per thread; keep it open for reuse.
+    loop = getattr(_run_sync_loop_local, "loop", None)
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        _run_sync_loop_local.loop = loop
+    return loop
+
+
+# Based on ideas from notion/a_sync (Apache-2.0); reimplemented with stdlib asyncio.
+# https://github.com/notion/a_sync
+def run_sync(
+    async_fn_or_awaitable: Callable[P, Awaitable[T]] | Awaitable[T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T:
+    """Run an async function or awaitable from sync code using a shared loop."""
+    # Accept either a callable or a pre-built awaitable.
+    # Enforce sync-only usage: this must not run inside an active event loop.
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        if inspect.iscoroutine(async_fn_or_awaitable):
+            async_fn_or_awaitable.close()
+        raise RuntimeError(
+            "run_sync cannot be called from a running event loop; use await instead"
+        )
+
+    if callable(async_fn_or_awaitable):
+        awaitable = async_fn_or_awaitable(*args, **kwargs)
+    else:
+        if args or kwargs:
+            raise TypeError("run_sync got args for a non-callable awaitable")
+        awaitable = async_fn_or_awaitable
+
+    # Reuse a per-thread loop so cached Futures remain attached to a live loop.
+    loop = _get_run_sync_loop()
+    return loop.run_until_complete(_ensure_coroutine(awaitable))
+
+
+def to_blocking(
+    async_fn: Callable[P, Awaitable[T]],
+) -> Callable[P, T]:
+    @functools.wraps(async_fn)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        return run_sync(async_fn, *args, **kwargs)
+
+    return wrapper
