@@ -568,6 +568,13 @@ instance MAY have:
     See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
     NOTE: this key is ignored for ``paasta local-run``.
 
+  * ``ssm_secrets``: A list of configurations for syncing secrets from the AWS SSM Parameter Store to the service as environment variables. Each entry requires:
+
+    * ``source``: The name of the parameter in AWS SSM (e.g., ``/my-service/prod/db_password``).
+    * ``secret_name``: The name of the environment variable to be created in the service.
+
+    **Note**: Fetching parameters requires the ``paasta-secrets-sync`` IAM role. The AWS region is automatically inferred from the target cluster's configuration.
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier

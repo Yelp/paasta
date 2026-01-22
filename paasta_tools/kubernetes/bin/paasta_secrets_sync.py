@@ -32,6 +32,8 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import boto3
+from botocore.exceptions import ClientError
 from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
 
@@ -42,6 +44,8 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
+from paasta_tools.kubernetes_tools import get_ssm_secret_name
+from paasta_tools.kubernetes_tools import get_ssm_secret_signature_name
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -115,6 +119,7 @@ def parse_args() -> argparse.Namespace:
         choices=[
             "all",
             "paasta-secret",
+            "ssm-secret",
             "boto-key",
             "crypto-key",
             "datastore-credentials",
@@ -316,7 +321,12 @@ def sync_all_secrets(
     soa_dir: str,
     vault_token_file: str,
     secret_type: Literal[
-        "all", "paasta-secret", "crypto-key", "boto-key", "datastore-credentials"
+        "all",
+        "paasta-secret",
+        "ssm-secret",
+        "crypto-key",
+        "boto-key",
+        "datastore-credentials",
     ] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
@@ -350,6 +360,17 @@ def sync_all_secrets(
                     secret_allowlist=secret_allowlist,
                 )
             )
+            sync_service_secrets["ssm-secret"].append(
+                partial(
+                    sync_ssm_secrets,
+                    kube_client=kube_client,
+                    cluster=cluster,
+                    service=service,
+                    soa_dir=soa_dir,
+                    namespace=namespace,
+                )
+            )
+
         sync_service_secrets["boto-key"].append(
             partial(
                 sync_boto_secrets,
@@ -393,6 +414,7 @@ def sync_all_secrets(
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
             # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
+            # ssm-secret is also omitted as it needs to be run with a specific set of IAM credentials
         else:
             results.append(all(sync() for sync in sync_service_secrets[secret_type]))
 
@@ -468,6 +490,97 @@ def sync_secrets(
                     )
 
     return True
+
+
+def sync_ssm_secrets(
+    kube_client: KubeClient,
+    cluster: str,
+    service: str,
+    soa_dir: str,
+    namespace: str,
+) -> bool:
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+
+    system_paasta_config = load_system_paasta_config()
+    aws_region = (
+        system_paasta_config.get_kube_clusters().get(cluster, {}).get("aws_region")
+    )
+    if not aws_region:
+        raise RuntimeError(f"Unable to determine AWS region for cluster: {cluster}")
+
+    # If client creation fails then no secrets can be fetched so we let it crash
+    sts_client = boto3.client("sts", region_name=aws_region)
+    account_id = sts_client.get_caller_identity()["Account"]
+    role_arn = f"arn:aws:iam::{account_id}:role/paasta-secrets-sync"
+
+    assumed_role_object = sts_client.assume_role(
+        RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
+    )
+    credentials = assumed_role_object["Credentials"]
+    client = boto3.client(
+        "ssm",
+        region_name=aws_region,
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials["SessionToken"],
+    )
+
+    success = True
+    for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=instance_type_class
+        ):
+            if instance_config.get_namespace() != namespace:
+                continue
+
+            sanitised_deployment_name = instance_config.get_sanitised_deployment_name()
+            ssm_secrets = instance_config.config_dict.get("ssm_secrets", [])
+            if not ssm_secrets:
+                continue
+
+            for ssm_secret in ssm_secrets:
+                # eks-schema.json ensures these are always present & valid
+                source = ssm_secret.get("source")
+                key = ssm_secret.get("secret_name")
+
+                try:
+                    response = client.get_parameter(Name=source, WithDecryption=True)
+                    value = response["Parameter"]["Value"]
+                    secret_value = base64.b64encode(value.encode("utf-8")).decode(
+                        "utf-8"
+                    )
+
+                    secret_data = {key: secret_value}
+
+                    create_or_update_k8s_secret(
+                        service=service,
+                        signature_name=get_ssm_secret_signature_name(
+                            namespace,
+                            sanitised_deployment_name,
+                            sanitise_kubernetes_name(key),
+                        ),
+                        secret_name=get_ssm_secret_name(
+                            namespace,
+                            sanitised_deployment_name,
+                            sanitise_kubernetes_name(key),
+                        ),
+                        get_secret_data=(lambda: secret_data),
+                        secret_signature=_get_dict_signature(secret_data),
+                        kube_client=kube_client,
+                        namespace=namespace,
+                    )
+                except ClientError:
+                    log.exception(
+                        f"Failed to fetch SSM parameter {source} for {service}"
+                    )
+                    success = False
+                except ApiException:
+                    log.exception(
+                        f"Kubernetes API failed while syncing {key} for {service}"
+                    )
+                    success = False
+
+    return success
 
 
 def sync_datastore_credentials(

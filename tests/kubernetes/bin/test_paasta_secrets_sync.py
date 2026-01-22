@@ -2,6 +2,7 @@ from typing import Optional
 from unittest import mock
 
 import pytest
+from botocore.exceptions import ClientError
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import _get_dict_signature
@@ -15,6 +16,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_crypto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_datastore_credentials
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_ssm_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -1204,3 +1206,357 @@ def test_sync_crypto_secrets_exist_but_no_signature(
     assert mock_update_secret.called
     assert mock_create_kubernetes_secret_signature.called
     assert not mock_update_kubernetes_secret_signature.called
+
+
+@pytest.fixture
+def ssm_patches():
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_config, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.boto3",
+        autospec=True,
+    ) as mock_boto3, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
+        autospec=True,
+    ) as mock_create_or_update:
+        yield (
+            mock_config_loader,
+            mock_load_system_config,
+            mock_boto3,
+            mock_create_or_update,
+        )
+
+
+def test_sync_ssm_secrets_happy_path(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+    mock_sts_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "fake_key",
+            "SecretAccessKey": "fake_secret",
+            "SessionToken": "fake_token",
+        }
+    }
+
+    mock_ssm_client.get_parameter.return_value = {
+        "Parameter": {"Value": "super_secret_value"}
+    }
+
+    mock_instance_config = mock.MagicMock(
+        config_dict={
+            "ssm_secrets": [
+                {"source": "/aws/parameter/path", "secret_name": "ENV_VAR_NAME"}
+            ]
+        }
+    )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
+    mock_instance_config.get_sanitised_deployment_name.return_value = "service-instance"
+    mock_config_loader.return_value.instance_configs.return_value = [
+        mock_instance_config
+    ]
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    assert result is True
+
+    # Verify Boto3 calls
+    mock_boto3.client.assert_any_call("sts", region_name="us-west-2")
+    mock_sts_client.assume_role.assert_called_with(
+        RoleArn="arn:aws:iam::123456789012:role/paasta-secrets-sync",
+        RoleSessionName="PaastaSecretsSync",
+    )
+    mock_ssm_client.get_parameter.assert_called_with(
+        Name="/aws/parameter/path", WithDecryption=True
+    )
+
+    # Verify K8s Secret Creation
+    assert mock_create_or_update.called
+    _, kwargs = mock_create_or_update.call_args
+    assert kwargs["service"] == "my-service"
+    assert kwargs["namespace"] == "paastasvc-my-service"
+
+    # "super_secret_value" in base64 is "c3VwZXJfc2VjcmV0X3ZhbHVl"
+    secret_data = kwargs["get_secret_data"]()
+    assert secret_data == {"ENV_VAR_NAME": "c3VwZXJfc2VjcmV0X3ZhbHVl"}
+
+    expected_signature = _get_dict_signature(secret_data)
+    assert kwargs["secret_signature"] == expected_signature
+
+
+def test_sync_ssm_secrets_no_region_raises_error(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    # Empty cluster config
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {}
+
+    with pytest.raises(RuntimeError) as excinfo:
+        sync_ssm_secrets(
+            kube_client=mock.Mock(),
+            cluster="my-cluster",
+            service="my-service",
+            soa_dir="/fake/dir",
+            namespace="paastasvc-my-service",
+        )
+    assert "Unable to determine AWS region" in str(excinfo.value)
+
+
+def test_sync_ssm_secrets_client_error(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123"}
+
+    mock_instance_config = mock.MagicMock(
+        config_dict={
+            "ssm_secrets": [{"source": "/aws/bad/path", "secret_name": "BAD_SECRET"}]
+        }
+    )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
+    mock_config_loader.return_value.instance_configs.return_value = [
+        mock_instance_config
+    ]
+
+    # Force ClientError
+    mock_ssm_client.get_parameter.side_effect = ClientError(
+        {"Error": {"Code": "ParameterNotFound", "Message": "Not Found"}}, "GetParameter"
+    )
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    # Should return False on failure, but handle the exception gracefully
+    assert result is False
+    assert not mock_create_or_update.called
+
+
+def test_sync_ssm_secrets_api_exception(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123"}
+
+    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "val"}}
+
+    mock_instance_config = mock.MagicMock(
+        config_dict={"ssm_secrets": [{"source": "/aws/path", "secret_name": "SECRET"}]}
+    )
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
+    mock_instance_config.get_sanitised_deployment_name.return_value = (
+        "my-service-instance"
+    )
+
+    mock_config_loader.return_value.instance_configs.return_value = [
+        mock_instance_config
+    ]
+
+    # Kubernetes Failure
+    mock_create_or_update.side_effect = ApiException(status=500)
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    assert result is False
+    assert mock_create_or_update.called
+
+
+def test_sync_ssm_secrets_empty_secrets(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123"}
+
+    # empty ssm_secrets
+    mock_instance_config = mock.MagicMock(config_dict={"ssm_secrets": []})
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
+    mock_config_loader.return_value.instance_configs.return_value = [
+        mock_instance_config
+    ]
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    assert result is True
+    assert not mock_ssm_client.get_parameter.called
+    assert not mock_create_or_update.called
+
+
+def test_sync_ssm_secrets_no_secrets_configured(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123"}
+
+    # ssm_secrets omitted entirely
+    mock_instance_config = mock.MagicMock(config_dict={})
+    mock_instance_config.get_namespace.return_value = "paastasvc-my-service"
+    mock_config_loader.return_value.instance_configs.return_value = [
+        mock_instance_config
+    ]
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    assert result is True
+    assert not mock_ssm_client.get_parameter.called
+    assert not mock_create_or_update.called
+
+
+def test_sync_ssm_secrets_skips_non_matching_namespaces(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.Mock()
+    mock_ssm_client = mock.Mock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+    mock_sts_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "fake_key",
+            "SecretAccessKey": "fake_secret",
+            "SessionToken": "fake_token",
+        }
+    }
+    mock_ssm_client.get_parameter.return_value = {"Parameter": {"Value": "val"}}
+
+    # Instance 1: Default paasta service namespace
+    instance_1 = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance-1",
+        cluster="mega-cluster",
+        config_dict={
+            "ssm_secrets": [{"source": "/aws/path1", "secret_name": "SECRET1"}]
+        },
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    # Instance 2: Overridden namespace (should be skipped)
+    instance_2 = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance-2",
+        cluster="mega-cluster",
+        config_dict={
+            "namespace": "default",
+            "ssm_secrets": [{"source": "/aws/path2", "secret_name": "SECRET1"}],
+        },
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader.return_value.instance_configs.side_effect = [
+        [instance_1, instance_2],
+        [],
+    ]
+
+    sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="paastasvc-my-service",
+    )
+
+    # Ensure we only fetched the secret for the matching instance
+    mock_ssm_client.get_parameter.assert_called_once_with(
+        Name="/aws/path1", WithDecryption=True
+    )
+
+    # Should only create K8s secret for instance 1
+    assert mock_create_or_update.call_count == 1
+    assert mock_create_or_update.call_args[1]["namespace"] == "paastasvc-my-service"
