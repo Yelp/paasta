@@ -1,3 +1,12 @@
+paasta-tools (1.36.12) xenial; urgency=medium
+
+  * 1.36.12 tagged with 'make release'
+    Commit: Merge pull request #4198 from Yelp/u/pgreen/secret-sync-ssm-
+    support-automount  Support syncing secrets from AWS SSM Parameter
+    Store
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 22 Jan 2026 07:54:25 -0800
+
 paasta-tools (1.36.11) xenial; urgency=medium
 
   * 1.36.11 tagged with 'make release'
