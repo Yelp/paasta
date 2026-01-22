@@ -134,7 +134,6 @@ def test_resources_utilization_with_grouping(mock_get_mesos_master):
     request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
     mock_master = mock.Mock(
         state=AsyncMock(
-            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
         )
     )
@@ -157,7 +156,6 @@ def test_resources_utilization_with_filter(mock_get_mesos_master):
     }
     mock_master = mock.Mock(
         state=AsyncMock(
-            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
         )
     )

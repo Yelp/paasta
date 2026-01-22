@@ -15,10 +15,10 @@
 """
 PaaSTA resource utilization, etc.
 """
-from a_sync import block
 from pyramid.response import Response
 from pyramid.view import view_config
 
+from paasta_tools.async_utils import run_sync
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
 
@@ -36,7 +36,7 @@ def parse_filters(filters):
 @view_config(route_name="resources.utilization", request_method="GET", renderer="json")
 def resources_utilization(request):
     master = get_mesos_master()
-    mesos_state = block(master.state)
+    mesos_state = run_sync(master.state)
 
     groupings = request.swagger_data.get("groupings", ["superregion"])
     # swagger actually makes the key None if it's not set

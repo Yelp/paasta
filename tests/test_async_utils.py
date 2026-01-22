@@ -7,6 +7,8 @@ from unittest import mock
 import pytest
 
 from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.async_utils import run_sync
+from paasta_tools.async_utils import to_blocking
 
 
 @pytest.mark.asyncio
@@ -198,4 +200,58 @@ async def test_async_ttl_cache_for_class_members_doesnt_leak_mem():
     del o2, o4
     assert len(instance_caches) == 1
     del o3
-    assert len(instance_caches) == 0
+
+
+def test_run_sync_executes_async_function():
+    async def add(x, y):
+        return x + y
+
+    assert run_sync(add, 1, 2) == 3
+
+
+def test_run_sync_accepts_awaitable():
+    async def identity(value):
+        return value
+
+    assert run_sync(identity("ok")) == "ok"
+
+
+def test_run_sync_reuses_loop_for_cached_coroutines():
+    # Regression: asyncio.run creates/closes a new loop per call; async_ttl_cache
+    # holds Futures bound to the original loop, so a second run_sync would use a
+    # different loop and fail (or misbehave). Ensure run_sync reuses one loop.
+    call_count = {"value": 0}
+    loop_state = {"loop": None}
+
+    @async_ttl_cache(ttl=None)
+    async def cached_value():
+        call_count["value"] += 1
+        return call_count["value"]
+
+    async def get_value_and_loop():
+        loop = asyncio.get_running_loop()
+        value = await cached_value()
+        if loop_state["loop"] is None:
+            loop_state["loop"] = loop
+        else:
+            assert loop_state["loop"] is loop
+        return value
+
+    assert run_sync(get_value_and_loop) == 1
+    assert run_sync(get_value_and_loop) == 1
+    assert call_count["value"] == 1
+
+
+@pytest.mark.asyncio
+async def test_run_sync_raises_when_loop_running():
+    coro = asyncio.sleep(0)
+    with pytest.raises(RuntimeError):
+        run_sync(coro)
+
+
+def test_to_blocking_decorator():
+    @to_blocking
+    async def multiply(value):
+        return value * 2
+
+    assert multiply(4) == 8

@@ -26,13 +26,13 @@ from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
 
-import a_sync
 from humanize import naturalsize
 from kubernetes.client import V1Node
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter
 
+from paasta_tools.async_utils import run_sync
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.kubernetes_tools import get_all_nodes_cached
@@ -483,7 +483,7 @@ def assert_nodes_health(
 
 
 def assert_quorum_size() -> HealthCheckResult:
-    masters, quorum = get_num_masters(), a_sync.block(get_mesos_quorum)
+    masters, quorum = get_num_masters(), run_sync(get_mesos_quorum)
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),

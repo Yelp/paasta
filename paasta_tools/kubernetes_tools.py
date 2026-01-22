@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import base64
 import functools
 import hashlib
@@ -42,7 +43,6 @@ from typing import Tuple
 from typing import Union
 from typing import cast
 
-import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -136,6 +136,7 @@ from service_configuration_lib import read_soa_metadata
 
 from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.async_utils import run_sync
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
@@ -2948,7 +2949,7 @@ def force_delete_pods(
     kube_client: KubeClient,
 ) -> None:
     # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
-    pods_to_delete = a_sync.block(
+    pods_to_delete = run_sync(
         pods_for_service_instance,
         paasta_service,
         instance,
@@ -3553,10 +3554,8 @@ def list_matching_deployments_in_all_namespaces(
 async def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ReplicaSet]:
-    async_list_replica_set = a_sync.to_async(
-        kube_client.deployments.list_namespaced_replica_set
-    )
-    response = await async_list_replica_set(
+    response = await asyncio.to_thread(
+        kube_client.deployments.list_namespaced_replica_set,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3567,10 +3566,8 @@ async def replicasets_for_service_instance(
 async def controller_revisions_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ControllerRevision]:
-    async_list_controller_revisions = a_sync.to_async(
-        kube_client.deployments.list_namespaced_controller_revision
-    )
-    response = await async_list_controller_revisions(
+    response = await asyncio.to_thread(
+        kube_client.deployments.list_namespaced_controller_revision,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3581,8 +3578,8 @@ async def controller_revisions_for_service_instance(
 async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1Pod]:
-    async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
-    response = await async_list_pods(
+    response = await asyncio.to_thread(
+        kube_client.core.list_namespaced_pod,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3932,7 +3929,8 @@ async def get_events_for_object(
         # asyncio event loop when doing things like getting events for all the Pods for a service with
         # a large amount of replicas. therefore, we need to wrap the kubernetes client into something
         # that's awaitable so that we can actually do things concurrently and not serially
-        events = await a_sync.to_async(kube_client.core.list_namespaced_event)(
+        events = await asyncio.to_thread(
+            kube_client.core.list_namespaced_event,
             namespace=obj.metadata.namespace,
             field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
             limit=MAX_EVENTS_TO_RETRIEVE,
@@ -3958,11 +3956,12 @@ async def get_hpa(
     name: str,
     namespace: str,
 ) -> V2HorizontalPodAutoscaler:
-    async_get_hpa = a_sync.to_async(
-        kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
-    )
     try:
-        return await async_get_hpa(name, namespace)
+        return await asyncio.to_thread(
+            kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler,
+            name,
+            namespace,
+        )
     except ApiException as e:
         if e.status == 404:
             return None
