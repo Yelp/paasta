@@ -17,76 +17,80 @@ from unittest.mock import patch
 from paasta_tools.cli.cmds.itest import paasta_itest
 
 
-@patch("paasta_tools.cli.cmds.itest.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._run", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._log", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.check_docker_image", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True)
-def test_itest_run_fail(
-    mock_build_docker_tag,
-    mock_docker_image,
-    mock_log,
-    mock_run,
-    mock_validate_service_name,
-):
-    mock_build_docker_tag.return_value = "fake-registry/services-foo:paasta-bar"
-    mock_docker_image.return_value = True
-    mock_run.return_value = (1, "fake_output")
-    args = MagicMock(
-        service="services-fake_service", commit="unused", image_version="extrastuff"
-    )
-    assert paasta_itest(args) == 1
-    mock_build_docker_tag.assert_called_once_with(
-        "fake_service", "unused", "extrastuff"
-    )
-    assert not mock_docker_image.called
+def test_itest_run_fail():
+    with patch(
+        "paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True
+    ) as mock_build_docker_tag, patch(
+        "paasta_tools.cli.cmds.itest.check_docker_image", autospec=True
+    ) as mock_docker_image, patch(
+        "paasta_tools.cli.cmds.itest._log", autospec=True
+    ), patch(
+        "paasta_tools.cli.cmds.itest._run", autospec=True
+    ) as mock_run, patch(
+        "paasta_tools.cli.cmds.itest.validate_service_name", autospec=True
+    ):
+        mock_build_docker_tag.return_value = "fake-registry/services-foo:paasta-bar"
+        mock_docker_image.return_value = True
+        mock_run.return_value = (1, "fake_output")
+        args = MagicMock(
+            service="services-fake_service", commit="unused", image_version="extrastuff"
+        )
+        assert paasta_itest(args) == 1
+        mock_build_docker_tag.assert_called_once_with(
+            "fake_service", "unused", "extrastuff"
+        )
+        assert not mock_docker_image.called
 
 
-@patch("paasta_tools.cli.cmds.itest.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._run", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._log", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.check_docker_image", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True)
-def test_itest_success(
-    mock_build_docker_tag,
-    mock_docker_image,
-    mock_log,
-    mock_run,
-    mock_validate_service_name,
-):
-    mock_build_docker_tag.return_value = "fake-registry/services-foo:paasta-bar"
-    mock_docker_image.return_value = True
-    mock_run.return_value = (0, "Yeeehaaa")
-    args = MagicMock(
-        service="services-fake_service", commit="unused", image_version="extrastuff"
-    )
-    assert paasta_itest(args) == 0
-    mock_build_docker_tag.assert_called_once_with(
-        "fake_service", "unused", "extrastuff"
-    )
-    mock_docker_image.assert_called_once_with("fake_service", "unused", "extrastuff")
+def test_itest_success():
+    with patch(
+        "paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True
+    ) as mock_build_docker_tag, patch(
+        "paasta_tools.cli.cmds.itest.check_docker_image", autospec=True
+    ) as mock_docker_image, patch(
+        "paasta_tools.cli.cmds.itest._log", autospec=True
+    ), patch(
+        "paasta_tools.cli.cmds.itest._run", autospec=True
+    ) as mock_run, patch(
+        "paasta_tools.cli.cmds.itest.validate_service_name", autospec=True
+    ):
+        mock_build_docker_tag.return_value = "fake-registry/services-foo:paasta-bar"
+        mock_docker_image.return_value = True
+        mock_run.return_value = (0, "Yeeehaaa")
+        args = MagicMock(
+            service="services-fake_service", commit="unused", image_version="extrastuff"
+        )
+        assert paasta_itest(args) == 0
+        mock_build_docker_tag.assert_called_once_with(
+            "fake_service", "unused", "extrastuff"
+        )
+        mock_docker_image.assert_called_once_with(
+            "fake_service", "unused", "extrastuff"
+        )
 
 
-@patch("paasta_tools.cli.cmds.itest.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._run", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True)
-@patch("paasta_tools.cli.cmds.itest._log", autospec=True)
-@patch("paasta_tools.cli.cmds.itest.check_docker_image", autospec=True)
-def test_itest_works_when_service_name_starts_with_services_dash(
-    mock_docker_image,
-    mock_log,
-    mock_build_docker_tag,
-    mock_run,
-    mock_validate_service_name,
-):
-    mock_docker_image.return_value = True
-    mock_build_docker_tag.return_value = "unused_docker_tag"
-    mock_run.return_value = (0, "Yeeehaaa")
-    args = MagicMock(
-        service="services-fake_service", commit="unused", image_version="extrastuff"
-    )
-    assert paasta_itest(args) == 0
-    mock_build_docker_tag.assert_called_once_with(
-        "fake_service", "unused", "extrastuff"
-    )
-    mock_docker_image.assert_called_once_with("fake_service", "unused", "extrastuff")
+def test_itest_works_when_service_name_starts_with_services_dash():
+    with patch(
+        "paasta_tools.cli.cmds.itest.check_docker_image", autospec=True
+    ) as mock_docker_image, patch(
+        "paasta_tools.cli.cmds.itest._log", autospec=True
+    ), patch(
+        "paasta_tools.cli.cmds.itest.build_docker_tag", autospec=True
+    ) as mock_build_docker_tag, patch(
+        "paasta_tools.cli.cmds.itest._run", autospec=True
+    ) as mock_run, patch(
+        "paasta_tools.cli.cmds.itest.validate_service_name", autospec=True
+    ):
+        mock_docker_image.return_value = True
+        mock_build_docker_tag.return_value = "unused_docker_tag"
+        mock_run.return_value = (0, "Yeeehaaa")
+        args = MagicMock(
+            service="services-fake_service", commit="unused", image_version="extrastuff"
+        )
+        assert paasta_itest(args) == 0
+        mock_build_docker_tag.assert_called_once_with(
+            "fake_service", "unused", "extrastuff"
+        )
+        mock_docker_image.assert_called_once_with(
+            "fake_service", "unused", "extrastuff"
+        )
