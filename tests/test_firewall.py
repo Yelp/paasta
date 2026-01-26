@@ -7,7 +7,6 @@ from paasta_tools import iptables
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import NoConfigurationForServiceError
 
-
 EMPTY_RULE = iptables.Rule(
     protocol="ip",
     src="0.0.0.0/0.0.0.0",

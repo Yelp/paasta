@@ -15,8 +15,8 @@ import asyncio
 from unittest import mock
 from unittest.mock import ANY
 from unittest.mock import AsyncMock
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
 from pytest import fixture

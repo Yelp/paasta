@@ -44,8 +44,8 @@ from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
-from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.api.client import PaastaOApiClient
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.cli.authentication import get_sso_auth_token
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -63,24 +63,23 @@ from paasta_tools.nrtsearchserviceeks_tools import (
 )
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
+from paasta_tools.utils import INSTANCE_TYPES
+from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
-from paasta_tools.utils import INSTANCE_TYPES
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
-
 
 log = logging.getLogger(__name__)
 

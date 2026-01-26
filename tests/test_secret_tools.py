@@ -14,6 +14,7 @@
 from json.decoder import JSONDecodeError
 from unittest import mock
 
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import decrypt_secret
 from paasta_tools.secret_tools import decrypt_secret_environment_for_service
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
@@ -23,7 +24,6 @@ from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import SecretVolume
 

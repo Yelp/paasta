@@ -17,8 +17,8 @@ import sys
 from paasta_tools.kubernetes_tools import get_all_kubernetes_services_running_here
 from paasta_tools.mesos_tools import MesosSlaveConnectionError
 from paasta_tools.tron_tools import tron_jobs_running_here
-from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import _log
 from paasta_tools.utils import load_system_paasta_config
 
 

@@ -27,14 +27,14 @@ from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import select_k8s_secret_namespace
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
-from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.secret_providers import SecretProvider
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters

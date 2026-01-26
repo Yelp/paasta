@@ -35,8 +35,8 @@ from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import load_system_paasta_config
 
 
 def add_subparser(subparsers):

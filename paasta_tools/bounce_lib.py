@@ -24,7 +24,6 @@ from mypy_extensions import Arg
 from mypy_extensions import DefaultArg
 from mypy_extensions import TypedDict
 
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 logging.getLogger("requests").setLevel(logging.WARNING)

@@ -16,10 +16,9 @@ from typing import Optional
 
 from paasta_tools.utils import load_system_paasta_config
 
-
 try:
-    from vault_tools.oidc import get_instance_oidc_identity_token
     from okta_auth import get_and_cache_jwt_default
+    from vault_tools.oidc import get_instance_oidc_identity_token
 except ImportError:
 
     def get_instance_oidc_identity_token(

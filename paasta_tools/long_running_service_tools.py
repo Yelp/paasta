@@ -15,19 +15,19 @@ import service_configuration_lib
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)

@@ -23,7 +23,6 @@ import sys
 
 from paasta_tools.kubernetes_tools import KubeClient
 
-
 log = logging.getLogger(__name__)
 
 

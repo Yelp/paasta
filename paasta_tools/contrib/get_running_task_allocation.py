@@ -23,7 +23,6 @@ from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
 
-
 MAIN_CONTAINER_TYPE = "main"
 
 

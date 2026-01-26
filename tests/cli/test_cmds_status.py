@@ -29,6 +29,7 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
@@ -41,7 +42,6 @@ from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import missing_deployments_message
-from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status

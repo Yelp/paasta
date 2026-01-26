@@ -6,7 +6,6 @@ import pytest
 
 from paasta_tools import iptables
 
-
 EMPTY_RULE = iptables.Rule(
     protocol="ip",
     src="0.0.0.0/0.0.0.0",

@@ -32,16 +32,16 @@ from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.remote_git import list_remote_refs
-from paasta_tools.utils import _log_audit
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import RollbackTypes
+from paasta_tools.utils import _log_audit
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import parse_timestamp
-from paasta_tools.utils import RollbackTypes
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:

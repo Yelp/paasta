@@ -23,7 +23,6 @@ from paasta_tools.check_kubernetes_services_replication import (
 )
 from paasta_tools.check_services_replication_tools import main
 
-
 log = logging.getLogger(__name__)
 
 

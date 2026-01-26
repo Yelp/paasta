@@ -16,7 +16,6 @@ from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
-
 log = logging.getLogger(__name__)
 
 # Must have a schema defined

@@ -38,6 +38,8 @@ from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
 
 from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -47,8 +49,6 @@ from paasta_tools.kubernetes_tools import get_secret_signature
 from paasta_tools.kubernetes_tools import get_ssm_secret_name
 from paasta_tools.kubernetes_tools import get_ssm_secret_signature_name
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
@@ -58,12 +58,12 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DEFAULT_VAULT_TOKEN_FILE
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import SHARED_SECRETS_K8S_NAMESPACES
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

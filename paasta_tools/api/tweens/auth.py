@@ -29,7 +29,6 @@ from pyramid.response import Response
 
 from paasta_tools.api.tweens import Handler
 
-
 logger = logging.getLogger(__name__)
 AUTH_CACHE_SIZE = 50000
 AUTH_CACHE_TTL = 30 * 60

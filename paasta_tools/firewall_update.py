@@ -11,8 +11,8 @@ from inotify.constants import IN_MOVED_TO
 from paasta_tools import firewall
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

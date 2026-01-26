@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
 from paasta_tools.kubernetes.bin.paasta_cleanup_remote_run_resources import (

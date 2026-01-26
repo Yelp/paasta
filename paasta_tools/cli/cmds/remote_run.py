@@ -25,19 +25,18 @@ from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import run_interactive_cli
+from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.kubernetes.remote_run import format_remote_run_job_name
 from paasta_tools.kubernetes.remote_run import load_eks_or_adhoc_deployment_config
-from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
-
 
 KUBECTL_EXEC_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"

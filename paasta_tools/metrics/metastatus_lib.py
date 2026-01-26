@@ -33,26 +33,25 @@ from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter
 
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.kubernetes_tools import get_all_nodes_cached
 from paasta_tools.kubernetes_tools import get_all_pods_cached
 from paasta_tools.kubernetes_tools import get_pod_status
 from paasta_tools.kubernetes_tools import is_node_ready
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
+from paasta_tools.mesos_tools import MesosResources
+from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.mesos_tools import is_task_terminal
-from paasta_tools.mesos_tools import MesosResources
-from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-
 
 DEFAULT_KUBERNETES_CPU_REQUEST = "100m"
 DEFAULT_KUBERNETES_MEMORY_REQUEST = "200M"

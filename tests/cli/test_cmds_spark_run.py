@@ -24,22 +24,21 @@ from service_configuration_lib.spark_config import get_aws_credentials
 from paasta_tools import spark_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import spark_run
-from paasta_tools.cli.cmds.spark_run import build_and_push_docker_image
-from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DOCKER_SHM_SIZE
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_CORES_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_MEMORY_BY_SPARK
+from paasta_tools.cli.cmds.spark_run import SPARK_DRIVER_IAM_USER
+from paasta_tools.cli.cmds.spark_run import build_and_push_docker_image
+from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
-from paasta_tools.cli.cmds.spark_run import SPARK_DRIVER_IAM_USER
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
-
 
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
 
