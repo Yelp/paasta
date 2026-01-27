@@ -1,6 +1,6 @@
 import json
 import os
-from distutils.dir_util import copy_tree
+import shutil
 
 from paasta_tools.cli.utils import pick_random_port
 
@@ -18,7 +18,9 @@ def main():
     cluster = os.environ.get("PAASTA_TEST_CLUSTER", "norcal-devc")
     config_path = "etc_paasta_for_development"
 
-    copy_tree("/etc/paasta", os.path.join(os.getcwd(), config_path))
+    shutil.copytree(
+        "/etc/paasta", os.path.join(os.getcwd(), config_path), dirs_exist_ok=True
+    )
     # Generate tron.json
     tron_config = {"tron": {"url": f"http://tron-{cluster}:8089"}}
     with open(config_path + "/tron.json", "w") as f:

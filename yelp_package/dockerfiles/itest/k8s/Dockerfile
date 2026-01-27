@@ -30,7 +30,6 @@ RUN apt-get update > /dev/null && \
         git \
         curl \
         python3.10-dev \
-        python3.10-distutils \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
