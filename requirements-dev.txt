@@ -8,7 +8,7 @@ dill==0.4.0
 distlib==0.3.9
 docutils==0.12
 exceptiongroup==1.1.2
-filelock==3.13.1
+filelock==3.20.1
 flake8==7.3.0
 freezegun==1.5.5
 hypothesis==6.79.4
