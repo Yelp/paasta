@@ -48,6 +48,12 @@ def parse_args():
         type=int,
     )
     parser.add_argument(
+        "--include-evicted-pods",
+        dest="include_evicted_pods",
+        action="store_true",
+        help="Include evicted pods for cleanup as 'errored'. If no recent transition time exists, will use pod creation time. Used with --error-minutes.",
+    )
+    parser.add_argument(
         "--dry-run",
         dest="dry_run",
         action="store_true",
@@ -89,6 +95,15 @@ def _scheduled_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
     return __condition_transition_longer_than_threshold(pod, "PodScheduled", threshold)
 
 
+def _created_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
+    time_started = pod.metadata.creation_timestamp
+    time_now = datetime.now(tzutc())
+
+    since_minutes = (time_now - time_started).total_seconds() / 60
+
+    return since_minutes > threshold
+
+
 def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
     successes = []
     errors = []
@@ -118,6 +133,7 @@ def main():
     allowed_uptime_minutes = args.minutes
     allowed_error_minutes = args.error_minutes
     allowed_pending_minues = args.pending_minutes
+    include_evicted_pods = args.include_evicted_pods
 
     completed_pods = []
     errored_pods = []
@@ -136,18 +152,25 @@ def main():
             # but, in the end, we really just care that a Pod is in a Failed phase
             and pod.status.phase == "Failed"
         ):
-            try:
-                # and that said Pod has been around for a while (generally longer than we'd leave
-                # Pods that exited sucessfully)
-                # NOTE: we do this in a try-except since we're intermittently seeing pods in an error
-                # state without a PodScheduled condition (even though that should be impossible)
-                # this is not ideal, but its fine to skip these since this isn't a critical process
-                if _scheduled_longer_than_threshold(pod, allowed_error_minutes):
+            is_evicted = pod.status.reason == "Evicted"
+            if is_evicted and include_evicted_pods:
+                # We can occasionally get evicted pods before they've finished scheduling, so we have to
+                # use creation time as a proxy for duration instead of scheduled
+                if _created_longer_than_threshold(pod, allowed_error_minutes):
                     errored_pods.append(pod)
-            except AttributeError:
-                log.exception(
-                    f"Unable to check {pod.metadata.name}'s schedule time. Pod status: {pod.status}.'"
-                )
+            else:
+                try:
+                    # and that said Pod has been around for a while (generally longer than we'd leave
+                    # Pods that exited sucessfully)
+                    # NOTE: we do this in a try-except since we're intermittently seeing pods in an error
+                    # state without a PodScheduled condition (even though that should be impossible)
+                    # this is not ideal, but its fine to skip these since this isn't a critical process
+                    if _scheduled_longer_than_threshold(pod, allowed_error_minutes):
+                        errored_pods.append(pod)
+                except AttributeError:
+                    log.exception(
+                        f"Unable to check {pod.metadata.name}'s schedule time. Pod status: {pod.status}.'"
+                    )
         elif (
             # this is currently optional
             allowed_pending_minues is not None
