@@ -33,7 +33,6 @@ RUN apt-get update > /dev/null && \
         libyaml-dev \
         python3-dev \
         python3-pip \
-        python3-distutils-extra \
         # py2 used for just dh-virtualenv \
         python \
         tox \

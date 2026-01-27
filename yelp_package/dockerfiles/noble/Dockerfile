@@ -38,7 +38,6 @@ RUN apt-get update > /dev/null && \
         libyaml-dev \
         python3.10-dev \
         python3-pip \
-        python3.10-distutils \
         tox \
         wget \
         sphinx-rtd-theme-common \
