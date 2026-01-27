@@ -1555,8 +1555,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> bool:
         return self.get_lifecycle_dict().get(
             "pre_stop_wait_for_connections_to_complete",
-            service_namespace_config.is_in_smartstack()
-            and service_namespace_config.get_longest_timeout_ms() >= 20000,
+            service_namespace_config.is_in_smartstack(),
         )
 
     def get_kubernetes_container_termination_action(
@@ -1579,14 +1578,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 #    just as the pod is terminated.
                 # 2. Every second, checks if there are any established connections to the pod. It exits when there are no
                 #    established connections.
-                # It exits when all connections are closed, which should mean the pod can be safely terminated.
+                #
                 # The first four fields of /proc/net/tcp are:
                 # 1. slot number (which is not relevant here, but it's a decimal number left-padded with whitespace)
-                # 2. local address:port (both in hex)
-                # 3. remote address:port (both in hex)
+                # 2. local address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
+                # 3. remote address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
                 # 4. state (in hex)
                 # State 01 means ESTABLISHED.
-                hex_port = hex(self.get_container_port()).upper()[2:]
+                hex_port = f"{self.get_container_port():04X}"
                 command = [
                     "/bin/sh",
                     "-c",
@@ -2742,13 +2741,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_pre_stop_wait_for_connections_to_complete(
                 service_namespace_config
             ):
+                # When meshd encounters transient ZK read errors (typically trying to read a znode that has since been
+                # deleted), it skips updating the endpoints file for one cycle.
+                # During bounces of large services, this can happen repeatedly, as lots of znodes are deleted.
+                # Pad the time we wait here to account for that.
+                # If everything is working correctly, this extra time is not needed, as the pre-stop hook will finish
+                # as soon as zero connections are open on the container's port.
+                # Thus, we can be pretty generous here.
+                longest_time_we_expect_meshd_to_be_stuck = 300
+
                 # If the max timeout is more than 30 minutes, cap it to 30 minutes.
                 # Most services with ultra-long timeouts are probably able to handle SIGTERM gracefully anyway.
+
                 default += int(
                     math.ceil(
                         min(
                             1800,
-                            service_namespace_config.get_longest_timeout_ms() / 1000,
+                            service_namespace_config.get_longest_timeout_ms() / 1000
+                            + longest_time_we_expect_meshd_to_be_stuck,
                         )
                     )
                 )

@@ -169,6 +169,13 @@ from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TopologySpreadConstraintDict
 
+# Expected pre-stop command for smartstack services waiting for connections on port 8888
+EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT = [
+    "/bin/sh",
+    "-c",
+    "sleep 30; while grep '^ *[0-9]*: ........:22B8 ........:.... 01 ' /proc/net/tcp; do sleep 1; echo; done",
+]
+
 
 def test_force_delete_pods():
     mock_pod_1 = mock.MagicMock(
@@ -934,7 +941,9 @@ class TestKubernetesDeploymentConfig:
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
                         pre_stop=V1LifecycleHandler(
-                            _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
+                            _exec=V1ExecAction(
+                                command=EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT
+                            )
                         )
                     ),
                     liveness_probe=V1Probe(
@@ -960,6 +969,7 @@ class TestKubernetesDeploymentConfig:
             service_namespace_config.get_healthcheck_mode.return_value = "http"
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
             service_namespace_config.get_longest_timeout_ms.return_value = 1000
+            service_namespace_config.is_in_smartstack.return_value = True
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
@@ -2672,9 +2682,21 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "is_in_smartstack,termination_action,expected",
         [
-            (True, None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            (True, "", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            (True, [], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            (
+                True,
+                None,
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # no termination action, waits for connections
+            (
+                True,
+                "",
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # empty termination action, waits for connections
+            (
+                True,
+                [],
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # empty termination action, waits for connections
             (True, "/bin/no-args", ["/bin/no-args"]),  # no args command
             (True, ["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
             (
@@ -5019,7 +5041,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c86f676"
+            == "config31b524d4"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
