@@ -10,7 +10,6 @@ If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
 """
-import logging
 import os
 import re
 import socket
@@ -24,7 +23,6 @@ if "PATH" not in os.environ:
     os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 
-LOCK_DIRECTORY = "/var/lib/paasta/mac-address"
 ENV_MATCH_RE = re.compile(r"^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$")
 MAX_HOSTNAME_LENGTH = 60
 
@@ -110,27 +108,6 @@ def is_network_host(args):
     return False
 
 
-def is_run(args):
-    try:
-        list(args).index("run")
-        return True
-    except ValueError:
-        return False
-
-
-def can_add_mac_address(args):
-    # return False if --mac-address is already specified or if --network=host
-    if is_network_host(args) or not is_run(args):
-        return False
-
-    for index, arg in enumerate(args):
-        # Check for --mac-address
-        if arg.startswith("--mac-address"):
-            return False
-
-    return True
-
-
 def generate_hostname_task_id(hostname, mesos_task_id):
     task_id = mesos_task_id.rpartition(".")[2]
 
@@ -169,40 +146,6 @@ def arg_collision(new_args, current_args):
     return bool(set(new_args).intersection(set(cur_arg_keys)))
 
 
-def add_firewall(argv, service, instance):
-    # Delayed import to improve performance when add_firewall is not used
-    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
-    from paasta_tools.docker_wrapper_imports import DEFAULT_SYNAPSE_SERVICE_DIR
-    from paasta_tools.docker_wrapper_imports import firewall_flock
-    from paasta_tools.docker_wrapper_imports import prepare_new_container
-    from paasta_tools.docker_wrapper_imports import reserve_unique_mac_address
-
-    output = ""
-    try:
-        mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
-    except Exception as e:
-        output = f"Unable to add mac address: {e}"
-    else:
-        argv = add_argument(argv, f"--mac-address={mac_address}")
-        try:
-
-            with firewall_flock():
-                prepare_new_container(
-                    DEFAULT_SOA_DIR,
-                    DEFAULT_SYNAPSE_SERVICE_DIR,
-                    service,
-                    instance,
-                    mac_address,
-                )
-        except Exception as e:
-            output = f"Unable to add firewall rules: {e}"
-
-    if output:
-        print(output, file=sys.stderr)
-
-    return argv
-
-
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
@@ -220,14 +163,5 @@ def main(argv=None):
     elif can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         argv = add_argument(argv, f"--hostname={hostname}")
-
-    paasta_firewall = env_args.get("PAASTA_FIREWALL")
-    service = env_args.get("PAASTA_SERVICE")
-    instance = env_args.get("PAASTA_INSTANCE")
-    if paasta_firewall and service and instance and can_add_mac_address(argv):
-        try:
-            argv = add_firewall(argv, service, instance)
-        except Exception as e:
-            print(f"Unhandled exception in add_firewall: {e}", file=sys.stderr)
 
     os.execlp("docker", "docker", *argv[1:])
