@@ -1,3 +1,11 @@
+paasta-tools (1.36.14) xenial; urgency=medium
+
+  * 1.36.14 tagged with 'make release'
+    Commit: Merge pull request #4207 from Yelp/u/robj/fix-validate
+    remove security key check from paasta validate
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 27 Jan 2026 09:21:07 -0800
+
 paasta-tools (1.36.13) xenial; urgency=medium
 
   * 1.36.13 tagged with 'make release'
