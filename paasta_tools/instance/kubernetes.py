@@ -16,7 +16,6 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
-import a_sync
 import pytz
 import requests.exceptions
 from kubernetes.client import V1Container
@@ -36,6 +35,8 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
+from paasta_tools.async_utils import run_sync
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
@@ -323,8 +324,10 @@ async def mesh_status(
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
-    async_get_nodes = a_sync.to_async(kubernetes_tools.get_all_nodes)
-    nodes = await async_get_nodes(settings.kubernetes_client)
+    nodes = await asyncio.to_thread(
+        kubernetes_tools.get_all_nodes,
+        settings.kubernetes_client,
+    )
 
     replication_checker = KubeSmartstackEnvoyReplicationChecker(
         nodes=nodes,
@@ -551,7 +554,7 @@ def bounce_status(
     )
 
     if job_config.get_persistent_volumes():
-        version_objects = a_sync.block(
+        version_objects = run_sync(
             kubernetes_tools.controller_revisions_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
@@ -559,7 +562,7 @@ def bounce_status(
             namespace=job_config.get_kubernetes_namespace(),
         )
     else:
-        replicasets = a_sync.block(
+        replicasets = run_sync(
             kubernetes_tools.replicasets_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
@@ -622,7 +625,7 @@ def find_all_relevant_namespaces(
     }
 
 
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_status_v2(
     service: str,
     instance: str,
@@ -646,8 +649,12 @@ async def kubernetes_status_v2(
         return status
 
     if all_namespaces:
-        relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
-            service, instance, kube_client, job_config
+        relevant_namespaces = await asyncio.to_thread(
+            find_all_relevant_namespaces,
+            service,
+            instance,
+            kube_client,
+            job_config,
         )
     else:
         relevant_namespaces = {job_config.get_kubernetes_namespace()}
@@ -1158,7 +1165,7 @@ async def get_version_for_controller_revision(
 
 
 # TODO: Cleanup old kubernetes status
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_status(
     service: str,
     instance: str,
@@ -1332,7 +1339,7 @@ def ready_replicas_from_replicaset(replicaset: V1ReplicaSet) -> int:
     return ready_replicas
 
 
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_mesh_status(
     service: str,
     instance: str,

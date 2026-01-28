@@ -35,7 +35,6 @@ from typing import Tuple
 from typing import Union
 from urllib.parse import urlparse
 
-import a_sync
 import humanize
 import requests
 from kazoo.client import KazooClient
@@ -46,6 +45,8 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools.async_utils import aiter_to_list
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.async_utils import run_sync
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.mesos.cfg import load_mesos_config
@@ -582,7 +583,7 @@ async def format_task_list(
     return output
 
 
-@a_sync.to_blocking
+@to_blocking
 async def status_mesos_tasks_verbose(
     filter_string: str, get_short_task_id: Callable[[str], str], tail_lines: int = 0
 ) -> str:
@@ -784,7 +785,7 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
 
 
 # TODO: remove to_blocking, convert call sites (smartstack_tools and marathon_serviceinit) to asyncio.
-@a_sync.to_blocking
+@to_blocking
 async def get_slaves():
     return (await (await get_mesos_master().fetch("/master/slaves")).json())["slaves"]
 
@@ -912,8 +913,8 @@ def get_count_running_tasks_on_slave(hostname: str) -> int:
     or 0 if the slave is not found.
     :param hostname: hostname of the slave
     :returns: integer count of mesos tasks"""
-    mesos_state = a_sync.block(get_mesos_master().state_summary)
-    task_counts = a_sync.block(get_mesos_task_count_by_slave, mesos_state)
+    mesos_state = run_sync(get_mesos_master().state_summary)
+    task_counts = run_sync(get_mesos_task_count_by_slave, mesos_state)
     counts = [
         slave["task_counts"].count
         for slave in task_counts
@@ -938,7 +939,7 @@ async def list_framework_ids(active_only=False):
     return [f.id for f in await get_mesos_master().frameworks(active_only=active_only)]
 
 
-@a_sync.to_blocking
+@to_blocking
 async def get_all_frameworks(active_only=False):
     return await get_mesos_master().frameworks(active_only=active_only)
 
