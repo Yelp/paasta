@@ -19,12 +19,6 @@ Integration Tests
 Python 3.10, virtualenv, and Docker are required to run the integration test suite.
 You can run ``make itest`` to execute them.
 
-Example Cluster
-^^^^^^^^^^^^^^^^^
-There is a docker compose configuration based on our itest containers that you
-can use to run the PaaSTA code against a semi-realistic cluster whilst you are
-developing. More instructions `here <./installation/example_cluster.html>`_
-
 System Package Building / itests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
