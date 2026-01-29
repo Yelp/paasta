@@ -40,8 +40,8 @@ services:
       - mesosbase
       - zookeeper
     command: '/start-slave.sh'
-  itest_xenial:
-    build: ../yelp_package/dockerfiles/xenial/
+  itest_jammy:
+    build: ../yelp_package/dockerfiles/jammy/
   playground:
     build:
       context: ../
@@ -57,7 +57,7 @@ services:
     command: '/start.sh'
     depends_on:
       - mesosmaster
-      - itest_xenial
+      - itest_jammy
       - registry
       - git
       - mesosslave

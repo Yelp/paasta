@@ -1,6 +1,6 @@
 FROM example_cluster_mesosbase
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/xenial/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update > /dev/null && \
@@ -8,8 +8,8 @@ RUN apt-get update > /dev/null && \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
-        python-pip \
-        python3.8-dev \
+        python3-pip \
+        python3.10-dev \
         openssh-server > /dev/null && \
     apt-get clean
 
@@ -20,9 +20,9 @@ RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 
 ADD requirements.txt requirements-dev.txt requirements-bootstrap.txt /paasta/
-RUN python -m pip install --upgrade pip==20.0.2
-RUN pip install virtualenv==15.1.0
-RUN virtualenv /venv -ppython3.8
+RUN python3 -m pip install --upgrade pip==20.0.2
+RUN pip install virtualenv==20.29.3
+RUN virtualenv /venv -ppython3.10
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements-bootstrap.txt
 RUN pip install -r /paasta/requirements.txt
