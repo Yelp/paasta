@@ -14,6 +14,7 @@
 from paasta_tools.paastaapi.model.adhoc_launch_history import AdhocLaunchHistory
 from paasta_tools.paastaapi.model.autoscaler_count_msg import AutoscalerCountMsg
 from paasta_tools.paastaapi.model.autoscaling_override import AutoscalingOverride
+from paasta_tools.paastaapi.model.container_image import ContainerImage
 from paasta_tools.paastaapi.model.deploy_queue import DeployQueue
 from paasta_tools.paastaapi.model.deploy_queue_service_instance import DeployQueueServiceInstance
 from paasta_tools.paastaapi.model.envoy_backend import EnvoyBackend

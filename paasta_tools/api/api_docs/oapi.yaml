@@ -24,6 +24,15 @@ components:
         status:
           type: string
       type: object
+    ContainerImage:
+      description: Container image URL response
+      properties:
+        image_url:
+          description: Full container registry URL with image name and tag
+          type: string
+      required:
+      - image_url
+      type: object
     AdhocLaunchHistory:
       description: A single run
       properties:
@@ -1570,6 +1579,36 @@ paths:
                 type: object
           description: Instances of a service
       summary: List instances of service_name
+      tags:
+      - service
+  /services/{service}/container_image/{deploy_group}:
+    get:
+      operationId: get_container_image_url
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Deploy group name
+        in: path
+        name: deploy_group
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerImage'
+          description: Container image URL for the service and deploy_group
+        "404":
+          description: Service not deployed to deploy_group or deployments.json not found
+        "500":
+          description: Internal error - likely missing values in deployment configuration
+      summary: Get container image URL for service and deploy_group
       tags:
       - service
   /services/{service}/{instance}/autoscaler:
