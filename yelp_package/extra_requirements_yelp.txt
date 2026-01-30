@@ -16,14 +16,14 @@ monk==1.3.0                         # yelp-clog dependency
 mrjob==0.7.4                        # scribereader dependency
 named-decorator==0.1.4              # yelp-profiling dependency
 ndg-httpsclient==0.4.3              # vault-tools dependency
-okta-auth==1.0.1
+okta-auth==1.2.1
 pycparser==2.20                     # vault-tools dependency
 pygpgme==0.3                        # vault-tools dependency
 pyjwt==2.9.0                        # okta-auth dependency
 pyopenssl==19.0.0                   # vault-tools dependency
 PySubnetTree==0.34                  # yelp-lib dependency
 python-jsonschema-objects==0.3.1    # slo-transcoder dependency
-saml-helper==2.3.3                  # okta-auth dependency
+saml-helper==3.1.2                  # okta-auth dependency
 scribereader==1.1.1
 signalform-tools==0.0.16            # slo-transcoder dependency
 slo-transcoder==3.3.0
