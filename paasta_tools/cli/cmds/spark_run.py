@@ -26,6 +26,7 @@ from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 
 from paasta_tools.cli.authentication import get_service_auth_token
+from paasta_tools.cli.authentication import get_sso_auth_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
@@ -354,7 +355,8 @@ def add_subparser(subparsers):
         default=None,
     )
 
-    list_parser.add_argument(
+    service_auth_group = list_parser.add_mutually_exclusive_group()
+    service_auth_group.add_argument(
         "--use-service-auth-token",
         help=(
             "Acquire service authentication token for the underlying instance,"
@@ -362,6 +364,17 @@ def add_subparser(subparsers):
         ),
         action="store_true",
         dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+    service_auth_group.add_argument(
+        "--use-sso-service-auth-token",
+        help=(
+            "Acquire service authentication token from SSO provider,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_sso_service_auth_token",
         required=False,
         default=False,
     )
@@ -905,6 +918,8 @@ def configure_and_run_docker_container(
 
     if args.use_service_auth_token:
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
+    elif args.use_sso_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green("\nSpark monitoring URL: ") + f"{webui_url}\n"

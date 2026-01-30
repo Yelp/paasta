@@ -531,6 +531,7 @@ class TestConfigureAndRunDockerContainer:
         args.tronfig = None
         args.job_id = None
         args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
         args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -649,6 +650,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
         args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
         args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -767,6 +769,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
         args.get_eks_token_via_iam_user = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -842,6 +845,7 @@ class TestConfigureAndRunDockerContainer:
             cmd="pyspark",
             nvidia=True,
             use_service_auth_token=False,
+            use_sso_service_auth_token=False,
             get_eks_token_via_iam_user=None,
         )
 
@@ -880,6 +884,7 @@ class TestConfigureAndRunDockerContainer:
             cmd="python mrjob_wrapper.py",
             mrjob=True,
             use_service_auth_token=False,
+            use_sso_service_auth_token=False,
             get_eks_token_via_iam_user=None,
         )
 
@@ -920,6 +925,7 @@ class TestConfigureAndRunDockerContainer:
         args = mock.MagicMock(
             cmd="pyspark",
             use_service_auth_token=True,
+            use_sso_service_auth_token=False,
             get_eks_token_via_iam_user=None,
         )
         configure_and_run_docker_container(
