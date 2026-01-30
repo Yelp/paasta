@@ -43,8 +43,6 @@ RUN virtualenv /venv -ppython3.10 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install --only-binary=grpcio -r requirements.txt
 
-COPY yelp_package/dockerfiles/xenial/mesos-slave-secret /etc/
-COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/xenial/mesos-slave-secret /nail/etc/
 COPY yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
 
 ADD . /work/

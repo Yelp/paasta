@@ -17,10 +17,6 @@ to install things like that either. At Yelp we happen to use Puppet to deploy
 PaaSTA and the related components. Currently all of the Puppet code is not
 open source, but we hope to eventually have a fully working example deployment.
 
-We do have an `example cluster <./example_cluster.html>`_ which uses docker-compose
-to create containers running the necessary components of a PaaSTA cluster.
-However, it is **not** a recommended production configuration.
-
 paasta_tools
 ------------
 
