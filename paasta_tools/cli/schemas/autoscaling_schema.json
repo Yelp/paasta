@@ -35,7 +35,7 @@
             },
             "moving_average_window_seconds": {
                 "type": "integer",
-                "minimum": 30
+                "minimum": 60
             },
             "prometheus_adapter_config": {
                 "type": "object",
