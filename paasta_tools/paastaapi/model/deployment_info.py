@@ -79,7 +79,7 @@ class DeploymentInfo(ModelNormal):
             'docker_image': (str,),  # noqa: E501
             'git_sha': (str,),  # noqa: E501
             'image_url': (str,),  # noqa: E501
-            'image_version': (str,),  # noqa: E501
+            'image_version': (str, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -145,7 +145,7 @@ class DeploymentInfo(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            image_version (str): Additional image version identifier (optional). [optional]  # noqa: E501
+            image_version (str, none_type): Additional image version identifier (optional). [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

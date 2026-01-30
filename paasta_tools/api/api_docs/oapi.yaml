@@ -36,6 +36,7 @@ components:
         image_version:
           description: Additional image version identifier (optional)
           type: string
+          nullable: true
         image_url:
           description: Full container registry URL with image name and tag
           type: string

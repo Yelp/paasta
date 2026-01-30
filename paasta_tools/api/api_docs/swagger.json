@@ -1228,6 +1228,7 @@
                 },
                 "image_version": {
                     "type": "string",
+                    "x-nullable": true,
                     "description": "Additional image version identifier (optional)"
                 },
                 "image_url": {

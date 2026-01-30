@@ -61,8 +61,8 @@ def test_list_services_for_cluster(
     ]
 
 
-def test_get_deployment_info_success():
-    """Test successful deployment info retrieval."""
+def test_get_deployment_info_success_with_image_version():
+    """Test successful deployment info retrieval with image_version."""
     with mock.patch(
         "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
     ) as mock_load_v2_deployments_json, mock.patch(
@@ -90,6 +90,40 @@ def test_get_deployment_info_success():
             "docker_image": "services-fake_service:paasta-abc123",
             "git_sha": "abc123def456",
             "image_version": "extrastuff",
+            "image_url": "docker-registry.example.com/services-fake_service:paasta-abc123",
+        }
+
+
+def test_get_deployment_info_success_without_image_version():
+    """Test successful deployment info retrieval when image_version is None."""
+    with mock.patch(
+        "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
+    ) as mock_load_v2_deployments_json, mock.patch(
+        "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
+    ) as mock_get_service_docker_registry:
+        mock_deployments = mock.Mock(spec=DeploymentsJsonV2)
+        mock_deployments.config_dict = {
+            "deployments": {
+                "prod.main": {
+                    "docker_image": "services-fake_service:paasta-abc123",
+                    "git_sha": "abc123def456",
+                    # No image_version field
+                }
+            }
+        }
+        mock_load_v2_deployments_json.return_value = mock_deployments
+        mock_get_service_docker_registry.return_value = "docker-registry.example.com"
+
+        request = testing.DummyRequest()
+        request.swagger_data = {"service": "fake_service", "deploy_group": "prod.main"}
+
+        response = get_deployment_info(request)
+        assert response.status_code == 200
+        # image_version should be None when not present
+        assert response.json_body == {
+            "docker_image": "services-fake_service:paasta-abc123",
+            "git_sha": "abc123def456",
+            "image_version": None,
             "image_url": "docker-registry.example.com/services-fake_service:paasta-abc123",
         }
 
@@ -141,7 +175,9 @@ def test_get_deployment_info_missing_docker_image_field():
     """Test 500 when docker_image field is missing from config."""
     with mock.patch(
         "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json:
+    ) as mock_load_v2_deployments_json, mock.patch(
+        "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
+    ) as mock_get_service_docker_registry:
         mock_deployments = mock.Mock(spec=DeploymentsJsonV2)
         mock_deployments.config_dict = {
             "deployments": {
@@ -152,6 +188,7 @@ def test_get_deployment_info_missing_docker_image_field():
             }
         }
         mock_load_v2_deployments_json.return_value = mock_deployments
+        mock_get_service_docker_registry.return_value = "docker-registry.example.com"
 
         request = testing.DummyRequest()
         request.swagger_data = {"service": "fake_service", "deploy_group": "prod.main"}
