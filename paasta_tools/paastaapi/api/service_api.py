@@ -23,7 +23,7 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
     none_type,
     validate_and_convert_types
 )
-from paasta_tools.paastaapi.model.container_image import ContainerImage
+from paasta_tools.paastaapi.model.deployment_info import DeploymentInfo
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
@@ -300,18 +300,18 @@ class ServiceApi(object):
             callable=__delay_instance
         )
 
-        def __get_container_image_url(
+        def __get_deployment_info(
             self,
             service,
             deploy_group,
             **kwargs
         ):
-            """Get container image URL for service and deploy_group  # noqa: E501
+            """Get deployment information for service and deploy_group  # noqa: E501
 
             This method makes a synchronous HTTP request by default. To make an
             asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.get_container_image_url(service, deploy_group, async_req=True)
+            >>> thread = api.get_deployment_info(service, deploy_group, async_req=True)
             >>> result = thread.get()
 
             Args:
@@ -340,7 +340,7 @@ class ServiceApi(object):
                 async_req (bool): execute request asynchronously
 
             Returns:
-                ContainerImage
+                DeploymentInfo
                     If the method is called asynchronously, returns the request
                     thread.
             """
@@ -369,12 +369,12 @@ class ServiceApi(object):
                 deploy_group
             return self.call_with_http_info(**kwargs)
 
-        self.get_container_image_url = Endpoint(
+        self.get_deployment_info = Endpoint(
             settings={
-                'response_type': (ContainerImage,),
+                'response_type': (DeploymentInfo,),
                 'auth': [],
-                'endpoint_path': '/services/{service}/container_image/{deploy_group}',
-                'operation_id': 'get_container_image_url',
+                'endpoint_path': '/services/{service}/deployments/{deploy_group}',
+                'operation_id': 'get_deployment_info',
                 'http_method': 'GET',
                 'servers': None,
             },
@@ -423,7 +423,7 @@ class ServiceApi(object):
                 'content_type': [],
             },
             api_client=api_client,
-            callable=__get_container_image_url
+            callable=__get_deployment_info
         )
 
         def __get_flink_cluster_config(
