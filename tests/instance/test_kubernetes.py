@@ -16,12 +16,12 @@ import datetime
 from unittest import mock
 from unittest.mock import AsyncMock
 
-import a_sync
 import pytest
 import requests.exceptions
 
 import paasta_tools.instance.kubernetes as pik
 from paasta_tools import utils
+from paasta_tools.async_utils import run_sync
 from paasta_tools.utils import DeploymentVersion
 from tests.conftest import Struct
 from tests.conftest import wrap_value_in_task
@@ -702,7 +702,7 @@ class TestKubernetesStatusV2:
 @mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
 def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_name):
     kstatus = {}
-    a_sync.block(
+    run_sync(
         pik.job_status,
         kstatus=kstatus,
         client=mock.Mock(),

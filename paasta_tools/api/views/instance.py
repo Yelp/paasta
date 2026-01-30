@@ -25,7 +25,6 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 
-import a_sync
 from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.view import view_config
@@ -34,6 +33,7 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.async_utils import run_sync
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
 from paasta_tools.mesos_tools import get_all_frameworks as get_all_mesos_frameworks
@@ -333,7 +333,7 @@ def bounce_status(request):
 
 
 def add_executor_info(task):
-    task._Task__items["executor"] = a_sync.block(task.executor).copy()
+    task._Task__items["executor"] = run_sync(task.executor).copy()
     task._Task__items["executor"].pop("tasks", None)
     task._Task__items["executor"].pop("completed_tasks", None)
     task._Task__items["executor"].pop("queued_tasks", None)
@@ -341,7 +341,7 @@ def add_executor_info(task):
 
 
 def add_slave_info(task):
-    task._Task__items["slave"] = a_sync.block(task.slave)._MesosSlave__items.copy()
+    task._Task__items["slave"] = run_sync(task.slave)._MesosSlave__items.copy()
     return task
 
 

@@ -28,6 +28,31 @@ from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import TimeoutError
 
 
+@fixture(autouse=True)
+def ensure_default_event_loop():
+    # pytest-asyncio clears the default loop; sticht expects one in sync entrypoints.
+    # Use a fresh loop without touching asyncio.get_event_loop to avoid warnings.
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            yield
+        finally:
+            pending = asyncio.all_tasks(loop)
+            if pending:
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
+            asyncio.set_event_loop(None)
+    else:
+        yield
+
+
 class FakeArgs:
     deploy_group = "test_deploy_group"
     service = "test_service"
@@ -357,7 +382,10 @@ def test_mark_for_deployment_nonyelpy_repo(
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -412,7 +440,10 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -617,7 +648,10 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch("paasta_tools.cli.cmds.mark_for_deployment.Thread", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch("sticht.slack.get_slack_events", autospec=True)
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 @patch(
@@ -670,7 +704,10 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -755,7 +792,10 @@ class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProce
     return_value=0,
     autospec=True,
 )
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 def test_MarkForDeployProcess_happy_path(
     mock_log,
@@ -764,9 +804,6 @@ def test_MarkForDeployProcess_happy_path(
     mock_get_instance_configs,
     mock_periodically_update_slack,
 ):
-    mock_wait_for_deployment.return_value = asyncio.sleep(
-        0
-    )  # make mock wait_for_deployment awaitable.
     mock_log.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
@@ -806,7 +843,10 @@ def test_MarkForDeployProcess_happy_path(
     return_value=0,
     autospec=True,
 )
-@patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment",
+    new_callable=AsyncMock,
+)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.cli.cmds.wait_for_deployment._log", autospec=True)
 def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
@@ -817,9 +857,6 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     mock_get_instance_configs,
     mock_periodically_update_slack,
 ):
-    mock_wait_for_deployment.return_value = asyncio.sleep(
-        0
-    )  # make mock wait_for_deployment awaitable.
     mock__log1.return_value = None
     mock__log2.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
