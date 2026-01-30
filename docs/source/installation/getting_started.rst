@@ -17,10 +17,6 @@ to install things like that either. At Yelp we happen to use Puppet to deploy
 PaaSTA and the related components. Currently all of the Puppet code is not
 open source, but we hope to eventually have a fully working example deployment.
 
-We do have an `example cluster <./example_cluster.html>`_ which uses docker-compose
-to create containers running the necessary components of a PaaSTA cluster.
-However, it is **not** a recommended production configuration.
-
 paasta_tools
 ------------
 
@@ -29,8 +25,10 @@ code that interacts with the other components. Binary packages of ``paasta_tools
 are currently not available, so one must build them and install them manually::
 
   git clone git@github.com:Yelp/paasta.git
-  # Assuming you are on Ubuntu Xenial
-  make itest_xenial
+  # Assuming you are on Ubuntu Jammy or Noble
+  make itest_jammy
+  # or
+  make itest_noble
   sudo dpkg -i dist/paasta-tools*.deb
 
 This package must be installed anywhere the PaaSTA CLI is needed and on the kube nodes.

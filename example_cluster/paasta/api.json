@@ -1,5 +1,0 @@
-{
-    "api_endpoints": {
-        "testcluster": "http://paasta_api:5054"
-    }
-}

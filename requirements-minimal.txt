@@ -41,7 +41,6 @@ objgraph
 ply
 progressbar2>=4.3.2
 prometheus-client
-pymesos >= 0.2.0
 pyramid-swagger >= 2.3.0
 pyramid>=2.0.2
 pysensu-yelp >= 0.3.4

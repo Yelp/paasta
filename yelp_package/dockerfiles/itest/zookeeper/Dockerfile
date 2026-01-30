@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
