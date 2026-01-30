@@ -13,4 +13,4 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
