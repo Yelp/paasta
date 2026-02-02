@@ -463,6 +463,45 @@
                 ]
             }
         },
+        "/services/{service}/deployments/{deploy_group}": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Deployment information for the service and deploy_group",
+                        "schema": {
+                            "$ref": "#/definitions/DeploymentInfo"
+                        }
+                    },
+                    "404": {
+                        "description": "Service not deployed to deploy_group or deployments.json not found"
+                    },
+                    "500": {
+                        "description": "Internal error - likely missing values in deployment configuration"
+                    }
+                },
+                "summary": "Get deployment information for service and deploy_group",
+                "operationId": "get_deployment_info",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Deploy group name",
+                        "name": "deploy_group",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/services/{service}/{instance}/state/{desired_state}": {
             "post": {
                 "responses": {
@@ -1174,6 +1213,34 @@
                     "type": "string"
                 }
             }
+        },
+        "DeploymentInfo": {
+            "description": "Deployment information for a service in a deploy group",
+            "type": "object",
+            "properties": {
+                "docker_image": {
+                    "type": "string",
+                    "description": "Docker image name and tag (without registry)"
+                },
+                "git_sha": {
+                    "type": "string",
+                    "description": "Git SHA of the deployment"
+                },
+                "image_version": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "description": "Additional image version identifier (optional)"
+                },
+                "image_url": {
+                    "type": "string",
+                    "description": "Full container registry URL with image name and tag"
+                }
+            },
+            "required": [
+                "docker_image",
+                "git_sha",
+                "image_url"
+            ]
         },
         "InstanceMeshStatus": {
             "type": "object",

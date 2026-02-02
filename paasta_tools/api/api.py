@@ -163,6 +163,10 @@ def make_app(global_config=None):
         "/v1/services/{service}/{instance}/tasks/{task_id}",
     )
     config.add_route("service.list", "/v1/services/{service}")
+    config.add_route(
+        "service.deployments",
+        "/v1/services/{service}/deployments/{deploy_group}",
+    )
     config.add_route("services", "/v1/services")
     config.add_route(
         "service.autoscaler.get",
