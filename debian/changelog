@@ -1,3 +1,15 @@
+paasta-tools (1.39.0) jammy; urgency=medium
+
+  * 1.39.0 tagged with 'make release'
+    Commit: Add a new endpoint to return deployment info for a (service,
+    deploy group) (#4212)  I feel like I"ve wanted this before - but now
+    I need it for use in Airflow (to ensure folks aren"t hardcoding tags
+    and whatnot for the service images they"re using) :p  NOTE: this is
+    mostly `claude` with some hand-holding - I"ll be adding a Skill to
+    add endpoints in an upcoming PR
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 02 Feb 2026 06:26:21 -0800
+
 paasta-tools (1.38.0) jammy; urgency=medium
 
   * 1.38.0 tagged with 'make release'
