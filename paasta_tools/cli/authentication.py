@@ -26,7 +26,9 @@ except ImportError:
     ) -> str:
         return ""
 
-    def get_and_cache_jwt_default(client_id: str) -> str:
+    def get_and_cache_jwt_default(
+        client_id: str, refreshable: bool = False, force: bool = False
+    ) -> str:
         return ""
 
 
