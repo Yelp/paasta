@@ -67,6 +67,15 @@ def _list_services_and_toolboxes() -> List[str]:
     )
 
 
+def _validate_cluster_name(cluster: str) -> str:
+    clusters = list(list_clusters())
+    if cluster not in clusters:
+        raise argparse.ArgumentTypeError(
+            f"Unknown cluster {cluster!r}. Valid clusters: {', '.join(clusters)}"
+        )
+    return cluster
+
+
 def _get_kubectl_wrapper(cluster: str) -> str:
     kubectl_wrapper = f"kubectl-eks-{cluster}"
     if not shutil.which(kubectl_wrapper):
@@ -331,7 +340,7 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
         "--cluster",
         help="The name of the cluster you wish to run your task on. Required.",
         required=True,
-        choices=list_clusters(),
+        type=_validate_cluster_name,
     )
     cluster_arg.completer = lazy_choices_completer(list_clusters)  # type: ignore
 
