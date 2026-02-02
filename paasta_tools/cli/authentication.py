@@ -94,7 +94,7 @@ def maintain_valid_sso_token(
                 continue
             for i in range(MAX_SSO_REFRESH_ATTEMPTS):
                 try:
-                    # we force=True again because the library has validation tollerances of a few seconds,
+                    # we force=True again because the library has validation tolerances of a few seconds,
                     # while we aim at monitoring the file only every few minutes
                     token_val = get_and_cache_jwt_default(
                         client_id, refreshable=True, force=True
@@ -103,10 +103,11 @@ def maintain_valid_sso_token(
                 except Exception as e:
                     if i == MAX_SSO_REFRESH_ATTEMPTS - 1:
                         raise e
-                    print(f"Error refresh SSO token: {e}", file=sys.stderr)
+                    print(f"Error refreshing SSO token: {e}", file=sys.stderr)
                     time.sleep(5)
             with atomic_file_write(token_path, mode=0o0600) as f:
                 f.write(token_val)
+        os.remove(token_path)
 
     proc = multiprocessing.Process(target=auth_handler)
     proc.start()

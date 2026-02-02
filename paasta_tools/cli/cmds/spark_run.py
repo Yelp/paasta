@@ -947,7 +947,7 @@ def configure_and_run_docker_container(
 
     if args.use_sso_service_auth_token:
         # To simulate what would happen in a k8s pod, this mounts a directory in the local spark-run
-        # container where a background process will keep an SSO auth token up valid until the container
+        # container where a background process will keep an SSO auth token updated until the container
         # process terminates.
         local_token_path = os.path.expanduser("~/.paasta/auth")
         k8s_token_config = system_paasta_config.get_service_auth_token_volume_config()
