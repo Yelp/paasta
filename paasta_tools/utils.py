@@ -2927,7 +2927,7 @@ def get_user_agent() -> str:
 
 
 @contextlib.contextmanager
-def atomic_file_write(target_path: str) -> Iterator[IO]:
+def atomic_file_write(target_path: str, mode: int = 0o0666) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
@@ -2940,7 +2940,7 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
             temp_target_path = f.name
             yield f
 
-        mode = 0o0666 & (~get_umask())
+        mode = mode & (~get_umask())
         os.chmod(temp_target_path, mode)
         os.rename(temp_target_path, target_path)
 
