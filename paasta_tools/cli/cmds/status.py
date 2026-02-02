@@ -39,7 +39,6 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-import a_sync
 import humanize
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
@@ -49,6 +48,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.async_utils import run_sync
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
@@ -987,7 +987,7 @@ def _print_flink_status_from_job_manager(
     if flink_jobs.get("jobs"):
         job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
-        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
+        jobs = run_sync(get_flink_job_details, service, instance, job_ids, client)
     except Exception as e:
         output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))

@@ -40,7 +40,6 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
-import a_sync
 import humanize
 import progressbar
 from service_configuration_lib import read_deploy
@@ -53,6 +52,7 @@ from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.cmds.status import get_main_container
@@ -1180,7 +1180,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         except (KeyError, asyncio.InvalidStateError):
             pass
 
-    @a_sync.to_blocking
+    @to_blocking
     async def do_wait_for_deployment(
         self, target_commit: str, target_image_version: Optional[str] = None
     ) -> None:

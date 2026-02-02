@@ -14,6 +14,7 @@
 # limitations under the License.
 """PaaSTA log reader for humans"""
 import argparse
+import asyncio
 import datetime
 import json
 import logging
@@ -41,11 +42,12 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-import a_sync
 import isodate
 import nats
 import pytz
 from dateutil import tz
+
+from paasta_tools.async_utils import run_sync
 
 try:
     from scribereader import scribereader
@@ -1296,11 +1298,11 @@ class VectorLogsReader(LogReader):
                     instances,
                     pods,
                 ):
-                    await a_sync.run(
+                    await asyncio.to_thread(
                         print_log, decoded_data, levels, raw_mode, strip_headers
                     )
 
-        a_sync.block(tail_logs_from_nats)
+        run_sync(tail_logs_from_nats)
 
 
 def scribe_env_to_locations(scribe_env) -> Mapping[str, Any]:
