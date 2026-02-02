@@ -14,7 +14,7 @@ make dev           # create virtualenv via tox
 make install-hooks # pre-commit hooks
 ```
 
-Tox manages virtualenvs in `.tox/py310-linux/`. Use `tox` or `make` targets to ensure the env is built.
+Tox manages virtualenvs in `.tox/py312-linux/`. Use `tox` or `make` targets to ensure the env is built.
 
 ## Dependencies
 - Follow the application-style pinning model from requirements-tools: https://github.com/YelpArchive/requirements-tools
@@ -30,7 +30,7 @@ Tox manages virtualenvs in `.tox/py310-linux/`. Use `tox` or `make` targets to e
 ## Testing
 ```bash
 # Iterate with pytest directly
-.tox/py310-linux/bin/pytest tests/path/to/test_foo.py -x
+.tox/py312-linux/bin/pytest tests/path/to/test_foo.py -x
 
 # Full suite before committing
 make test         # pre-commit, mypy, pytest, coverage
@@ -50,11 +50,11 @@ Style is enforced by pre-commit (black, flake8, import ordering) and mypy.
 
 ```bash
 # Iterate on specific files
-.tox/py310-linux/bin/pre-commit run --files path/to/file.py
-.tox/py310-linux/bin/mypy path/to/file.py
+.tox/py312-linux/bin/pre-commit run --files path/to/file.py
+.tox/py312-linux/bin/mypy path/to/file.py
 
 # Check all staged files
-.tox/py310-linux/bin/pre-commit run
+.tox/py312-linux/bin/pre-commit run
 
 # Full check
 make test

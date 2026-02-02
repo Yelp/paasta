@@ -223,15 +223,20 @@ def test_force_delete_pods():
 
 
 def test_load_kubernetes_service_config_no_cache():
-    with mock.patch(
-        "service_configuration_lib.read_service_configuration", autospec=True
-    ) as mock_read_service_configuration, mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_instance_config", autospec=True
-    ) as mock_load_service_instance_config, mock.patch(
-        "paasta_tools.kubernetes_tools.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
-    ) as mock_kube_deploy_config:
+    with (
+        mock.patch(
+            "service_configuration_lib.read_service_configuration", autospec=True
+        ) as mock_read_service_configuration,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_instance_config", autospec=True
+        ) as mock_load_service_instance_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_v2_deployments_json", autospec=True
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
+        ) as mock_kube_deploy_config,
+    ):
         mock_config = {"freq": "108.9"}
         mock_load_service_instance_config.return_value = mock_config
         mock_read_service_configuration.return_value = {}
@@ -399,14 +404,17 @@ class TestKubernetesDeploymentConfig:
         expected_strategy,
         expected_rolling_update_deploy,
     ):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_method",
-            autospec=True,
-            return_value=bounce_method,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_margin_factor",
-            autospec=True,
-            return_value=bounce_margin_factor,
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_method",
+                autospec=True,
+                return_value=bounce_method,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_margin_factor",
+                autospec=True,
+                return_value=bounce_margin_factor,
+            ),
         ):
             assert (
                 self.deployment.get_deployment_strategy_config()
@@ -519,14 +527,17 @@ class TestKubernetesDeploymentConfig:
         self, enable_envoy_check, enable_nerve_check, expected_cmd
     ):
         fake_system_paasta_config = SystemPaastaConfig({}, "/some/fake/dir")
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
-            autospec=True,
-            return_value=enable_envoy_check,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
-            autospec=True,
-            return_value=enable_nerve_check,
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
+                autospec=True,
+                return_value=enable_envoy_check,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
+                autospec=True,
+                return_value=enable_nerve_check,
+            ),
         ):
             assert (
                 self.deployment.get_readiness_check_script(fake_system_paasta_config)
@@ -534,44 +545,52 @@ class TestKubernetesDeploymentConfig:
             )
 
     def test_get_sidecar_containers(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_registrations",
-            autospec=True,
-            return_value=["universal.credit"],
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
-            autospec=True,
-            return_value=[],
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
-            autospec=True,
-            return_value="sane-name",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
-            autospec=True,
-            return_value=False,
-        ) as mock_get_enable_nerve_readiness_check, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_readiness_check_script",
-            autospec=True,
-            return_value=["/nail/blah.sh"],
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
-            autospec=True,
-            return_value=V1ResourceRequirements(
-                limits={
-                    "cpu": 0.1,
-                    "memory": "1024Mi",
-                    "ephemeral-storage": "256Mi",
-                },
-                requests={
-                    "cpu": 0.1,
-                    "memory": "1024Mi",
-                    "ephemeral-storage": "256Mi",
-                },
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_registrations",
+                autospec=True,
+                return_value=["universal.credit"],
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
+                autospec=True,
+                return_value=[],
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
+                autospec=True,
+                return_value="sane-name",
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
+                autospec=True,
+                return_value=False,
+            ) as mock_get_enable_nerve_readiness_check,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_readiness_check_script",
+                autospec=True,
+                return_value=["/nail/blah.sh"],
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
+                autospec=True,
+                return_value=V1ResourceRequirements(
+                    limits={
+                        "cpu": 0.1,
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                    requests={
+                        "cpu": 0.1,
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                ),
             ),
         ):
             mock_system_config = mock.Mock(
@@ -805,31 +824,37 @@ class TestKubernetesDeploymentConfig:
             }
 
     def test_get_container_env(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_env",
-            autospec=True,
-            return_value={
-                "mc": "grindah",
-                "dj": "beats",
-                "A": "SECRET(123)",
-                "B": "SHAREDSECRET(456)",
-            },
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
-            autospec=True,
-            return_value=[V1EnvVar(name="manager", value="chabuddy")],
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
-        ) as mock_is_secret_ref, mock.patch(
-            "paasta_tools.kubernetes_tools.is_shared_secret", autospec=True
-        ) as mock_is_shared_secret, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_secret_env_vars",
-            autospec=True,
-            return_value=[],
-        ) as mock_get_kubernetes_secret_env_vars:
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_env",
+                autospec=True,
+                return_value={
+                    "mc": "grindah",
+                    "dj": "beats",
+                    "A": "SECRET(123)",
+                    "B": "SHAREDSECRET(456)",
+                },
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
+                autospec=True,
+                return_value=[V1EnvVar(name="manager", value="chabuddy")],
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
+            ) as mock_is_secret_ref,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.is_shared_secret", autospec=True
+            ) as mock_is_shared_secret,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_secret_env_vars",
+                autospec=True,
+                return_value=[],
+            ) as mock_get_kubernetes_secret_env_vars,
+        ):
             mock_is_secret_ref.side_effect = lambda x: True if "SECRET" in x else False
-            mock_is_shared_secret.side_effect = (
-                lambda x: False if not x.startswith("SHARED") else True
+            mock_is_shared_secret.side_effect = lambda x: (
+                False if not x.startswith("SHARED") else True
             )
             expected = [
                 V1EnvVar(name="mc", value="grindah"),
@@ -850,22 +875,27 @@ class TestKubernetesDeploymentConfig:
         assert "PAASTA_CLUSTER" in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpus",
-            autospec=True,
-            return_value=0.3,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_add",
-            autospec=True,
-            return_value=1,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem",
-            autospec=True,
-            return_value=2048,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_disk",
-            autospec=True,
-            return_value=4096,
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpus",
+                autospec=True,
+                return_value=0.3,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_add",
+                autospec=True,
+                return_value=1,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem",
+                autospec=True,
+                return_value=2048,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_disk",
+                autospec=True,
+                return_value=4096,
+            ),
         ):
             assert (
                 self.deployment.get_resource_requirements()
@@ -892,39 +922,50 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_get_kubernetes_containers(self, prometheus_port, expected_ports):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
-            autospec=True,
-        ) as mock_get_docker_url, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cmd",
-            autospec=True,
-        ) as mock_get_cmd, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_args",
-            autospec=True,
-        ) as mock_get_args, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_resource_requirements",
-            autospec=True,
-        ) as mock_get_resource_requirements, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_container_env",
-            autospec=True,
-        ) as mock_get_container_env, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name",
-            autospec=True,
-            return_value="kurupt",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_instance_name",
-            autospec=True,
-            return_value="fm",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_mounts",
-            autospec=True,
-        ) as mock_get_volume_mounts, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_containers",
-            autospec=True,
-            return_value=["mock_sidecar"],
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            autospec=True,
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
+                autospec=True,
+            ) as mock_get_docker_url,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cmd",
+                autospec=True,
+            ) as mock_get_cmd,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_args",
+                autospec=True,
+            ) as mock_get_args,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_resource_requirements",
+                autospec=True,
+            ) as mock_get_resource_requirements,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_container_env",
+                autospec=True,
+            ) as mock_get_container_env,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name",
+                autospec=True,
+                return_value="kurupt",
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_instance_name",
+                autospec=True,
+                return_value="fm",
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_mounts",
+                autospec=True,
+            ) as mock_get_volume_mounts,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_containers",
+                autospec=True,
+                return_value=["mock_sidecar"],
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.load_system_paasta_config",
+                autospec=True,
+            ),
         ):
             if prometheus_port:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
@@ -1484,33 +1525,42 @@ class TestKubernetesDeploymentConfig:
                 self.deployment.get_desired_instances()
 
     def test_format_kubernetes_job(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl",
-            autospec=True,
-        ) as mock_get_git_sha, mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            autospec=True,
-        ) as mock_load_system_config, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
-            autospec=True,
-        ) as mock_get_docker_url, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-            autospec=True,
-            return_value="kurupt",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-            autospec=True,
-            return_value="fm",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_image_version",
-            autospec=True,
-        ) as mock_get_image_version, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec",
-            autospec=True,
-        ) as mock_get_pod_template_spec, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata",
-            autospec=True,
-        ) as mock_get_kubernetes_metadata:
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl",
+                autospec=True,
+            ) as mock_get_git_sha,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.load_system_paasta_config",
+                autospec=True,
+            ) as mock_load_system_config,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
+                autospec=True,
+            ) as mock_get_docker_url,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
+                autospec=True,
+                return_value="kurupt",
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
+                autospec=True,
+                return_value="fm",
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_image_version",
+                autospec=True,
+            ) as mock_get_image_version,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec",
+                autospec=True,
+            ) as mock_get_pod_template_spec,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata",
+                autospec=True,
+            ) as mock_get_kubernetes_metadata,
+        ):
             mock_get_kubernetes_metadata.return_value.labels = {
                 "paasta.yelp.com/owner": "whatever"
             }
@@ -1558,49 +1608,64 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl", autospec=True
     )
     def test_format_kubernetes_app_dict(self, _):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
-        ) as mock_load_system_config, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
-            autospec=True,
-        ) as mock_get_docker_url, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-            autospec=True,
-            return_value="kurupt",
-        ) as mock_get_service, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-            autospec=True,
-            return_value="fm",
-        ) as mock_get_instance, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_desired_instances",
-            autospec=True,
-        ) as mock_get_instances, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_deployment_strategy_config",
-            autospec=True,
-        ) as mock_get_deployment_strategy_config, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.get_config_hash", autospec=True
-        ) as mock_get_config_hash, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_force_bounce",
-            autospec=True,
-        ) as mock_get_force_bounce, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.sanitize_for_config_hash",
-            autospec=True,
-        ) as mock_sanitize_for_config_hash, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
-            autospec=True,
-        ) as mock_get_persistent_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_claim_templates",
-            autospec=True,
-        ) as mock_get_volumes_claim_templates, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec",
-            autospec=True,
-        ) as mock_get_pod_template_spec, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata",
-            autospec=True,
-        ) as mock_get_kubernetes_metadata:
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+            ) as mock_load_system_config,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
+                autospec=True,
+            ) as mock_get_docker_url,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
+                autospec=True,
+                return_value="kurupt",
+            ) as mock_get_service,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
+                autospec=True,
+                return_value="fm",
+            ) as mock_get_instance,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_desired_instances",
+                autospec=True,
+            ) as mock_get_instances,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_deployment_strategy_config",
+                autospec=True,
+            ) as mock_get_deployment_strategy_config,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.kubernetes_tools.get_config_hash", autospec=True
+            ) as mock_get_config_hash,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_force_bounce",
+                autospec=True,
+            ) as mock_get_force_bounce,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.sanitize_for_config_hash",
+                autospec=True,
+            ) as mock_sanitize_for_config_hash,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
+                autospec=True,
+            ) as mock_get_persistent_volumes,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_claim_templates",
+                autospec=True,
+            ) as mock_get_volumes_claim_templates,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec",
+                autospec=True,
+            ) as mock_get_pod_template_spec,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata",
+                autospec=True,
+            ) as mock_get_kubernetes_metadata,
+        ):
             mock_get_persistent_volumes.return_value = []
             ret = self.deployment.format_kubernetes_app()
             assert mock_load_system_config.called
@@ -1870,9 +1935,9 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/git_sha": "aaaa123",
             "paasta.yelp.com/instance": "fm",
             "paasta.yelp.com/service": "kurupt",
-            "paasta.yelp.com/autoscaled": "true"
-            if autoscaling_metric_provider
-            else "false",
+            "paasta.yelp.com/autoscaled": (
+                "true" if autoscaling_metric_provider else "false"
+            ),
             "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
@@ -2808,18 +2873,22 @@ class TestKubernetesDeploymentConfig:
         ),
     )
     def test_get_kubernetes_metadata(self, is_autoscaled, autoscaled_label):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-            autospec=True,
-            return_value="kurupt",
-        ) as mock_get_service, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-            autospec=True,
-            return_value="fm",
-        ) as mock_get_instance, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.is_autoscaling_enabled",
-            autospec=True,
-            return_value=is_autoscaled,
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
+                autospec=True,
+                return_value="kurupt",
+            ) as mock_get_service,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
+                autospec=True,
+                return_value="fm",
+            ) as mock_get_instance,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.is_autoscaling_enabled",
+                autospec=True,
+                return_value=is_autoscaled,
+            ),
         ):
             ret = self.deployment.get_kubernetes_metadata("aaa123")
             assert ret == V1ObjectMeta(
@@ -3456,16 +3525,20 @@ class TestKubernetesDeploymentConfig:
         assert self.deployment.get_bounce_margin_factor() == 0.95
 
     def test_get_volume_claim_templates(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
-            autospec=True,
-        ) as mock_get_persistent_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volume_name",
-            autospec=True,
-        ) as mock_get_persistent_volume_name, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_storage_class_name",
-            autospec=True,
-        ) as mock_get_storage_class_name:
+        with (
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
+                autospec=True,
+            ) as mock_get_persistent_volumes,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volume_name",
+                autospec=True,
+            ) as mock_get_persistent_volume_name,
+            mock.patch(
+                "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_storage_class_name",
+                autospec=True,
+            ) as mock_get_storage_class_name,
+        ):
             mock_get_persistent_volumes.return_value = [{"size": 20}, {"size": 10}]
             expected = [
                 V1PersistentVolumeClaim(
@@ -3653,14 +3726,18 @@ class MockNerveDict(dict):
 
 
 def test_get_kubernetes_services_running_here_for_nerve():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
-    ) as mock_load_system_config, mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_services_running_here",
-        autospec=True,
-    ) as mock_get_kubernetes_services_running_here, mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+        ) as mock_load_system_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_kubernetes_services_running_here",
+            autospec=True,
+        ) as mock_get_kubernetes_services_running_here,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+        ) as mock_load_service_namespace,
+    ):
         mock_load_service_namespace.side_effect = (
             lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         )
@@ -3747,21 +3824,28 @@ def test_get_kubernetes_services_running_here_for_nerve():
 
 
 def test_KubeClient():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.kube_client", autospec=True
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_client", autospec=True
+        ) as mock_kube_client,
+    ):
         client = KubeClient()
         assert client.deployments == mock_kube_client.AppsV1Api()
         assert client.core == mock_kube_client.CoreV1Api()
 
 
 def test_ensure_namespace_doesnt_create_if_namespace_exists():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits",
+            autospec=True,
+        ),
     ):
         mock_metadata = mock.Mock()
         type(mock_metadata).name = "paasta"
@@ -3774,10 +3858,14 @@ def test_ensure_namespace_doesnt_create_if_namespace_exists():
 
 
 def test_ensure_namespace_kube_system():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits",
+            autospec=True,
+        ),
     ):
         mock_metadata = mock.Mock()
         type(mock_metadata).name = "kube-system"
@@ -3790,10 +3878,14 @@ def test_ensure_namespace_kube_system():
 
 
 def test_ensure_namespace_creates_namespace_if_doesnt_exist():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits",
+            autospec=True,
+        ),
     ):
         mock_namespaces = mock.Mock(items=[])
         mock_client = mock.Mock(
@@ -4177,19 +4269,22 @@ def test_pod_disruption_budget_for_service_instance(
     unhealthy_eviction_enabled, expected_policy
 ):
     mock_namespace = "paasta"
-    with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=SystemPaastaConfig(
-            {
-                "enable_unhealthy_pod_eviction": unhealthy_eviction_enabled,
-            },
-            "/fake/dir/",
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=SystemPaastaConfig(
+                {
+                    "enable_unhealthy_pod_eviction": unhealthy_eviction_enabled,
+                },
+                "/fake/dir/",
+            ),
+            autospec=True,
+        ) as mock_load_system_paasta_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            new=mock_load_system_paasta_config,
+            autospec=False,
         ),
-        autospec=True,
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        new=mock_load_system_paasta_config,
-        autospec=False,
     ):
         x = pod_disruption_budget_for_service_instance(
             service="foo_1",
@@ -4698,14 +4793,18 @@ def test_is_node_ready():
 
 
 def test_filter_nodes_by_blacklist():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.host_passes_whitelist", autospec=True
-    ) as mock_host_passes_whitelist, mock.patch(
-        "paasta_tools.kubernetes_tools.host_passes_blacklist", autospec=True
-    ) as mock_host_passes_blacklist, mock.patch(
-        "paasta_tools.kubernetes_tools.paasta_prefixed",
-        autospec=True,
-        side_effect=lambda x: x,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.host_passes_whitelist", autospec=True
+        ) as mock_host_passes_whitelist,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.host_passes_blacklist", autospec=True
+        ) as mock_host_passes_blacklist,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.paasta_prefixed",
+            autospec=True,
+            side_effect=lambda x: x,
+        ),
     ):
         mock_nodes = [mock.Mock(), mock.Mock()]
         mock_host_passes_blacklist.return_value = True
@@ -4941,20 +5040,25 @@ def test_update_secret(namespace, secret, secret_data):
 
 
 def test_get_kubernetes_secret_hashes():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
-    ) as mock_client, mock.patch(
-        "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
-    ) as mock_is_secret_ref, mock.patch(
-        "paasta_tools.kubernetes_tools.get_secret_signature",
-        autospec=True,
-        return_value="somesig",
-    ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes_tools.is_shared_secret", autospec=True
-    ) as mock_is_shared_secret:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+        ) as mock_client,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
+        ) as mock_is_secret_ref,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            autospec=True,
+            return_value="somesig",
+        ) as mock_get_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.is_shared_secret", autospec=True
+        ) as mock_is_shared_secret,
+    ):
         mock_is_secret_ref.side_effect = lambda x: False if x == "ASECRET" else True
-        mock_is_shared_secret.side_effect = (
-            lambda x: False if not x.startswith("SHARED") else True
+        mock_is_shared_secret.side_effect = lambda x: (
+            False if not x.startswith("SHARED") else True
         )
 
         hashes = get_kubernetes_secret_hashes(
@@ -5028,26 +5132,30 @@ def test_warning_big_bounce_default_config():
         },
     )
 
-    with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=SystemPaastaConfig(
-            {
-                "volumes": [],
-                "hacheck_sidecar_volumes": [],
-                "expected_slave_attributes": [{"region": "blah"}],
-                "docker_registry": "docker-registry.local",
-            },
-            "/fake/dir/",
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=SystemPaastaConfig(
+                {
+                    "volumes": [],
+                    "hacheck_sidecar_volumes": [],
+                    "expected_slave_attributes": [{"region": "blah"}],
+                    "docker_registry": "docker-registry.local",
+                },
+                "/fake/dir/",
+            ),
+            autospec=True,
+        ) as mock_load_system_paasta_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            new=mock_load_system_paasta_config,
+            autospec=False,
         ),
-        autospec=True,
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        new=mock_load_system_paasta_config,
-        autospec=False,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        return_value=ServiceNamespaceConfig(),
-        autospec=True,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            return_value=ServiceNamespaceConfig(),
+            autospec=True,
+        ),
     ):
         assert (
             job_config.format_kubernetes_app().spec.template.metadata.labels[
@@ -5074,26 +5182,30 @@ def test_warning_big_bounce_routable_pod():
         },
     )
 
-    with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=SystemPaastaConfig(
-            {
-                "volumes": [],
-                "hacheck_sidecar_volumes": [],
-                "expected_slave_attributes": [{"region": "blah"}],
-                "docker_registry": "docker-registry.local",
-            },
-            "/fake/dir/",
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=SystemPaastaConfig(
+                {
+                    "volumes": [],
+                    "hacheck_sidecar_volumes": [],
+                    "expected_slave_attributes": [{"region": "blah"}],
+                    "docker_registry": "docker-registry.local",
+                },
+                "/fake/dir/",
+            ),
+            autospec=True,
+        ) as mock_load_system_paasta_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            new=mock_load_system_paasta_config,
+            autospec=False,
         ),
-        autospec=True,
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        new=mock_load_system_paasta_config,
-        autospec=False,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        return_value=ServiceNamespaceConfig({"proxy_port": 1}),
-        autospec=True,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            return_value=ServiceNamespaceConfig({"proxy_port": 1}),
+            autospec=True,
+        ),
     ):
         assert (
             job_config.format_kubernetes_app().spec.template.metadata.labels[
@@ -5121,26 +5233,30 @@ def test_warning_big_bounce_common_config():
         },
     )
 
-    with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=SystemPaastaConfig(
-            {
-                "volumes": [],
-                "hacheck_sidecar_volumes": [],
-                "expected_slave_attributes": [{"region": "blah"}],
-                "docker_registry": "docker-registry.local",
-            },
-            "/fake/dir/",
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=SystemPaastaConfig(
+                {
+                    "volumes": [],
+                    "hacheck_sidecar_volumes": [],
+                    "expected_slave_attributes": [{"region": "blah"}],
+                    "docker_registry": "docker-registry.local",
+                },
+                "/fake/dir/",
+            ),
+            autospec=True,
+        ) as mock_load_system_paasta_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            new=mock_load_system_paasta_config,
+            autospec=False,
         ),
-        autospec=True,
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        new=mock_load_system_paasta_config,
-        autospec=False,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        return_value=ServiceNamespaceConfig(),
-        autospec=True,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            return_value=ServiceNamespaceConfig(),
+            autospec=True,
+        ),
     ):
         assert (
             job_config.format_kubernetes_app().spec.template.metadata.labels[
@@ -5289,12 +5405,15 @@ def test_ensure_service_account_new():
     namespace = "test_namespace"
     k8s_role = None
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5326,12 +5445,15 @@ def test_ensure_service_account_with_k8s_role_new():
     namespace = "test_namespace"
     k8s_role = "mega-admin"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5387,12 +5509,15 @@ def test_ensure_service_account_existing():
     namespace = "test_namespace"
     k8s_role = "mega-admin"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5448,12 +5573,15 @@ def test_ensure_service_account_existing_different_role():
     namespace = "test_namespace"
     k8s_role = "mega-admin"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5521,12 +5649,15 @@ def test_ensure_service_account_existing_create_rb_only():
     namespace = "test_namespace"
     k8s_role = "mega-admin"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5572,12 +5703,15 @@ def test_ensure_service_account_caps_with_k8s():
     namespace = "test_namespace"
     k8s_role = "mega-admin"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=False,
+        ) as mock_kube_client,
+    ):
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
         mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
@@ -5629,12 +5763,15 @@ def test_ensure_service_account_caps_with_k8s():
 
 @pytest.mark.parametrize("decode", [(True), (False)])
 def test_get_kubernetes_secret(decode):
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=True,
-    ) as mock_kube_client, mock.patch(
-        "paasta_tools.kubernetes_tools.os.environ", autospec=True
-    ) as mock_env:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient",
+            autospec=True,
+        ) as mock_kube_client,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.os.environ", autospec=True
+        ) as mock_env,
+    ):
         mock_namespace = "paasta"
         service_name = "example_service"
         secret_name = "example_secret"
@@ -5664,16 +5801,21 @@ def test_get_kubernetes_secret(decode):
 
 
 def test_get_kubernetes_secret_env_variables():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.is_secret_ref",
-        autospec=True,
-    ) as mock_is_secret_ref, mock.patch(
-        "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
-    ) as mock_get_ref, mock.patch(
-        "paasta_tools.kubernetes_tools.get_secret", autospec=True
-    ) as mock_get_kubernetes_secret, mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.is_secret_ref",
+            autospec=True,
+        ) as mock_is_secret_ref,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
+        ) as mock_get_ref,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret", autospec=True
+        ) as mock_get_kubernetes_secret,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+        ) as mock_kube_client,
+    ):
         mock_environment = {
             "MY": "aaa",
             "SECRET_NAME1": "SECRET(SECRET_NAME1)",
@@ -5731,11 +5873,14 @@ def test_get_kubernetes_secret_env_variables():
 
 
 def test_get_kubernetes_secret_volumes_multiple_files():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.get_secret", autospec=True
-    ) as mock_get_kubernetes_secret, mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret", autospec=True
+        ) as mock_get_kubernetes_secret,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+        ) as mock_kube_client,
+    ):
         mock_secret_volumes_config = [
             SecretVolume(
                 container_path="/the/container/path/",
@@ -5766,11 +5911,14 @@ def test_get_kubernetes_secret_volumes_multiple_files():
 
 
 def test_get_kubernetes_secret_volumes_single_file():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.get_secret", autospec=True
-    ) as mock_get_kubernetes_secret, mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
-    ) as mock_kube_client:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret", autospec=True
+        ) as mock_get_kubernetes_secret,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+        ) as mock_kube_client,
+    ):
         mock_secret_volumes_config = [
             SecretVolume(
                 container_path="/the/container/path/",

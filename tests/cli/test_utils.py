@@ -319,9 +319,10 @@ def test_pick_random_port():
     def fake_epr(ip, port):
         return port
 
-    with mock.patch.object(
-        ephemeral_port_reserve, "reserve", side_effect=fake_epr
-    ), mock.patch.object(getpass, "getuser", return_value="nobody", autospec=True):
+    with (
+        mock.patch.object(ephemeral_port_reserve, "reserve", side_effect=fake_epr),
+        mock.patch.object(getpass, "getuser", return_value="nobody", autospec=True),
+    ):
         # Two calls with the same service should try to reserve the same port.
         port1 = utils.pick_random_port("fake_service")
         port2 = utils.pick_random_port("fake_service")

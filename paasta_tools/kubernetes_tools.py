@@ -2261,15 +2261,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
             prometheus_shard = self.get_prometheus_shard()
             if prometheus_shard:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_shard"
-                ] = prometheus_shard
+                complete_config.metadata.labels["paasta.yelp.com/prometheus_shard"] = (
+                    prometheus_shard
+                )
 
             image_version = self.get_image_version()
             if image_version is not None:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/image_version"
-                ] = image_version
+                complete_config.metadata.labels["paasta.yelp.com/image_version"] = (
+                    image_version
+                )
 
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
@@ -2410,9 +2410,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config
         )
         if termination_grace_period is not None:
-            pod_spec_kwargs[
-                "termination_grace_period_seconds"
-            ] = termination_grace_period
+            pod_spec_kwargs["termination_grace_period_seconds"] = (
+                termination_grace_period
+            )
 
         fs_group = self.get_fs_group()
 
@@ -4470,9 +4470,9 @@ def update_crds(
             apiextensions = kube_client.apiextensions
 
             if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
+                desired_crd.metadata["resourceVersion"] = (
+                    existing_crd.metadata.resource_version
+                )
 
                 apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd

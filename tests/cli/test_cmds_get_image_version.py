@@ -54,24 +54,30 @@ def test_get_image_version(
         force=force,
         commit="abcdabcd",
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_image_version.check_enable_automated_redeploys",
-        return_value=nocommits_enabled,
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_image_version.get_latest_image_version",
-        return_value=mock_latest_version,
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_image_version.validate_service_name",
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_image_version.load_v2_deployments_json",
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_image_version.datetime",
-        autospec=True,
-    ) as mock_datetime:
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_image_version.check_enable_automated_redeploys",
+            return_value=nocommits_enabled,
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_image_version.get_latest_image_version",
+            return_value=mock_latest_version,
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_image_version.validate_service_name",
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_image_version.load_v2_deployments_json",
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_image_version.datetime",
+            autospec=True,
+        ) as mock_datetime,
+    ):
         mock_datetime.datetime.now.return_value = datetime.datetime(
             year=2022, month=1, day=1
         )

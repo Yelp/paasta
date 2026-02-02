@@ -399,7 +399,8 @@ class TestCrossoverBounce:
 
     def test_crossover_bounce_mid_bounce_no_happy_old_lots_of_unhappy_old(self):
         """When marathon has the desired app, and there are other copies of the service running, but none of the old
-        tasks are happy, and there are excess tasks, we should kill some (but not all) unhappy old tasks."""
+        tasks are happy, and there are excess tasks, we should kill some (but not all) unhappy old tasks.
+        """
         new_config = {"id": "foo.bar.12345", "instances": 5}
         happy_tasks = [mock.Mock() for _ in range(3)]
         old_app_live_happy_tasks = []

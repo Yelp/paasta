@@ -163,11 +163,15 @@ def get_fake_instances(self, with_limit: bool = True) -> int:
 def test_main(fake_deployment, fake_stateful_set, invalid_app):
     soa_dir = "paasta_maaaachine"
     cluster = "maaaachine_cluster"
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
-    ) as cleanup_patch, mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config", autospec=True
-    ) as load_config_patch:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
+        ) as cleanup_patch,
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config",
+            autospec=True,
+        ) as load_config_patch,
+    ):
         load_config_patch.return_value.get_cluster.return_value = "fake_cluster"
         main(("--soa-dir", soa_dir, "--cluster", cluster))
         cleanup_patch.assert_called_once_with(
@@ -177,17 +181,21 @@ def test_main(fake_deployment, fake_stateful_set, invalid_app):
 
 def test_list_apps(fake_deployment, fake_stateful_set, invalid_app):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps("soa_dir", "fake cluster", kill_threshold=1, force=False)
@@ -210,33 +218,43 @@ def test_list_apps(fake_deployment, fake_stateful_set, invalid_app):
 )
 def test_cleanup_unused_apps(eks_flag, fake_deployment, fake_stateful_set, invalid_app):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={("service", "instance-1"): [DeploymentWrapper(fake_deployment)]},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [DeploymentWrapper(fake_deployment)]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -260,38 +278,46 @@ def test_cleanup_unused_apps_in_multiple_namespaces(
     fake_deployment2.metadata.namespace = "paastasvc-blah"
     fake_deployment.status.ready_replicas = 10
     fake_deployment2.status.ready_replicas = 3
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={
-            ("service", "instance-1"): [
-                DeploymentWrapper(fake_deployment),
-                DeploymentWrapper(fake_deployment2),
-            ]
-        },
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={("service", "instance-1")},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [
+                    DeploymentWrapper(fake_deployment),
+                    DeploymentWrapper(fake_deployment2),
+                ]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={("service", "instance-1")},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -311,33 +337,43 @@ def test_cleanup_unused_apps_does_not_delete(
     eks_flag, fake_deployment, fake_stateful_set, invalid_app
 ):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={("service", "instance-1"): [DeploymentWrapper(fake_deployment)]},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={("service", "instance-1"), ("service", "instance-2")},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [DeploymentWrapper(fake_deployment)]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={("service", "instance-1"), ("service", "instance-2")},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -361,38 +397,46 @@ def test_cleanup_unused_apps_does_not_delete_bouncing_apps(
     fake_deployment2.status.ready_replicas = 3
     fake_deployment.status.ready_replicas = 10
     fake_deployment.metadata.namespace = "paastasvc-blah"
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={
-            ("service", "instance-1"): [
-                DeploymentWrapper(fake_deployment),
-                DeploymentWrapper(fake_deployment2),
-            ]
-        },
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={("service", "instance-1")},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [
+                    DeploymentWrapper(fake_deployment),
+                    DeploymentWrapper(fake_deployment2),
+                ]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={("service", "instance-1")},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -414,37 +458,45 @@ def test_cleanup_unused_apps_does_not_delete_recently_created_apps(
     mock_kube_client = mock.MagicMock()
     fake_deployment.status.ready_replicas = 10
     fake_deployment.metadata.namespace = "paastasvc-blah"
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={
-            ("service", "instance-1"): [
-                DeploymentWrapper(fake_deployment),
-            ]
-        },
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={("service", "instance-1")},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [
+                    DeploymentWrapper(fake_deployment),
+                ]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={("service", "instance-1")},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -464,33 +516,43 @@ def test_cleanup_unused_apps_dont_kill_everything(
     eks_flag, fake_deployment, fake_stateful_set, invalid_app
 ):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={("service", "instance-1"): [DeploymentWrapper(fake_deployment)]},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [DeploymentWrapper(fake_deployment)]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         with raises(DontKillEverythingError):
@@ -511,34 +573,41 @@ def test_cleanup_unused_apps_dont_kill_statefulsets(
     eks_flag, fake_deployment, fake_stateful_set, invalid_app
 ):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={
-            ("service", "instance-2"): [
-                StatefulSetWrapper(fake_stateful_set),
-                StatefulSetWrapper(fake_stateful_set),
-            ]
-        },
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={("service", "instance-2")},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-2"): [
+                    StatefulSetWrapper(fake_stateful_set),
+                    StatefulSetWrapper(fake_stateful_set),
+                ]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={("service", "instance-2")},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -558,33 +627,43 @@ def test_cleanup_unused_apps_force(
     eks_flag, fake_deployment, fake_stateful_set, invalid_app
 ):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_instance_config,
-    ), mock.patch(
-        "paasta_tools.eks_tools.load_eks_service_config_no_cache",
-        autospec=True,
-        side_effect=fake_eks_instance_config,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
-        return_value={("service", "instance-1"): [DeploymentWrapper(fake_deployment)]},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
-        side_effect=get_fake_instances,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_kubernetes_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.eks_tools.load_eks_service_config_no_cache",
+            autospec=True,
+            side_effect=fake_eks_instance_config,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
+            return_value={
+                ("service", "instance-1"): [DeploymentWrapper(fake_deployment)]
+            },
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubernetesDeploymentConfig.get_instances",
+            side_effect=get_fake_instances,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps(
@@ -604,17 +683,21 @@ def test_cleanup_unused_apps_ignore_invalid_apps(
     eks_flag, fake_deployment, fake_stateful_set, invalid_app
 ):
     mock_kube_client = mock.MagicMock()
-    with mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
-    ) as mock_alert_state_change:
+    with (
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.KubeClient",
+            return_value=mock_kube_client,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
+            return_value={},
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True
+        ) as mock_alert_state_change,
+    ):
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         mock_kube_client.deployments.list_namespaced_deployment.return_value = (

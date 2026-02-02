@@ -1401,36 +1401,43 @@ fake_instance1:
   cpu_burst_add: {burst} {comment}
 """
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_burst_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+            autospec=True,
+            return_value=SystemPaastaConfig(
+                config={"skip_cpu_burst_validation": ["not-a-real-service"]},
+                directory="/some/test/dir",
+            ),
         ),
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_file_contents",
-        autospec=True,
-        return_value=instance_config,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_instance_config",
-        autospec=True,
-        return_value=mock.Mock(
-            get_instance=mock.Mock(return_value="fake_instance1"),
-            get_instance_type=mock.Mock(return_value=instance_type),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.get_file_contents",
+            autospec=True,
+            return_value=instance_config,
         ),
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.list_all_instances_for_service",
-        autospec=True,
-        return_value={"fake_instance1"},
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.list_clusters",
-        autospec=True,
-        return_value=["fake_cluster"],
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
-        autospec=True,
-        return_value=("fake_soa_dir", "fake_service"),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.get_instance_config",
+            autospec=True,
+            return_value=mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value=instance_type),
+            ),
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.list_all_instances_for_service",
+            autospec=True,
+            return_value={"fake_instance1"},
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.list_clusters",
+            autospec=True,
+            return_value=["fake_cluster"],
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
+            autospec=True,
+            return_value=("fake_soa_dir", "fake_service"),
+        ),
     ):
         assert validate_cpu_burst("fake-service-path") is expected
 
@@ -1445,14 +1452,17 @@ def test_validate_smartstack_missing_file():
 
 
 def test_validate_smartstack_empty_config():
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.os.path.exists",
-        return_value=True,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_config_file_dict",
-        return_value={},
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.os.path.exists",
+            return_value=True,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.get_config_file_dict",
+            return_value={},
+            autospec=True,
+        ),
     ):
         assert validate_smartstack("/fake/service/path") is False
 
@@ -1462,32 +1472,42 @@ def test_validate_smartstack_success():
         "main": {"proxy_port": 20000, "advertise": ["region"], "discover": "region"}
     }
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.os.path.exists",
-        return_value=True,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_config_file_dict",
-        return_value=mock_config,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
-        return_value=("/soa", "test_service"),
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate._check_smartstack_name_length_envoy",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate._check_smartstack_name_length", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate._check_proxy_port_in_use",
-        return_value=False,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate._check_advertise_discover", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate._check_smartstack_proxied_through",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.os.path.exists",
+            return_value=True,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.get_config_file_dict",
+            return_value=mock_config,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
+            return_value=("/soa", "test_service"),
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate._check_smartstack_name_length_envoy",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate._check_smartstack_name_length",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate._check_proxy_port_in_use",
+            return_value=False,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate._check_advertise_discover", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate._check_smartstack_proxied_through",
+            autospec=True,
+        ),
     ):
         assert validate_smartstack("/fake/service/path") is True
 
@@ -1585,16 +1605,22 @@ def test_check_advertise_discover_extra_advertise_valid():
         "extra_advertise": {"region:uswest1-prod": ["region:uswest1-prod"]},
     }
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.available_location_types",
-        return_value=["region", "habitat"],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.convert_location_type",
-        return_value=["uswest1-prod"],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.compare_types", return_value=0, autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.available_location_types",
+            return_value=["region", "habitat"],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.convert_location_type",
+            return_value=["uswest1-prod"],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.compare_types",
+            return_value=0,
+            autospec=True,
+        ),
     ):
         _check_advertise_discover(smartstack_data)
 
@@ -1606,14 +1632,17 @@ def test_check_advertise_discover_extra_advertise_invalid_location():
         "extra_advertise": {"invalid:location": ["region:uswest1-prod"]},
     }
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.available_location_types",
-        return_value=["region", "habitat"],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.convert_location_type",
-        side_effect=Exception("Invalid location"),
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.available_location_types",
+            return_value=["region", "habitat"],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.convert_location_type",
+            side_effect=Exception("Invalid location"),
+            autospec=True,
+        ),
     ):
         with pytest.raises(ValueError):
             _check_advertise_discover(smartstack_data)
@@ -1626,16 +1655,22 @@ def test_check_advertise_discover_rhs_less_general():
         "extra_advertise": {"region:uswest1-prod": ["habitat:uswest1-prod-bar"]},
     }
 
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.available_location_types",
-        return_value=["region", "habitat"],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.convert_location_type",
-        return_value=["uswest1-prod"],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.compare_types", return_value=1, autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.available_location_types",
+            return_value=["region", "habitat"],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.convert_location_type",
+            return_value=["uswest1-prod"],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.validate.compare_types",
+            return_value=1,
+            autospec=True,
+        ),
     ):
         with pytest.raises(ValueError):
             _check_advertise_discover(smartstack_data)

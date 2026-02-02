@@ -99,7 +99,7 @@ def load_smartstack_namespaces(soa_dir: str = DEFAULT_SOA_DIR) -> Mapping:
         try:
             with open(file_path) as f:
                 svc_namespaces = yaml.safe_load(f)
-                for (ns, details) in svc_namespaces.items():
+                for ns, details in svc_namespaces.items():
                     namespaces[f"{dir}.{ns}"] = details
         except Exception as err:
             log.warning(f"Failed to load namespaces for {dir}: {err}")

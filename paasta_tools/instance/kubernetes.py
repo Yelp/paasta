@@ -801,9 +801,9 @@ async def get_pod_status_tasks_by_replicaset(
 ) -> Dict[str, List["asyncio.Future[Dict[str, Any]]"]]:
     num_tail_lines = calculate_tail_lines(verbose)
     pods = await pods_task
-    tasks_by_replicaset: DefaultDict[
-        str, List["asyncio.Future[Dict[str, Any]]"]
-    ] = defaultdict(list)
+    tasks_by_replicaset: DefaultDict[str, List["asyncio.Future[Dict[str, Any]]"]] = (
+        defaultdict(list)
+    )
     for pod in pods:
         for owner_reference in pod.metadata.owner_references:
             if owner_reference.kind == "ReplicaSet":
@@ -1249,9 +1249,9 @@ async def kubernetes_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         except Exception as e:
-            kstatus[
-                "error_message"
-            ] = f"Unknown error occurred while fetching autoscaling status. Please contact #compute-infra for help: {e}"
+            kstatus["error_message"] = (
+                f"Unknown error occurred while fetching autoscaling status. Please contact #compute-infra for help: {e}"
+            )
 
     evicted_count = 0
     for pod in pod_list:

@@ -53,7 +53,7 @@ def check_offer_constraints(offer, constraints, state):
     """Returns True if all constraints are satisfied by offer's attributes,
     returns False otherwise. Prints a error message and re-raises if an error
     was thrown."""
-    for (attr, op, val) in constraints:
+    for attr, op, val in constraints:
         try:
             offer_attr = next((x for x in offer.attributes if x.name == attr), None)
             if offer_attr is None:
@@ -80,7 +80,7 @@ def check_offer_constraints(offer, constraints, state):
 def update_constraint_state(offer, constraints, state, step=1):
     """Mutates state for each offer attribute found in constraints by calling
     relevant UPDATE_OP lambda"""
-    for (attr, op, val) in constraints:
+    for attr, op, val in constraints:
         for oa in offer.attributes:
             if attr == oa.name:
                 UPDATE_OPS[op](val, oa.text.value, attr, state, step)

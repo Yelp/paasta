@@ -35,15 +35,19 @@ class TestTronClient:
         )
 
     def test_post_auth(self, mock_requests):
-        with mock.patch(
-            "paasta_tools.tron.client.get_service_auth_token",
-            autospec=True,
-        ) as mock_get_token, mock.patch(
-            "paasta_tools.tron.client.get_user_agent",
-            autospec=True,
-        ) as mock_get_ua, mock.patch.dict(
-            os.environ,
-            {"TRONCTL_API_AUTH": "1"},
+        with (
+            mock.patch(
+                "paasta_tools.tron.client.get_service_auth_token",
+                autospec=True,
+            ) as mock_get_token,
+            mock.patch(
+                "paasta_tools.tron.client.get_user_agent",
+                autospec=True,
+            ) as mock_get_ua,
+            mock.patch.dict(
+                os.environ,
+                {"TRONCTL_API_AUTH": "1"},
+            ),
         ):
             mock_get_token.return_value = "sup3rs3cr3t"
             response = self.client._post("/some/auth/thing", {"foo": "bar"})

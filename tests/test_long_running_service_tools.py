@@ -64,11 +64,14 @@ class TestLongRunningServiceConfig:
                 {"mode": "http", "healthcheck_uri": fake_path}
             )
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ),
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
+        ):
             expected = (
                 "http",
                 "http://%s:%d%s" % (fake_hostname, fake_random_port, fake_path),
@@ -94,11 +97,14 @@ class TestLongRunningServiceConfig:
         fake_service_namespace_config = (
             long_running_service_tools.ServiceNamespaceConfig({"mode": "http"})
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ),
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
+        ):
             expected = ("http", "http://fake_hostname:666/status")
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
@@ -121,11 +127,14 @@ class TestLongRunningServiceConfig:
         fake_service_namespace_config = (
             long_running_service_tools.ServiceNamespaceConfig({"mode": "tcp"})
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ),
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
+        ):
             expected = ("tcp", "tcp://%s:%d" % (fake_hostname, fake_random_port))
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
@@ -152,11 +161,14 @@ class TestLongRunningServiceConfig:
         fake_service_namespace_config = (
             long_running_service_tools.ServiceNamespaceConfig({})
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ),
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
+        ):
             expected = ("cmd", fake_cmd)
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
@@ -178,11 +190,14 @@ class TestLongRunningServiceConfig:
         fake_service_namespace_config = (
             long_running_service_tools.ServiceNamespaceConfig({})
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ),
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
+        ):
             expected = (None, None)
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
@@ -205,12 +220,13 @@ class TestLongRunningServiceConfig:
         fake_service_namespace_config = (
             long_running_service_tools.ServiceNamespaceConfig({})
         )
-        with mock.patch(
-            "paasta_tools.long_running_service_tools.load_service_namespace_config",
-            autospec=True,
-            return_value=fake_service_namespace_config,
-        ) as load_service_namespace_config_patch, mock.patch(
-            "socket.getfqdn", autospec=True, return_value=fake_hostname
+        with (
+            mock.patch(
+                "paasta_tools.long_running_service_tools.load_service_namespace_config",
+                autospec=True,
+                return_value=fake_service_namespace_config,
+            ) as load_service_namespace_config_patch,
+            mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname),
         ):
             expected = (None, None)
             actual = long_running_service_tools.get_healthcheck_for_instance(
@@ -414,15 +430,19 @@ def test_get_all_namespaces():
         ("aluminum", {"hydrogen": 1}),
         ("potassium", {"helium": 2}),
     ]
-    with mock.patch(
-        "os.path.abspath", autospec=True, return_value="oxygen"
-    ) as abspath_patch, mock.patch(
-        "os.listdir", autospec=True, return_value=["rid1", "rid2"]
-    ) as listdir_patch, mock.patch(
-        "paasta_tools.long_running_service_tools.get_all_namespaces_for_service",
-        autospec=True,
-        side_effect=lambda a, b: namespaces.pop(),
-    ) as get_namespaces_patch:
+    with (
+        mock.patch(
+            "os.path.abspath", autospec=True, return_value="oxygen"
+        ) as abspath_patch,
+        mock.patch(
+            "os.listdir", autospec=True, return_value=["rid1", "rid2"]
+        ) as listdir_patch,
+        mock.patch(
+            "paasta_tools.long_running_service_tools.get_all_namespaces_for_service",
+            autospec=True,
+            side_effect=lambda a, b: namespaces.pop(),
+        ) as get_namespaces_patch,
+    ):
         actual = long_running_service_tools.get_all_namespaces(soa_dir)
         assert expected == actual
         abspath_patch.assert_called_once_with(soa_dir)

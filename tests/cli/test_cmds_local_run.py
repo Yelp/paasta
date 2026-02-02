@@ -620,17 +620,23 @@ def test_configure_and_run_pulls_image_when_asked(
 def test_configure_and_run_docker_container_defaults_to_interactive_instance(
     system_paasta_config,
 ):
-    with mock.patch(
-        "paasta_tools.cli.cmds.local_run.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
-    ) as mock_validate_service_instance, mock.patch(
-        "paasta_tools.cli.cmds.local_run.run_docker_container",
-        autospec=True,
-        return_value=0,
-    ) as mock_run_docker_container, mock.patch(
-        "paasta_tools.cli.cmds.local_run.get_default_interactive_config", autospec=True
-    ) as mock_get_default_interactive_config:
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.sys.stdin", autospec=True
+        ) as mock_stdin,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+        ) as mock_validate_service_instance,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.run_docker_container",
+            autospec=True,
+            return_value=0,
+        ) as mock_run_docker_container,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.get_default_interactive_config",
+            autospec=True,
+        ) as mock_get_default_interactive_config,
+    ):
         mock_stdin.isatty.return_value = True
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
@@ -703,20 +709,26 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
 def test_configure_and_run_docker_container_respects_docker_sha(
     system_paasta_config,
 ):
-    with mock.patch(
-        "paasta_tools.cli.cmds.local_run.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
-    ) as mock_validate_service_instance, mock.patch(
-        "paasta_tools.cli.cmds.local_run.run_docker_container",
-        autospec=True,
-        return_value=0,
-    ) as mock_run_docker_container, mock.patch(
-        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
-    ) as mock_get_default_interactive_config, mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
-        autospec=True,
-        return_value="fake_registry",
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.sys.stdin", autospec=True
+        ) as mock_stdin,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+        ) as mock_validate_service_instance,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.run_docker_container",
+            autospec=True,
+            return_value=0,
+        ) as mock_run_docker_container,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+        ) as mock_get_default_interactive_config,
+        mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="fake_registry",
+        ),
     ):
         mock_stdin.isatty.return_value = True
         mock_validate_service_instance.return_value = "adhoc"
@@ -1970,14 +1982,18 @@ def test_get_local_run_environment_vars_adhoc(
     "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=True, autospec=True
 )
 def test_volumes_are_deduped(mock_exists):
-    with mock.patch(
-        "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
-    ) as mock_run_docker_container, mock.patch(
-        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
-    ) as mock_get_instance_config, mock.patch(
-        "paasta_tools.cli.cmds.local_run.validate_service_instance",
-        autospec=True,
-        return_value="kubernetes",
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
+        ) as mock_run_docker_container,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+        ) as mock_get_instance_config,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.validate_service_instance",
+            autospec=True,
+            return_value="kubernetes",
+        ),
     ):
 
         mock_get_instance_config.return_value = InstanceConfig(
@@ -2027,14 +2043,18 @@ def test_volumes_are_deduped(mock_exists):
     "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=False, autospec=True
 )
 def test_missing_volumes_skipped(mock_exists):
-    with mock.patch(
-        "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
-    ) as mock_run_docker_container, mock.patch(
-        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
-    ) as mock_get_instance_config, mock.patch(
-        "paasta_tools.cli.cmds.local_run.validate_service_instance",
-        autospec=True,
-        return_value="kubernetes",
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
+        ) as mock_run_docker_container,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+        ) as mock_get_instance_config,
+        mock.patch(
+            "paasta_tools.cli.cmds.local_run.validate_service_instance",
+            autospec=True,
+            return_value="kubernetes",
+        ),
     ):
 
         mock_get_instance_config.return_value = InstanceConfig(

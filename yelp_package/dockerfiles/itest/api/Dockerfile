@@ -29,17 +29,17 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.10-dev \
+        python3.12-dev \
+        python3.12-venv \
         libffi-dev \
         libssl-dev \
-        libyaml-dev \
-        virtualenv > /dev/null \
+        libyaml-dev > /dev/null \
     && apt-get clean > /dev/null
 
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.10 --no-download
+RUN python3.12 -m venv /venv
 ENV PATH=/venv/bin:$PATH
 RUN pip install --only-binary=grpcio -r requirements.txt
 

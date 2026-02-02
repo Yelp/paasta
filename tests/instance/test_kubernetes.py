@@ -167,25 +167,31 @@ def test_instance_status_cr_and_kubernetes(mock_kubernetes_status, mock_cr_statu
 
 
 def test_kubernetes_status():
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.job_status",
-        new_callable=AsyncMock,
-        autospec=None,
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_replicasets_for_service_instance, mock.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_pods_for_service_instance, mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        autospec=True,
-    ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.job_status",
+            new_callable=AsyncMock,
+            autospec=None,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_replicasets_for_service_instance,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.pods_for_service_instance",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_pods_for_service_instance,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+            autospec=True,
+        ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+    ):
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
         mock_pods_for_service_instance.return_value = []
         mock_replicasets_for_service_instance.return_value = []
@@ -288,9 +294,9 @@ class TestKubernetesStatusV2:
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_replicasets_for_service_instance.return_value = [
             Struct(
                 spec=Struct(replicas=1),
@@ -403,9 +409,9 @@ class TestKubernetesStatusV2:
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
@@ -468,9 +474,9 @@ class TestKubernetesStatusV2:
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_job_config.get_container_port.return_value = 8080
         mock_controller_revisions_for_service_instance.return_value = [
             Struct(
@@ -535,9 +541,9 @@ class TestKubernetesStatusV2:
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_replicasets_for_service_instance.return_value = [
             Struct(
                 spec=Struct(replicas=1),
@@ -589,9 +595,9 @@ class TestKubernetesStatusV2:
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_replicasets_for_service_instance.return_value = [
             Struct(
                 spec=Struct(replicas=1),
@@ -640,9 +646,9 @@ class TestKubernetesStatusV2:
             get_persistent_volumes=mock.Mock(return_value=[]),
             get_kubernetes_namespace=mock.Mock(return_value="paastasvc-service"),
         )
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            "kubernetes"
-        ].loader.return_value = mock_job_config
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["kubernetes"].loader.return_value = (
+            mock_job_config
+        )
         mock_replicasets_for_service_instance.return_value = [
             Struct(
                 spec=Struct(replicas=1),
@@ -813,17 +819,21 @@ def test_filter_actually_running_replicasets():
 
 @pytest.mark.asyncio
 async def test_get_pod_status_mesh_ready(event_loop):
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.get_pod_containers",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_get_pod_containers, mock.patch(
-        "paasta_tools.kubernetes_tools.is_pod_scheduled", autospec=True
-    ) as mock_is_pod_scheduled, mock.patch(
-        "paasta_tools.kubernetes_tools.get_pod_event_messages",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_get_pod_event_messages:
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_pod_containers",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_get_pod_containers,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.is_pod_scheduled", autospec=True
+        ) as mock_is_pod_scheduled,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_pod_event_messages",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_get_pod_event_messages,
+    ):
         mock_get_pod_containers.return_value = []
         mock_get_pod_event_messages.return_value = []
         mock_is_pod_scheduled.return_value = True
@@ -841,20 +851,25 @@ async def test_get_pod_status_mesh_ready(event_loop):
 
 
 def test_kubernetes_mesh_status_include_envoy():
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace_config, mock.patch(
-        "paasta_tools.instance.kubernetes.mesh_status",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_mesh_status, mock.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        new_callable=AsyncMock,
-        autospec=None,
-    ) as mock_pods_for_service_instance, mock.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        {"flink": mock.Mock()},
-        autospec=False,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+        ) as mock_load_service_namespace_config,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.mesh_status",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_mesh_status,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.pods_for_service_instance",
+            new_callable=AsyncMock,
+            autospec=None,
+        ) as mock_pods_for_service_instance,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+            {"flink": mock.Mock()},
+            autospec=False,
+        ),
     ):
         mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
         mock_pods_for_service_instance.return_value = ["pod_1"]
@@ -1009,15 +1024,18 @@ def test_bounce_status():
 async def test_get_pod_containers(mock_pod):
     mock_client = mock.Mock()
 
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.get_tail_lines_for_kubernetes_container",
-        new_callable=AsyncMock,
-        autospec=None,
-        side_effect=[["current"], ["previous"], ["current"], ["previous"]],
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.recent_container_restart",
-        return_value=True,
-        autospec=None,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_tail_lines_for_kubernetes_container",
+            new_callable=AsyncMock,
+            autospec=None,
+            side_effect=[["current"], ["previous"], ["current"], ["previous"]],
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes_tools.recent_container_restart",
+            return_value=True,
+            autospec=None,
+        ),
     ):
         containers = await pik.get_pod_containers(mock_pod, mock_client, 10)
         mock_pod.status.container_statuses[0].state.running["started_at"] = None
@@ -1049,20 +1067,25 @@ async def test_get_pod_containers(mock_pod):
 @pytest.mark.asyncio
 async def test_mesh_status_retry_on_timeout_then_success():
     """Test that mesh_status retries on ConnectTimeout and succeeds on second attempt."""
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
-        return_value=[],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
-        autospec=True,
-    ) as mock_checker_class, mock.patch(
-        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
-        autospec=True,
-    ) as mock_build_dict, mock.patch(
-        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
-        return_value=6,
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+            return_value=[],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+            autospec=True,
+        ) as mock_checker_class,
+        mock.patch(
+            "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+            autospec=True,
+        ) as mock_build_dict,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+            return_value=6,
+            autospec=True,
+        ),
     ):
         mock_checker = mock_checker_class.return_value
         mock_checker.get_allowed_locations_and_hosts.return_value = {
@@ -1107,20 +1130,25 @@ async def test_mesh_status_retry_on_timeout_then_success():
 @pytest.mark.asyncio
 async def test_mesh_status_all_retries_exhausted():
     """Test that mesh_status raises ConnectTimeout when all retry attempts fail."""
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
-        return_value=[],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
-        autospec=True,
-    ) as mock_checker_class, mock.patch(
-        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
-        autospec=True,
-    ) as mock_build_dict, mock.patch(
-        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
-        return_value=6,
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+            return_value=[],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+            autospec=True,
+        ) as mock_checker_class,
+        mock.patch(
+            "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+            autospec=True,
+        ) as mock_build_dict,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+            return_value=6,
+            autospec=True,
+        ),
     ):
         mock_checker = mock_checker_class.return_value
         mock_checker.get_allowed_locations_and_hosts.return_value = {
@@ -1164,20 +1192,25 @@ async def test_mesh_status_all_retries_exhausted():
 @pytest.mark.asyncio
 async def test_mesh_status_retry_switches_hosts():
     """Test that mesh_status calls get_hostname_in_pool on each retry to switch hosts."""
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
-        return_value=[],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
-        autospec=True,
-    ) as mock_checker_class, mock.patch(
-        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
-        autospec=True,
-    ) as mock_build_dict, mock.patch(
-        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
-        return_value=6,
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+            return_value=[],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+            autospec=True,
+        ) as mock_checker_class,
+        mock.patch(
+            "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+            autospec=True,
+        ) as mock_build_dict,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+            return_value=6,
+            autospec=True,
+        ),
     ):
         mock_checker = mock_checker_class.return_value
         mock_checker.get_allowed_locations_and_hosts.return_value = {
@@ -1221,20 +1254,25 @@ async def test_mesh_status_retry_switches_hosts():
 @pytest.mark.asyncio
 async def test_mesh_status_no_timeout_success():
     """Test that mesh_status succeeds on first attempt without retries when no timeout occurs."""
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
-        return_value=[],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
-        autospec=True,
-    ) as mock_checker_class, mock.patch(
-        "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
-        autospec=True,
-    ) as mock_build_dict, mock.patch(
-        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
-        return_value=6,
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+            return_value=[],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+            autospec=True,
+        ) as mock_checker_class,
+        mock.patch(
+            "paasta_tools.instance.kubernetes._build_smartstack_location_dict",
+            autospec=True,
+        ) as mock_build_dict,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+            return_value=6,
+            autospec=True,
+        ),
     ):
         mock_checker = mock_checker_class.return_value
         mock_checker.get_allowed_locations_and_hosts.return_value = {
@@ -1278,20 +1316,25 @@ async def test_mesh_status_no_timeout_success():
 @pytest.mark.asyncio
 async def test_mesh_status_envoy_timeout_retry():
     """Test that mesh_status retries on ConnectTimeout for Envoy mesh."""
-    with mock.patch(
-        "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
-        return_value=[],
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
-        autospec=True,
-    ) as mock_checker_class, mock.patch(
-        "paasta_tools.instance.kubernetes._build_envoy_location_dict",
-        autospec=True,
-    ) as mock_build_dict, mock.patch(
-        "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
-        return_value=6,
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.instance.kubernetes.kubernetes_tools.get_all_nodes",
+            return_value=[],
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.instance.kubernetes.KubeSmartstackEnvoyReplicationChecker",
+            autospec=True,
+        ) as mock_checker_class,
+        mock.patch(
+            "paasta_tools.instance.kubernetes._build_envoy_location_dict",
+            autospec=True,
+        ) as mock_build_dict,
+        mock.patch(
+            "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
+            return_value=6,
+            autospec=True,
+        ),
     ):
         mock_checker = mock_checker_class.return_value
         mock_checker.get_allowed_locations_and_hosts.return_value = {

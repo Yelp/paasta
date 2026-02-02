@@ -6,15 +6,20 @@ from paasta_tools.nrtsearchserviceeks_tools import (
 
 
 def test_load_nrtsearchserviceeks_instance_config():
-    with mock.patch(
-        "paasta_tools.nrtsearchserviceeks_tools.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.nrtsearchserviceeks_tools.load_service_instance_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.nrtsearchserviceeks_tools.NrtsearchServiceEksDeploymentConfig",
-        autospec=True,
-    ) as mock_nrtsearchserviceeks_deployment_config:
+    with (
+        mock.patch(
+            "paasta_tools.nrtsearchserviceeks_tools.load_v2_deployments_json",
+            autospec=True,
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.nrtsearchserviceeks_tools.load_service_instance_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.nrtsearchserviceeks_tools.NrtsearchServiceEksDeploymentConfig",
+            autospec=True,
+        ) as mock_nrtsearchserviceeks_deployment_config,
+    ):
         mock_config = {
             "port": None,
             "monitoring": {},

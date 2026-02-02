@@ -203,17 +203,21 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = "monitor_test_team"
-        with mock.patch(
-            "paasta_tools.monitoring_tools._cached_read_service_configuration",
-            autospec=True,
-            return_value=self.fake_general_service_config,
-        ) as service_configuration_lib_patch, mock.patch(
-            "paasta_tools.monitoring_tools.read_monitoring_config",
-            autospec=True,
-            return_value=self.fake_monitor_config,
-        ) as read_monitoring_patch, mock.patch(
-            "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        with (
+            mock.patch(
+                "paasta_tools.monitoring_tools._cached_read_service_configuration",
+                autospec=True,
+                return_value=self.fake_general_service_config,
+            ) as service_configuration_lib_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.read_monitoring_config",
+                autospec=True,
+                return_value=self.fake_monitor_config,
+            ) as read_monitoring_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
+            ) as load_system_paasta_config_patch,
+        ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
@@ -230,17 +234,21 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_service_config(self):
         expected = "general_test_team"
-        with mock.patch(
-            "paasta_tools.monitoring_tools._cached_read_service_configuration",
-            autospec=True,
-            return_value=self.fake_general_service_config,
-        ) as service_configuration_lib_patch, mock.patch(
-            "paasta_tools.monitoring_tools.read_monitoring_config",
-            autospec=True,
-            return_value=self.empty_monitor_config,
-        ) as read_monitoring_patch, mock.patch(
-            "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        with (
+            mock.patch(
+                "paasta_tools.monitoring_tools._cached_read_service_configuration",
+                autospec=True,
+                return_value=self.fake_general_service_config,
+            ) as service_configuration_lib_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.read_monitoring_config",
+                autospec=True,
+                return_value=self.empty_monitor_config,
+            ) as read_monitoring_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
+            ) as load_system_paasta_config_patch,
+        ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
@@ -257,17 +265,21 @@ class TestMonitoring_Tools:
 
     def test_get_monitoring_config_value_with_defaults(self):
         expected = None
-        with mock.patch(
-            "paasta_tools.monitoring_tools._cached_read_service_configuration",
-            autospec=True,
-            return_value=self.empty_job_config,
-        ) as service_configuration_lib_patch, mock.patch(
-            "paasta_tools.monitoring_tools.read_monitoring_config",
-            autospec=True,
-            return_value=self.empty_monitor_config,
-        ) as read_monitoring_patch, mock.patch(
-            "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        with (
+            mock.patch(
+                "paasta_tools.monitoring_tools._cached_read_service_configuration",
+                autospec=True,
+                return_value=self.empty_job_config,
+            ) as service_configuration_lib_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.read_monitoring_config",
+                autospec=True,
+                return_value=self.empty_monitor_config,
+            ) as read_monitoring_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
+            ) as load_system_paasta_config_patch,
+        ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value="fake_cluster"
             )
@@ -324,55 +336,72 @@ class TestMonitoring_Tools:
             "component": None,
             "description": None,
         }
-        with mock.patch(
-            "paasta_tools.monitoring_tools.get_team",
-            return_value=fake_team,
-            autospec=True,
-        ) as get_team_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_tip",
-            return_value=fake_tip,
-            autospec=True,
-        ) as get_tip_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_notification_email",
-            return_value=fake_notification_email,
-            autospec=True,
-        ) as get_notification_email_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_irc_channels",
-            return_value=fake_irc,
-            autospec=True,
-        ) as get_irc_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_slack_channels",
-            return_value=fake_slack,
-            autospec=True,
-        ) as get_slack_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_ticket",
-            return_value=False,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_project",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_page", return_value=True, autospec=True
-        ) as get_page_patch, mock.patch(
-            "paasta_tools.monitoring_tools.get_priority",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_tags", return_value=[], autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_component",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_description",
-            return_value=None,
-            autospec=True,
-        ), mock.patch(
-            "pysensu_yelp.send_event", autospec=True
-        ) as pysensu_yelp_send_event_patch, mock.patch(
-            "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        with (
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_team",
+                return_value=fake_team,
+                autospec=True,
+            ) as get_team_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_tip",
+                return_value=fake_tip,
+                autospec=True,
+            ) as get_tip_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_notification_email",
+                return_value=fake_notification_email,
+                autospec=True,
+            ) as get_notification_email_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_irc_channels",
+                return_value=fake_irc,
+                autospec=True,
+            ) as get_irc_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_slack_channels",
+                return_value=fake_slack,
+                autospec=True,
+            ) as get_slack_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_ticket",
+                return_value=False,
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_project",
+                return_value=None,
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_page",
+                return_value=True,
+                autospec=True,
+            ) as get_page_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_priority",
+                return_value=None,
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_tags", return_value=[], autospec=True
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_component",
+                return_value=None,
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_description",
+                return_value=None,
+                autospec=True,
+            ),
+            mock.patch(
+                "pysensu_yelp.send_event", autospec=True
+            ) as pysensu_yelp_send_event_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
+            ) as load_system_paasta_config_patch,
+        ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
                 return_value=self.fake_cluster
             )
@@ -423,25 +452,23 @@ class TestMonitoring_Tools:
         self.fake_cluster = "fake_cluster"
         fake_sensu_port = 12345
 
-        with mock.patch(
-            "paasta_tools.monitoring_tools.get_team", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_tip", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_notification_email", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_irc_channels", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_ticket", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_project", autospec=True
-        ), mock.patch(
-            "paasta_tools.monitoring_tools.get_page", autospec=True
-        ), mock.patch(
-            "pysensu_yelp.send_event", autospec=True
-        ) as pysensu_yelp_send_event_patch, mock.patch(
-            "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
-        ) as load_system_paasta_config_patch:
+        with (
+            mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_tip", autospec=True),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_notification_email", autospec=True
+            ),
+            mock.patch("paasta_tools.monitoring_tools.get_irc_channels", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_ticket", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_project", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_page", autospec=True),
+            mock.patch(
+                "pysensu_yelp.send_event", autospec=True
+            ) as pysensu_yelp_send_event_patch,
+            mock.patch(
+                "paasta_tools.monitoring_tools.load_system_paasta_config", autospec=True
+            ) as load_system_paasta_config_patch,
+        ):
             load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(
                 return_value=None
             )
@@ -466,15 +493,19 @@ class TestMonitoring_Tools:
         fake_path = "ever_patched"
         fake_soa_dir = "/nail/cte/oas"
         fake_dict = {"e": "quail", "v": "snail"}
-        with mock.patch(
-            "os.path.abspath", autospec=True, return_value=fake_path
-        ) as abspath_patch, mock.patch(
-            "os.path.join", autospec=True, return_value=fake_fname
-        ) as join_patch, mock.patch(
-            "service_configuration_lib.read_monitoring",
-            autospec=True,
-            return_value=fake_dict,
-        ) as read_monitoring_patch:
+        with (
+            mock.patch(
+                "os.path.abspath", autospec=True, return_value=fake_path
+            ) as abspath_patch,
+            mock.patch(
+                "os.path.join", autospec=True, return_value=fake_fname
+            ) as join_patch,
+            mock.patch(
+                "service_configuration_lib.read_monitoring",
+                autospec=True,
+                return_value=fake_dict,
+            ) as read_monitoring_patch,
+        ):
             actual = monitoring_tools.read_monitoring_config(fake_name, fake_soa_dir)
             assert fake_dict == actual
             abspath_patch.assert_called_once_with(fake_soa_dir)
@@ -517,14 +548,16 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
     expected_check_name = (
         "check_paasta_services_replication.%s" % instance_config.job_id
     )
-    with mock.patch(
-        "paasta_tools.monitoring_tools.send_event", autospec=True
-    ) as send_event_patch, mock.patch(
-        "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
+    with (
+        mock.patch(
+            "paasta_tools.monitoring_tools.send_event", autospec=True
+        ) as send_event_patch,
+        mock.patch("paasta_tools.monitoring_tools._log", autospec=True),
+        mock.patch(
+            "paasta_tools.monitoring_tools.get_runbook",
+            autospec=True,
+            return_value="y/runbook",
+        ),
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
@@ -563,14 +596,16 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
     expected_check_name = (
         "check_paasta_services_replication.%s" % instance_config.job_id
     )
-    with mock.patch(
-        "paasta_tools.monitoring_tools.send_event", autospec=True
-    ) as send_event_patch, mock.patch(
-        "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
+    with (
+        mock.patch(
+            "paasta_tools.monitoring_tools.send_event", autospec=True
+        ) as send_event_patch,
+        mock.patch("paasta_tools.monitoring_tools._log", autospec=True),
+        mock.patch(
+            "paasta_tools.monitoring_tools.get_runbook",
+            autospec=True,
+            return_value="y/runbook",
+        ),
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
@@ -608,14 +643,16 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
     expected_check_name = (
         "check_paasta_services_replication.%s" % instance_config.job_id
     )
-    with mock.patch(
-        "paasta_tools.monitoring_tools.send_event", autospec=True
-    ) as send_event_patch, mock.patch(
-        "paasta_tools.monitoring_tools._log", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.get_runbook",
-        autospec=True,
-        return_value="y/runbook",
+    with (
+        mock.patch(
+            "paasta_tools.monitoring_tools.send_event", autospec=True
+        ) as send_event_patch,
+        mock.patch("paasta_tools.monitoring_tools._log", autospec=True),
+        mock.patch(
+            "paasta_tools.monitoring_tools.get_runbook",
+            autospec=True,
+            return_value="y/runbook",
+        ),
     ):
         monitoring_tools.send_replication_event(
             instance_config=instance_config,
@@ -1106,13 +1143,15 @@ def test_emit_replication_metrics_dry_run(instance_config):
 
 
 def test_check_replication_for_instance_emits_metrics(instance_config):
-    with mock.patch(
-        "paasta_tools.monitoring_tools.send_replication_event", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.emit_replication_metrics", autospec=True
-    ) as mock_emit_replication_metrics:
+    with (
+        mock.patch(
+            "paasta_tools.monitoring_tools.send_replication_event", autospec=True
+        ),
+        mock.patch("paasta_tools.monitoring_tools.yelp_meteorite", autospec=True),
+        mock.patch(
+            "paasta_tools.monitoring_tools.emit_replication_metrics", autospec=True
+        ) as mock_emit_replication_metrics,
+    ):
         mock_smartstack_replication_checker = mock.Mock()
         mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
             "fake_provider": {"fake_region": {"fake_service.fake_instance": 10}}

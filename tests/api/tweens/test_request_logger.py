@@ -30,14 +30,17 @@ def mock_clog():
 
 @pytest.fixture(autouse=True)
 def mock_settings():
-    with mock.patch(
-        "paasta_tools.api.settings.cluster",
-        "a_cluster",
-        autospec=False,
-    ), mock.patch(
-        "paasta_tools.api.settings.hostname",
-        "a_hostname",
-        autospec=False,
+    with (
+        mock.patch(
+            "paasta_tools.api.settings.cluster",
+            "a_cluster",
+            autospec=False,
+        ),
+        mock.patch(
+            "paasta_tools.api.settings.hostname",
+            "a_hostname",
+            autospec=False,
+        ),
     ):
         yield
 

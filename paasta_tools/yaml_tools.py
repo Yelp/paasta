@@ -2,7 +2,7 @@ import sys
 
 import yaml
 
-# try and catch both /opt/venvs/paasta-tools and ~/pg/paasta/.tox/py310-linux as if we're being run as an application,
+# try and catch both /opt/venvs/paasta-tools and ~/pg/paasta/.tox/py312-linux as if we're being run as an application,
 # we likely want to fail on a potential slowdown rather than experience a performance regression
 if "paasta" in sys.prefix:
     from yaml import CSafeDumper as Dumper

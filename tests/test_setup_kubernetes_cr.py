@@ -21,11 +21,12 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_main():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.KubeClient", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_cr.setup_all_custom_resources", autospec=True
-    ) as mock_setup:
+    with (
+        mock.patch("paasta_tools.setup_kubernetes_cr.KubeClient", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.setup_all_custom_resources", autospec=True
+        ) as mock_setup,
+    ):
         mock_setup.return_value = True
         with pytest.raises(SystemExit) as e:
             setup_kubernetes_cr.main()
@@ -38,16 +39,17 @@ def test_main():
 
 
 def test_setup_all_custom_resources():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.ensure_namespace", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_cr.load_all_configs", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_cr.setup_custom_resources", autospec=True
-    ) as mock_setup, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.load_custom_resource_definitions",
-        autospec=True,
-    ) as mock_load_custom_resources:
+    with (
+        mock.patch("paasta_tools.setup_kubernetes_cr.ensure_namespace", autospec=True),
+        mock.patch("paasta_tools.setup_kubernetes_cr.load_all_configs", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.setup_custom_resources", autospec=True
+        ) as mock_setup,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.load_custom_resource_definitions",
+            autospec=True,
+        ) as mock_load_custom_resources,
+    ):
         mock_system_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod")
         )
@@ -125,13 +127,15 @@ def test_setup_all_custom_resources():
 
 
 def test_setup_all_custom_resources_flink():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.ensure_namespace", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_cr.load_all_configs", autospec=True
-    ) as mock_load_all, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.setup_custom_resources", autospec=True
-    ) as mock_setup:
+    with (
+        mock.patch("paasta_tools.setup_kubernetes_cr.ensure_namespace", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.load_all_configs", autospec=True
+        ) as mock_load_all,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.setup_custom_resources", autospec=True
+        ) as mock_setup,
+    ):
         mock_system_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod")
         )
@@ -169,10 +173,13 @@ def test_setup_all_custom_resources_flink():
 
 
 def test_load_all_configs():
-    with mock.patch(
-        "paasta_tools.utils.load_service_instance_configs",
-        autospec=True,
-    ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_service_instance_configs",
+            autospec=True,
+        ) as mock_load_configs,
+        mock.patch("os.listdir", autospec=True) as mock_oslist,
+    ):
         mock_oslist.return_value = ["kurupt", "mc"]
         ret = setup_kubernetes_cr.load_all_configs(
             cluster="westeros-prod", file_prefix="thing", soa_dir="/nail/soa"
@@ -189,10 +196,13 @@ def test_load_all_configs():
 
 
 def test_load_all_flink_configs():
-    with mock.patch(
-        "paasta_tools.utils.load_service_instance_configs",
-        autospec=True,
-    ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
+    with (
+        mock.patch(
+            "paasta_tools.utils.load_service_instance_configs",
+            autospec=True,
+        ) as mock_load_configs,
+        mock.patch("os.listdir", autospec=True) as mock_oslist,
+    ):
         mock_oslist.return_value = ["kurupt", "mc"]
         mock_load_configs.side_effect = [
             {
@@ -223,11 +233,15 @@ def test_load_all_flink_configs():
 
 
 def test_setup_custom_resources():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.list_custom_resources", autospec=True
-    ) as mock_list_cr, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.reconcile_kubernetes_resource", autospec=True
-    ) as mock_reconcile_kubernetes_resource:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.list_custom_resources", autospec=True
+        ) as mock_list_cr,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.reconcile_kubernetes_resource",
+            autospec=True,
+        ) as mock_reconcile_kubernetes_resource,
+    ):
         mock_client = mock.Mock()
         mock_kind = mock.Mock()
         mock_crd = mock.Mock()
@@ -293,11 +307,14 @@ def test_setup_custom_resources():
 
 
 def test_format_custom_resource():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.get_config_hash", autospec=True
-    ) as mock_get_config_hash, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.load_system_paasta_config", autospec=True
-    ) as mock_load_system_paasta_config:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.get_config_hash", autospec=True
+        ) as mock_get_config_hash,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.load_system_paasta_config", autospec=True
+        ) as mock_load_system_paasta_config,
+    ):
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             {"dashboard_links": {}, "cr_owners": {"flink": "stream-processing"}}, ""
         )
@@ -370,13 +387,17 @@ def test_paasta_config_flink_dashboard_base_url():
     autospec=True,
 )
 def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS):
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
-    ) as mock_format_custom_resource, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.create_custom_resource", autospec=True
-    ) as mock_create_custom_resource, mock.patch(
-        "paasta_tools.setup_kubernetes_cr.update_custom_resource", autospec=True
-    ) as mock_update_custom_resource:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
+        ) as mock_format_custom_resource,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.create_custom_resource", autospec=True
+        ) as mock_create_custom_resource,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_cr.update_custom_resource", autospec=True
+        ) as mock_update_custom_resource,
+    ):
         mock_kind = mock.Mock(singular="flink", plural="flinks")
         mock_custom_resources = [
             KubeCustomResource(

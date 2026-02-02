@@ -6,16 +6,20 @@ from paasta_tools.cassandraclustereks_tools import (
 
 
 def test_load_cassandraclustereks_instance_config():
-    with mock.patch(
-        "paasta_tools.cassandraclustereks_tools.load_v2_deployments_json",
-        autospec=True,
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.cassandraclustereks_tools.load_service_instance_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cassandraclustereks_tools.CassandraClusterEksDeploymentConfig",
-        autospec=True,
-    ) as mock_cassandraclustereks_deployment_config:
+    with (
+        mock.patch(
+            "paasta_tools.cassandraclustereks_tools.load_v2_deployments_json",
+            autospec=True,
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.cassandraclustereks_tools.load_service_instance_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cassandraclustereks_tools.CassandraClusterEksDeploymentConfig",
+            autospec=True,
+        ) as mock_cassandraclustereks_deployment_config,
+    ):
         mock_config = {
             "port": None,
             "monitoring": {},

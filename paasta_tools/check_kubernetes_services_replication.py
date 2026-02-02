@@ -104,10 +104,10 @@ def check_kubernetes_pod_replication(
         default_alert_after = "20m"
     if "monitoring" not in instance_config.config_dict:
         instance_config.config_dict["monitoring"] = {}
-    instance_config.config_dict["monitoring"][
-        "alert_after"
-    ] = instance_config.config_dict["monitoring"].get(
-        "alert_after", default_alert_after
+    instance_config.config_dict["monitoring"]["alert_after"] = (
+        instance_config.config_dict["monitoring"].get(
+            "alert_after", default_alert_after
+        )
     )
 
     # if the primary registration does not match the service_instance name then
@@ -133,8 +133,10 @@ def check_kubernetes_pod_replication(
 if __name__ == "__main__":
     args = parse_args()
     main(
-        instance_type_class=eks_tools.EksDeploymentConfig
-        if args.eks
-        else kubernetes_tools.KubernetesDeploymentConfig,
+        instance_type_class=(
+            eks_tools.EksDeploymentConfig
+            if args.eks
+            else kubernetes_tools.KubernetesDeploymentConfig
+        ),
         check_service_replication=check_kubernetes_pod_replication,
     )

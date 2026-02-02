@@ -292,9 +292,10 @@ bar: foo
 @mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
 def test_auto_config_updater_commit_validate_fails(mock_push, mock_commit, updater):
     updater.files_changed = {"a", "b"}
-    with mock.patch.object(
-        updater, "validate", autospec=True, return_value=False
-    ), pytest.raises(config_utils.ValidationError):
+    with (
+        mock.patch.object(updater, "validate", autospec=True, return_value=False),
+        pytest.raises(config_utils.ValidationError),
+    ):
         updater.commit_to_remote()
 
     assert mock_commit.call_count == 0

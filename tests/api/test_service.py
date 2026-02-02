@@ -63,11 +63,14 @@ def test_list_services_for_cluster(
 
 def test_get_deployment_info_success_with_image_version():
     """Test successful deployment info retrieval with image_version."""
-    with mock.patch(
-        "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
-    ) as mock_get_service_docker_registry:
+    with (
+        mock.patch(
+            "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
+        ) as mock_get_service_docker_registry,
+    ):
         mock_deployments = mock.Mock(spec=DeploymentsJsonV2)
         mock_deployments.config_dict = {
             "deployments": {
@@ -96,11 +99,14 @@ def test_get_deployment_info_success_with_image_version():
 
 def test_get_deployment_info_success_without_image_version():
     """Test successful deployment info retrieval when image_version is None."""
-    with mock.patch(
-        "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
-    ) as mock_get_service_docker_registry:
+    with (
+        mock.patch(
+            "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
+        ) as mock_get_service_docker_registry,
+    ):
         mock_deployments = mock.Mock(spec=DeploymentsJsonV2)
         mock_deployments.config_dict = {
             "deployments": {
@@ -173,11 +179,14 @@ def test_get_deployment_info_not_deployed_to_deploy_group():
 
 def test_get_deployment_info_missing_docker_image_field():
     """Test 500 when docker_image field is missing from config."""
-    with mock.patch(
-        "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
-    ) as mock_get_service_docker_registry:
+    with (
+        mock.patch(
+            "paasta_tools.api.views.service.load_v2_deployments_json", autospec=True
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.api.views.service.get_service_docker_registry", autospec=True
+        ) as mock_get_service_docker_registry,
+    ):
         mock_deployments = mock.Mock(spec=DeploymentsJsonV2)
         mock_deployments.config_dict = {
             "deployments": {
