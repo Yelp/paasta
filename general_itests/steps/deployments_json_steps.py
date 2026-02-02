@@ -92,14 +92,17 @@ def step_paasta_mark_for_deployments_when(context):
         auto_certify_delay=None,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
-    with mock.patch(
-        "paasta_tools.utils.format_timestamp",
-        autospec=True,
-        return_value=context.force_bounce_timestamp,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.validate_service_name",
-        autospec=True,
-        return_value=True,
+    with (
+        mock.patch(
+            "paasta_tools.utils.format_timestamp",
+            autospec=True,
+            return_value=context.force_bounce_timestamp,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.mark_for_deployment.validate_service_name",
+            autospec=True,
+            return_value=True,
+        ),
     ):
         try:
             paasta_mark_for_deployment(fake_args)
@@ -118,20 +121,24 @@ def step_paasta_stop_when(context):
         verify_image=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
-    with mock.patch(
-        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url",
-        autospec=True,
-        return_value=context.test_git_repo_dir,
-    ), mock.patch(
-        "paasta_tools.utils.format_timestamp",
-        autospec=True,
-        return_value=context.force_bounce_timestamp,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters",
-        autospec=True,
-        return_value={
-            fake_args.clusters: {fake_args.service: {fake_args.instances: None}}
-        },
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url",
+            autospec=True,
+            return_value=context.test_git_repo_dir,
+        ),
+        mock.patch(
+            "paasta_tools.utils.format_timestamp",
+            autospec=True,
+            return_value=context.force_bounce_timestamp,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters",
+            autospec=True,
+            return_value={
+                fake_args.clusters: {fake_args.service: {fake_args.instances: None}}
+            },
+        ),
     ):
         try:
             paasta_stop(fake_args)
@@ -153,14 +160,17 @@ def step_impl_when(context):
         soa_dir="fake_soa_configs",
         verbose=True,
     )
-    with mock.patch(
-        "paasta_tools.generate_deployments_for_service.get_git_url",
-        autospec=True,
-        return_value=context.test_git_repo_dir,
-    ), mock.patch(
-        "paasta_tools.generate_deployments_for_service.parse_args",
-        autospec=True,
-        return_value=fake_args,
+    with (
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.get_git_url",
+            autospec=True,
+            return_value=context.test_git_repo_dir,
+        ),
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.parse_args",
+            autospec=True,
+            return_value=fake_args,
+        ),
     ):
         generate_deployments_for_service.main()
 

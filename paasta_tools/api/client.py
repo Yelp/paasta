@@ -61,9 +61,9 @@ def get_paasta_oapi_client_by_url(
 
     client = paastaapi.ApiClient(configuration=config)
     # PAASTA-18005: Adds default timeout to paastaapi client
-    client.rest_client.pool_manager.connection_pool_kw[
-        "timeout"
-    ] = load_system_paasta_config().get_api_client_timeout()
+    client.rest_client.pool_manager.connection_pool_kw["timeout"] = (
+        load_system_paasta_config().get_api_client_timeout()
+    )
     # SEC-19555: support auth in PaaSTA APIs
     if auth_token:
         client.set_default_header("Authorization", f"Bearer {auth_token}")

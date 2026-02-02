@@ -1526,13 +1526,16 @@ def test_paasta_spark_run_re_run_sudo():
         get_eks_token_via_iam_user=True,
         jira_ticket=None,
     )
-    with mock.patch(
-        "paasta_tools.cli.cmds.spark_run.os.getuid",
-        return_value=1001,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
-    ) as mock_exec:
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.spark_run.os.getuid",
+            return_value=1001,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+        ) as mock_exec,
+    ):
         spark_run.paasta_spark_run(args)
         assert mock_exec.called
         args, _ = mock_exec.call_args
@@ -1595,13 +1598,16 @@ def test_paasta_spark_run_re_run_sudo_as_root(
         get_eks_token_via_iam_user=True,
         jira_ticket="TEST-123",
     )
-    with mock.patch(
-        "paasta_tools.cli.cmds.spark_run.os.getuid",
-        return_value=0,
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
-    ) as mock_exec:
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.spark_run.os.getuid",
+            return_value=0,
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.spark_run.os.execvp", autospec=True
+        ) as mock_exec,
+    ):
         spark_run.paasta_spark_run(args)
         assert not mock_exec.called
 
@@ -1703,20 +1709,24 @@ def test_build_and_push_docker_image_unexpected_output_format(
 
 
 def test_get_aws_credentials():
-    with mock.patch.dict(
-        os.environ,
-        {
-            "AWS_WEB_IDENTITY_TOKEN_FILE": "./some-file.txt",
-            "AWS_ROLE_ARN": "some-role-for-test",
-        },
-    ), mock.patch(
-        "service_configuration_lib.spark_config.open",
-        mock.mock_open(read_data="token-content"),
-        autospec=False,
-    ), mock.patch(
-        "service_configuration_lib.spark_config.boto3.client",
-        autospec=False,
-    ) as boto3_client:
+    with (
+        mock.patch.dict(
+            os.environ,
+            {
+                "AWS_WEB_IDENTITY_TOKEN_FILE": "./some-file.txt",
+                "AWS_ROLE_ARN": "some-role-for-test",
+            },
+        ),
+        mock.patch(
+            "service_configuration_lib.spark_config.open",
+            mock.mock_open(read_data="token-content"),
+            autospec=False,
+        ),
+        mock.patch(
+            "service_configuration_lib.spark_config.boto3.client",
+            autospec=False,
+        ) as boto3_client,
+    ):
         get_aws_credentials(
             service="some-service",
             use_web_identity=True,
@@ -1928,9 +1938,11 @@ def test_paasta_spark_run_with_pod_identity(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        aws_credentials_yaml="/path/to/creds"
-        if aws_creds_provided
-        else "/etc/boto_cfg/spark_driver.yaml",
+        aws_credentials_yaml=(
+            "/path/to/creds"
+            if aws_creds_provided
+            else "/etc/boto_cfg/spark_driver.yaml"
+        ),
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,

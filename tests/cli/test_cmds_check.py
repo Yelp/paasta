@@ -505,20 +505,26 @@ def test_deployments_service_but_not_deploy(
 def test_makefile_check():
     fake_makefile_path = "UNUSED"
     fake_contents = "DOCKER_TAG ?= something\ntest:\n\tsomething\nitest:\n\tsomething"
-    with patch(
-        "paasta_tools.cli.cmds.check.get_file_contents",
-        autospec=True,
-        return_value=fake_contents,
-    ), patch(
-        "paasta_tools.cli.cmds.check.makefile_has_a_tab", autospec=True
-    ) as mock_makefile_has_a_tab, patch(
-        "paasta_tools.cli.cmds.check.makefile_responds_to", autospec=True
-    ) as mock_makefile_responds_to, patch(
-        "paasta_tools.cli.cmds.check.makefile_has_docker_tag", autospec=True
-    ) as mock_makefile_has_docker_tag, patch(
-        "paasta_tools.cli.cmds.check.is_file_in_dir",
-        autospec=True,
-        return_value=fake_makefile_path,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.check.get_file_contents",
+            autospec=True,
+            return_value=fake_contents,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.check.makefile_has_a_tab", autospec=True
+        ) as mock_makefile_has_a_tab,
+        patch(
+            "paasta_tools.cli.cmds.check.makefile_responds_to", autospec=True
+        ) as mock_makefile_responds_to,
+        patch(
+            "paasta_tools.cli.cmds.check.makefile_has_docker_tag", autospec=True
+        ) as mock_makefile_has_docker_tag,
+        patch(
+            "paasta_tools.cli.cmds.check.is_file_in_dir",
+            autospec=True,
+            return_value=fake_makefile_path,
+        ),
     ):
         makefile_check()
         assert mock_makefile_has_a_tab.call_count == 1

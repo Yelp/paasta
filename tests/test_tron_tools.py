@@ -110,13 +110,16 @@ class TestTronActionConfig:
         self, mock_read_soa_metadata, action_config, executor, monkeypatch
     ):
         action_config.config_dict["executor"] = executor
-        with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry",
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        with (
+            mock.patch(
+                "paasta_tools.utils.get_service_docker_registry",
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
         ):
             env = action_config.get_env()
             assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
@@ -948,20 +951,27 @@ class TestTronTools:
             branch_dict=branch_dict,
             cluster="test-cluster",
         )
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch.object(
+                action_config,
+                "get_docker_registry",
+                return_value="docker-registry.com:400",
+            ),
+            mock.patch(
+                "paasta_tools.utils.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "kubernetes"
@@ -1014,22 +1024,29 @@ class TestTronTools:
             cluster="test-cluster",
         )
 
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[
-                {"audience": "foo.bar.com", "container_path": "/var/foo/bar"}
-            ],
+        with (
+            mock.patch.object(
+                action_config,
+                "get_docker_registry",
+                return_value="docker-registry.com:400",
+            ),
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[
+                    {"audience": "foo.bar.com", "container_path": "/var/foo/bar"}
+                ],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1286,18 +1303,22 @@ class TestTronTools:
             cluster="test-cluster",
         )
 
-        with mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools._spark_k8s_role",
-            autospec=True,
-            return_value="spark",
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools._spark_k8s_role",
+                autospec=True,
+                return_value="spark",
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1552,20 +1573,27 @@ class TestTronTools:
             cluster="test-cluster",
         )
 
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch.object(
+                action_config,
+                "get_docker_registry",
+                return_value="docker-registry.com:400",
+            ),
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1623,7 +1651,7 @@ class TestTronTools:
         (
             ("my_job.do_something", "my_job.do_something"),
             (
-                f"my_job.{'a'* 100}",
+                f"my_job.{'a' * 100}",
                 "my_job.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-6xhe",
             ),
         ),
@@ -1689,28 +1717,37 @@ class TestTronTools:
             cluster="test-cluster",
         )
 
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.get_service_account_name",
-            autospec=True,
-            return_value="some--service--account",
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch.object(
+                action_config,
+                "get_docker_registry",
+                return_value="docker-registry.com:400",
+            ),
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.get_service_account_name",
+                autospec=True,
+                return_value="some--service--account",
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1836,18 +1873,22 @@ class TestTronTools:
             cluster="paasta-dev",
         )
 
-        with mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+                autospec=True,
+                return_value=False,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result == {
@@ -2026,18 +2067,22 @@ fake_job:
             """
         )
 
-        with mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.utils.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",
@@ -2080,18 +2125,22 @@ fake_job:
                 PAASTA_ENV_VAR: 'fake_value'
             """
         )
-        with mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
-        ), mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
+        with (
+            mock.patch(
+                "paasta_tools.tron_tools.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+            ),
+            mock.patch(
+                "paasta_tools.utils.load_system_paasta_config",
+                autospec=True,
+                return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+            ),
+            mock.patch(
+                "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+                autospec=True,
+                return_value=[],
+            ),
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",

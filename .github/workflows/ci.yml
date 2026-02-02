@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         toxenv:
-          - py310-linux
+          - py312-linux
           - docs
           - tests
           - general_itests
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-gha.txt
       - run: tox -e ${{ matrix.toxenv }}
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - run: python -m pip install --upgrade pip virtualenv
       - run: curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
       - run: python -m pip install --upgrade pip
@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.12'
       - run: sudo apt-get update
       - run: sudo apt-get install -yq devscripts
       - run: make itest_${{ matrix.dist }}

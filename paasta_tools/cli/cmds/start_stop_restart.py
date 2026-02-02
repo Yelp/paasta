@@ -87,9 +87,9 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
     def mutate_refs(refs):
         deploy_group = service_config.get_deploy_group()
         (_, head_sha, _) = get_latest_deployment_tag(refs, deploy_group)
-        refs[
-            format_tag(service_config.get_branch(), force_bounce, desired_state)
-        ] = head_sha
+        refs[format_tag(service_config.get_branch(), force_bounce, desired_state)] = (
+            head_sha
+        )
         return refs
 
     return mutate_refs

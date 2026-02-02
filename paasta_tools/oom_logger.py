@@ -214,9 +214,11 @@ def log_to_clog(log_line):
 def log_to_paasta(log_line):
     """Add the event to the standard PaaSTA logging backend."""
     line = "oom-killer killed {} on {} (container_id: {}).".format(
-        "a %s process" % log_line.process_name
-        if log_line.process_name
-        else "a process",
+        (
+            "a %s process" % log_line.process_name
+            if log_line.process_name
+            else "a process"
+        ),
         log_line.hostname,
         log_line.container_id,
     )
@@ -293,7 +295,7 @@ def main():
             # we're using docker to inspect containers
             try:
                 container_inspect = client.inspect_container(resource_id=container_id)
-            except (APIError):
+            except APIError:
                 continue
         env_vars = get_container_env_as_dict(args.containerd, container_inspect)
         service = env_vars.get("PAASTA_SERVICE", "unknown")

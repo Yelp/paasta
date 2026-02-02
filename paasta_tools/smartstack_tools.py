@@ -353,9 +353,9 @@ def are_services_up_on_ip_port(
         synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
-    backends_by_ip_port: DefaultDict[
-        Tuple[str, int], List[HaproxyBackend]
-    ] = collections.defaultdict(list)
+    backends_by_ip_port: DefaultDict[Tuple[str, int], List[HaproxyBackend]] = (
+        collections.defaultdict(list)
+    )
 
     for backend in backends:
         ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
@@ -423,8 +423,7 @@ class ServiceDiscoveryProvider(abc.ABC):
     NAME = "..."
 
     @abc.abstractmethod
-    def get_replication_for_all_services(self, hostname: str) -> Dict[str, int]:
-        ...
+    def get_replication_for_all_services(self, hostname: str) -> Dict[str, int]: ...
 
 
 class SmartstackServiceDiscovery(ServiceDiscoveryProvider):
@@ -503,8 +502,7 @@ class BaseReplicationChecker(ReplicationChecker):
     @abc.abstractmethod
     def get_allowed_locations_and_hosts(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Sequence[DiscoveredHost]]:
-        ...
+    ) -> Dict[str, Sequence[DiscoveredHost]]: ...
 
     def get_replication_for_instance(
         self, instance_config: LongRunningServiceConfig

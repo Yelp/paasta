@@ -224,9 +224,9 @@ def get_multiple_backends(
 
     casper_endpoints = get_casper_endpoints(clusters_info)
 
-    backends: DefaultDict[
-        str, List[Tuple[EnvoyBackend, bool]]
-    ] = collections.defaultdict(list)
+    backends: DefaultDict[str, List[Tuple[EnvoyBackend, bool]]] = (
+        collections.defaultdict(list)
+    )
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
