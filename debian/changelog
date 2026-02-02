@@ -1,3 +1,11 @@
+paasta-tools (1.39.1) jammy; urgency=medium
+
+  * 1.39.1 tagged with 'make release'
+    Commit: Merge pull request #4214 from Yelp/u/jfong/moving-avg-window-
+    scrape-interval  Make moving_average_window_seconds at least 60s
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Feb 2026 09:45:09 -0800
+
 paasta-tools (1.39.0) jammy; urgency=medium
 
   * 1.39.0 tagged with 'make release'
