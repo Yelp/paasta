@@ -1,5 +1,5 @@
 aiohttp >= 3.5.4
-argcomplete >= 0.8.1
+argcomplete >= 3.6.3
 boto
 boto3
 boto3-type-annotations
