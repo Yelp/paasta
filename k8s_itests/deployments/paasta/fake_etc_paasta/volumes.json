@@ -1,3 +1,4 @@
 {
-    "volumes": []
+    "volumes": [],
+    "hacheck_sidecar_volumes": []
 }
