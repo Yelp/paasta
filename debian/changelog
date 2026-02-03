@@ -1,3 +1,11 @@
+paasta-tools (1.40.1) jammy; urgency=medium
+
+  * 1.40.1 tagged with 'make release'
+    Commit: Merge pull request #4224 from Yelp/u/robj/fix-k8s-itests-
+    setup  fix the k8s_itests
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 03 Feb 2026 08:12:23 -0800
+
 paasta-tools (1.40.0) jammy; urgency=medium
 
   * 1.40.0 tagged with 'make release'
