@@ -1,3 +1,10 @@
+paasta-tools (1.40.0) jammy; urgency=medium
+
+  * 1.40.0 tagged with 'make release'
+    Commit: spark-run: long-lasting SSO token (#4217)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 03 Feb 2026 01:35:26 -0800
+
 paasta-tools (1.39.1) jammy; urgency=medium
 
   * 1.39.1 tagged with 'make release'
