@@ -11,7 +11,7 @@ services:
     network_mode: host
     environment:
       KIND_CLUSTER: ${KIND_CLUSTER}
-      KUBECONTEXT: kubernetes-admin@${KIND_CLUSTER}
+      KUBECONTEXT: ${KIND_CLUSTER}
       KUBECONFIG: ${KUBECONFIG}
       KUBE_RESOURCE_DIR: ${KUBE_RESOURCE_DIR}
       USER: ${USER}
@@ -34,11 +34,11 @@ services:
     build:
       context: ../
       dockerfile: ./yelp_package/dockerfiles/itest/api/Dockerfile
-    command: bash -c 'pip install -e /work && exec paasta-api -D -c ${KIND_CLUSTER} ${PAASTA_API_PORT}'
+    command: bash -c 'mkdir -p /work/k8s_itests/deployments/.tmp && python -m paasta_tools.contrib.render_template -s /work/k8s_itests/deployments/paasta/ -d /work/k8s_itests/deployments/.tmp && pip install -e /work && exec paasta-api -D -c ${KIND_CLUSTER} ${PAASTA_API_PORT}'
     network_mode: host
     environment:
       KIND_CLUSTER: ${KIND_CLUSTER}
-      KUBECONTEXT: kubernetes-admin@${KIND_CLUSTER}
+      KUBECONTEXT: ${KIND_CLUSTER}
       KUBECONFIG: ${KUBECONFIG}
       KUBE_RESOURCE_DIR: ${KUBE_RESOURCE_DIR}
       USER: ${USER}
