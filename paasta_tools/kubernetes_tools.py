@@ -141,11 +141,8 @@ from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -843,9 +840,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             )
         elif provider["type"] in {
-            METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
             METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
             return V2MetricSpec(
@@ -881,10 +876,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             )
-        elif provider["type"] in {
-            METRICS_PROVIDER_UWSGI_V2,
-            METRICS_PROVIDER_WORKER_LOAD,
-        }:
+        elif provider["type"] == METRICS_PROVIDER_WORKER_LOAD:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -2304,8 +2296,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.config_dict.get("routable_ip", False)
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
-            or self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI)
-            or self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN)
             or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD)
         ):
             return "true"
@@ -2341,12 +2331,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
-
-        # The HPAMetrics collector needs these annotations to tell it to pull
-        # metrics from these pods
-        # TODO: see if we can remove this as we're no longer using sfx data to scale
-        if self.get_autoscaling_metrics_provider(METRICS_PROVIDER_UWSGI) is not None:
-            annotations["autoscaling"] = METRICS_PROVIDER_UWSGI
 
         pod_spec_kwargs = {}
         pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())
@@ -2492,9 +2476,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        if self.should_use_metrics_provider(
-            METRICS_PROVIDER_GUNICORN
-        ) or self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
+        if self.should_use_metrics_provider(METRICS_PROVIDER_WORKER_LOAD):
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         # the default AWS LB Controller behavior is to enable this by-namespace
