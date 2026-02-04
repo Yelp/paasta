@@ -380,14 +380,14 @@ def test__minify_promql(query: str, expected: str) -> None:
     assert _minify_promql(query) == expected
 
 
-def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
+def test_create_instance_arbitrary_promql_scaling_rule_no_series_query():
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
         instance_config=mock.Mock(
             instance="instance",
             get_namespace=mock.Mock(return_value="paasta"),
         ),
-        metrics_provider_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
+        metrics_provider_config={"metrics_query": "foo"},
         paasta_cluster="cluster",
     )
 
@@ -404,7 +404,7 @@ def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
     }
 
 
-def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
+def test_create_instance_arbitrary_promql_scaling_rule_with_series_query():
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
         instance_config=mock.Mock(
@@ -412,10 +412,8 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
             get_namespace=mock.Mock(return_value="test_namespace"),
         ),
         metrics_provider_config={
-            "prometheus_adapter_config": {
-                "metricsQuery": "foo",
-                "seriesQuery": "bar",
-            }
+            "metrics_query": "foo",
+            "series_query": "bar",
         },
         paasta_cluster="cluster",
     )
@@ -428,6 +426,29 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
                 "deployment": {"group": "apps", "resource": "deployments"},
             },
         },
-        "metricsQuery": "foo",  # if seriesQuery is specified, the user's metricsQuery should be unaltered.
+        "metricsQuery": "foo",  # if series_query is specified, the user's metrics_query should be unaltered.
+        "seriesQuery": "bar",
+    }
+
+
+def test_create_instance_arbitrary_promql_scaling_rule_with_custom_resources():
+    rule = create_instance_arbitrary_promql_scaling_rule(
+        service="service",
+        instance_config=mock.Mock(
+            instance="instance",
+            get_namespace=mock.Mock(return_value="test_namespace"),
+        ),
+        metrics_provider_config={
+            "metrics_query": "foo",
+            "series_query": "bar",
+            "resources": {"template": "kube_<<.Resource>>"},
+        },
+        paasta_cluster="cluster",
+    )
+
+    assert rule == {
+        "name": {"as": "service-instance-arbitrary-promql"},
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": "foo",
         "seriesQuery": "bar",
     }

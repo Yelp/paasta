@@ -802,6 +802,14 @@ def create_instance_gunicorn_scaling_rule(
     }
 
 
+DEFAULT_ARBITRARY_PROMQL_RESOURCES: PrometheusAdapterResourceConfig = {
+    "overrides": {
+        "namespace": {"resource": "namespace"},
+        "deployment": {"group": "apps", "resource": "deployments"},
+    },
+}
+
+
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
@@ -810,16 +818,15 @@ def create_instance_arbitrary_promql_scaling_rule(
 ) -> PrometheusAdapterRule:
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    prometheus_adapter_config = metrics_provider_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
-    if "seriesQuery" in prometheus_adapter_config:
-        # If the user specifies seriesQuery, don't wrap their metricsQuery, under the assumption that they may not want
+    if "series_query" in metrics_provider_config:
+        # If the user specifies series_query, don't wrap their metrics_query, under the assumption that they may not want
         # us to mess with their labels.
-        series_query = prometheus_adapter_config["seriesQuery"]
-        metrics_query = prometheus_adapter_config["metricsQuery"]
+        series_query = metrics_provider_config["series_query"]
+        metrics_query = metrics_provider_config["metrics_query"]
     else:
-        # If the user doesn't specify seriesQuery, assume they want to just write some promql that returns a number.
+        # If the user doesn't specify series_query, assume they want to just write some promql that returns a number.
         # Set up series_query to match the default `resources`
         series_query = f"""
             kube_deployment_labels{{
@@ -832,7 +839,7 @@ def create_instance_arbitrary_promql_scaling_rule(
         metrics_query = f"""
             label_replace(
                 label_replace(
-                    {prometheus_adapter_config["metricsQuery"]},
+                    {metrics_provider_config["metrics_query"]},
                     'deployment',
                     '{deployment_name}',
                     '',
@@ -851,14 +858,11 @@ def create_instance_arbitrary_promql_scaling_rule(
         },
         "seriesQuery": _minify_promql(series_query),
         "metricsQuery": _minify_promql(metrics_query),
-        "resources": prometheus_adapter_config.get(
-            "resources",
-            {
-                "overrides": {
-                    "namespace": {"resource": "namespace"},
-                    "deployment": {"group": "apps", "resource": "deployments"},
-                },
-            },
+        "resources": cast(
+            PrometheusAdapterResourceConfig,
+            metrics_provider_config.get(
+                "resources", DEFAULT_ARBITRARY_PROMQL_RESOURCES
+            ),
         ),
     }
 

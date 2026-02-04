@@ -867,6 +867,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             )
         elif provider["type"] == METRICS_PROVIDER_PROMQL:
+            target_type = provider.get("target_type", "AverageValue")
+            if target_type == "AverageValue":
+                metric_target = V2MetricTarget(
+                    type="AverageValue",
+                    average_value=target,
+                )
+            else:
+                metric_target = V2MetricTarget(
+                    type="Value",
+                    value=target,
+                )
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -874,11 +885,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
-                    target=V2MetricTarget(
-                        # Use the setpoint specified by the user.
-                        type="Value",
-                        value=target,
-                    ),
+                    target=metric_target,
                 ),
             )
         elif provider["type"] in {
