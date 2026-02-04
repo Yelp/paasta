@@ -1,3 +1,11 @@
+paasta-tools (1.41.0) jammy; urgency=medium
+
+  * 1.41.0 tagged with 'make release'
+    Commit: Add tests for METRICS_PROVIDER_PROMQL in
+    get_autoscaling_provider_spec
+
+ -- Evan Krall <krall@yelp.com>  Wed, 04 Feb 2026 11:44:45 -0800
+
 paasta-tools (1.40.1) jammy; urgency=medium
 
   * 1.40.1 tagged with 'make release'
