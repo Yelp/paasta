@@ -54,6 +54,7 @@ from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.async_utils import to_blocking
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
@@ -1752,6 +1753,7 @@ WAIT_FOR_INSTANCE_CLASSES = [
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
 ]
 
 
