@@ -400,8 +400,16 @@ instance MAY have:
         * ``moving_average_window_seconds``: A smoothing function to apply to the data received from your metrics
           provider.
 
-        * ``prometheus_adapter_config``: **(advanced users only)** Custom prometheus configuration for the
-          ``arbitrary-promql`` metrics provider.
+        * ``metrics_query``: **(arbitrary-promql only)** The PromQL query that returns your metric value.
+
+        * ``series_query``: **(arbitrary-promql only, optional)** Custom series query for metric discovery. If omitted,
+          PaaSTA automatically generates one.
+
+        * ``target_type``: **(arbitrary-promql only, optional)** How the HPA interprets the metric value. Either
+          ``AverageValue`` (default) or ``Value``. See :ref:`autoscaling` for details.
+
+        * ``resources``: **(arbitrary-promql only, optional, advanced)** Custom prometheus-adapter resource mappings.
+          Controls how Prometheus labels are mapped to Kubernetes resources.
 
     * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
       this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`

@@ -26,7 +26,7 @@ from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 
 from paasta_tools.cli.authentication import get_service_auth_token
-from paasta_tools.cli.authentication import get_sso_auth_token
+from paasta_tools.cli.authentication import maintain_valid_sso_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
@@ -918,8 +918,6 @@ def configure_and_run_docker_container(
 
     if args.use_service_auth_token:
         environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
-    elif args.use_sso_service_auth_token:
-        environment["YELP_SVC_AUTHZ_TOKEN"] = get_sso_auth_token()
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green("\nSpark monitoring URL: ") + f"{webui_url}\n"
@@ -946,6 +944,16 @@ def configure_and_run_docker_container(
             print(history_server_url_msg)
             log.info(history_server_url_msg)
     print(f"Selected cluster manager: {cluster_manager}\n")
+
+    if args.use_sso_service_auth_token:
+        # To simulate what would happen in a k8s pod, this mounts a directory in the local spark-run
+        # container where a background process will keep an SSO auth token updated until the container
+        # process terminates.
+        local_token_path = os.path.expanduser("~/.paasta/auth")
+        k8s_token_config = system_paasta_config.get_service_auth_token_volume_config()
+        container_token_path = k8s_token_config["container_path"]
+        maintain_valid_sso_token(local_token_path)
+        volumes.append(f"{local_token_path}:{container_token_path}:ro")
 
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
