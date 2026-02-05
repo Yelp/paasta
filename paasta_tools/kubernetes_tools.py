@@ -820,15 +820,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         policy["scaleDown"].update(autoscaling_params.get("scaledown_policies", {}))
         return policy
 
-    def namespace_external_metric_name(self, metric_name: str) -> str:
-        return f"{self.get_sanitised_deployment_name()}-{metric_name}"
+    def namespace_custom_prometheus_metric_name(self, metric_name: str) -> str:
+        return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
-        prometheus_hpa_metric_name = (
-            f"{self.namespace_external_metric_name(provider['type'])}-prom"
+        prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
+            provider["type"]
         )
 
         if provider["type"] == METRICS_PROVIDER_CPU:
