@@ -37,11 +37,9 @@ mypy-extensions >= 0.3.0
 nats-py
 nulltype
 objgraph
-packaging
 ply
 progressbar2>=4.3.2
 prometheus-client
-py >= 1.11.0
 pyramid-swagger >= 2.3.0
 pyramid>=2.0.2
 pysensu-yelp >= 0.3.4
@@ -57,7 +55,6 @@ ruamel.yaml
 sensu-plugin
 service-configuration-lib >= 3.3.8
 signalfx
-six
 slackclient >= 1.2.1
 sticht >= 1.1.0
 syslogmp
