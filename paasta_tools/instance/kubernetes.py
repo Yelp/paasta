@@ -57,6 +57,7 @@ INSTANCE_TYPES_CR = {
     "flink",
     "flinkeks",
     "cassandracluster",
+    "cassandraclustereks",
     "kafkacluster",
 }
 INSTANCE_TYPES_K8S = {
@@ -71,6 +72,7 @@ INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     flinkeks=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
+    cassandraclustereks=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     nrtsearchserviceeks=nrtsearchservice_tools.cr_id,

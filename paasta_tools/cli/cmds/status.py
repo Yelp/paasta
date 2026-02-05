@@ -50,6 +50,10 @@ from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.async_utils import run_sync
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import (
+    load_cassandraclustereks_instance_config,
+)
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -103,6 +107,7 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -115,6 +120,7 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -139,8 +145,13 @@ InstanceStatusWriter = Callable[
 EKS_DEPLOYMENT_CONFIGS = [
     EksDeploymentConfig,
     FlinkEksDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
 ]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
+CASSANDRA_DEPLOYMENT_CONFIGS = [
+    CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
+]
 
 
 def add_subparser(
@@ -2440,4 +2451,5 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,
     cassandracluster=print_cassandra_status,
+    cassandraclustereks=print_cassandra_status,
 )
