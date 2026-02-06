@@ -97,17 +97,17 @@ def test_make_mutate_refs_func():
 
 
 def test_log_event():
-    with mock.patch(
-        "paasta_tools.utils.get_username", autospec=True, return_value="fake_user"
-    ), mock.patch(
-        "paasta_tools.utils.get_hostname", autospec=True, return_value="fake_fqdn"
-    ), mock.patch(
-        "socket.getfqdn", autospec=True, return_value="fake_fqdn"
-    ), mock.patch(
-        "paasta_tools.utils._log", autospec=True
-    ) as mock_log, mock.patch(
-        "paasta_tools.utils._log_audit", autospec=True
-    ) as mock_log_audit:
+    with (
+        mock.patch(
+            "paasta_tools.utils.get_username", autospec=True, return_value="fake_user"
+        ),
+        mock.patch(
+            "paasta_tools.utils.get_hostname", autospec=True, return_value="fake_fqdn"
+        ),
+        mock.patch("socket.getfqdn", autospec=True, return_value="fake_fqdn"),
+        mock.patch("paasta_tools.utils._log", autospec=True) as mock_log,
+        mock.patch("paasta_tools.utils._log_audit", autospec=True) as mock_log_audit,
+    ):
         service_config = KubernetesDeploymentConfig(
             cluster="fake_cluster",
             instance="fake_instance",

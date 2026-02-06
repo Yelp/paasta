@@ -35,23 +35,27 @@ def test_parse_args():
 
 
 def test_main_logging():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
-    ) as mock_parse_args, mock.patch(
-        "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
-        autospec=True,
-    ) as mock_service_instance_configs_list, mock.patch(
-        "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
-    ) as mock_setup_kube_deployments, mock.patch(
-        "paasta_tools.setup_kubernetes_job.logging", autospec=True
-    ) as mock_logging:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
+        ) as mock_parse_args,
+        mock.patch("paasta_tools.setup_kubernetes_job.KubeClient", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
+            autospec=True,
+        ) as mock_service_instance_configs_list,
+        mock.patch("paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
+        ) as mock_setup_kube_deployments,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.logging", autospec=True
+        ) as mock_logging,
+    ):
         mock_setup_kube_deployments.return_value = True
         mock_parse_args.return_value.verbose = True
         mock_kube_deploy_config = KubernetesDeploymentConfig(
@@ -105,25 +109,33 @@ def test_main_logging():
     ],
 )
 def test_main(mock_kube_deploy_config, eks_flag):
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
-        autospec=True,
-    ) as mock_get_metrics_interface, mock.patch(
-        "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
-    ) as mock_parse_args, mock.patch(
-        "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
-    ) as mock_kube_client, mock.patch(
-        "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
-        autospec=True,
-    ) as mock_service_instance_configs_list, mock.patch(
-        "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
-    ) as mock_ensure_namespace, mock.patch(
-        "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
-    ) as mock_setup_kube_deployments, mock.patch(
-        "paasta_tools.setup_kubernetes_job.get_hpa_overrides",
-        autospec=True,
-        return_value={},
-    ) as mock_get_hpa_overrides:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+            autospec=True,
+        ) as mock_get_metrics_interface,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
+        ) as mock_parse_args,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
+        ) as mock_kube_client,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
+            autospec=True,
+        ) as mock_service_instance_configs_list,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
+        ) as mock_ensure_namespace,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
+        ) as mock_setup_kube_deployments,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.get_hpa_overrides",
+            autospec=True,
+            return_value={},
+        ) as mock_get_hpa_overrides,
+    ):
         mock_setup_kube_deployments.return_value = True
         mock_metrics_interface = mock_get_metrics_interface.return_value
         mock_parse_args.return_value.eks = eks_flag
@@ -165,18 +177,22 @@ def test_get_service_instances_with_valid_names():
 
 
 def test_main_invalid_job_name():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
-    ) as mock_parse_args, mock.patch(
-        "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True
-    ) as mock_create_application_object:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
+        ) as mock_parse_args,
+        mock.patch("paasta_tools.setup_kubernetes_job.KubeClient", autospec=True),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True
+        ) as mock_create_application_object,
+    ):
         mock_parse_args.return_value.cluster = "fake_cluster"
         mock_parse_args.return_value.soa_dir = "/etc/fake"
         mock_parse_args.return_value.service_instance_list = ["kuruptf_m"]
@@ -345,18 +361,23 @@ def test_get_eks_deployment_config():
     ],
 )
 def test_create_application_object(eks_flag, mock_service_config):
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.Application.load_local_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper",
-        autospec=True,
-    ) as mock_deployment_wrapper, mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.StatefulSetWrapper",
-        autospec=True,
-    ) as mock_stateful_set_wrapper:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.application.controller_wrappers.Application.load_local_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper",
+            autospec=True,
+        ) as mock_deployment_wrapper,
+        mock.patch(
+            "paasta_tools.kubernetes.application.controller_wrappers.StatefulSetWrapper",
+            autospec=True,
+        ) as mock_stateful_set_wrapper,
+    ):
         mock_deploy = mock.MagicMock(spec=V1Deployment)
         service_config = mock.MagicMock(spec=mock_service_config)
         service_config.format_kubernetes_app.return_value = mock_deploy
@@ -475,19 +496,26 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
         fake_app.__str__ = lambda app: "fake_app"  # type: ignore
         return True, fake_app
 
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object",
-        autospec=True,
-        side_effect=simple_create_application_object,
-    ) as mock_create_application_object, mock.patch(
-        "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments", autospec=True
-    ) as mock_list_all_paasta_deployments, mock.patch(
-        "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj, mock.patch(
-        "paasta_tools.setup_kubernetes_job.metrics_lib.NoMetrics", autospec=True
-    ) as mock_no_metrics, mock.patch(
-        "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.create_application_object",
+            autospec=True,
+            side_effect=simple_create_application_object,
+        ) as mock_create_application_object,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments",
+            autospec=True,
+        ) as mock_list_all_paasta_deployments,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.log", autospec=True
+        ) as mock_log_obj,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.metrics_lib.NoMetrics", autospec=True
+        ) as mock_no_metrics,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
+            autospec=True,
+        ),
     ):
         mock_client = mock.Mock()
         # No instances created
@@ -815,14 +843,19 @@ def test_setup_kube_deployments_rate_limit(
     mock_kube_deploy_config_radio,
     eks_flag,
 ):
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object",
-        autospec=True,
-    ) as mock_create_application_object, mock.patch(
-        "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.create_application_object",
+            autospec=True,
+        ) as mock_create_application_object,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.log", autospec=True
+        ) as mock_log_obj,
+    ):
         mock_client = mock.Mock()
         mock_service_instance_configs_list: List[
             Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
@@ -903,14 +936,19 @@ def test_setup_kube_deployments_rate_limit(
 def test_setup_kube_deployments_skip_malformed_apps(
     mock_kube_deploy_config_fake, mock_kube_deploy_config_mock, eks_flag
 ):
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object",
-        autospec=True,
-    ) as mock_create_application_object, mock.patch(
-        "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments", autospec=True
-    ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.create_application_object",
+            autospec=True,
+        ) as mock_create_application_object,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.log", autospec=True
+        ) as mock_log_obj,
+    ):
         mock_client = mock.Mock()
         mock_service_instance_configs_list: List[
             Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
@@ -941,14 +979,19 @@ def test_setup_kube_deployments_skip_malformed_apps(
 
 
 def test_setup_kube_deployments_does_git_sha_changes_first():
-    with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object",
-        autospec=True,
-    ) as mock_create_application_object, mock.patch(
-        "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments", autospec=True
-    ) as mock_list_all_paasta_deployments, mock.patch(
-        "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    with (
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.create_application_object",
+            autospec=True,
+        ) as mock_create_application_object,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.list_all_paasta_deployments",
+            autospec=True,
+        ) as mock_list_all_paasta_deployments,
+        mock.patch(
+            "paasta_tools.setup_kubernetes_job.log", autospec=True
+        ) as mock_log_obj,
+    ):
         mock_client = mock.Mock()
         mock_kube_deploy_config_fm = KubernetesDeploymentConfig(
             service="kurupt",

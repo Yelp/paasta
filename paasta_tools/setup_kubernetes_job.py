@@ -375,17 +375,19 @@ def setup_kube_deployments(
     hpa_overrides = hpa_overrides or {}
 
     applications = [
-        create_application_object(
-            cluster=cluster,
-            soa_dir=soa_dir,
-            service_instance_config=service_instance,
-            eks=eks,
-            hpa_override=hpa_overrides.get(service_instance.service, {}).get(
-                service_instance.instance, None
-            ),
+        (
+            create_application_object(
+                cluster=cluster,
+                soa_dir=soa_dir,
+                service_instance_config=service_instance,
+                eks=eks,
+                hpa_override=hpa_overrides.get(service_instance.service, {}).get(
+                    service_instance.instance, None
+                ),
+            )
+            if service_instance
+            else (_, None)
         )
-        if service_instance
-        else (_, None)
         for _, service_instance in service_instance_configs_list
     ]
 

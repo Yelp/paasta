@@ -14,8 +14,7 @@ def mock_ClientSession(**fake_session_kwargs):
     fake_session = MagicMock(name="session", **fake_session_kwargs)
 
     class FakeClientSession:
-        def __init__(self, *args, **kwargs):
-            ...
+        def __init__(self, *args, **kwargs): ...
 
         async def __aenter__(*args):
             return fake_session

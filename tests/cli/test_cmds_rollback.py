@@ -645,14 +645,17 @@ def test_list_previously_deployed_shas():
     }
     fake_deploy_groups = ["test.deploy.group"]
 
-    with patch(
-        "paasta_tools.cli.cmds.rollback.list_remote_refs",
-        autospec=True,
-        return_value=fake_refs,
-    ), patch(
-        "paasta_tools.cli.cmds.rollback.list_deploy_groups",
-        autospec=True,
-        return_value=fake_deploy_groups,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_remote_refs",
+            autospec=True,
+            return_value=fake_refs,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_deploy_groups",
+            autospec=True,
+            return_value=fake_deploy_groups,
+        ),
     ):
         fake_args = Mock(
             service="fake_service",
@@ -671,14 +674,17 @@ def test_list_previously_deployed_image_versions():
     }
     fake_deploy_groups = ["test.deploy.group"]
 
-    with patch(
-        "paasta_tools.cli.cmds.rollback.list_remote_refs",
-        autospec=True,
-        return_value=fake_refs,
-    ), patch(
-        "paasta_tools.cli.cmds.rollback.list_deploy_groups",
-        autospec=True,
-        return_value=fake_deploy_groups,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_remote_refs",
+            autospec=True,
+            return_value=fake_refs,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_deploy_groups",
+            autospec=True,
+            return_value=fake_deploy_groups,
+        ),
     ):
         fake_args = Mock(
             service="fake_service",
@@ -699,14 +705,17 @@ def test_list_previously_deployed_shas_no_deploy_groups():
     }
     fake_deploy_groups = ["test.deploy.group", "other.deploy.group"]
 
-    with patch(
-        "paasta_tools.cli.cmds.rollback.list_remote_refs",
-        autospec=True,
-        return_value=fake_refs,
-    ), patch(
-        "paasta_tools.cli.cmds.rollback.list_deploy_groups",
-        autospec=True,
-        return_value=fake_deploy_groups,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_remote_refs",
+            autospec=True,
+            return_value=fake_refs,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.rollback.list_deploy_groups",
+            autospec=True,
+            return_value=fake_deploy_groups,
+        ),
     ):
         fake_args = Mock(
             service="fake_service",

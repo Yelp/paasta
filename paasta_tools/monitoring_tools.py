@@ -45,8 +45,7 @@ class ReplicationChecker(abc.ABC):
     @abc.abstractmethod
     def get_replication_for_instance(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Dict[str, Dict[str, int]]]:
-        ...
+    ) -> Dict[str, Dict[str, Dict[str, int]]]: ...
 
 
 try:
@@ -255,9 +254,9 @@ def send_event(
         "realert_every": overrides.get(
             "realert_every", monitoring_defaults("realert_every")
         ),
-        "alert_after": f"{alert_after}s"
-        if isinstance(alert_after, int)
-        else alert_after,
+        "alert_after": (
+            f"{alert_after}s" if isinstance(alert_after, int) else alert_after
+        ),
         "irc_channels": get_irc_channels(overrides, service, soa_dir),
         "slack_channels": get_slack_channels(overrides, service, soa_dir),
         "ticket": get_ticket(overrides, service, soa_dir),

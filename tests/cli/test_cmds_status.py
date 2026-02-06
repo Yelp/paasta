@@ -1687,10 +1687,12 @@ def test_paasta_status_exception(system_paasta_config):
 
 
 def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_status):
-    with mock.patch(
-        "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table", autospec=True
-    ) as mock_format_kubernetes_replicaset_table, mock.patch(
-        "paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table",
+            autospec=True,
+        ) as mock_format_kubernetes_replicaset_table,
+        mock.patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True),
     ):
         mock_kubernetes_status.replicasets = [
             paastamodels.KubernetesReplicaSet(

@@ -110,21 +110,27 @@ def test_check_under_registered_taskmanagers_error(mock_overview, instance_confi
 
 
 def test_check_flink_service_health_healthy(instance_config):
-    with mock.patch(
-        "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
-        autospec=True,
-        return_value=1,
-    ), mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_replication",
-        autospec=True,
-        return_value=(False, "OK", "check_rep"),
-    ) as mock_check_under_replication, mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
-        autospec=True,
-        return_value=(False, "OK", "check_task"),
-    ) as mock_check_under_registered_taskmanagers, mock.patch(
-        "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
-    ) as mock_send_replication_event:
+    with (
+        mock.patch(
+            "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
+            autospec=True,
+            return_value=1,
+        ),
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_replication",
+            autospec=True,
+            return_value=(False, "OK", "check_rep"),
+        ) as mock_check_under_replication,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
+            autospec=True,
+            return_value=(False, "OK", "check_task"),
+        ) as mock_check_under_registered_taskmanagers,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.send_replication_event",
+            autospec=True,
+        ) as mock_send_replication_event,
+    ):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
@@ -174,21 +180,27 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         if kwargs["sub_component"] == "taskmanager":
             return True, "NOPE", "check_rep"
 
-    with mock.patch(
-        "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
-        autospec=True,
-        return_value=1,
-    ), mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
-        autospec=True,
-        return_value=(True, "NOPE", "check_task"),
-    ) as mock_check_under_registered_taskmanagers, mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_replication",
-        autospec=True,
-        side_effect=check_under_replication_side_effect,
-    ) as mock_check_under_replication, mock.patch(
-        "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
-    ) as mock_send_replication_event:
+    with (
+        mock.patch(
+            "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
+            autospec=True,
+            return_value=1,
+        ),
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
+            autospec=True,
+            return_value=(True, "NOPE", "check_task"),
+        ) as mock_check_under_registered_taskmanagers,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_replication",
+            autospec=True,
+            side_effect=check_under_replication_side_effect,
+        ) as mock_check_under_replication,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.send_replication_event",
+            autospec=True,
+        ) as mock_send_replication_event,
+    ):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
@@ -230,21 +242,27 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
 
 
 def test_check_flink_service_health_under_registered_taskamanagers(instance_config):
-    with mock.patch(
-        "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
-        autospec=True,
-        return_value=1,
-    ), mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_replication",
-        autospec=True,
-        return_value=(False, "OK", "check_rep"),
-    ) as mock_check_under_replication, mock.patch(
-        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
-        autospec=True,
-        return_value=(True, "NOPE", "check_task"),
-    ) as mock_check_under_registered_taskmanagers, mock.patch(
-        "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
-    ) as mock_send_replication_event:
+    with (
+        mock.patch(
+            "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
+            autospec=True,
+            return_value=1,
+        ),
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_replication",
+            autospec=True,
+            return_value=(False, "OK", "check_rep"),
+        ) as mock_check_under_replication,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
+            autospec=True,
+            return_value=(True, "NOPE", "check_task"),
+        ) as mock_check_under_registered_taskmanagers,
+        mock.patch(
+            "paasta_tools.check_flink_services_health.send_replication_event",
+            autospec=True,
+        ) as mock_send_replication_event,
+    ):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,

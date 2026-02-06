@@ -5,15 +5,20 @@ from paasta_tools.eks_tools import load_eks_service_config_no_cache
 
 
 def test_load_eks_service_config_no_cache():
-    with mock.patch(
-        "service_configuration_lib.read_service_configuration", autospec=True
-    ) as mock_read_service_configuration, mock.patch(
-        "paasta_tools.eks_tools.load_service_instance_config", autospec=True
-    ) as mock_load_service_instance_config, mock.patch(
-        "paasta_tools.eks_tools.load_v2_deployments_json", autospec=True
-    ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.eks_tools.EksDeploymentConfig", autospec=True
-    ) as mock_eks_deploy_config:
+    with (
+        mock.patch(
+            "service_configuration_lib.read_service_configuration", autospec=True
+        ) as mock_read_service_configuration,
+        mock.patch(
+            "paasta_tools.eks_tools.load_service_instance_config", autospec=True
+        ) as mock_load_service_instance_config,
+        mock.patch(
+            "paasta_tools.eks_tools.load_v2_deployments_json", autospec=True
+        ) as mock_load_v2_deployments_json,
+        mock.patch(
+            "paasta_tools.eks_tools.EksDeploymentConfig", autospec=True
+        ) as mock_eks_deploy_config,
+    ):
         mock_config = {"freq": "108.9"}
         mock_load_service_instance_config.return_value = mock_config
         mock_read_service_configuration.return_value = {}

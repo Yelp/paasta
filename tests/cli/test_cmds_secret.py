@@ -41,9 +41,10 @@ def test_print_paasta_helper():
 
 
 def test_get_plaintext_input():
-    with mock.patch("sys.stdin", autospec=True) as mock_stdin, mock.patch(
-        "paasta_tools.cli.cmds.secret.input", autospec=False
-    ) as mock_input:
+    with (
+        mock.patch("sys.stdin", autospec=True) as mock_stdin,
+        mock.patch("paasta_tools.cli.cmds.secret.input", autospec=False) as mock_input,
+    ):
         mock_args = mock.Mock(plain_text=False, stdin=True)
         mock_stdin.buffer.read.return_value = b"SECRET_SQUIRREL"
         assert secret.get_plaintext_input(mock_args) == b"SECRET_SQUIRREL"
@@ -67,15 +68,21 @@ def test_is_service_folder():
 
 
 def test__get_secret_provider_for_service():
-    with mock.patch("os.getcwd", autospec=True) as mock_getcwd, mock.patch(
-        "paasta_tools.cli.cmds.secret.is_service_folder", autospec=True
-    ) as mock_is_service_folder, mock.patch(
-        "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.cli.cmds.secret.list_clusters", autospec=True
-    ) as mock_list_clusters, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_secret_provider", autospec=True
-    ) as mock_get_secret_provider:
+    with (
+        mock.patch("os.getcwd", autospec=True) as mock_getcwd,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.is_service_folder", autospec=True
+        ) as mock_is_service_folder,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
+        ) as mock_load_system_paasta_config,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.list_clusters", autospec=True
+        ) as mock_list_clusters,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.get_secret_provider", autospec=True
+        ) as mock_get_secret_provider,
+    ):
         mock_config = mock.Mock()
         mock_load_system_paasta_config.return_value = mock_config
         mock_is_service_folder.return_value = False
@@ -137,25 +144,36 @@ def test_check_secret_name():
 
 
 def test_paasta_secret():
-    with mock.patch(
-        "paasta_tools.cli.cmds.secret._get_secret_provider_for_service", autospec=True
-    ) as mock_get_secret_provider_for_service, mock.patch(
-        "paasta_tools.cli.cmds.secret.decrypt_secret", autospec=True
-    ) as mock_decrypt_secret, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_plaintext_input", autospec=True
-    ) as mock_get_plaintext_input, mock.patch(
-        "paasta_tools.cli.cmds.secret._log_audit", autospec=True
-    ) as mock_log_audit, mock.patch(
-        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
-    ) as mock_is_secrets_for_teams_enabled, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_secret", autospec=True
-    ) as mock_get_secret, mock.patch(
-        "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
-    ) as mock_kube_client, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_namespaces_for_secret", autospec=True
-    ) as mock_get_namespaces_for_secret, mock.patch(
-        "paasta_tools.cli.cmds.secret.select_k8s_secret_namespace", autospec=True
-    ) as mock_select_k8s_secret_namespace:
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.secret._get_secret_provider_for_service",
+            autospec=True,
+        ) as mock_get_secret_provider_for_service,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.decrypt_secret", autospec=True
+        ) as mock_decrypt_secret,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.get_plaintext_input", autospec=True
+        ) as mock_get_plaintext_input,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret._log_audit", autospec=True
+        ) as mock_log_audit,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
+        ) as mock_is_secrets_for_teams_enabled,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.get_secret", autospec=True
+        ) as mock_get_secret,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
+        ) as mock_kube_client,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.get_namespaces_for_secret", autospec=True
+        ) as mock_get_namespaces_for_secret,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.select_k8s_secret_namespace", autospec=True
+        ) as mock_select_k8s_secret_namespace,
+    ):
         mock_secret_provider = mock.Mock(secret_dir="/nail/blah")
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -319,18 +337,23 @@ def test_decrypt_secret():
 
 
 def test_paasta_secret_run():
-    with mock.patch(
-        "paasta_tools.cli.cmds.secret.decrypt_secret_environment_variables",
-        autospec=True,
-    ) as mock_decrypt_secret_environment_variables, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_instance_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
-    ), mock.patch(
-        "os.execvpe",
-        autospec=True,
-    ) as mock_exec:
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.decrypt_secret_environment_variables",
+            autospec=True,
+        ) as mock_decrypt_secret_environment_variables,
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.get_instance_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
+        ),
+        mock.patch(
+            "os.execvpe",
+            autospec=True,
+        ) as mock_exec,
+    ):
         mock_decrypt_secret_environment_variables.return_value = {
             "PAASTA_SECRET_TEST": "test secret value",
         }

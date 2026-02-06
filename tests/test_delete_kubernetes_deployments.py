@@ -8,18 +8,23 @@ from paasta_tools.utils import InvalidJobNameError
 
 
 def test_main():
-    with mock.patch(
-        "paasta_tools.delete_kubernetes_deployments.get_deployment_names_from_list",
-        autospec=True,
-    ) as mock_get_deployment_names_from_list, mock.patch(
-        "paasta_tools.delete_kubernetes_deployments.delete_deployment",
-        autospec=True,
-    ) as mock_delete_deployment, mock.patch(
-        "paasta_tools.delete_kubernetes_deployments.KubeClient", autospec=True
-    ) as mock_kube_client, mock.patch(
-        "paasta_tools.delete_kubernetes_deployments.ensure_namespace",
-        autospec=True,
-    ) as mock_ensure_namespace:
+    with (
+        mock.patch(
+            "paasta_tools.delete_kubernetes_deployments.get_deployment_names_from_list",
+            autospec=True,
+        ) as mock_get_deployment_names_from_list,
+        mock.patch(
+            "paasta_tools.delete_kubernetes_deployments.delete_deployment",
+            autospec=True,
+        ) as mock_delete_deployment,
+        mock.patch(
+            "paasta_tools.delete_kubernetes_deployments.KubeClient", autospec=True
+        ) as mock_kube_client,
+        mock.patch(
+            "paasta_tools.delete_kubernetes_deployments.ensure_namespace",
+            autospec=True,
+        ) as mock_ensure_namespace,
+    ):
         # Test main() success
         mock_get_deployment_names_from_list.return_value = ["fake_pcm_deployment"]
         with raises(SystemExit) as e:

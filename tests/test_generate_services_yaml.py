@@ -38,8 +38,9 @@ def mock_namespaces():
 def test_main(tmpdir, mock_namespaces):
     services_yaml = tmpdir.join("services.yaml")
 
-    with mock.patch.object(utils, "datetime") as m, mock.patch.object(
-        socket, "getfqdn", return_value="somehost.yelp"
+    with (
+        mock.patch.object(utils, "datetime") as m,
+        mock.patch.object(socket, "getfqdn", return_value="somehost.yelp"),
     ):
         m.datetime.now().isoformat.return_value = "$TIME"
         generate_services_yaml.main((services_yaml.strpath,))

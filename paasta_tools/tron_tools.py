@@ -387,9 +387,9 @@ class TronActionConfig(InstanceConfig):
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
                 f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
-        spark_conf[
-            "spark.kubernetes.executor.podTemplateFile"
-        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf["spark.kubernetes.executor.podTemplateFile"] = (
+            spark_tools.SPARK_DNS_POD_TEMPLATE
+        )
 
         spark_conf.update(
             {
@@ -402,10 +402,10 @@ class TronActionConfig(InstanceConfig):
         )
 
         # We are using the Service Account created using the provided or default IAM role.
-        spark_conf[
-            "spark.kubernetes.authenticate.executor.serviceAccountName"
-        ] = get_service_account_name(
-            iam_role=self.get_spark_executor_iam_role(),
+        spark_conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = (
+            get_service_account_name(
+                iam_role=self.get_spark_executor_iam_role(),
+            )
         )
 
         return spark_conf

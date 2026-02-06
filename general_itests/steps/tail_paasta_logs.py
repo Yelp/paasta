@@ -31,17 +31,19 @@ def tail_paasta_logs_let_threads_be_threads(context):
     context.clusters = ["fake_cluster1"]
     context.instances = ["fake_instance"]
     context.pods = ["fake_pod"]
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
-        autospec=True,
-    ) as context.determine_scribereader_envs_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
-    ) as scribe_tail_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.logs.print_log", autospec=True
-    ) as context.print_log_patch, mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
+            autospec=True,
+        ) as context.determine_scribereader_envs_patch,
+        mock.patch(
+            "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
+        ) as scribe_tail_patch,
+        mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True),
+        mock.patch(
+            "paasta_tools.cli.cmds.logs.print_log", autospec=True
+        ) as context.print_log_patch,
+        mock.patch("paasta_tools.cli.cmds.logs.scribereader", autospec=True),
     ):
         context.determine_scribereader_envs_patch.return_value = ["env1", "env2"]
 

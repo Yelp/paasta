@@ -194,9 +194,11 @@ def check_flink_service_health(
 if __name__ == "__main__":
     args = parse_args()
     main(
-        instance_type_class=flinkeks_tools.FlinkEksDeploymentConfig
-        if args.eks
-        else flink_tools.FlinkDeploymentConfig,
+        instance_type_class=(
+            flinkeks_tools.FlinkEksDeploymentConfig
+            if args.eks
+            else flink_tools.FlinkDeploymentConfig
+        ),
         check_service_replication=check_flink_service_health,
         namespace="paasta-flinks",
     )

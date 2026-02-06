@@ -340,9 +340,11 @@ def sync_all_secrets(
 
         if overwrite_namespace:
             namespaces_to_allowlist = {
-                overwrite_namespace: None
-                if overwrite_namespace in SHARED_SECRETS_K8S_NAMESPACES
-                else namespaces_to_allowlist.get(overwrite_namespace, set()),
+                overwrite_namespace: (
+                    None
+                    if overwrite_namespace in SHARED_SECRETS_K8S_NAMESPACES
+                    else namespaces_to_allowlist.get(overwrite_namespace, set())
+                ),
             }
         for namespace, secret_allowlist in namespaces_to_allowlist.items():
             ensure_namespace(kube_client, namespace)

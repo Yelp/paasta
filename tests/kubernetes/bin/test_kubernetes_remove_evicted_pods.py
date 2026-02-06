@@ -84,12 +84,16 @@ def test_notify_service_ownersi_dry_run():
             EvictedPod("pod2", "namespace1", "Ran out of mem"),
         ]
     }
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.send_event",
-        autospec=True,
-    ) as mock_send_event, mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.log", autospec=True
-    ) as mock_logging:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.send_event",
+            autospec=True,
+        ) as mock_send_event,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.log",
+            autospec=True,
+        ) as mock_logging,
+    ):
         notify_service_owners(service_map, "/soa_dir", True)
         assert mock_send_event.call_count == 0
         mock_logging.info.assert_called_once_with(

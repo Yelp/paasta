@@ -61,13 +61,13 @@ test-yelpy: .paasta/bin/activate
 test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -e tests
 
-quick-test: .tox/py310-linux
-	TZ=UTC .tox/py310-linux/bin/py.test --failed-first -x --disable-warnings -- tests
+quick-test: .tox/py312-linux
+	TZ=UTC .tox/py312-linux/bin/py.test --failed-first -x --disable-warnings -- tests
 
-.tox/py310-linux: .paasta/bin/activate
+.tox/py312-linux: .paasta/bin/activate
 	.paasta/bin/tox
 
-dev-api: .tox/py310-linux
+dev-api: .tox/py312-linux
 	.paasta/bin/tox -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
@@ -113,7 +113,7 @@ k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
 
 .PHONY: k8s_fake_cluster
-k8s_fake_cluster: .tox/py310-linux
+k8s_fake_cluster: .tox/py312-linux
 	make -C k8s_itests .fake_cluster
 
 .PHONY: k8s_clean
@@ -144,22 +144,22 @@ swagger-validate:
 		-i paasta_tools/api/api_docs/swagger.json
 
 .PHONY: vscode_settings
-vscode_settings: .paasta/bin/activate .tox/py310-linux
+vscode_settings: .paasta/bin/activate .tox/py312-linux
 	.paasta/bin/python paasta_tools/contrib/ide_helper.py
 
-etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py310-linux
-	.tox/py310-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
+etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py312-linux
+	.tox/py312-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
 .PHONY: generate_deployments_for_service
-generate_deployments_for_service: | soa_config_playground .tox/py310-linux
+generate_deployments_for_service: | soa_config_playground .tox/py312-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py310-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
-	.tox/py310-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
+	.tox/py312-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
+	.tox/py312-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
 
 .PHONY: playground-api
-playground-api: .tox/py310-linux | soa_config_playground
+playground-api: .tox/py312-linux | soa_config_playground
 	.paasta/bin/tox -e playground-api
 
 .PHONY: setup-kubernetes-job
@@ -167,21 +167,21 @@ setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py310-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py310-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
+	.tox/py312-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py312-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: cleanup-kubernetes-jobs
 cleanup-kubernetes-jobs:
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py310-linux/bin/python -m paasta_tools.cleanup_kubernetes_jobs -d ./soa_config_playground -c kind-${USER}-k8s-test --force
+	.tox/py312-linux/bin/python -m paasta_tools.cleanup_kubernetes_jobs -d ./soa_config_playground -c kind-${USER}-k8s-test --force
 
 .PHONY: paasta-secrets-sync
 paasta-secrets-sync: setup-kubernetes-job .vault-token
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	{ .tox/py310-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py310-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
+	{ .tox/py312-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py312-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
 
 define ANNOUNCE_CRONS_BODY
 The following PaaSTA cron jobs will run on an infinite loop using the PaaSTA Playground k8s cluster:

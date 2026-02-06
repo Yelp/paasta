@@ -22,13 +22,16 @@ def test_get_latest_deployment(capfd):
     mock_args = MagicMock(
         service="", deploy_group="", soa_dir="", sha_only=False, json=False
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
-        return_value=DeploymentVersion(sha="FAKE_SHA", image_version=None),
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
-        autospec=True,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+            return_value=DeploymentVersion(sha="FAKE_SHA", image_version=None),
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+            autospec=True,
+        ),
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
         assert "FAKE_SHA" in capfd.readouterr()[0]
@@ -38,13 +41,16 @@ def test_get_latest_deployment_with_image_version(capfd):
     mock_args = MagicMock(
         service="", deploy_group="", soa_dir="", sha_only=False, json=False
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
-        return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
-        autospec=True,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+            return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+            autospec=True,
+        ),
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
         stdout = capfd.readouterr()[0]
@@ -55,13 +61,16 @@ def test_get_latest_deployment_sha_only(capfd):
     mock_args = MagicMock(
         service="", deploy_group="", soa_dir="", sha_only=True, json=False
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
-        return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
-        autospec=True,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+            return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+            autospec=True,
+        ),
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
         stdout = capfd.readouterr()[0]
@@ -73,13 +82,16 @@ def test_get_latest_deployment_json(capfd):
     mock_args = MagicMock(
         service="", deploy_group="", soa_dir="", sha_only=False, json=True
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
-        return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
-        autospec=True,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+            return_value=DeploymentVersion(sha="FAKE_SHA", image_version="extrastuff"),
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+            autospec=True,
+        ),
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
         stdout = capfd.readouterr()[0]
@@ -96,13 +108,16 @@ def test_get_latest_deployment_no_deployment_tag(capfd):
         sha_only=False,
         json=False,
     )
-    with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
-        return_value=None,
-        autospec=True,
-    ), patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
-        autospec=True,
+    with (
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+            return_value=None,
+            autospec=True,
+        ),
+        patch(
+            "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+            autospec=True,
+        ),
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 1
         assert (
