@@ -90,7 +90,6 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
-MESOS_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
 EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE = {"paasta": "kubernetes", "spark": "spark"}
 KUBERNETES_NAMESPACE = "tron"
@@ -645,37 +644,15 @@ class TronActionConfig(InstanceConfig):
             for key, op, value in requirements
         ]
 
-    def get_calculated_constraints(self):
-        """Combine all configured Mesos constraints."""
-        constraints = self.get_constraints()
-        if constraints is not None:
-            return constraints
-        else:
-            constraints = self.get_extra_constraints()
-            constraints.extend(
-                self.get_deploy_constraints(
-                    blacklist=self.get_deploy_blacklist(),
-                    whitelist=self.get_deploy_whitelist(),
-                    # Don't have configs for the paasta cluster
-                    system_deploy_blacklist=[],
-                    system_deploy_whitelist=None,
-                )
-            )
-            constraints.extend(self.get_pool_constraints())
-            return constraints
-
     def get_nerve_namespace(self) -> None:
         return None
 
     def validate(self):
         error_msgs = []
         error_msgs.extend(super().validate())
-        # Tron is a little special, because it can *not* have a deploy group
-        # But only if an action is running via ssh and not via paasta
-        if (
-            self.get_deploy_group() is None
-            and self.get_executor() in MESOS_EXECUTOR_NAMES
-        ):
+        # Tron is a little special: deploy_group is required for paasta actions;
+        # ssh actions may omit it.
+        if self.get_deploy_group() is None and self.get_executor() == "paasta":
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
@@ -946,15 +923,6 @@ def format_volumes(paasta_volume_list):
 
 
 def format_master_config(master_config, default_volumes, dockercfg_location):
-    mesos_options = master_config.get("mesos_options", {})
-    mesos_options.update(
-        {
-            "default_volumes": format_volumes(default_volumes),
-            "dockercfg_location": dockercfg_location,
-        }
-    )
-    master_config["mesos_options"] = mesos_options
-
     k8s_options = master_config.get("k8s_options", {})
     if k8s_options:
         # Only add default volumes if we already have k8s_options
@@ -1040,7 +1008,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 },
             ]
 
-        # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
+        # XXX: once we're off the legacy cap format we can make get_cap_* return just the cap names as a list
         result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
         result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
 
@@ -1144,22 +1112,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
 
-    elif executor in MESOS_EXECUTOR_NAMES:
-        result["executor"] = "mesos"
-        constraint_labels = ["attribute", "operator", "value"]
-        result["constraints"] = [
-            dict(zip(constraint_labels, constraint))
-            for constraint in action_config.get_calculated_constraints()
-        ]
-        result["docker_parameters"] = [
-            {"key": param["key"], "value": param["value"]}
-            for param in action_config.format_docker_parameters()
-        ]
-        result["env"] = action_config.get_env()
-
-    # the following config is only valid for k8s/Mesos since we're not running SSH actions
+    # the following config is only valid for k8s since we're not running SSH actions
     # in a containerized fashion
-    if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
+    if executor in KUBERNETES_EXECUTOR_NAMES:
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
@@ -1352,11 +1307,9 @@ def validate_complete_config(
         os.path.abspath(soa_dir), "tron", cluster, MASTER_NAMESPACE + ".yaml"
     )
 
-    # TODO: remove creating the master config here once we're fully off of mesos
-    # since we only have it here to verify that the generated tronfig will be valid
-    # given that the kill-switch will affect PaaSTA's setup_tron_namespace script (we're
-    # not reading the kill-switch in Tron since it's not easily accessible at the point
-    # at which we'd like to fallback to Mesos if toggled)
+    # TODO: remove creating the master config here once tronfig validation no longer
+    # needs it. We only keep this to verify the generated tronfig is valid given
+    # the kill-switch used by PaaSTA's setup_tron_namespace script.
     master_config = yaml.safe_load(
         create_complete_master_config(cluster=cluster, soa_dir=soa_dir)
     )

@@ -13,7 +13,6 @@ from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
-from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.tron_tools import TronActionConfigDict
 from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
@@ -105,11 +104,8 @@ class TestTronActionConfig:
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_env(
-        self, mock_read_soa_metadata, action_config, executor, monkeypatch
-    ):
-        action_config.config_dict["executor"] = executor
+    def test_get_env(self, mock_read_soa_metadata, action_config, monkeypatch):
+        action_config.config_dict["executor"] = "paasta"
         with mock.patch(
             "paasta_tools.utils.get_service_docker_registry",
             autospec=True,
@@ -214,10 +210,9 @@ class TestTronActionConfig:
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() == "paasta"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_executor_paasta(self, executor, action_config):
-        action_config.config_dict["executor"] = executor
-        assert action_config.get_executor() == executor
+    def test_get_executor_paasta(self, action_config):
+        action_config.config_dict["executor"] = "paasta"
+        assert action_config.get_executor() == "paasta"
 
 
 class TestTronJobConfig:
@@ -875,16 +870,6 @@ class TestTronTools:
         master_config = {
             "some_key": 101,
             "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/tmp",
-                        "host_path": "/nail/tmp",
-                        "mode": "RW",
-                    }
-                ],
-                "other_mesos": True,
-            },
         }
         paasta_volumes = [
             {"containerPath": "/nail/other", "hostPath": "/other/home", "mode": "RW"}
@@ -893,21 +878,7 @@ class TestTronTools:
         result = tron_tools.format_master_config(
             master_config, paasta_volumes, dockercfg
         )
-        assert result == {
-            "some_key": 101,
-            "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/other",
-                        "host_path": "/other/home",
-                        "mode": "RW",
-                    }
-                ],
-                "dockercfg_location": dockercfg,
-                "other_mesos": True,
-            },
-        }
+        assert result == {"some_key": 101, "another": "hello"}
 
         master_config["k8s_options"] = {
             "kubeconfig_path": "/var/lib/tron/kubeconfig.conf"
