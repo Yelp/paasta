@@ -153,6 +153,7 @@ from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
@@ -3300,6 +3301,62 @@ class TestKubernetesDeploymentConfig:
         )
         expected_res = None
         assert expected_res == return_value
+
+    @pytest.mark.parametrize(
+        "target_type,expected_target_type,expected_target_field",
+        [
+            ("AverageValue", "AverageValue", "average_value"),
+            ("Value", "Value", "value"),
+            (None, "AverageValue", "average_value"),  # default
+        ],
+    )
+    def test_get_autoscaling_metric_spec_arbitrary_promql(
+        self, target_type, expected_target_type, expected_target_field
+    ):
+        metrics_provider = {
+            "type": METRICS_PROVIDER_PROMQL,
+            "setpoint": 0.5,
+            "metrics_query": "sum(rate(my_metric[5m]))",
+        }
+        if target_type is not None:
+            metrics_provider["target_type"] = target_type
+
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_providers": [metrics_provider]},
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+            "paasta",
+        )
+        assert return_value is not None
+        assert len(return_value.spec.metrics) == 1
+        metric_spec = return_value.spec.metrics[0]
+        assert metric_spec.type == "Object"
+        assert (
+            metric_spec.object.metric.name == "service-instance-arbitrary-promql-prom"
+        )
+        assert metric_spec.object.target.type == expected_target_type
+        # Check that the correct field is set based on target type
+        if expected_target_field == "average_value":
+            assert metric_spec.object.target.average_value == 0.5
+            assert metric_spec.object.target.value is None
+        else:
+            assert metric_spec.object.target.value == 0.5
+            assert metric_spec.object.target.average_value is None
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",

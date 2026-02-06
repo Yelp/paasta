@@ -9,6 +9,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
+from typing import cast
 
 import service_configuration_lib
 
@@ -36,6 +37,7 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
+DEFAULT_PROMQL_AUTOSCALING_SETPOINT = 1.0
 DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA = 1
 DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
@@ -371,9 +373,20 @@ class LongRunningServiceConfig(InstanceConfig):
             params["metrics_providers"] = [default_provider_params]
         else:
             params["metrics_providers"] = [
-                deep_merge_dictionaries(
-                    overrides=provider,
-                    defaults=default_provider_params,
+                cast(
+                    MetricsProviderDict,
+                    deep_merge_dictionaries(
+                        overrides=provider,
+                        defaults={
+                            **default_provider_params,
+                            # arbitrary-promql has a different default setpoint
+                            "setpoint": (
+                                DEFAULT_PROMQL_AUTOSCALING_SETPOINT
+                                if provider.get("type") == METRICS_PROVIDER_PROMQL
+                                else DEFAULT_AUTOSCALING_SETPOINT
+                            ),
+                        },
+                    ),
                 )
                 for provider in params["metrics_providers"]
             ]

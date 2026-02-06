@@ -37,40 +37,30 @@
                 "type": "integer",
                 "minimum": 60
             },
-            "prometheus_adapter_config": {
+            "metrics_query": {
+                "type": "string"
+            },
+            "series_query": {
+                "type": "string"
+            },
+            "target_type": {
+                "enum": [
+                    "Value",
+                    "AverageValue"
+                ],
+                "default": "AverageValue"
+            },
+            "resources": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                    "seriesQuery": {
-                        "type": "string"
+                    "overrides": {
+                        "type": "object"
                     },
-                    "metricsQuery": {
+                    "template": {
                         "type": "string"
-                    },
-                    "resources": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                            "overrides": {
-                                "type": "object",
-                                "properties": {
-                                    "group": {
-                                        "type": "string"
-                                    },
-                                    "resource": {
-                                        "type": "string"
-                                    }
-                                }
-                            },
-                            "template": {
-                                "type": "string"
-                            }
-                        }
                     }
-                },
-                "required": [
-                    "metricsQuery"
-                ]
+                }
             }
         },
         "additionalProperties": false

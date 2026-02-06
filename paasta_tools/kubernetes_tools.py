@@ -820,15 +820,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         policy["scaleDown"].update(autoscaling_params.get("scaledown_policies", {}))
         return policy
 
-    def namespace_external_metric_name(self, metric_name: str) -> str:
-        return f"{self.get_sanitised_deployment_name()}-{metric_name}"
+    def namespace_custom_prometheus_metric_name(self, metric_name: str) -> str:
+        return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
-        prometheus_hpa_metric_name = (
-            f"{self.namespace_external_metric_name(provider['type'])}-prom"
+        prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
+            provider["type"]
         )
 
         if provider["type"] == METRICS_PROVIDER_CPU:
@@ -867,6 +867,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             )
         elif provider["type"] == METRICS_PROVIDER_PROMQL:
+            target_type = provider.get("target_type", "AverageValue")
+            if target_type == "AverageValue":
+                metric_target = V2MetricTarget(
+                    type="AverageValue",
+                    average_value=target,
+                )
+            else:
+                metric_target = V2MetricTarget(
+                    type="Value",
+                    value=target,
+                )
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -874,11 +885,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
-                    target=V2MetricTarget(
-                        # Use the setpoint specified by the user.
-                        type="Value",
-                        value=target,
-                    ),
+                    target=metric_target,
                 ),
             )
         elif provider["type"] in {

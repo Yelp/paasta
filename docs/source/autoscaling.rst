@@ -97,12 +97,115 @@ The currently available metrics providers are:
 
 :arbitrary-promql:
   The ``arbitrary-promql`` metrics provider allows you to specify any Prometheus query you want using the `Prometheus
-  query language (promql) <https://prometheus.io/docs/prometheus/latest/querying/basics/>`.  The autoscaler will attempt
-  to scale your service to keep the value of this metric at whatever setpoint you specify.
+  query language (promql) <https://prometheus.io/docs/prometheus/latest/querying/basics/>`_.  This is useful when you
+  have a custom metric that represents the load on your service.
 
-  .. warning:: Using arbitrary prometheus queries to scale your service is challenging, and should only be used by
-  advanced users.  Make sure you know exactly what you're doing, and test your changes thoroughly in a safe environment
-  before deploying to production.
+  Configuration options:
+
+  :metrics_query: (required) The PromQL query that returns your metric value. This can be any valid PromQL expression
+    that returns an
+    `instant vector <https://prometheus.io/docs/prometheus/latest/querying/basics/#expression-language-data-types>`_
+    with a single value.
+
+    This query is evaluated on the ``compute-infra-hpa`` Prometheus shard in the local cluster. If you need metrics
+    from another shard, you'll need to replicate them into the ``compute-infra-hpa`` shard.
+
+  :setpoint: (optional, default: 1.0) The target value for your metric. The HPA will scale your service to try to keep
+    the metric at this value. Can be any positive number.
+
+  :target_type: (optional, default: ``AverageValue``) How the HPA interprets the metric value:
+
+    - ``AverageValue``: The HPA calculates desired replicas as ``ceil(metric_value / setpoint)``. With the default
+      setpoint of 1.0, **the metric value is interpreted directly as the desired number of replicas**. This is the
+      recommended mode for most use cases.
+
+      Setting a setpoint of N is mathematically equivalent to dividing by N at the end of your PromQL query. For
+      example, ``setpoint: 100`` with a query returning 500 will result in 5 desired replicas (500 / 100 = 5).
+
+    - ``Value``: The HPA calculates desired replicas as ``ceil(current_replicas × metric_value / setpoint)``. With
+      a setpoint of 1.0, **the metric value is treated as a scaling factor**. A value of 1.0 means no change, 1.2
+      means scale up by 20%, and 0.5 means scale down by 50%. If the setpoint is something besides 1.0, the result
+      of the query is first divided by the setpoint.
+
+      This mode is useful when your query computes a ratio or scaling factor rather than an absolute value. However,
+      it has dangerous caveats.
+
+  :series_query: (optional) Advanced users can provide a custom series query for metric discovery. If omitted, PaaSTA
+    automatically generates one and wraps your ``metrics_query`` with the appropriate labels. You probably don't need
+    this.
+
+  :resources: (optional) Advanced users can provide custom resource mappings for the prometheus-adapter. This controls
+    how Prometheus labels are mapped to Kubernetes resources. If omitted, PaaSTA uses a default mapping that expects
+    ``deployment`` and ``namespace`` labels. Only needed if you provide a custom ``series_query``.
+
+  **Example 1: Desired replicas (AverageValue, default)**
+
+  If you have a PromQL query that directly computes the number of replicas you want:
+
+  .. sourcecode:: yaml
+
+     ---
+     main:
+       min_instances: 1
+       max_instances: 100
+       autoscaling:
+         metrics_providers:
+           - type: arbitrary-promql
+             metrics_query: |
+               ceil(sum(rate(my_queue_depth{service="myservice"}[5m])) / 10)
+
+  With the default ``target_type: AverageValue`` and ``setpoint: 1.0``, if this query returns 15, the HPA will
+  scale to 15 replicas.
+
+  **Example 2: Load-based scaling (AverageValue with setpoint)**
+
+  If you want to scale based on a load metric with a target per-replica value:
+
+  .. sourcecode:: yaml
+
+     ---
+     main:
+       min_instances: 5
+       max_instances: 50
+       autoscaling:
+         metrics_providers:
+           - type: arbitrary-promql
+             setpoint: 100
+             metrics_query: |
+               sum(rate(my_service_requests_total{service="myservice"}[2m]))
+
+  If this query returns 1000 requests/second total, the HPA calculates 1000 / 100 = 10 desired replicas,
+  which should put 100 RPS (the ``setpoint``) on each replica.
+
+  **Example 3: Scaling factor (Value)**
+
+  If your query computes a scaling factor, perhaps based on the average load on each replica:
+
+  .. sourcecode:: yaml
+
+     ---
+     main:
+       min_instances: 5
+       max_instances: 50
+       autoscaling:
+         metrics_providers:
+           - type: arbitrary-promql
+             setpoint: 100
+             target_type: Value
+             metrics_query: |
+               avg(rate(my_service_requests_total{service="myservice"}[2m]))
+
+  If this query returns 150 request/second/replica and you currently have 10 replicas,
+  the HPA would calculate ``value/setpoint*current_replicas`` = 150/100*10 = 15 desired replicas.
+
+  .. warning:: It is very easy for the HPA to overshoot its target with this style of query. If the metric
+    takes a while to detect new pods, then you can end up in a situation where the metric is averaging over
+    an old number of pods while the HPA multiplies by the current number. For the example above, if the
+    metric continues to return 150 for a little while, then the HPA might scale up by a factor of 1.5 again,
+    resulting in ceil(22.5) = 23 replicas. This can also happen in reverse.
+
+    For this reason, **we recommend using ``target_type: AverageValue`` and calculating the sum of the load
+    instead.**
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
