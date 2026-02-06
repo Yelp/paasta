@@ -1112,6 +1112,12 @@ def format_tron_action_dict(action_config: TronActionConfig):
             # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
+            result["env"].update(
+                spark_tools.get_driver_env_from_spark_conf(
+                    action_config.action_spark_config
+                )
+            )
+
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
