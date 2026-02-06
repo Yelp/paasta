@@ -37,6 +37,7 @@ from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import create_spark_config_str
+from paasta_tools.spark_tools import get_driver_env_from_spark_conf
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
@@ -901,6 +902,8 @@ def configure_and_run_docker_container(
 
     # Pop out scs_conf from spark_conf and store it in the environment, in sync with the tron_tools code
     environment["SCS_CONF_STR"] = spark_conf.pop("scs_conf", None)
+
+    environment.update(get_driver_env_from_spark_conf(spark_conf))
 
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     environment.update(

@@ -70,6 +70,39 @@ def test_get_volumes_from_spark_k8s_configs(mock_sys, spark_conf, expected):
 
 
 @pytest.mark.parametrize(
+    "spark_conf,expected",
+    [
+        ({}, {}),
+        (
+            {
+                "spark.executor.memory": "4g",
+                "spark.executorEnv.TEST_VAR": "test_value",
+            },
+            {},
+        ),
+        (
+            {
+                "spark.driverEnv.TEST_VAR": "test_value",
+                "spark.executorEnv.TEST_VAR": "test_value",
+            },
+            {"TEST_VAR": "test_value"},
+        ),
+        (
+            {
+                "spark.driverEnv.TEST_VAR_A": "value_a",
+                "spark.driverEnv.TEST_VAR_B": "value_b",
+                "spark.executor.memory": "4g",
+            },
+            {"TEST_VAR_A": "value_a", "TEST_VAR_B": "value_b"},
+        ),
+    ],
+)
+def test_get_driver_env_from_spark_conf(spark_conf, expected):
+    result = spark_tools.get_driver_env_from_spark_conf(spark_conf)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
     "spark_config,expected",
     [
         # Empty config

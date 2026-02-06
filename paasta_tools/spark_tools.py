@@ -110,6 +110,16 @@ def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[st
     return volumes
 
 
+def get_driver_env_from_spark_conf(spark_conf: Mapping[str, str]) -> Dict[str, str]:
+    """Extract spark.driverEnv.* entries as actual environment variables for the driver.
+
+    Note: spark.driverEnv is not a real Spark configuration. We use it as a convention
+    to pass environment variables to Spark driver containers/pods.
+    """
+    prefix = "spark.driverEnv."
+    return {k[len(prefix) :]: v for k, v in spark_conf.items() if k.startswith(prefix)}
+
+
 def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
     """
     Returns Docker volume mount configurations in the format expected by Spark.
