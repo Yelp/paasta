@@ -1,4 +1,4 @@
-aiohttp==3.7.4.post0
+aiohttp==3.13.3
 argcomplete==3.6.3
 argparse==1.4.0
 arrow==1.1.0
