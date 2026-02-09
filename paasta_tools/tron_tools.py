@@ -507,6 +507,7 @@ class TronActionConfig(InstanceConfig):
             env["SERVICE_ACCOUNT_NAME"] = get_service_account_name(
                 iam_role=self.get_spark_executor_iam_role(),
             )
+            env.update(system_paasta_config.get_default_spark_driver_env())
 
         return env
 
@@ -1008,7 +1009,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         result["secret_env"] = action_config.get_secret_env()
         result["field_selector_env"] = action_config.get_field_selector_env()
-        all_env = action_config.get_env()
+        all_env = action_config.get_env(system_paasta_config)
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
         # or for field selector env vars to be overwritten
         result["env"] = {

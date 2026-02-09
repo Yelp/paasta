@@ -705,6 +705,8 @@ def get_spark_env(
     else:
         spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
+    spark_env.update(system_paasta_config.get_default_spark_driver_env())
+
     return spark_env
 
 
