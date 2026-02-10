@@ -15,7 +15,7 @@ imagesize==0.7.1
 iniconfig==2.0.0
 mccabe==0.7.0
 mypy==1.17.1
-nodeenv==1.1.4
+nodeenv==1.10.0
 packaging==23.2
 path.py==8.1
 pathspec==0.12.1
