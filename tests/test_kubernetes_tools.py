@@ -152,6 +152,7 @@ from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
@@ -2841,10 +2842,10 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (METRICS_PROVIDER_CPU,),
+        (METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY),
     )
-    def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
-        # with cpu
+    def test_get_autoscaling_metric_spec_cpu_memory(self, metrics_provider):
+        # with cpu or memory
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
@@ -2888,7 +2889,7 @@ class TestKubernetesDeploymentConfig:
                     V2MetricSpec(
                         type="Resource",
                         resource=V2ResourceMetricSource(
-                            name="cpu",
+                            name=metrics_provider,
                             target=V2MetricTarget(
                                 type="Utilization",
                                 average_utilization=50.0,

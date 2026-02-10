@@ -59,6 +59,7 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
@@ -209,6 +210,10 @@ def create_instance_scaling_rule(
 ) -> Optional[PrometheusAdapterRule]:
     if metrics_provider_config["type"] == METRICS_PROVIDER_CPU:
         log.debug("[{service}] prometheus-based CPU scaling is not supported")
+        return None
+
+    if metrics_provider_config["type"] == METRICS_PROVIDER_MEMORY:
+        log.debug("[{service}] prometheus-based memory scaling is not supported")
         return None
 
     metric_name = instance_config.namespace_custom_prometheus_metric_name(

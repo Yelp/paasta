@@ -7,6 +7,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
@@ -265,6 +266,24 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                             "moving_average_window_seconds": 20120302,
                         }
                         if x == METRICS_PROVIDER_CPU
+                        else None
+                    )
+                ),
+            ),
+            0,
+        ),
+        (
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_metrics_provider=mock.Mock(
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_MEMORY,
+                            "setpoint": 0.8,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_MEMORY
                         else None
                     )
                 ),

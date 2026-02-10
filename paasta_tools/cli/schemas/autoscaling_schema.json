@@ -8,6 +8,7 @@
                     "uwsgi",
                     "uwsgi-v2",
                     "cpu",
+                    "memory",
                     "piscina",
                     "gunicorn",
                     "active-requests",
