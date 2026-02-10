@@ -791,16 +791,16 @@ def test_filter_actually_running_replicasets():
     ]
     # the `spec` kwarg is special to Mock so we have to set it this way.
     replicaset_list[0].configure_mock(
-        **{"spec.replicas": 5, "status.ready_replicas": 5}
+        **{"spec.replicas": 5, "status.ready_replicas": 5, "metadata.name": "rs-0"}
     )
     replicaset_list[1].configure_mock(
-        **{"spec.replicas": 5, "status.ready_replicas": 0}
+        **{"spec.replicas": 5, "status.ready_replicas": 0, "metadata.name": "rs-1"}
     )
     replicaset_list[2].configure_mock(
-        **{"spec.replicas": 0, "status.ready_replicas": 0}
+        **{"spec.replicas": 0, "status.ready_replicas": 0, "metadata.name": "rs-2"}
     )
     replicaset_list[3].configure_mock(
-        **{"spec.replicas": 0, "status.ready_replicas": 5}
+        **{"spec.replicas": 0, "status.ready_replicas": 5, "metadata.name": "rs-3"}
     )
 
     expected = [
@@ -809,6 +809,35 @@ def test_filter_actually_running_replicasets():
         replicaset_list[3],
     ]
     assert pik.filter_actually_running_replicasets(replicaset_list) == expected
+
+    pod_status_by_replicaset = {
+        "rs-0": [mock.Mock()],
+        "rs-2": [mock.Mock()],  # rs-2 has terminating pods
+    }
+    expected_with_terminating = [
+        replicaset_list[0],
+        replicaset_list[1],
+        replicaset_list[2],  # Now included because it has pods
+        replicaset_list[3],
+    ]
+    assert (
+        pik.filter_actually_running_replicasets(
+            replicaset_list, pod_status_by_replicaset
+        )
+        == expected_with_terminating
+    )
+
+    # With empty pod list for rs-2, it should be filtered out
+    pod_status_by_replicaset_empty = {
+        "rs-0": [mock.Mock()],
+        "rs-2": [],  # rs-2 has no pods
+    }
+    assert (
+        pik.filter_actually_running_replicasets(
+            replicaset_list, pod_status_by_replicaset_empty
+        )
+        == expected
+    )
 
 
 @pytest.mark.asyncio
