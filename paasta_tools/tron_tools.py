@@ -1310,22 +1310,10 @@ def validate_complete_config(
         os.path.abspath(soa_dir), "tron", cluster, MASTER_NAMESPACE + ".yaml"
     )
 
-    # TODO: remove creating the master config here once we're fully off of mesos
-    # since we only have it here to verify that the generated tronfig will be valid
-    # given that the kill-switch will affect PaaSTA's setup_tron_namespace script (we're
-    # not reading the kill-switch in Tron since it's not easily accessible at the point
-    # at which we'd like to fallback to Mesos if toggled)
-    master_config = yaml.safe_load(
-        create_complete_master_config(cluster=cluster, soa_dir=soa_dir)
-    )
-    k8s_enabled_for_cluster = master_config.get("k8s_options", {}).get("enabled", False)
-
     preproccessed_config = {}
     # Use Tronfig on generated config from PaaSTA to validate the rest
     preproccessed_config["jobs"] = {
-        job_config.get_name(): format_tron_job_dict(
-            job_config=job_config, k8s_enabled=k8s_enabled_for_cluster
-        )
+        job_config.get_name(): format_tron_job_dict(job_config=job_config)
         for job_config in job_configs
     }
 
