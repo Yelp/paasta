@@ -12,7 +12,7 @@ isort==5.13.2
 jinja2==3.1.6
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
-nodeenv==1.1.4
+nodeenv==1.10.0
 path.py==8.1
 pbr==3.1.1
 pep8==1.5.7
