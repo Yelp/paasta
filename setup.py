@@ -14,19 +14,10 @@
 # limitations under the License.
 import glob
 
-from pkg_resources import yield_lines
 from setuptools import find_packages
 from setuptools import setup
 
 from paasta_tools import __version__
-
-
-def get_install_requires():
-    with open("requirements-minimal.txt", "r") as f:
-        minimal_reqs = list(yield_lines(f.read()))
-
-    return minimal_reqs
-
 
 setup(
     name="paasta-tools",
@@ -38,7 +29,73 @@ setup(
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
     python_requires=">=3.10.0",
-    install_requires=get_install_requires(),
+    install_requires=[
+        "aiohttp >= 3.5.4",
+        "argcomplete >= 3.6.3",
+        "boto",
+        "boto3",
+        "boto3-type-annotations",
+        "botocore",
+        "bravado >= 10.2.0",
+        "certifi",
+        "choice >= 0.1",
+        "containerd",
+        "cookiecutter >= 1.4.0",
+        "croniter",
+        "docker",
+        "dulwich >= 0.17.3",
+        "environment-tools",
+        "ephemeral-port-reserve >= 1.0.1",
+        "graphviz",
+        "grpcio",
+        "gunicorn",
+        "humanfriendly",
+        "humanize >= 0.5.1",
+        "inotify >= 0.2.8",
+        "ipaddress >= 1.0.22",
+        "isodate >= 0.7.2",
+        "jsonschema[format]",
+        "kazoo >= 2.0.0",
+        # the upper-bound here is mainly for things that use paasta-tools as a library and don't benefit
+        # from our pinned-dependencies. The upper-bound should generally be the latest kubernetes version
+        # that we can use across our different clusters (e.g, if X.0.0 removes an API version that we use
+        # in any cluster, this upper-bound should be < X.0.0)
+        # NOTE: the above is not exactly true anymore due to our legacy clusters...
+        # we should probably also be better at setting a correct lower-bound, but that's less likely to cause issues.
+        "kubernetes >= 29.0.0, < 35.0.0",
+        "ldap3",
+        "manhole",
+        "mypy-extensions >= 0.3.0",
+        "nats-py",
+        "nulltype",
+        "objgraph",
+        "ply",
+        "progressbar2>=4.3.2",
+        "prometheus-client",
+        "pyramid-swagger >= 2.3.0",
+        "pyramid>=2.0.2",
+        "pysensu-yelp >= 0.3.4",
+        "PyStaticConfiguration",
+        "python-crontab>=2.1.1",
+        "python-dateutil >= 2.4.0",
+        "pytimeparse >= 1.1.0",
+        "pytz >= 2014.10",
+        "requests >= 2.18.4",
+        "requests-cache >= 0.4.10",
+        "retry",
+        "ruamel.yaml",
+        "sensu-plugin",
+        "service-configuration-lib >= 3.3.8",
+        "signalfx",
+        "slackclient >= 1.2.1",
+        "sticht >= 1.1.0",
+        "syslogmp",
+        "transitions",
+        "typing-extensions",
+        "tzlocal",
+        "urllib3",
+        "wsgicors",
+    ],
     scripts=[
         "paasta_tools/apply_external_resources.py",
         "paasta_tools/check_autoscaler_max_instances.py",
