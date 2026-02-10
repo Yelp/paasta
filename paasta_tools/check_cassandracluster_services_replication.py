@@ -18,17 +18,22 @@ Usage: ./check_cassandracluster_services_replication.py [options]
 import logging
 
 from paasta_tools import cassandracluster_tools
+from paasta_tools import cassandraclustereks_tools
 from paasta_tools.check_kubernetes_services_replication import (
     check_kubernetes_pod_replication,
 )
 from paasta_tools.check_services_replication_tools import main
+from paasta_tools.check_services_replication_tools import parse_args
 
 log = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main(
-        cassandracluster_tools.CassandraClusterDeploymentConfig,
-        check_kubernetes_pod_replication,
+        instance_type_class=cassandraclustereks_tools.CassandraClusterEksDeploymentConfig
+        if args.eks
+        else cassandracluster_tools.CassandraClusterDeploymentConfig,
+        check_service_replication=check_kubernetes_pod_replication,
         namespace="paasta-cassandraclusters",
     )

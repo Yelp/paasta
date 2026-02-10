@@ -1338,6 +1338,15 @@
                         }
                     },
                     "description": "Nullable CassandraCluster instance status"
+                },
+                "cassandraclustereks": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "$ref": "#/definitions/InstanceStatusCassandraCluster"
+                        }
+                    },
+                    "description": "Nullable CassandraCluster EKS instance status"
                 }
             }
         },
