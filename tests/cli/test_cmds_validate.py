@@ -50,6 +50,7 @@ from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
@@ -1198,6 +1199,29 @@ def test_check_secrets_for_instance_missing_secret(
             },
             [],
             "eks",
+            True,
+        ),
+        (
+            {"metrics_providers": [{"type": METRICS_PROVIDER_MEMORY, "setpoint": 0.8}]},
+            [],
+            "kubernetes",
+            True,
+        ),
+        (
+            {"metrics_providers": [{"type": METRICS_PROVIDER_MEMORY, "setpoint": 0.8}]},
+            [],
+            "eks",
+            True,
+        ),
+        (
+            {
+                "metrics_providers": [
+                    {"type": METRICS_PROVIDER_MEMORY, "setpoint": 0.8},
+                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
+                ]
+            },
+            [],
+            "kubernetes",
             True,
         ),
     ],

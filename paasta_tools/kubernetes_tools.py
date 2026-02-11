@@ -142,6 +142,7 @@ from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
@@ -831,11 +832,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             provider["type"]
         )
 
-        if provider["type"] == METRICS_PROVIDER_CPU:
+        if provider["type"] in {METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY}:
             return V2MetricSpec(
                 type="Resource",
                 resource=V2ResourceMetricSource(
-                    name="cpu",
+                    name=provider["type"],
                     target=V2MetricTarget(
                         type="Utilization",
                         average_utilization=int(target * 100),

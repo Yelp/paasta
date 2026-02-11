@@ -64,6 +64,7 @@ from paasta_tools.long_running_service_tools import DEFAULT_PROMQL_AUTOSCALING_S
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
@@ -153,6 +154,10 @@ INVALID_AUTOSCALING_FIELDS = {
     # (since it's auto-added at parse-time)
     METRICS_PROVIDER_ACTIVE_REQUESTS: _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_CPU: {
+        "desired_active_requests_per_replica",
+    }
+    | _PROMQL_ONLY_FIELDS,
+    METRICS_PROVIDER_MEMORY: {
         "desired_active_requests_per_replica",
     }
     | _PROMQL_ONLY_FIELDS,

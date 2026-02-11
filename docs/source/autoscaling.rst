@@ -65,6 +65,15 @@ The currently available metrics providers are:
   The default autoscaling method if none is provided.
   Measures the CPU usage of your service's container.
 
+:memory:
+  Measures the memory usage of your service's container.
+  Works similarly to CPU autoscaling, using Kubernetes native resource metrics.
+
+  .. warning:: Memory autoscaling is a poor fit for most services.
+    For many of our services, particularly stateless services, the memory usage of a replica will tend to grow to a size that's mostly determined by the code, regardless of the number of replicas.
+    Memory autoscaling is only suitable for services that e.g. split a dataset between replicas, so that increasing the number of replicas will decrease the amount of memory each replica needs.
+    Using memory autoscaling on a service that doesn't fit this pattern will likely result in the autoscaler scaling up to a very large number of replicas.
+
 :worker-load:
   With the ``worker-load`` metrics provider, Paasta will scale your service based on worker utilization metrics.
   The autoscaler will use the ``setpoint`` value (default 0.8) to determine the target worker utilization.
