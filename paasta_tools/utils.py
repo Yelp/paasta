@@ -1977,6 +1977,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
+    default_spark_driver_env: Dict[str, str]
     supported_storage_classes: Sequence[str]
     synapse_haproxy_url_format: str
     synapse_host: str
@@ -2433,6 +2434,10 @@ class SystemPaastaConfig:
 
         :returns: The spark-run system_paasta_config dictionary"""
         return self.config_dict.get("spark_run_config", {})
+
+    def get_default_spark_driver_env(self) -> Dict[str, str]:
+        """Get default environment variables to set on Spark driver containers."""
+        return self.config_dict.get("default_spark_driver_env", {})
 
     def get_paasta_native_config(self) -> PaastaNativeConfig:
         return self.config_dict.get("paasta_native", {})
