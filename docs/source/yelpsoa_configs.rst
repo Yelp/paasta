@@ -773,6 +773,10 @@ Each instance MAY have:
 
   * ``deploy_group``
 
+  * ``node_selectors``
+
+  * ``node_selectors_preferred``
+
 See the `kubernetes-[clustername].yaml`_ section for details for each of these parameters.
 
 **Footnotes**:

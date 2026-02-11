@@ -439,8 +439,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    node_selectors: Dict[str, NodeSelectorConfig]
-    node_selectors_preferred: List[NodeSelectorsPreferredConfigDict]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]

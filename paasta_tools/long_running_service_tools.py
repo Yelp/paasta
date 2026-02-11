@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import socket
+from typing import TYPE_CHECKING
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -29,6 +30,10 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import load_system_paasta_config
+
+if TYPE_CHECKING:
+    from paasta_tools.kubernetes_tools import NodeSelectorConfig
+    from paasta_tools.kubernetes_tools import NodeSelectorsPreferredConfigDict
 
 log = logging.getLogger(__name__)
 logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)
@@ -93,6 +98,8 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     should_ping_for_unhealthy_pods: bool
     weight: int
     unhealthy_pod_eviction_policy: str
+    node_selectors: Dict[str, "NodeSelectorConfig"]
+    node_selectors_preferred: List["NodeSelectorsPreferredConfigDict"]
 
 
 class ServiceNamespaceConfig(dict):
