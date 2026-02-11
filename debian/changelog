@@ -1,3 +1,10 @@
+paasta-tools (1.42.0) jammy; urgency=medium
+
+  * 1.42.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/document_following_other_service"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Feb 2026 11:36:16 -0800
+
 paasta-tools (1.41.2) jammy; urgency=medium
 
   * 1.41.2 tagged with 'make release'
