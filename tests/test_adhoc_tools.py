@@ -64,3 +64,90 @@ def test_get_default_interactive_config_reads_from_tty():
         )
         assert result.get_deploy_group() == "fake_deploygroup"
         assert result.get_docker_image() == mock.sentinel.docker_image
+
+
+def test_adhoc_config_node_selectors_in_pod_spec():
+    """Test that node_selectors from adhoc config appear in the generated pod spec."""
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+    ) as mock_load_system_config:
+        mock_load_system_config.return_value.get_cluster_aliases.return_value = []
+        mock_load_system_config.return_value.get_volumes.return_value = []
+        mock_load_system_config.return_value.get_dockercfg_location.return_value = (
+            "file:///root/.dockercfg"
+        )
+
+        # Create an adhoc config with node_selectors
+        adhoc_config = adhoc_tools.AdhocJobConfig(
+            service="test_service",
+            instance="test_instance",
+            cluster="test_cluster",
+            config_dict={
+                "cpus": 1.0,
+                "mem": 1024,
+                "disk": 1024,
+                "node_selectors": {
+                    "instance_type": "c5.xlarge",
+                    "custom_label": [
+                        {"operator": "In", "values": ["value1", "value2"]}
+                    ],
+                },
+            },
+            branch_dict={
+                "docker_image": "docker-dev.yelpcorp.com/test:latest",
+                "git_sha": "abc123",
+                "desired_state": "start",
+                "force_bounce": None,
+            },
+        )
+
+        # Wrap in EksDeploymentConfig like remote_run does
+        from paasta_tools.eks_tools import EksDeploymentConfig
+
+        eks_config = EksDeploymentConfig(
+            service=adhoc_config.service,
+            cluster=adhoc_config.cluster,
+            instance=adhoc_config.instance,
+            config_dict=adhoc_config.config_dict,
+            branch_dict=adhoc_config.branch_dict,
+            soa_dir="/fake/soa/dir",
+        )
+
+        # Generate the pod template spec
+        pod_template_spec = eks_config.get_pod_template_spec(
+            git_sha="abc123",
+            system_paasta_config=mock_load_system_config.return_value,
+        )
+
+        # Verify node selectors are in the pod spec
+        # instance_type gets translated to canonical kubernetes label
+        assert (
+            pod_template_spec.spec.node_selector["node.kubernetes.io/instance-type"]
+            == "c5.xlarge"
+        )
+
+        # Complex selector should be in node affinity
+        assert pod_template_spec.spec.affinity is not None
+        assert pod_template_spec.spec.affinity.node_affinity is not None
+        node_affinity = pod_template_spec.spec.affinity.node_affinity
+        assert (
+            node_affinity.required_during_scheduling_ignored_during_execution
+            is not None
+        )
+        node_selector_terms = (
+            node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms
+        )
+        assert len(node_selector_terms) > 0
+
+        # Find the custom_label requirement
+        all_requirements = []
+        for term in node_selector_terms:
+            all_requirements.extend(term.match_expressions)
+
+        custom_label_requirements = [
+            req for req in all_requirements if req.key == "custom_label"
+        ]
+        assert len(custom_label_requirements) > 0
+        req = custom_label_requirements[0]
+        assert req.operator == "In"
+        assert set(req.values) == {"value1", "value2"}
