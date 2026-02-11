@@ -418,7 +418,7 @@ components:
               $ref: '#/components/schemas/InstanceStatusCassandraCluster'
           type: object
         cassandraclustereks:
-          description: Nullable CassandraCluster EKS instance status and metadata
+          description: Nullable CassandraCluster instance status and metadata
           properties:
             metadata:
               $ref: '#/components/schemas/InstanceMetadataCassandraCluster'

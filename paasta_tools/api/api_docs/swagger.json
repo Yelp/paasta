@@ -1346,7 +1346,7 @@
                             "$ref": "#/definitions/InstanceStatusCassandraCluster"
                         }
                     },
-                    "description": "Nullable CassandraCluster EKS instance status"
+                    "description": "Nullable CassandraCluster instance status"
                 }
             }
         },
