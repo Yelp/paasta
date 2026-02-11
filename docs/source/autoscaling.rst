@@ -211,8 +211,9 @@ The currently available metrics providers are:
 
   Some potentially useful things you can do with metrics_query:
 
-    * ``kube_deployment_spec_replicas{paasta_cluster="pnw-prod", deployment="service--name-instance--name"}`` would scale proportional to ``service_name.instance_name`` in the pnw-prod cluster.
+    * ``kube_deployment_spec_replicas{deployment="service--name-instance--name"}`` would scale proportional to ``service_name.instance_name`` in the same cluster.
       (Underscores get replaced with ``--`` and the dot gets replaced with ``-`` in the deployment name.)
+      Because we run a separate compute-infra-hpa(-eks) Prometheus cluster per superregion, this query can only follow a service in the same cluster.
 
     * ``(hour(vector(time())) == bool 13) * (day_of_week(vector(time())) == bool 3) * 100`` would scale to 100 between 13:00 and 14:00 every Wednesday (UTC), and 0 otherwise.
       You probably want to have another metrics_provider based on actual load (e.g. ``cpu`` or ``worker-load``) alongside this one.
