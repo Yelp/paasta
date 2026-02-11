@@ -554,10 +554,10 @@ class TronActionConfig(InstanceConfig):
         }
 
     def get_cpu_burst_add(self) -> float:
-        """For Tron jobs, we don't let them burst by default, because they
-        don't represent "real-time" workloads, and should not impact
+        """For Tron jobs, we don't let them burst because they
+        don't represent "real-time" workloads and should not impact
         neighbors"""
-        return self.config_dict.get("cpu_burst_add", 0)
+        return 0
 
     def get_executor(self):
         return self.config_dict.get("executor", "paasta")
