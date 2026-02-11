@@ -70,11 +70,17 @@ def test_adhoc_config_node_selectors_in_pod_spec():
     """Test that node_selectors from adhoc config appear in the generated pod spec."""
     with mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
-    ) as mock_load_system_config:
+    ) as mock_load_system_config, mock.patch(
+        "paasta_tools.utils.load_system_paasta_config", autospec=True
+    ) as mock_load_system_config_utils:
         mock_load_system_config.return_value.get_cluster_aliases.return_value = []
         mock_load_system_config.return_value.get_volumes.return_value = []
         mock_load_system_config.return_value.get_dockercfg_location.return_value = (
             "file:///root/.dockercfg"
+        )
+        # Copy the mock to utils as well
+        mock_load_system_config_utils.return_value = (
+            mock_load_system_config.return_value
         )
 
         # Create an adhoc config with node_selectors
