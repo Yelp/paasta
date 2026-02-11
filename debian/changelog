@@ -1,3 +1,14 @@
+paasta-tools (1.43.0) jammy; urgency=medium
+
+  * 1.43.0 tagged with 'make release'
+    Commit: Don"t allow cpu burst for tron (#4242)  While ostensibly
+    allowed by the schema, this isn"t actually usable in tron due to
+    validate_tronfig_rules not seeing this as valid.  Given that no one
+    has needed burst in 7 years (when Yelp/paasta#2571 was merged), I
+    think it"s safe to say that we can just entirely remove this :p
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Feb 2026 12:36:19 -0800
+
 paasta-tools (1.42.0) jammy; urgency=medium
 
   * 1.42.0 tagged with 'make release'
