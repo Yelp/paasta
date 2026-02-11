@@ -679,6 +679,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     cassandracluster=InstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
     ),
+    cassandraclustereks=InstanceTypeHandler(
+        get_service_instance_list, load_cassandraclustereks_instance_config
+    ),
     kafkacluster=InstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
