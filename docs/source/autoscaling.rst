@@ -207,6 +207,19 @@ The currently available metrics providers are:
     For this reason, **we recommend using ``target_type: AverageValue`` and calculating the sum of the load
     instead.**
 
+  **Potentially useful queries**
+
+  Some potentially useful things you can do with metrics_query:
+
+    * ``kube_deployment_spec_replicas{paasta_cluster="pnw-prod", deployment="service--name-instance--name"}`` would scale proportional to ``service_name.instance_name`` in the pnw-prod cluster.
+      (Underscores get replaced with ``--`` and the dot gets replaced with ``-`` in the deployment name.)
+
+    * ``(hour(vector(time())) == bool 13) * (day_of_week(vector(time())) == bool 3) * 100`` would scale to 100 between 13:00 and 14:00 every Wednesday (UTC), and 0 otherwise.
+      You probably want to have another metrics_provider based on actual load (e.g. ``cpu`` or ``worker-load``) alongside this one.
+
+    * ``(sum(kube_pod_status_phase{phase=~"Running|Pending",pod=~"service--name\\..*"} * on (pod) group_left () (kube_pod_annotations{annotation_paasta_yelp_com_instance="job.action",annotation_paasta_yelp_com_service="service_name",namespace="tron"})) > bool 0) * 50 or vector(0)``
+      would scale to 50 whenever the tron job ``service_name.job.action`` starts running.
+
 Decision policies
 ^^^^^^^^^^^^^^^^^
 
