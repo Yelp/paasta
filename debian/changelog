@@ -1,3 +1,11 @@
+paasta-tools (1.41.2) jammy; urgency=medium
+
+  * 1.41.2 tagged with 'make release'
+    Commit: Merge pull request #4232 from Yelp/u/robj/remove-tron-mesos-
+    reporting-v2  remove mesos paths from tron_tools
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 11 Feb 2026 04:02:21 -0800
+
 paasta-tools (1.41.1) jammy; urgency=medium
 
   * 1.41.1 tagged with 'make release'
