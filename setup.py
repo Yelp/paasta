@@ -14,7 +14,6 @@
 # limitations under the License.
 import glob
 
-from pkg_resources import yield_lines
 from setuptools import find_packages
 from setuptools import setup
 
@@ -23,7 +22,13 @@ from paasta_tools import __version__
 
 def get_install_requires():
     with open("requirements-minimal.txt", "r") as f:
-        minimal_reqs = list(yield_lines(f.read()))
+        # Parse requirements, stripping comments and empty lines
+        minimal_reqs = []
+        for line in f:
+            line = line.strip()
+            # Skip empty lines and comments
+            if line and not line.startswith("#"):
+                minimal_reqs.append(line)
 
     return minimal_reqs
 
