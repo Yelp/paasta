@@ -40,6 +40,18 @@ make itest        # acceptance tests (behave)
 make k8s_itests   # kubernetes integration (requires Kind)
 ```
 
+## Release
+Releasing PaaSTA requires permissions to push directly to the master branch. This needs to be done by a member of the Compute Infrastructure team.
+
+After merging a PR:
+```bash
+make dev
+make install-hooks
+# Bump the version in yelp_package/Makefile, e.g.:
+sed -i 's/1.43/1.44/' yelp_package/Makefile
+make release
+```
+
 ## Git & Commits
 - **Bisectable history**: every commit passes tests and is independently releasable
 - **Atomic commits**: one logical change per commit

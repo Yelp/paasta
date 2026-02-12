@@ -100,6 +100,9 @@ Read the documentation at [Read the Docs](http://paasta.readthedocs.io/en/latest
 
 PaaSTA is licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
 
+## Development
+See [AGENTS.md](AGENTS.md) on instructions how to build, test and release PaaSTA.
+
 ## Contributing
 
 Everyone is encouraged to contribute to PaaSTA by forking the
