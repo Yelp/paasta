@@ -417,6 +417,14 @@ components:
             status:
               $ref: '#/components/schemas/InstanceStatusCassandraCluster'
           type: object
+        cassandraclustereks:
+          description: Nullable CassandraCluster instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceMetadataCassandraCluster'
+            status:
+              $ref: '#/components/schemas/InstanceStatusCassandraCluster'
+          type: object
         kafkacluster:
           description: Nullable KafkaCluster instance status and metadata
           properties:

@@ -47,6 +47,9 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
+from paasta_tools.cassandraclustereks_tools import (
+    load_cassandraclustereks_instance_config,
+)
 from paasta_tools.cli.authentication import get_sso_auth_token
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
@@ -676,6 +679,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     cassandracluster=InstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
     ),
+    cassandraclustereks=InstanceTypeHandler(
+        get_service_instance_list, load_cassandraclustereks_instance_config
+    ),
     kafkacluster=InstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
@@ -705,6 +711,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     cassandracluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
+    ),
+    cassandraclustereks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_cassandraclustereks_instance_config
     ),
     kafkacluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
