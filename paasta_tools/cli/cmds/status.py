@@ -145,6 +145,10 @@ EKS_DEPLOYMENT_CONFIGS = [
     CassandraClusterEksDeploymentConfig,
 ]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
+CASSANDRA_DEPLOYMENT_CONFIGS = [
+    CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
+]
 
 
 def add_subparser(
@@ -2089,8 +2093,11 @@ def report_status_for_cluster(
         if namespace in actual_deployments:
             deployed_instances.append(instance)
 
-        # Case: flink instances don't use `deployments.json`
-        elif instance_whitelist.get(instance) == FlinkDeploymentConfig:
+        # Case: flink/cassandra instances don't use `deployments.json`
+        elif (
+            instance_whitelist.get(instance)
+            in FLINK_DEPLOYMENT_CONFIGS + CASSANDRA_DEPLOYMENT_CONFIGS
+        ):
             deployed_instances.append(instance)
 
         # Case: service NOT deployed to cluster.instance
@@ -2313,12 +2320,15 @@ def paasta_status(args) -> int:
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
+            all_cassandra = all(
+                (i in CASSANDRA_DEPLOYMENT_CONFIGS) for i in instances.values()
+            )
             actual_deployments: Mapping[str, DeploymentVersion]
-            if all_flink:
+            if all_flink or all_cassandra:
                 actual_deployments = {}
             else:
                 actual_deployments = get_actual_deployments(service, soa_dir)
-            if all_flink or actual_deployments:
+            if all_flink or all_cassandra or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(

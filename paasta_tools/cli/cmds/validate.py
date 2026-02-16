@@ -619,6 +619,11 @@ def validate_paasta_objects(service_path):
 def validate_unique_instance_names(service_path):
     """Check that the service does not use the same instance name more than once"""
     soa_dir, service = path_to_soa_dir_service(service_path)
+    skip_list = (
+        load_system_paasta_config().get_skip_unique_instance_name_validation_services()
+    )
+    if service in skip_list:
+        return True
     check_passed = True
 
     for cluster in list_clusters(service, soa_dir):
