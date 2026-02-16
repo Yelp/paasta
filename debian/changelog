@@ -1,3 +1,17 @@
+paasta-tools (1.43.2) jammy; urgency=medium
+
+  * 1.43.2 tagged with 'make release'
+    Commit: Fix PaaSTA status for CassandraClusters during EKS migration
+    (#4244)  Currently, `paasta status` doesn"t work for
+    `cassandraclustereks-` configs in yelpsoa until the clusters are
+    migrated. This implements the same mechanism Flink did which is to
+    get the status of both EKS and NonEKS deployment configs.  This PR
+    also introduces the `skip_unique_instance_name_validation` similar
+    to `skip_cpu_burst_validation` so we can temporarily allow identical
+    instance names while the migration is ongoing.
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Mon, 16 Feb 2026 03:42:57 -0800
+
 paasta-tools (1.43.1) jammy; urgency=medium
 
   * 1.43.1 tagged with 'make release'
