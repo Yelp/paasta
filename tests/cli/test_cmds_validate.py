@@ -948,11 +948,17 @@ def test_check_service_path_good(mock_glob, mock_isdir):
     assert check_service_path(service_path)
 
 
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 def test_validate_unique_service_name_success(
-    mock_list_clusters, mock_get_service_instance_list
+    mock_list_clusters,
+    mock_get_service_instance_list,
+    mock_load_system_paasta_config,
 ):
+    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = (
+        []
+    )
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
     mock_get_service_instance_list.return_value = [
@@ -963,11 +969,18 @@ def test_validate_unique_service_name_success(
     assert validate_unique_instance_names(f"soa/{service_name}")
 
 
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 def test_validate_unique_service_name_failure(
-    mock_list_clusters, mock_get_service_instance_list, capsys
+    mock_list_clusters,
+    mock_get_service_instance_list,
+    mock_load_system_paasta_config,
+    capsys,
 ):
+    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = (
+        []
+    )
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
     mock_get_service_instance_list.return_value = [
@@ -979,6 +992,29 @@ def test_validate_unique_service_name_failure(
 
     output, _ = capsys.readouterr()
     assert "instance_1" in output
+
+
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+def test_validate_unique_instance_names_skip(
+    mock_list_clusters,
+    mock_get_service_instance_list,
+    mock_load_system_paasta_config,
+):
+    service_name = "service_1"
+    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = [
+        service_name
+    ]
+    mock_list_clusters.return_value = ["cluster_1"]
+    mock_get_service_instance_list.return_value = [
+        (service_name, "instance_1"),
+        (service_name, "instance_2"),
+        (service_name, "instance_1"),
+    ]
+    assert validate_unique_instance_names(f"soa/{service_name}")
+    # Should not even call list_clusters since we skip early
+    mock_list_clusters.assert_not_called()
 
 
 @patch(
