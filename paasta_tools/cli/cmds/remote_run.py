@@ -237,6 +237,11 @@ def paasta_remote_run_start(
 
     print("Pod ready, establishing interactive session...")
 
+    token_response = client.remote_run.remote_run_token(
+        args.service, args.instance, user
+    )
+    kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
+
     if args.toolbox:
         # NOTE: we only do this for toolbox containers since those images are built with interactive
         # access in mind, and SSH sessions provide better auditability of user actions.
@@ -244,10 +249,6 @@ def paasta_remote_run_start(
         # we will require knowing the real user (and some tools may need that too).
         exec_command = f"ssh -A {poll_response.pod_address}"
     else:
-        token_response = client.remote_run.remote_run_token(
-            args.service, args.instance, user
-        )
-        kubectl_wrapper = _get_kubectl_wrapper(args.cluster)
         exec_command = (
             KUBECTL_LOGS_CMD_TEMPLATE if args.follow else KUBECTL_EXEC_CMD_TEMPLATE
         ).format(
