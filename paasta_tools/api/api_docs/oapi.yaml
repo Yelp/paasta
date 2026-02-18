@@ -810,6 +810,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/KubernetesPodEvent'
+        delete_timestamp:
+          description: Unix timestamp at which pod deletion was requested (indicates terminating state)
+          format: float
+          type: number
+          nullable: true
       type: object
     KubernetesPodV2:
       properties:
