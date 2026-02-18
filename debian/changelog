@@ -1,3 +1,10 @@
+paasta-tools (1.43.3) jammy; urgency=medium
+
+  * 1.43.3 tagged with 'make release'
+    Commit: small improvements to remote-run (#4247)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 18 Feb 2026 06:13:18 -0800
+
 paasta-tools (1.43.2) jammy; urgency=medium
 
   * 1.43.2 tagged with 'make release'
