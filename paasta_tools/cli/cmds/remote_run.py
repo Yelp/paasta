@@ -15,6 +15,7 @@
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -146,7 +147,7 @@ def paasta_remote_run_copy(
         )
 
     if args.toolbox:
-        cp_command = exec_command.split(" ")
+        cp_command = exec_command
     else:
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
@@ -159,8 +160,9 @@ def paasta_remote_run_copy(
             source=args.copy_file_source,
             dest=args.copy_file_dest,
             token=token_response.token,
-        ).split(" ")
-    call = subprocess.run(cp_command, capture_output=True)
+        )
+
+    call = subprocess.run(shlex.split(cp_command), capture_output=True)
     if call.returncode != 0:
         print("Error copying file from remote-run pod: ", file=sys.stderr)
         print(call.stderr.decode("utf-8"), file=sys.stderr)
@@ -243,6 +245,7 @@ def paasta_remote_run_start(
         # I.e., being `nobody` is fine in a normal remote-run, but in toolbox containers
         # we will require knowing the real user (and some tools may need that too).
         exec_command = f"ssh -A {poll_response.pod_address}"
+        print(f"Connecting to {poll_response.pod_address} via SSH...")
     else:
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
@@ -256,18 +259,25 @@ def paasta_remote_run_start(
             pod=poll_response.pod_name,
             token=token_response.token,
         )
+        print(
+            f"Connecting to {poll_response.namespace}:{poll_response.pod_name} via kubectl...",
+        )
 
     if args.copy_file:
         for filename in args.copy_file:
-            cp_command = KUBECTL_CP_TO_CMD_TEMPLATE.format(
-                kubectl_wrapper=kubectl_wrapper,
-                namespace=poll_response.namespace,
-                pod=poll_response.pod_name,
-                source=filename,
-                dest=os.path.join("/tmp", os.path.basename(filename)),
-                token=token_response.token,
-            ).split(" ")
-            call = subprocess.run(cp_command, capture_output=True)
+            cp_command = (
+                f"scp -A {filename} {poll_response.pod_address}:/tmp/"
+                if args.toolbox
+                else KUBECTL_CP_TO_CMD_TEMPLATE.format(
+                    kubectl_wrapper=kubectl_wrapper,
+                    namespace=poll_response.namespace,
+                    pod=poll_response.pod_name,
+                    source=filename,
+                    dest=os.path.join("/tmp", os.path.basename(filename)),
+                    token=token_response.token,
+                )
+            )
+            call = subprocess.run(shlex.split(cp_command), capture_output=True)
             if call.returncode != 0:
                 print("Error copying file to remote-run pod: ", file=sys.stderr)
                 print(call.stderr.decode("utf-8"), file=sys.stderr)
