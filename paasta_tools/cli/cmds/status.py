@@ -15,7 +15,9 @@
 import asyncio
 import concurrent.futures
 import difflib
+import os
 import shutil
+import subprocess
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -61,9 +63,13 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import format_kafka_topics
+from paasta_tools.flink_tools import format_resource_optimization
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flink_tools import get_sqlclient_parallelism
+from paasta_tools.flink_tools import get_sqlclient_udf_plugin
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -863,12 +869,56 @@ def _print_flink_status_from_job_manager(
     if verbose:
         # Print Flink config link resources
         ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-        output.append(
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
-        )
-        output.append(
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
-        )
+
+        # Generate yelpsoa-configs link
+        if service == "sqlclient":
+            # For sqlclient, try to find the specific line in the flinkeks config file
+            yelpsoa_file = f"flinkeks-pnw-{ecosystem}.yaml"
+            yelpsoa_file_path = os.path.join(
+                "/nail/etc/services", service, yelpsoa_file
+            )
+
+            # Try to find the line number where the instance is defined
+            line_number = None
+            try:
+                result = subprocess.run(
+                    ["grep", "-n", f"^{instance}:", yelpsoa_file_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if result.returncode == 0:
+                    line_number = result.stdout.split(":")[0]
+            except Exception:
+                pass
+
+            if line_number:
+                yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/blob/master/{service}/{yelpsoa_file}#L{line_number}"
+            else:
+                yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+        else:
+            yelpsoa_url = f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+
+        output.append(f"    Yelpsoa configs: {yelpsoa_url}")
+
+        # Generate srv-configs link
+        if service == "sqlclient":
+            # For sqlclient, link to the specific instance directory
+            srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}/{instance}"
+        else:
+            srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+
+        output.append(f"    Srv configs: {srv_url}")
+
+        # For sqlclient, add UDF link if job has UDF config
+        if service == "sqlclient":
+            try:
+                udf_plugin = get_sqlclient_udf_plugin(service, instance, cluster)
+                if udf_plugin:
+                    udf_url = f"https://github.yelpcorp.com/misc/sqlclient_plugins/tree/main/udf/{udf_plugin}"
+                    output.append(f"    UDF: {udf_url}")
+            except Exception:
+                pass  # If we can't get UDF info, just don't show it
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
 
@@ -907,6 +957,8 @@ def _print_flink_status_from_job_manager(
         )
 
         output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
+    # Kafka topics section moved to after jobs are fetched (to get job name for consumer group)
 
     # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
@@ -1013,15 +1065,33 @@ def _print_flink_status_from_job_manager(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
+    # Get parallelism from srv-configs for sqlclient jobs
+    job_parallelism = None
+    if service == "sqlclient":
+        try:
+            job_parallelism = get_sqlclient_parallelism(service, instance, cluster)
+        except Exception:
+            pass  # If we can't get parallelism, just don't show it
+
     output.append("    Jobs:")
     if verbose > 1:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
-        )
+        if job_parallelism is not None:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State   Parallelism Job ID                           Started'
+            )
+        else:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+            )
     else:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
-        )
+        if job_parallelism is not None:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State   Parallelism Started'
+            )
+        else:
+            output.append(
+                f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+            )
 
     # Use only the most recent jobs
     unique_jobs = (
@@ -1037,14 +1107,28 @@ def _print_flink_status_from_job_manager(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
+    first_job_name = None  # Capture first job name for consumer group
 
     for job in unique_jobs:
         job_id = job["jid"]
+        job_name = get_flink_job_name(job)
+
+        # Capture first job name for consumer group info
+        if first_job_name is None:
+            first_job_name = job_name
+
         if verbose > 1:
-            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+            if job_parallelism is not None:
+                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <8} {parallelism: <11} {job_id} {start_time}
+        {dashboard_url}"""
+            else:
+                fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
-            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+            if job_parallelism is not None:
+                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <8} {parallelism: <11} {start_time}"
+            else:
+                fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
         if verbose or job_printed_count < allowed_max_jobs_printed:
             job_printed_count += 1
@@ -1055,14 +1139,21 @@ def _print_flink_status_from_job_manager(
                 if job.get("state") and job.get("state") in ("FAILED", "FAILING")
                 else PaastaColors.yellow
             )
-            job_info_str = fmt.format(
-                job_id=job_id,
-                job_name=get_flink_job_name(job),
-                allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
-                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
-            )
+
+            format_args = {
+                "job_id": job_id,
+                "job_name": job_name,
+                "allowed_max_job_name_length": allowed_max_job_name_length,
+                "state": color_fn((job.get("state").title() or "Unknown")),
+                "start_time": f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                "dashboard_url": PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            }
+
+            # Add parallelism if available
+            if job_parallelism is not None:
+                format_args["parallelism"] = str(job_parallelism)
+
+            job_info_str = fmt.format(**format_args)
             output.append(job_info_str)
         else:
             output.append(
@@ -1072,8 +1163,35 @@ def _print_flink_status_from_job_manager(
             )
             break
 
+    # Show Kafka topic details for sqlclient with -vv flag (after jobs, so we have job name)
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        try:
+            kafka_output = format_kafka_topics(
+                service, instance, cluster, first_job_name
+            )
+            output.extend(kafka_output)
+        except Exception as e:
+            output.append(f"    Kafka Topics: Error - {type(e).__name__}: {str(e)}")
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
+
+    # Show resource optimization for sqlclient with -vv flag
+    if verbose >= 2 and service == "sqlclient" and status["state"] == "running":
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        try:
+            optimization_output = format_resource_optimization(
+                service, instance, overview, flink_instance_config
+            )
+            output.extend(optimization_output)
+        except Exception as e:
+            output.append(
+                f"    Resource Optimization: Error - {type(e).__name__}: {str(e)}"
+            )
+        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+
     return 0
 
 
