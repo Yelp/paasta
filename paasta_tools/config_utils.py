@@ -23,6 +23,7 @@ KNOWN_CONFIG_TYPES = (
     "kubernetes",
     "deploy",
     "smartstack",
+    "cassandraclustereks",
     "cassandracluster",
     "eks",
 )
@@ -30,7 +31,12 @@ KNOWN_CONFIG_TYPES = (
 # this could use a better name - but basically, this is for pairs of instance types
 # where you generally want to check both types (i.e.,g a status-quo and migration
 # instance type)
-INSTANCE_TYPE_COUNTERPARTS = {"eks": "kubernetes", "kubernetes": "eks"}
+INSTANCE_TYPE_COUNTERPARTS = {
+    "eks": "kubernetes",
+    "kubernetes": "eks",
+    "cassandraclustereks": "cassandracluster",
+    "cassandracluster": "cassandraclustereks",
+}
 
 
 def my_represent_none(self, data):
@@ -76,7 +82,7 @@ def write_auto_config_data(
                         # still a couple of places where we still need kubernetes-* files (e.g., unmigrated operators)
                         # so for now let's just assume that autotuned things will always actually have their human-managed
                         # config in eks-* files
-                        regular_filename=f"{service}/{extra_info.replace('kubernetes-', 'eks-')}.yaml",
+                        regular_filename=f"{service}/{extra_info.replace('kubernetes-', 'eks-').replace('cassandracluster-', 'cassandraclustereks-')}.yaml",
                     )
                 )
                 if comment

@@ -147,7 +147,9 @@ def get_default_git_remote():
     return default_git_remote
 
 
-SupportedInstanceType = Literal["kubernetes", "eks", "cassandracluster"]
+SupportedInstanceType = Literal[
+    "kubernetes", "eks", "cassandracluster", "cassandraclustereks"
+]
 
 
 class CassandraRightsizerResult(TypedDict):
@@ -279,7 +281,7 @@ def get_recommendations_by_service_file(
         )  # e.g. (foo, kubernetes-norcal-stagef)
         instance_type = result["cluster"].split("-", 1)[0]
         rec: Union[KubernetesRecommendation, CassandraRecommendation] = {}
-        if instance_type == "cassandracluster":
+        if instance_type in ("cassandracluster", "cassandraclustereks"):
             rec = get_cassandra_recommendation_from_result(result, keys_to_apply)
         elif instance_type == "kubernetes":
             rec = get_kubernetes_recommendation_from_result(result, keys_to_apply)

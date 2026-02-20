@@ -95,11 +95,23 @@ def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
         "kubernetes",
         "deploy",
         "smartstack",
+        "cassandraclustereks",
         "cassandracluster",
     ):
         filepath = f"service/{config_type}-cluster.yaml"
         assert config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
         mock_validate.assert_called_with(filepath, f"autotuned_defaults/{config_type}")
+
+
+@mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
+def test_validate_auto_config_file_cassandraclustereks_prefix_ordering(
+    mock_validate,
+):
+    """Verify that cassandraclustereks-cluster.yaml resolves to the
+    cassandraclustereks schema and not cassandracluster."""
+    filepath = "service/cassandraclustereks-cluster.yaml"
+    config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
+    mock_validate.assert_called_with(filepath, "autotuned_defaults/cassandraclustereks")
 
 
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
