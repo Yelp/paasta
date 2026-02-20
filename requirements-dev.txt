@@ -49,5 +49,5 @@ types-pyyaml==6.0.12.20250822
 types-requests==2.31.0.5
 types-retry==0.9.9.20250322
 types-urllib3==1.26.25.14
-virtualenv==20.36.0
+virtualenv==20.36.1
 zake==0.2.2
