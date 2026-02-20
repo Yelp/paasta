@@ -2055,7 +2055,7 @@ def report_status_for_cluster(
     cluster: str,
     deploy_pipeline: Sequence[str],
     actual_deployments: Mapping[str, DeploymentVersion],
-    instance_whitelist: Mapping[str, Type[InstanceConfig]],
+    instance_whitelist: Mapping[str, List[Type[InstanceConfig]]],
     system_paasta_config: SystemPaastaConfig,
     lock: Lock,
     verbose: int = 0,
@@ -2068,7 +2068,8 @@ def report_status_for_cluster(
     deployed_instances = []
     instances = [
         (instance, instance_config_class)
-        for instance, instance_config_class in instance_whitelist.items()
+        for instance, config_classes in instance_whitelist.items()
+        for instance_config_class in config_classes
         if instance_config_class in ALLOWED_INSTANCE_CONFIG
     ]
 
@@ -2076,8 +2077,8 @@ def report_status_for_cluster(
     # seen by default to avoid error messages
     seen_instances = [
         instance
-        for instance, instance_config_class in instance_whitelist.items()
-        if instance_config_class == TronActionConfig
+        for instance, config_classes in instance_whitelist.items()
+        if TronActionConfig in config_classes
     ]
 
     for namespace in deploy_pipeline:
@@ -2094,9 +2095,9 @@ def report_status_for_cluster(
             deployed_instances.append(instance)
 
         # Case: flink/cassandra instances don't use `deployments.json`
-        elif (
-            instance_whitelist.get(instance)
-            in FLINK_DEPLOYMENT_CONFIGS + CASSANDRA_DEPLOYMENT_CONFIGS
+        elif instance in instance_whitelist and any(
+            cls in FLINK_DEPLOYMENT_CONFIGS + CASSANDRA_DEPLOYMENT_CONFIGS
+            for cls in instance_whitelist[instance]
         ):
             deployed_instances.append(instance)
 
@@ -2225,7 +2226,7 @@ def get_filters(
 
 def apply_args_filters(
     args,
-) -> Mapping[str, Mapping[str, Mapping[str, Type[InstanceConfig]]]]:
+) -> Mapping[str, Mapping[str, Mapping[str, List[Type[InstanceConfig]]]]]:
     """
     Take an args object and returns the dict of cluster:service:instances
     Currently, will filter by clusters, instances, services, and deploy_groups
@@ -2233,10 +2234,10 @@ def apply_args_filters(
     for each service
 
     :param args: args object containing attributes to filter by
-    :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
+    :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1: [config_classes]}}}
     """
     clusters_services_instances: DefaultDict[
-        str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
+        str, DefaultDict[str, Dict[str, List[Type[InstanceConfig]]]]
     ] = defaultdict(lambda: defaultdict(dict))
     if args.service_instance:
         if args.service or args.instances:
@@ -2297,7 +2298,9 @@ def apply_args_filters(
                 cluster_service = clusters_services_instances[
                     instance_conf.get_cluster()
                 ][service]
-                cluster_service[instance_conf.get_instance()] = instance_conf.__class__
+                cluster_service.setdefault(instance_conf.get_instance(), []).append(
+                    instance_conf.__class__
+                )
                 i_count += 1
 
     if i_count == 0 and args.service and args.instances:
@@ -2319,9 +2322,14 @@ def paasta_status(args) -> int:
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
+            all_config_classes = [
+                cls for classes in instances.values() for cls in classes
+            ]
+            all_flink = all(
+                cls in FLINK_DEPLOYMENT_CONFIGS for cls in all_config_classes
+            )
             all_cassandra = all(
-                (i in CASSANDRA_DEPLOYMENT_CONFIGS) for i in instances.values()
+                cls in CASSANDRA_DEPLOYMENT_CONFIGS for cls in all_config_classes
             )
             actual_deployments: Mapping[str, DeploymentVersion]
             if all_flink or all_cassandra:
