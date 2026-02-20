@@ -109,8 +109,11 @@ from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
+from kubernetes.client import V1Service
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountTokenProjection
+from kubernetes.client import V1ServicePort
+from kubernetes.client import V1ServiceSpec
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -435,6 +438,12 @@ class NodeSelectorsPreferredConfigDict(TypedDict):
     preferences: Dict[str, NodeSelectorConfig]
 
 
+class KubernetesServiceConfigDict(TypedDict, total=False):
+    headless: bool  # Shortcut for cluster_ip: None
+    annotations: Dict[str, str]
+    port: int  # Optional - defaults to 8888
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
@@ -457,6 +466,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
+    k8s_service: KubernetesServiceConfigDict
 
 
 def load_kubernetes_service_config_no_cache(
@@ -2800,6 +2810,63 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             soa_dir=self.soa_dir,
         )
 
+    def get_kubernetes_service_config(self) -> Optional[KubernetesServiceConfigDict]:
+        """Returns the k8s_service config block, or None if not configured."""
+        return self.config_dict.get("k8s_service")
+
+    def get_kubernetes_service_name(self) -> str:
+        """Returns the name for the Kubernetes Service.
+
+        Currently matches the deployment name, but can be extended later
+        to support custom service naming if needed.
+        """
+        return self.get_sanitised_deployment_name()
+
+    def format_kubernetes_service(self) -> Optional[V1Service]:
+        """Create a Kubernetes Service configuration from this config.
+
+        Returns None if k8s_service is not configured.
+        """
+        k8s_service_config = self.get_kubernetes_service_config()
+        if k8s_service_config is None:
+            return None
+
+        port = k8s_service_config.get("port", 8888)  # Default to the PaaSTA port
+        annotations = k8s_service_config.get("annotations", {})
+        annotations[paasta_prefixed("managed")] = "true"
+        headless = k8s_service_config.get("headless", True)
+
+        service_port = V1ServicePort(
+            name="http", port=port, target_port=port, protocol="TCP"
+        )
+
+        service_spec = V1ServiceSpec(
+            ports=[service_port],
+            selector={
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+            },
+        )
+        if headless:
+            service_spec.cluster_ip = "None"
+
+        service = V1Service(
+            api_version="v1",
+            kind="Service",
+            metadata=V1ObjectMeta(
+                name=self.get_kubernetes_service_name(),
+                namespace=self.get_namespace(),
+                labels={
+                    paasta_prefixed("service"): self.get_service(),
+                    paasta_prefixed("instance"): self.get_instance(),
+                    paasta_prefixed("managed"): "true",
+                },
+                annotations=annotations,
+            ),
+            spec=service_spec,
+        )
+        return service
+
 
 def get_kubernetes_secret_hashes(
     environment_variables: Mapping[str, str], service: str, namespace: str
@@ -3910,6 +3977,40 @@ def create_job(
     return kube_client.batches.create_namespaced_job(
         namespace=namespace,
         body=formatted_job,
+    )
+
+
+def create_service(
+    kube_client: KubeClient,
+    formatted_service: V1Service,
+    namespace: str,
+) -> None:
+    return kube_client.core.create_namespaced_service(
+        namespace=namespace,
+        body=formatted_service,
+    )
+
+
+def update_service(
+    kube_client: KubeClient,
+    formatted_service: V1Service,
+    namespace: str,
+) -> None:
+    return kube_client.core.replace_namespaced_service(
+        name=formatted_service.metadata.name,
+        namespace=namespace,
+        body=formatted_service,
+    )
+
+
+def delete_service(
+    kube_client: KubeClient,
+    service_name: str,
+    namespace: str,
+) -> None:
+    return kube_client.core.delete_namespaced_service(
+        name=service_name,
+        namespace=namespace,
     )
 
 

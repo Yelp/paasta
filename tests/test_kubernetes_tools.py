@@ -58,9 +58,12 @@ from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
+from kubernetes.client import V1Service
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountList
 from kubernetes.client import V1ServiceAccountTokenProjection
+from kubernetes.client import V1ServicePort
+from kubernetes.client import V1ServiceSpec
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -103,7 +106,9 @@ from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
+from paasta_tools.kubernetes_tools import create_service
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import delete_service
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace_limits
@@ -149,6 +154,7 @@ from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
+from paasta_tools.kubernetes_tools import update_service
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -3535,6 +3541,72 @@ class TestKubernetesDeploymentConfig:
         )
         assert pv_name == "pv--slash-blahslash-what"
 
+    def test_format_kubernetes_service_with_config(self):
+        """Test format_kubernetes_service creates a V1Service object matching the K8s API spec."""
+        self.deployment.config_dict["k8s_service"] = {
+            "headless": True,
+            "port": 8888,
+            "annotations": {
+                "external-dns.alpha.kubernetes.io/hostname": "test.example.com"
+            },
+        }
+        result = self.deployment.format_kubernetes_service()
+
+        # Validate against the expected spec structure
+        # V1Service validation
+        assert isinstance(result, V1Service)
+        assert result.api_version == "v1"
+        assert result.kind == "Service"
+
+        # V1ObjectMeta
+        assert isinstance(result.metadata, V1ObjectMeta)
+        assert result.metadata.name == self.deployment.get_sanitised_deployment_name()
+        assert result.metadata.namespace == self.deployment.get_namespace()
+        # Annotations
+        assert (
+            result.metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
+            == "test.example.com"
+        )
+        assert result.metadata.annotations["paasta.yelp.com/managed"] == "true"
+        # Labels
+        assert result.metadata.labels["paasta.yelp.com/service"] == "kurupt"
+        assert result.metadata.labels["paasta.yelp.com/instance"] == "fm"
+        assert result.metadata.labels["paasta.yelp.com/managed"] == "true"
+
+        # V1ServiceSpec
+        assert isinstance(result.spec, V1ServiceSpec)
+        assert (
+            result.spec.cluster_ip == "None"
+        )  # K8s API expects string "None" for headless
+
+        # V1ServicePort
+        assert len(result.spec.ports) == 1
+        assert isinstance(result.spec.ports[0], V1ServicePort)
+        assert result.spec.ports[0].name == "http"
+        assert result.spec.ports[0].port == 8888
+        assert result.spec.ports[0].target_port == 8888
+        assert result.spec.ports[0].protocol == "TCP"
+
+        # Spec selector
+        assert isinstance(result.spec.selector, dict)
+        assert result.spec.selector == {
+            "paasta.yelp.com/service": self.deployment.get_service(),
+            "paasta.yelp.com/instance": self.deployment.get_instance(),
+        }
+
+    def test_format_kubernetes_service_returns_none_when_not_configured(self):
+        """Test returns None when k8s_service not in config."""
+        result = self.deployment.format_kubernetes_service()
+        assert result is None
+
+    def test_format_kubernetes_service_with_defaults(self):
+        """Creates a minimal service with default values."""
+        self.deployment.config_dict["k8s_service"] = {}
+        result = self.deployment.format_kubernetes_service()
+
+        assert result.spec.ports[0].port == 8888
+        assert result.spec.cluster_ip == "None"
+
 
 def test_get_kubernetes_services_running_here():
     with mock.patch(
@@ -4430,6 +4502,38 @@ def test_update_stateful_set():
     create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
+    )
+
+
+def test_create_service():
+    mock_client = mock.Mock()
+    mock_namespace = "paasta"
+    service = V1Service(api_version="some")
+    create_service(mock_client, service, mock_namespace)
+    mock_client.core.create_namespaced_service.assert_called_with(
+        namespace="paasta", body=service
+    )
+
+
+def test_update_service():
+    mock_client = mock.Mock()
+    mock_namespace = "paasta"
+    service = V1Service(metadata=V1ObjectMeta(name="test"), api_version="some")
+    update_service(mock_client, service, mock_namespace)
+    mock_client.core.replace_namespaced_service.assert_called_with(
+        namespace="paasta",
+        name="test",
+        body=service,
+    )
+
+
+def test_delete_service():
+    mock_client = mock.Mock()
+    mock_namespace = "paasta"
+    delete_service(mock_client, "test", mock_namespace)
+    mock_client.core.delete_namespaced_service.assert_called_with(
+        name="test",
+        namespace="paasta",
     )
 
 
