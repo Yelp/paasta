@@ -2969,6 +2969,63 @@ def force_delete_pods(
         )
 
 
+def delete_pod_by_name(
+    pod_name: str,
+    service: str,
+    instance: str,
+    namespace: str,
+    kube_client: KubeClient,
+    grace_period_seconds: Optional[int] = None,
+) -> bool:
+    """Delete a specific pod by name within a service instance.
+
+    Args:
+        pod_name: Name of the pod to delete
+        service: PaaSTA service name
+        instance: PaaSTA instance name
+        namespace: Kubernetes namespace
+        kube_client: Kubernetes client
+        grace_period_seconds: Time to wait before forcefully terminating the pod.
+                              0 means immediate deletion, None uses the pod's configured grace period.
+
+    Returns:
+        True if pod was found and deleted, False if pod not found
+
+    Raises:
+        RuntimeError: If pod exists but deletion fails
+    """
+    # First verify the pod exists and belongs to this service instance
+    pods = a_sync.block(
+        pods_for_service_instance,
+        service,
+        instance,
+        kube_client,
+        namespace=namespace,
+    )
+
+    target_pod = None
+    for pod in pods:
+        if pod.metadata.name == pod_name:
+            target_pod = pod
+            break
+
+    if target_pod is None:
+        return False
+
+    # Delete the pod
+    delete_options = V1DeleteOptions()
+    try:
+        kube_client.core.delete_namespaced_pod(
+            pod_name,
+            namespace,
+            body=delete_options,
+            grace_period_seconds=grace_period_seconds,
+        )
+        return True
+    except Exception as e:
+        raise RuntimeError(f"Failed to delete pod {pod_name}: {str(e)}")
+
+
 @time_cache(ttl=60)
 def get_all_namespaces(
     kube_client: KubeClient, label_selector: Optional[str] = None
