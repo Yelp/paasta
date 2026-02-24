@@ -1,5 +1,0 @@
-recursive-include paasta_tools/cli/fsm/template *
-recursive-include paasta_tools/cli/schemas *.json
-include paasta_tools/api/api_docs/*.json
-include requirements-minimal.txt
-include paasta_tools/py.typed
