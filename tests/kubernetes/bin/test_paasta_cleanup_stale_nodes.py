@@ -97,23 +97,28 @@ def test_does_instance_exist():
 
 
 def test_main():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.get_all_nodes",
-        autospec=True,
-    ) as mock_get_all_nodes, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.KubeClient",
-        autospec=True,
-    ) as mock_kube_client, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.nodes_for_cleanup",
-        autospec=True,
-    ) as mock_nodes_for_cleanup, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.terminate_nodes",
-        autospec=True,
-    ) as mock_terminate_nodes, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
-        autospec=True,
-    ) as mock_parse_args, mock.patch(
-        "boto3.client", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.get_all_nodes",
+            autospec=True,
+        ) as mock_get_all_nodes,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.KubeClient",
+            autospec=True,
+        ) as mock_kube_client,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.nodes_for_cleanup",
+            autospec=True,
+        ) as mock_nodes_for_cleanup,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.terminate_nodes",
+            autospec=True,
+        ) as mock_terminate_nodes,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
+            autospec=True,
+        ) as mock_parse_args,
+        mock.patch("boto3.client", autospec=True),
     ):
         mock_args = mock.MagicMock()
         mock_args.dry_run = False
@@ -154,23 +159,28 @@ def test_main():
 
 
 def test_main_dry_run():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.get_all_nodes",
-        autospec=True,
-    ) as mock_get_all_nodes, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.KubeClient",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.is_node_ready",
-        autospec=True,
-    ) as mock_is_node_ready, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.terminate_nodes",
-        autospec=True,
-    ) as mock_terminate_nodes, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
-        autospec=True,
-    ) as mock_parse_args, mock.patch(
-        "boto3.client", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.get_all_nodes",
+            autospec=True,
+        ) as mock_get_all_nodes,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.KubeClient",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.is_node_ready",
+            autospec=True,
+        ) as mock_is_node_ready,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.terminate_nodes",
+            autospec=True,
+        ) as mock_terminate_nodes,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes.parse_args",
+            autospec=True,
+        ) as mock_parse_args,
+        mock.patch("boto3.client", autospec=True),
     ):
         mock_args = mock.MagicMock()
         mock_args.dry_run = True

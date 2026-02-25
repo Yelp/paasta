@@ -18,7 +18,7 @@ named-decorator==0.1.4              # yelp-profiling dependency
 ndg-httpsclient==0.4.3              # vault-tools dependency
 okta-auth==1.2.1
 pycparser==2.20                     # vault-tools dependency
-pygpgme==0.3                        # vault-tools dependency
+pygpgme==0.6                        # vault-tools dependency
 pyjwt==2.9.0                        # okta-auth dependency
 pyopenssl==19.0.0                   # vault-tools dependency
 PySubnetTree==0.34                  # yelp-lib dependency
@@ -28,7 +28,7 @@ scribereader==1.1.1
 signalform-tools==0.0.16            # slo-transcoder dependency
 slo-transcoder==3.3.0
 smmap2==2.0.3                       # slo-transcoder, vault-tools dependency
-splunk-sdk==1.7.0                   # sticht dependency
+splunk-sdk==2.1.1                   # sticht dependency
 srv-configs==1.1.0                  # yelp-profiling dependency
 sticht[yelp_internal]==1.2.1
 tenacity==8.3.0                     # yelp-clog dependency

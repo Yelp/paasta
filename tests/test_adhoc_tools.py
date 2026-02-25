@@ -38,13 +38,17 @@ def test_get_default_interactive_config():
 
 
 def test_get_default_interactive_config_reads_from_tty():
-    with mock.patch(
-        "paasta_tools.adhoc_tools.prompt_pick_one", autospec=True
-    ) as mock_prompt_pick_one, mock.patch(
-        "paasta_tools.adhoc_tools.load_adhoc_job_config", autospec=True
-    ) as mock_load_adhoc_job_config, mock.patch(
-        "paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True
-    ) as mock_load_deployments_json:
+    with (
+        mock.patch(
+            "paasta_tools.adhoc_tools.prompt_pick_one", autospec=True
+        ) as mock_prompt_pick_one,
+        mock.patch(
+            "paasta_tools.adhoc_tools.load_adhoc_job_config", autospec=True
+        ) as mock_load_adhoc_job_config,
+        mock.patch(
+            "paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True
+        ) as mock_load_deployments_json,
+    ):
         mock_prompt_pick_one.return_value = "fake_deploygroup"
         mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
         mock_load_deployments_json.return_value = DeploymentsJsonV2(
@@ -68,11 +72,14 @@ def test_get_default_interactive_config_reads_from_tty():
 
 def test_adhoc_config_node_selectors_in_pod_spec():
     """Test that node_selectors from adhoc config appear in the generated pod spec."""
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
-    ) as mock_load_system_config, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
-    ) as mock_load_system_config_utils:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+        ) as mock_load_system_config,
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config", autospec=True
+        ) as mock_load_system_config_utils,
+    ):
         mock_load_system_config.return_value.get_cluster_aliases.return_value = []
         mock_load_system_config.return_value.get_volumes.return_value = []
         mock_load_system_config.return_value.get_dockercfg_location.return_value = (

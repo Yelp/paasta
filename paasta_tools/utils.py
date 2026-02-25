@@ -4121,9 +4121,9 @@ class _Timeout(Generic[_TimeoutFuncRetType]):
         error_message: str,
     ) -> None:
         self.seconds = seconds
-        self.control: queue.Queue[
-            Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]
-        ] = queue.Queue()
+        self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = (
+            queue.Queue()
+        )
         self.function = function
         self.error_message = error_message
 

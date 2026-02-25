@@ -42,7 +42,7 @@ setup(
     description="Tools for Yelps SOA infrastructure",
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
-    python_requires=">=3.10.0",
+    python_requires=">=3.12.0",
     install_requires=get_install_requires(),
     scripts=[
         "paasta_tools/apply_external_resources.py",

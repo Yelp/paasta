@@ -39,20 +39,26 @@ def test_parse_args():
 
 
 def test_main():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.parse_args", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.metrics_lib.system_timer",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.KubeClient", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_all_secrets",
-        autospec=True,
-    ) as mock_sync_all_secrets:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.parse_args", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.metrics_lib.system_timer",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.KubeClient", autospec=True
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_all_secrets",
+            autospec=True,
+        ) as mock_sync_all_secrets,
+    ):
         mock_sync_all_secrets.return_value = True
         with pytest.raises(SystemExit) as e:
             main()
@@ -64,14 +70,19 @@ def test_main():
 
 
 def test_sync_all_secrets():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets", autospec=True
-    ) as mock_sync_secrets, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.ensure_namespace",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets",
+            autospec=True,
+        ) as mock_sync_secrets,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.ensure_namespace",
+            autospec=True,
+        ),
     ):
         services_to_k8s_namespaces_to_allowlist = {
             "foo": {"paastasvc-foo": None},
@@ -113,13 +124,16 @@ def test_sync_all_secrets():
 
 
 def test_sync_shared():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_service_instance_list",
-        autospec=True,
-    ) as mock_get_service_instance_list:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ) as mock_config_loader,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_service_instance_list",
+            autospec=True,
+        ) as mock_get_service_instance_list,
+    ):
         kube_client = mock.Mock()
         kube_client.core = mock.MagicMock()
 
@@ -243,35 +257,47 @@ def test_sync_shared():
 
 @pytest.fixture
 def paasta_secrets_patches():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
-        autospec=True,
-    ) as mock_get_secret_provider, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.os.scandir", autospec=True
-    ) as mock_scandir, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
-        create=True,
-        autospec=None,
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
-        autospec=True,
-    ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret", autospec=True
-    ) as mock_create_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
-        autospec=True,
-    ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret", autospec=True
-    ) as mock_update_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
-        autospec=True,
-    ) as mock_update_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
-    ), mock.patch(
-        "os.path.isdir", autospec=True, return_value=True
-    ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
+            autospec=True,
+        ) as mock_get_secret_provider,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.os.scandir", autospec=True
+        ) as mock_scandir,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
+            create=True,
+            autospec=None,
+        ),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
+            autospec=True,
+        ) as mock_get_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
+            autospec=True,
+        ) as mock_create_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
+            autospec=True,
+        ) as mock_create_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
+            autospec=True,
+        ) as mock_update_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
+            autospec=True,
+        ) as mock_update_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
+        ),
+        mock.patch("os.path.isdir", autospec=True, return_value=True),
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ),
     ):
 
         yield (
@@ -609,32 +635,41 @@ def test_sync_secrets_only_does_allowlisted_files(paasta_secrets_patches, namesp
 
 @pytest.fixture
 def boto_keys_patches():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
-        create=True,
-        autospec=None,
-        return_value=mock.MagicMock(),
-    ) as mock_open, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
-        autospec=True,
-    ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
-        autospec=True,
-    ) as mock_create_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
-        autospec=True,
-    ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
-        autospec=True,
-    ) as mock_update_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
-        autospec=True,
-    ) as mock_update_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
+            create=True,
+            autospec=None,
+            return_value=mock.MagicMock(),
+        ) as mock_open,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
+            autospec=True,
+        ) as mock_get_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
+            autospec=True,
+        ) as mock_create_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
+            autospec=True,
+        ) as mock_create_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
+            autospec=True,
+        ) as mock_update_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
+            autospec=True,
+        ) as mock_update_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ) as mock_config_loader,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ),
     ):
         yield (
             mock_open,
@@ -848,30 +883,39 @@ def test_sync_boto_secrets_exists_but_no_signature(boto_keys_patches):
 
 @pytest.fixture
 def crypto_keys_patches():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
-        autospec=True,
-    ) as provider, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
-        autospec=True,
-    ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
-        autospec=True,
-    ) as mock_create_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
-        autospec=True,
-    ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
-        autospec=True,
-    ) as mock_update_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
-        autospec=True,
-    ) as mock_update_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
+            autospec=True,
+        ) as provider,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
+            autospec=True,
+        ) as mock_get_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
+            autospec=True,
+        ) as mock_create_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
+            autospec=True,
+        ) as mock_create_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
+            autospec=True,
+        ) as mock_update_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
+            autospec=True,
+        ) as mock_update_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ) as mock_config_loader,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ),
     ):
         yield (
             provider,
@@ -887,30 +931,39 @@ def crypto_keys_patches():
 
 @pytest.fixture
 def datastore_credentials_patches():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
-        autospec=True,
-    ) as mock_get_secret_provider, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
-        autospec=True,
-    ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
-        autospec=True,
-    ) as mock_create_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
-        autospec=True,
-    ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
-        autospec=True,
-    ) as mock_update_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
-        autospec=True,
-    ) as mock_update_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
+            autospec=True,
+        ) as mock_get_secret_provider,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
+            autospec=True,
+        ) as mock_get_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
+            autospec=True,
+        ) as mock_create_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
+            autospec=True,
+        ) as mock_create_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
+            autospec=True,
+        ) as mock_update_secret,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
+            autospec=True,
+        ) as mock_update_kubernetes_secret_signature,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ) as mock_config_loader,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ),
     ):
         yield (
             mock_get_kubernetes_secret_signature,
@@ -1210,19 +1263,24 @@ def test_sync_crypto_secrets_exist_but_no_signature(
 
 @pytest.fixture
 def ssm_patches():
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
-        autospec=True,
-    ) as mock_load_system_config, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.boto3",
-        autospec=True,
-    ) as mock_boto3, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
-        autospec=True,
-    ) as mock_create_or_update:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+            autospec=True,
+        ) as mock_config_loader,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_config,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.boto3",
+            autospec=True,
+        ) as mock_boto3,
+        mock.patch(
+            "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
+            autospec=True,
+        ) as mock_create_or_update,
+    ):
         yield (
             mock_config_loader,
             mock_load_system_config,

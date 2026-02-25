@@ -212,7 +212,8 @@ class LongRunningServiceConfig(InstanceConfig):
         """Get the drain method specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: The drain method specified in the config, or 'noop' if not specified"""
+        :returns: The drain method specified in the config, or 'noop' if not specified
+        """
         default = "noop"
         # Default to hacheck draining if the service is in smartstack
         if service_namespace_config.is_in_smartstack():
@@ -225,7 +226,8 @@ class LongRunningServiceConfig(InstanceConfig):
         """Get the drain method parameters specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
+        :returns: The drain_method_params dictionary specified in the config, or {} if not specified
+        """
         default: Dict = {}
         if service_namespace_config.is_in_smartstack():
             default = {"delay": 60}

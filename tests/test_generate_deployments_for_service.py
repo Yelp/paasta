@@ -104,15 +104,18 @@ def test_get_deploy_group_mappings():
             },
         },
     }
-    with mock.patch(
-        "paasta_tools.generate_deployments_for_service.get_instance_configs_for_service",
-        return_value=fake_service_configs,
-        autospec=True,
-    ) as get_instance_configs_for_service_patch, mock.patch(
-        "paasta_tools.remote_git.list_remote_refs",
-        return_value=fake_remote_refs,
-        autospec=True,
-    ) as list_remote_refs_patch:
+    with (
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.get_instance_configs_for_service",
+            return_value=fake_service_configs,
+            autospec=True,
+        ) as get_instance_configs_for_service_patch,
+        mock.patch(
+            "paasta_tools.remote_git.list_remote_refs",
+            return_value=fake_remote_refs,
+            autospec=True,
+        ) as list_remote_refs_patch,
+    ):
         actual, actual_v2 = generate_deployments_for_service.get_deploy_group_mappings(
             fake_soa_dir, fake_service
         )
@@ -127,32 +130,36 @@ def test_get_deploy_group_mappings():
 def test_main():
     fake_soa_dir = "/etc/true/null"
     file_mock = mock.mock_open()
-    with mock.patch(
-        "paasta_tools.generate_deployments_for_service.parse_args",
-        return_value=mock.Mock(
-            verbose=False, soa_dir=fake_soa_dir, service="fake_service"
-        ),
-        autospec=True,
-    ) as parse_patch, mock.patch(
-        "os.path.abspath", return_value="ABSOLUTE", autospec=True
-    ) as abspath_patch, mock.patch(
-        "paasta_tools.generate_deployments_for_service.get_deploy_group_mappings",
-        return_value=(
-            {"MAP": {"docker_image": "PINGS", "desired_state": "start"}},
-            mock.sentinel.v2_mappings,
-        ),
-        autospec=True,
-    ) as mappings_patch, mock.patch(
-        "os.path.join", return_value="JOIN", autospec=True
-    ) as join_patch, mock.patch(
-        "builtins.open", file_mock, autospec=None
-    ) as open_patch, mock.patch(
-        "json.dump", autospec=True
-    ) as json_dump_patch, mock.patch(
-        "json.load", return_value={"OLD_MAP": "PINGS"}, autospec=True
-    ) as json_load_patch, mock.patch(
-        "paasta_tools.generate_deployments_for_service.atomic_file_write", autospec=True
-    ) as atomic_file_write_patch:
+    with (
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.parse_args",
+            return_value=mock.Mock(
+                verbose=False, soa_dir=fake_soa_dir, service="fake_service"
+            ),
+            autospec=True,
+        ) as parse_patch,
+        mock.patch(
+            "os.path.abspath", return_value="ABSOLUTE", autospec=True
+        ) as abspath_patch,
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.get_deploy_group_mappings",
+            return_value=(
+                {"MAP": {"docker_image": "PINGS", "desired_state": "start"}},
+                mock.sentinel.v2_mappings,
+            ),
+            autospec=True,
+        ) as mappings_patch,
+        mock.patch("os.path.join", return_value="JOIN", autospec=True) as join_patch,
+        mock.patch("builtins.open", file_mock, autospec=None) as open_patch,
+        mock.patch("json.dump", autospec=True) as json_dump_patch,
+        mock.patch(
+            "json.load", return_value={"OLD_MAP": "PINGS"}, autospec=True
+        ) as json_load_patch,
+        mock.patch(
+            "paasta_tools.generate_deployments_for_service.atomic_file_write",
+            autospec=True,
+        ) as atomic_file_write_patch,
+    ):
         generate_deployments_for_service.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)

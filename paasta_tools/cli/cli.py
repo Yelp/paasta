@@ -206,7 +206,7 @@ def get_argparser(commands: list[str] | None = None) -> argparse.ArgumentParser:
             (command, (subparsers.add_parser, [command], dict(help="")))
         )
 
-    for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):
+    for _, (fn, args, kwds) in sorted(command_choices, key=lambda e: e[0]):
         fn(*args, **kwds)
 
     return parser

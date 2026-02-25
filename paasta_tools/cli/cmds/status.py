@@ -754,11 +754,13 @@ def append_pod_status(pod_status, output: List[str]):
         color_fn = (
             PaastaColors.green
             if pod["phase"] == "Running" and pod["container_state"] == "Running"
-            else PaastaColors.red
-            # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
-            if pod["phase"] == "Failed"
-            or pod["container_state_reason"] == "CrashLoopBackOff"
-            else PaastaColors.yellow
+            else (
+                PaastaColors.red
+                # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
+                if pod["phase"] == "Failed"
+                or pod["container_state_reason"] == "CrashLoopBackOff"
+                else PaastaColors.yellow
+            )
         )
 
         rows.append(
@@ -1051,9 +1053,11 @@ def _print_flink_status_from_job_manager(
             color_fn = (
                 PaastaColors.green
                 if job.get("state") and job.get("state") == "RUNNING"
-                else PaastaColors.red
-                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
-                else PaastaColors.yellow
+                else (
+                    PaastaColors.red
+                    if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                    else PaastaColors.yellow
+                )
             )
             job_info_str = fmt.format(
                 job_id=job_id,
@@ -2212,12 +2216,12 @@ def get_filters(
 
         filters.append(
             # If the instance owner is None, check the service owner, else check the instance owner
-            lambda conf: get_team(
-                overrides={}, service=conf.get_service(), soa_dir=args.soa_dir
+            lambda conf: (
+                get_team(overrides={}, service=conf.get_service(), soa_dir=args.soa_dir)
+                in owners
+                if conf.get_team() is None
+                else conf.get_team() in owners
             )
-            in owners
-            if conf.get_team() is None
-            else conf.get_team() in owners
         )
 
     return filters

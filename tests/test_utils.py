@@ -290,25 +290,27 @@ def test_load_system_paasta_config():
     json_load_return_value: utils.SystemPaastaConfigDict = {"cluster": "bar"}
     expected = utils.SystemPaastaConfig(json_load_return_value, "/some/fake/dir")
     file_mock = mock.mock_open()
-    with mock.patch("os.path.isdir", return_value=True, autospec=True), mock.patch(
-        "os.access", return_value=True, autospec=True
-    ), mock.patch(
-        "builtins.open", file_mock, autospec=None
-    ) as open_file_patch, mock.patch(
-        "paasta_tools.utils.get_readable_files_in_glob",
-        autospec=True,
-        return_value=["/some/fake/dir/some_file.json"],
-    ), mock.patch(
-        "paasta_tools.utils.json.load",
-        autospec=True,
-        return_value=json_load_return_value,
-    ) as json_patch, mock.patch(
-        "paasta_tools.utils.os.stat", autospec=True
-    ), mock.patch(
-        "paasta_tools.utils.deep_merge_dictionaries",
-        autospec=True,
-        return_value=json_load_return_value,
-    ) as mock_deep_merge:
+    with (
+        mock.patch("os.path.isdir", return_value=True, autospec=True),
+        mock.patch("os.access", return_value=True, autospec=True),
+        mock.patch("builtins.open", file_mock, autospec=None) as open_file_patch,
+        mock.patch(
+            "paasta_tools.utils.get_readable_files_in_glob",
+            autospec=True,
+            return_value=["/some/fake/dir/some_file.json"],
+        ),
+        mock.patch(
+            "paasta_tools.utils.json.load",
+            autospec=True,
+            return_value=json_load_return_value,
+        ) as json_patch,
+        mock.patch("paasta_tools.utils.os.stat", autospec=True),
+        mock.patch(
+            "paasta_tools.utils.deep_merge_dictionaries",
+            autospec=True,
+            return_value=json_load_return_value,
+        ) as mock_deep_merge,
+    ):
         actual = utils.load_system_paasta_config(path="/some/fake/dir")
         assert actual == expected
         # Kinda weird but without this load_system_paasta_config() can (and
@@ -336,8 +338,9 @@ def test_load_system_paasta_config_file_non_existent_dir():
 
 def test_load_system_paasta_config_file_non_readable_dir():
     fake_path = "/var/dir_of_fake"
-    with mock.patch("os.path.isdir", return_value=True, autospec=True), mock.patch(
-        "os.access", return_value=False, autospec=True
+    with (
+        mock.patch("os.path.isdir", return_value=True, autospec=True),
+        mock.patch("os.access", return_value=False, autospec=True),
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
@@ -349,16 +352,16 @@ def test_load_system_paasta_config_file_non_readable_dir():
 
 def test_load_system_paasta_config_file_dne():
     fake_path = "/var/dir_of_fake"
-    with mock.patch("os.path.isdir", return_value=True, autospec=True), mock.patch(
-        "os.access", return_value=True, autospec=True
-    ), mock.patch(
-        "builtins.open", side_effect=IOError(2, "a", "b"), autospec=None
-    ), mock.patch(
-        "paasta_tools.utils.os.stat", autospec=True
-    ), mock.patch(
-        "paasta_tools.utils.get_readable_files_in_glob",
-        autospec=True,
-        return_value=[fake_path],
+    with (
+        mock.patch("os.path.isdir", return_value=True, autospec=True),
+        mock.patch("os.access", return_value=True, autospec=True),
+        mock.patch("builtins.open", side_effect=IOError(2, "a", "b"), autospec=None),
+        mock.patch("paasta_tools.utils.os.stat", autospec=True),
+        mock.patch(
+            "paasta_tools.utils.get_readable_files_in_glob",
+            autospec=True,
+            return_value=[fake_path],
+        ),
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
@@ -372,18 +375,21 @@ def test_load_system_paasta_config_duplicate_keys_errors():
     }
     fake_file_b = {"cluster": "overriding value"}
     file_mock = mock.mock_open()
-    with mock.patch("os.path.isdir", return_value=True, autospec=True), mock.patch(
-        "os.access", return_value=True, autospec=True
-    ), mock.patch("builtins.open", file_mock, autospec=None), mock.patch(
-        "paasta_tools.utils.os.stat", autospec=True
-    ), mock.patch(
-        "paasta_tools.utils.get_readable_files_in_glob",
-        autospec=True,
-        return_value=["a", "b"],
-    ), mock.patch(
-        "paasta_tools.utils.json.load",
-        autospec=True,
-        side_effect=[fake_file_a, fake_file_b],
+    with (
+        mock.patch("os.path.isdir", return_value=True, autospec=True),
+        mock.patch("os.access", return_value=True, autospec=True),
+        mock.patch("builtins.open", file_mock, autospec=None),
+        mock.patch("paasta_tools.utils.os.stat", autospec=True),
+        mock.patch(
+            "paasta_tools.utils.get_readable_files_in_glob",
+            autospec=True,
+            return_value=["a", "b"],
+        ),
+        mock.patch(
+            "paasta_tools.utils.json.load",
+            autospec=True,
+            side_effect=[fake_file_a, fake_file_b],
+        ),
     ):
         with raises(utils.DuplicateKeyError):
             utils.load_system_paasta_config(path="/some/fake/dir")
@@ -847,14 +853,18 @@ def test_missing_cluster_configs_are_ignored():
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
     )
     expected: List[Any] = []
-    with mock.patch(
-        "os.path.join", autospec=True, return_value="%s/*" % fake_soa_dir
-    ) as mock_join_path, mock.patch(
-        "glob.glob", autospec=True, return_value=fake_cluster_configs
-    ) as mock_glob, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=fake_system_paasta_config,
-        autospec=True,
+    with (
+        mock.patch(
+            "os.path.join", autospec=True, return_value="%s/*" % fake_soa_dir
+        ) as mock_join_path,
+        mock.patch(
+            "glob.glob", autospec=True, return_value=fake_cluster_configs
+        ) as mock_glob,
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=fake_system_paasta_config,
+            autospec=True,
+        ),
     ):
         actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
@@ -908,16 +918,19 @@ def test_list_clusters_ignores_bogus_clusters():
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
     )
     expected = ["cluster1", "cluster2"]
-    with mock.patch(
-        "os.path.join", autospec=True, return_value=f"{fake_soa_dir}/{fake_service}"
-    ), mock.patch(
-        "glob.glob", autospec=True, return_value=fake_cluster_configs
-    ), mock.patch(
-        "builtins.open", autospec=None, path=mock.mock_open(read_data="fakedata")
-    ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        return_value=fake_system_paasta_config,
-        autospec=True,
+    with (
+        mock.patch(
+            "os.path.join", autospec=True, return_value=f"{fake_soa_dir}/{fake_service}"
+        ),
+        mock.patch("glob.glob", autospec=True, return_value=fake_cluster_configs),
+        mock.patch(
+            "builtins.open", autospec=None, path=mock.mock_open(read_data="fakedata")
+        ),
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=fake_system_paasta_config,
+            autospec=True,
+        ),
     ):
         actual = utils.list_clusters(service=fake_service)
 
@@ -929,11 +942,14 @@ def test_list_all_instances_for_service():
     clusters = ["fake_cluster"]
     mock_instances = [(service, "instance1"), (service, "instance2")]
     expected = {"instance1", "instance2"}
-    with mock.patch(
-        "paasta_tools.utils.list_clusters", autospec=True
-    ) as mock_list_clusters, mock.patch(
-        "paasta_tools.utils.get_service_instance_list", autospec=True
-    ) as mock_service_instance_list:
+    with (
+        mock.patch(
+            "paasta_tools.utils.list_clusters", autospec=True
+        ) as mock_list_clusters,
+        mock.patch(
+            "paasta_tools.utils.get_service_instance_list", autospec=True
+        ) as mock_service_instance_list,
+    ):
         mock_list_clusters.return_value = clusters
         mock_service_instance_list.return_value = mock_instances
         actual = utils.list_all_instances_for_service(service)
@@ -1234,13 +1250,16 @@ def test_load_service_instance_auto_configs_no_aliases(
 def test_load_service_instance_auto_configs_with_autotune_aliases(
     instance_type_aliases, instance_type, expected_instance_type
 ):
-    with mock.patch(
-        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-        autospec=True,
-    ) as mock_read_extra_service_information, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
-        autospec=True,
-    ) as mock_load_system_paasta_config:
+    with (
+        mock.patch(
+            "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+            autospec=True,
+        ) as mock_read_extra_service_information,
+        mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_paasta_config,
+    ):
         mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
             expected_instance_type: True,
         }
@@ -1274,15 +1293,19 @@ def test_get_services_for_cluster():
         ("fake_service1", "this_is_testing"),
         ("fake_service1", "all_the_things"),
     ]
-    with mock.patch(
-        "os.path.abspath", autospec=True, return_value="chex_mix"
-    ) as abspath_patch, mock.patch(
-        "os.listdir", autospec=True, return_value=["dir1", "dir2"]
-    ) as listdir_patch, mock.patch(
-        "paasta_tools.utils.get_service_instance_list",
-        side_effect=lambda a, b, c, d: instances.pop(),
-        autospec=True,
-    ) as get_instances_patch:
+    with (
+        mock.patch(
+            "os.path.abspath", autospec=True, return_value="chex_mix"
+        ) as abspath_patch,
+        mock.patch(
+            "os.listdir", autospec=True, return_value=["dir1", "dir2"]
+        ) as listdir_patch,
+        mock.patch(
+            "paasta_tools.utils.get_service_instance_list",
+            side_effect=lambda a, b, c, d: instances.pop(),
+            autospec=True,
+        ) as get_instances_patch,
+    ):
         actual = utils.get_services_for_cluster(cluster, soa_dir=soa_dir)
         assert expected == actual
         abspath_patch.assert_called_once_with(soa_dir)
@@ -1336,12 +1359,12 @@ def test_DeploymentsJson_read():
             },
         }
     }
-    with mock.patch(
-        "builtins.open", file_mock, autospec=None
-    ) as open_patch, mock.patch(
-        "json.load", autospec=True, return_value=fake_json
-    ) as json_patch, mock.patch(
-        "paasta_tools.utils.os.path.isfile", autospec=True, return_value=True
+    with (
+        mock.patch("builtins.open", file_mock, autospec=None) as open_patch,
+        mock.patch("json.load", autospec=True, return_value=fake_json) as json_patch,
+        mock.patch(
+            "paasta_tools.utils.os.path.isfile", autospec=True, return_value=True
+        ),
     ):
         actual = utils.load_deployments_json("fake_service", fake_dir)
         open_patch.assert_called_once_with(fake_path)
@@ -1379,12 +1402,15 @@ def test_get_running_mesos_docker_containers():
 def test_run_cancels_timer_thread_on_keyboard_interrupt():
     mock_process = mock.Mock()
     mock_timer_object = mock.Mock()
-    with mock.patch(
-        "paasta_tools.utils.Popen", autospec=True, return_value=mock_process
-    ), mock.patch(
-        "paasta_tools.utils.threading.Timer",
-        autospec=True,
-        return_value=mock_timer_object,
+    with (
+        mock.patch(
+            "paasta_tools.utils.Popen", autospec=True, return_value=mock_process
+        ),
+        mock.patch(
+            "paasta_tools.utils.threading.Timer",
+            autospec=True,
+            return_value=mock_timer_object,
+        ),
     ):
         mock_process.stdout.readline.side_effect = KeyboardInterrupt
         with raises(KeyboardInterrupt):
@@ -2250,14 +2276,17 @@ class TestInstanceConfig:
             service="", cluster="", instance="", config_dict={}, branch_dict=None
         )
 
-        with mock.patch(
-            "paasta_tools.utils.InstanceConfig.get_docker_registry",
-            autospec=True,
-            return_value=fake_registry,
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.get_docker_image",
-            autospec=True,
-            return_value=fake_image,
+        with (
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.get_docker_registry",
+                autospec=True,
+                return_value=fake_registry,
+            ),
+            mock.patch(
+                "paasta_tools.utils.InstanceConfig.get_docker_image",
+                autospec=True,
+                return_value=fake_image,
+            ),
         ):
             expected_url = f"{fake_registry}/{fake_image}"
             assert fake_conf.get_docker_url() == expected_url
@@ -2571,10 +2600,18 @@ class TestFileLogWriter:
 
         fake_line = "line"
 
-        with mock.patch(
-            "paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True
-        ), mock.patch("builtins.print", autospec=True) as mock_print, mock.patch(
-            "paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True
+        with (
+            mock.patch(
+                "paasta_tools.utils.io.FileIO",
+                return_value=fake_contextmgr,
+                autospec=True,
+            ),
+            mock.patch("builtins.print", autospec=True) as mock_print,
+            mock.patch(
+                "paasta_tools.utils.format_log_line",
+                return_value=fake_line,
+                autospec=True,
+            ),
         ):
             fw = utils.FileLogWriter("/dev/null", flock=False)
             fw.log(
@@ -2691,22 +2728,20 @@ def test_mean():
 
 
 def test_prompt_pick_one_happy():
-    with mock.patch(
-        "paasta_tools.utils.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.utils.choice.Menu", autospec=True
-    ) as mock_menu:
+    with (
+        mock.patch("paasta_tools.utils.sys.stdin", autospec=True) as mock_stdin,
+        mock.patch("paasta_tools.utils.choice.Menu", autospec=True) as mock_menu,
+    ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value="choiceA"))
         assert utils.prompt_pick_one(["choiceA"], "test") == "choiceA"
 
 
 def test_prompt_pick_one_quit():
-    with mock.patch(
-        "paasta_tools.utils.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.utils.choice.Menu", autospec=True
-    ) as mock_menu:
+    with (
+        mock.patch("paasta_tools.utils.sys.stdin", autospec=True) as mock_stdin,
+        mock.patch("paasta_tools.utils.choice.Menu", autospec=True) as mock_menu,
+    ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, "quit")))
         with raises(SystemExit):
@@ -2714,11 +2749,10 @@ def test_prompt_pick_one_quit():
 
 
 def test_prompt_pick_one_keyboard_interrupt():
-    with mock.patch(
-        "paasta_tools.utils.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.utils.choice.Menu", autospec=True
-    ) as mock_menu:
+    with (
+        mock.patch("paasta_tools.utils.sys.stdin", autospec=True) as mock_stdin,
+        mock.patch("paasta_tools.utils.choice.Menu", autospec=True) as mock_menu,
+    ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=KeyboardInterrupt))
         with raises(SystemExit):
@@ -2726,11 +2760,10 @@ def test_prompt_pick_one_keyboard_interrupt():
 
 
 def test_prompt_pick_one_eoferror():
-    with mock.patch(
-        "paasta_tools.utils.sys.stdin", autospec=True
-    ) as mock_stdin, mock.patch(
-        "paasta_tools.utils.choice.Menu", autospec=True
-    ) as mock_menu:
+    with (
+        mock.patch("paasta_tools.utils.sys.stdin", autospec=True) as mock_stdin,
+        mock.patch("paasta_tools.utils.choice.Menu", autospec=True) as mock_menu,
+    ):
         mock_stdin.isatty.return_value = True
         mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=EOFError))
         with raises(SystemExit):

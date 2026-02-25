@@ -652,7 +652,8 @@ async def status_mesos_tasks_verbose(
 def get_local_slave_state(hostname=None):
     """Fetches mesos slave state and returns it as a dict.
 
-    :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine."""
+    :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine.
+    """
     if hostname is None:
         hostname = socket.getfqdn()
     stats_uri = f"http://{hostname}:{MESOS_SLAVE_PORT}/state"

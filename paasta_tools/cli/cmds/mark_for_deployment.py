@@ -545,9 +545,9 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             auto_abandon_delay=args.auto_abandon_delay,
             auto_rollback_delay=args.auto_rollback_delay,
             image_version=deployment_version.image_version,
-            old_image_version=old_deployment_version.image_version
-            if old_deployment_version
-            else None,
+            old_image_version=(
+                old_deployment_version.image_version if old_deployment_version else None
+            ),
             authors=args.authors,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
@@ -655,10 +655,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
-        self.instance_configs_per_cluster: Dict[
-            str, List[LongRunningServiceConfig]
-        ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, soa_dir
+        self.instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]] = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, soa_dir
+            )
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
@@ -1538,10 +1538,12 @@ def diagnose_why_instance_is_stuck(
             service,
             instance,
             cluster,
-            version_name_suffix="new"
-            if active_version.git_sha == version.sha
-            and active_version.image_version == version.image_version
-            else "old",
+            version_name_suffix=(
+                "new"
+                if active_version.git_sha == version.sha
+                and active_version.image_version == version.image_version
+                else "old"
+            ),
             show_config_sha=True,
             verbose=0,
         ):
@@ -1979,9 +1981,11 @@ def compose_timeout_message(
             deploy_group=deploy_group,
             service=service,
             git_sha=version.sha,
-            image_arg=f" --image-version {version.image_version}"
-            if version.image_version
-            else "",
+            image_arg=(
+                f" --image-version {version.image_version}"
+                if version.image_version
+                else ""
+            ),
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
             stuck_bounce_runbook=os.environ.get(

@@ -170,7 +170,8 @@ class CrashyDrainDrainMethod(NoopDrainMethod):
 @register_drain_method("hacheck")
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
-    fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
+    fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay.
+    """
 
     def __init__(
         self,
@@ -253,7 +254,8 @@ UrlSpec = TypedDict(
 @register_drain_method("http")
 class HTTPDrainMethod(DrainMethod):
     """This drain policy issues arbitrary HTTP calls to arbitrary URLs specified by the parameters. The URLs are
-    specified as format strings, and will have variables such as {host}, {port}, etc. filled in."""
+    specified as format strings, and will have variables such as {host}, {port}, etc. filled in.
+    """
 
     def __init__(
         self,

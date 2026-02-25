@@ -56,13 +56,13 @@ def test_get_shared_secret_name_from_ref():
 
 
 def test_get_hmac_for_secret():
-    with mock.patch(
-        "paasta_tools.secret_tools.open", autospec=False
-    ) as mock_open, mock.patch(
-        "json.load", autospec=True
-    ) as mock_json_load, mock.patch(
-        "paasta_tools.secret_tools.get_secret_name_from_ref", autospec=True
-    ) as mock_get_secret_name_from_ref:
+    with (
+        mock.patch("paasta_tools.secret_tools.open", autospec=False) as mock_open,
+        mock.patch("json.load", autospec=True) as mock_json_load,
+        mock.patch(
+            "paasta_tools.secret_tools.get_secret_name_from_ref", autospec=True
+        ) as mock_get_secret_name_from_ref,
+    ):
         mock_json_load.return_value = {
             "environments": {"dev": {"signature": "notArealHMAC"}}
         }
@@ -102,13 +102,13 @@ def test_get_hmac_for_secret():
 
 
 def test_get_hmac_for_shared_secret():
-    with mock.patch(
-        "paasta_tools.secret_tools.open", autospec=False
-    ) as mock_open, mock.patch(
-        "json.load", autospec=True
-    ) as mock_json_load, mock.patch(
-        "paasta_tools.secret_tools.get_secret_name_from_ref", autospec=True
-    ) as mock_get_secret_name_from_ref:
+    with (
+        mock.patch("paasta_tools.secret_tools.open", autospec=False) as mock_open,
+        mock.patch("json.load", autospec=True) as mock_json_load,
+        mock.patch(
+            "paasta_tools.secret_tools.get_secret_name_from_ref", autospec=True
+        ) as mock_get_secret_name_from_ref,
+    ):
         mock_json_load.return_value = {
             "environments": {"dev": {"signature": "notArealHMAC"}}
         }
@@ -147,11 +147,14 @@ def test_get_secret_provider():
 
 
 def test_get_secret_hashes():
-    with mock.patch(
-        "paasta_tools.secret_tools.is_secret_ref", autospec=True, return_value=False
-    ) as mock_is_secret_ref, mock.patch(
-        "paasta_tools.secret_tools.get_hmac_for_secret", autospec=True
-    ) as mock_get_hmac_for_secret:
+    with (
+        mock.patch(
+            "paasta_tools.secret_tools.is_secret_ref", autospec=True, return_value=False
+        ) as mock_is_secret_ref,
+        mock.patch(
+            "paasta_tools.secret_tools.get_hmac_for_secret", autospec=True
+        ) as mock_get_hmac_for_secret,
+    ):
         env = {"SOME_VAR": "SOME_VAL"}
 
         assert get_secret_hashes(env, "dev", "service", DEFAULT_SOA_DIR) == {}

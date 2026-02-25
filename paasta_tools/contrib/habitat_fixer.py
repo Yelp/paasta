@@ -17,9 +17,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-k",
         "--kubeconfig",
-        default=KUBE_CONFIG_PATH
-        if Path(KUBE_CONFIG_PATH).exists()
-        else KUBE_CONFIG_USER_PATH,
+        default=(
+            KUBE_CONFIG_PATH
+            if Path(KUBE_CONFIG_PATH).exists()
+            else KUBE_CONFIG_USER_PATH
+        ),
     )
     parser.add_argument(
         "-t", "--context", default=None  # -c is taken, so lets use the last letter :p

@@ -1,5 +1,5 @@
---- a/debian/paasta/opt/venvs/paasta/lib/python3.10/site-packages/kubernetes/client/api_client.py
-+++ b/debian/paasta/opt/venvs/paasta/lib/python3.10/site-packages/kubernetes/client/api_client.py
+--- a/debian/paasta/opt/venvs/paasta/lib/python3.12/site-packages/kubernetes/client/api_client.py
++++ b/debian/paasta/opt/venvs/paasta/lib/python3.12/site-packages/kubernetes/client/api_client.py
 @@ -629,7 +629,7 @@
                                                     'get_real_child_model'):
              return data

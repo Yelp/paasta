@@ -31,9 +31,11 @@ log = logging.getLogger(__name__)
 if __name__ == "__main__":
     args = parse_args()
     main(
-        instance_type_class=cassandraclustereks_tools.CassandraClusterEksDeploymentConfig
-        if args.eks
-        else cassandracluster_tools.CassandraClusterDeploymentConfig,
+        instance_type_class=(
+            cassandraclustereks_tools.CassandraClusterEksDeploymentConfig
+            if args.eks
+            else cassandracluster_tools.CassandraClusterDeploymentConfig
+        ),
         check_service_replication=check_kubernetes_pod_replication,
         namespace="paasta-cassandraclusters",
     )

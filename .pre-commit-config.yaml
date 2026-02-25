@@ -1,6 +1,6 @@
 ---
 default_language_version:
-    python: python3.10
+    python: python3.12
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.1.0
@@ -37,16 +37,16 @@ repos:
         args: [--py36-plus]
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 24.4.2
     hooks:
     -   id: black
-        args: ['--target-version', 'py310']
+        args: ['--target-version', 'py312']
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.3.0
     hooks:
     -   id: flake8
-        args: ['--ignore', 'E231']
+        args: ['--extend-ignore', 'E203,E231,E501,E701,E704']
         exclude: ^docs/source/conf.py|paasta_tools/paastaapi.*$
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1

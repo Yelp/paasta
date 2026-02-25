@@ -8,12 +8,15 @@ from paasta_tools.secret_providers.vault import SecretProvider
 
 @fixture
 def mock_secret_provider():
-    with mock.patch(
-        "paasta_tools.secret_providers.vault.SecretProvider.get_vault_ecosystems_for_clusters",
-        autospec=True,
-        return_value=["devc"],
-    ), mock.patch(
-        "paasta_tools.secret_providers.vault.get_vault_client", autospec=True
+    with (
+        mock.patch(
+            "paasta_tools.secret_providers.vault.SecretProvider.get_vault_ecosystems_for_clusters",
+            autospec=True,
+            return_value=["devc"],
+        ),
+        mock.patch(
+            "paasta_tools.secret_providers.vault.get_vault_client", autospec=True
+        ),
     ):
         return SecretProvider(
             soa_dir="/nail/blah",
@@ -29,11 +32,15 @@ def test_secret_provider(mock_secret_provider):
 
 
 def test_decrypt_environment(mock_secret_provider):
-    with mock.patch(
-        "paasta_tools.secret_providers.vault.get_secret_name_from_ref", autospec=True
-    ) as mock_get_secret_name_from_ref, mock.patch(
-        "paasta_tools.secret_providers.vault.get_plaintext", autospec=False
-    ) as mock_get_plaintext:
+    with (
+        mock.patch(
+            "paasta_tools.secret_providers.vault.get_secret_name_from_ref",
+            autospec=True,
+        ) as mock_get_secret_name_from_ref,
+        mock.patch(
+            "paasta_tools.secret_providers.vault.get_plaintext", autospec=False
+        ) as mock_get_plaintext,
+    ):
         mock_get_plaintext.return_value = b"SECRETSQUIRREL"
         mock_env = {
             "MY_VAR": "SECRET(test-secret)",
@@ -68,11 +75,14 @@ def test_get_vault_ecosystems_for_clusters(mock_secret_provider):
 
 
 def test_write_secret(mock_secret_provider):
-    with mock.patch(
-        "paasta_tools.secret_providers.vault.TempGpgKeyring", autospec=False
-    ), mock.patch(
-        "paasta_tools.secret_providers.vault.encrypt_secret", autospec=False
-    ) as mock_encrypt_secret:
+    with (
+        mock.patch(
+            "paasta_tools.secret_providers.vault.TempGpgKeyring", autospec=False
+        ),
+        mock.patch(
+            "paasta_tools.secret_providers.vault.encrypt_secret", autospec=False
+        ) as mock_encrypt_secret,
+    ):
         mock_secret_provider.write_secret(
             action="add",
             secret_name="mysecret",

@@ -27,12 +27,15 @@ from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
 def test_load_smartstack_info_for_service(system_paasta_config):
-    with mock.patch(
-        "paasta_tools.smartstack_tools.long_running_service_tools.load_service_namespace_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute",
-        autospec=True,
+    with (
+        mock.patch(
+            "paasta_tools.smartstack_tools.long_running_service_tools.load_service_namespace_config",
+            autospec=True,
+        ),
+        mock.patch(
+            "paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute",
+            autospec=True,
+        ),
     ):
         # just a smoke test for now.
         smartstack_tools.load_smartstack_info_for_service(
@@ -52,15 +55,18 @@ def test_get_smartstack_replication_for_attribute(system_paasta_config):
         {"hostname": "hostone", "attributes": {"fake_attribute": "bar"}},
     ]
 
-    with mock.patch(
-        "paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist",
-        return_value=mock_filtered_slaves,
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
-        "paasta_tools.smartstack_tools.get_replication_for_services",
-        return_value={},
-        autospec=True,
-    ) as mock_get_replication_for_services:
+    with (
+        mock.patch(
+            "paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist",
+            return_value=mock_filtered_slaves,
+            autospec=True,
+        ) as mock_get_all_slaves_for_blacklist_whitelist,
+        mock.patch(
+            "paasta_tools.smartstack_tools.get_replication_for_services",
+            return_value={},
+            autospec=True,
+        ) as mock_get_replication_for_services,
+    ):
         expected = {"foo": {}, "bar": {}}
         actual = smartstack_tools.get_smartstack_replication_for_attribute(
             attribute="fake_attribute",
@@ -203,13 +209,17 @@ def test_get_replication_for_all_services(mock_get_multiple_backends):
 
 
 def test_are_services_up_on_port():
-    with mock.patch(
-        "paasta_tools.smartstack_tools.get_multiple_backends", autospec=True
-    ) as mock_get_multiple_backends, mock.patch(
-        "paasta_tools.smartstack_tools.ip_port_hostname_from_svname", autospec=True
-    ) as mock_ip_port_hostname_from_svname, mock.patch(
-        "paasta_tools.smartstack_tools.backend_is_up", autospec=True
-    ) as mock_backend_is_up:
+    with (
+        mock.patch(
+            "paasta_tools.smartstack_tools.get_multiple_backends", autospec=True
+        ) as mock_get_multiple_backends,
+        mock.patch(
+            "paasta_tools.smartstack_tools.ip_port_hostname_from_svname", autospec=True
+        ) as mock_ip_port_hostname_from_svname,
+        mock.patch(
+            "paasta_tools.smartstack_tools.backend_is_up", autospec=True
+        ) as mock_backend_is_up,
+    ):
         # none present
         assert not smartstack_tools.are_services_up_on_ip_port(
             synapse_host="1.2.3.4",
@@ -319,11 +329,15 @@ def mock_kube_replication_checker():
 
 
 def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
-    with mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace_config, mock.patch(
-        "paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute", autospec=True
-    ) as mock_get_nodes_grouped_by_attribute:
+    with (
+        mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+        ) as mock_load_service_namespace_config,
+        mock.patch(
+            "paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute",
+            autospec=True,
+        ) as mock_get_nodes_grouped_by_attribute,
+    ):
         mock_instance_config = mock.Mock(
             service="blah", instance="foo", soa_dir="/nail/thing"
         )
@@ -361,16 +375,20 @@ def test_get_allowed_locations_and_hosts(mock_replication_checker):
 
 
 def test_get_replication_for_instance(mock_replication_checker):
-    with mock.patch(
-        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_allowed_locations_and_hosts",
-        autospec=True,
-    ) as mock_get_allowed_locations_and_hosts, mock.patch(
-        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_hostnames_in_pool",
-        autospec=True,
-    ) as mock_get_hostnames_in_pool, mock.patch(
-        "paasta_tools.smartstack_tools.BaseReplicationChecker._get_replication_info",
-        autospec=True,
-    ) as mock_get_replication_info:
+    with (
+        mock.patch(
+            "paasta_tools.smartstack_tools.BaseReplicationChecker.get_allowed_locations_and_hosts",
+            autospec=True,
+        ) as mock_get_allowed_locations_and_hosts,
+        mock.patch(
+            "paasta_tools.smartstack_tools.BaseReplicationChecker.get_hostnames_in_pool",
+            autospec=True,
+        ) as mock_get_hostnames_in_pool,
+        mock.patch(
+            "paasta_tools.smartstack_tools.BaseReplicationChecker._get_replication_info",
+            autospec=True,
+        ) as mock_get_replication_info,
+    ):
         mock_get_hostnames_in_pool.return_value = [mock.Mock()]
         mock_get_allowed_locations_and_hosts.return_value = {
             "westeros-prod": [mock.Mock()],

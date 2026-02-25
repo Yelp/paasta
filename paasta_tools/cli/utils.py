@@ -155,7 +155,6 @@ def info_message(msg: str) -> str:
 
 
 class PaastaCheckMessages:
-
     """Collection of message printed out by 'paasta check'.
     Helpful as it avoids cumbersome maintenance of the unit tests.
     """
@@ -308,7 +307,6 @@ class PaastaCheckMessages:
 
 
 class NoSuchService(Exception):
-
     """Exception to be raised in the event that the service
     name can not be guessed.
     """
@@ -696,40 +694,40 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     ),
 )
 
-LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
-    str, LongRunningInstanceTypeHandler
-] = defaultdict(
-    lambda: LongRunningInstanceTypeHandler(None, None),
-    kubernetes=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_kubernetes_service_config
-    ),
-    flink=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_flink_instance_config
-    ),
-    flinkeks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_flinkeks_instance_config
-    ),
-    cassandracluster=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_cassandracluster_instance_config
-    ),
-    cassandraclustereks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_cassandraclustereks_instance_config
-    ),
-    kafkacluster=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_kafkacluster_instance_config
-    ),
-    nrtsearchservice=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_nrtsearchservice_instance_config
-    ),
-    nrtsearchserviceeks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_nrtsearchserviceeks_instance_config
-    ),
-    monkrelays=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_monkrelaycluster_instance_config
-    ),
-    eks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_eks_service_config
-    ),
+LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[str, LongRunningInstanceTypeHandler] = (
+    defaultdict(
+        lambda: LongRunningInstanceTypeHandler(None, None),
+        kubernetes=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_kubernetes_service_config
+        ),
+        flink=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_flink_instance_config
+        ),
+        flinkeks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_flinkeks_instance_config
+        ),
+        cassandracluster=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_cassandracluster_instance_config
+        ),
+        cassandraclustereks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_cassandraclustereks_instance_config
+        ),
+        kafkacluster=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_kafkacluster_instance_config
+        ),
+        nrtsearchservice=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_nrtsearchservice_instance_config
+        ),
+        nrtsearchserviceeks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_nrtsearchserviceeks_instance_config
+        ),
+        monkrelays=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_monkrelaycluster_instance_config
+        ),
+        eks=LongRunningInstanceTypeHandler(
+            get_service_instance_list, load_eks_service_config
+        ),
+    )
 )
 
 
@@ -835,9 +833,11 @@ def list_deploy_groups(
             {
                 config.get_deploy_group()
                 for config in get_instance_configs_for_service(
-                    service=service
-                    if service is not None
-                    else parsed_args.service or guess_service_name(),
+                    service=(
+                        service
+                        if service is not None
+                        else parsed_args.service or guess_service_name()
+                    ),
                     soa_dir=soa_dir,
                 )
             },
