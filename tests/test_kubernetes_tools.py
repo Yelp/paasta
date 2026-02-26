@@ -112,6 +112,8 @@ from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import get_active_versions_for_service
+from paasta_tools.kubernetes_tools import get_all_managed_namespaces
+from paasta_tools.kubernetes_tools import get_all_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
@@ -4603,6 +4605,56 @@ def test_get_all_pods():
 def test_get_all_nodes():
     mock_client = mock.Mock()
     assert get_all_nodes(mock_client) == mock_client.core.list_node.return_value.items
+    mock_client.core.list_node.assert_called_once_with(_request_timeout=None)
+
+
+def test_get_all_nodes_with_request_timeout():
+    mock_client = mock.Mock()
+    get_all_nodes(mock_client, request_timeout=30)
+    mock_client.core.list_node.assert_called_once_with(_request_timeout=30)
+
+
+def test_get_all_namespaces():
+    mock_client = mock.Mock()
+    mock_client.core.list_namespace.return_value.items = [
+        mock.Mock(metadata=mock.Mock(name="ns1")),
+        mock.Mock(metadata=mock.Mock(name="ns2")),
+    ]
+    result = get_all_namespaces(mock_client)
+    mock_client.core.list_namespace.assert_called_once_with(
+        label_selector=None, _request_timeout=None
+    )
+    assert result == [
+        item.metadata.name
+        for item in mock_client.core.list_namespace.return_value.items
+    ]
+
+
+def test_get_all_namespaces_with_request_timeout():
+    mock_client = mock.Mock()
+    mock_client.core.list_namespace.return_value.items = []
+    get_all_namespaces(mock_client, label_selector="foo=bar", request_timeout=30)
+    mock_client.core.list_namespace.assert_called_once_with(
+        label_selector="foo=bar", _request_timeout=30
+    )
+
+
+def test_get_all_managed_namespaces():
+    mock_client = mock.Mock()
+    mock_client.core.list_namespace.return_value.items = []
+    get_all_managed_namespaces(mock_client)
+    mock_client.core.list_namespace.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true", _request_timeout=None
+    )
+
+
+def test_get_all_managed_namespaces_with_request_timeout():
+    mock_client = mock.Mock()
+    mock_client.core.list_namespace.return_value.items = []
+    get_all_managed_namespaces(mock_client, request_timeout=30)
+    mock_client.core.list_namespace.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true", _request_timeout=30
+    )
 
 
 def test_filter_pods_for_service_instance():

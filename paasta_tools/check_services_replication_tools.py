@@ -54,6 +54,8 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+DEFAULT_KUBERNETES_REQUEST_TIMEOUT_S = 300
+
 CheckServiceReplication = Callable[
     [
         Arg(
@@ -294,7 +296,9 @@ def set_local_vars_configuration_to_none(obj: Any, visited: Set[int] = None) -> 
 
 def __fetch_pods(namespace: str) -> List[V1Pod]:
     kube_client = KubeClient()
-    pods = get_all_pods(kube_client, namespace)
+    pods = get_all_pods(
+        kube_client, namespace, request_timeout=DEFAULT_KUBERNETES_REQUEST_TIMEOUT_S
+    )
     for pod in pods:
         # this is pretty silly, but V1Pod cannot be pickled otherwise since the local_vars_configuration member
         # is not picklable - and pretty much every k8s model has this member ;_;
@@ -320,11 +324,21 @@ def get_kubernetes_pods_and_nodes(
     kube_client = KubeClient()
 
     if namespace:
-        all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
+        all_pods = get_all_pods(
+            kube_client=kube_client,
+            namespace=namespace,
+            request_timeout=DEFAULT_KUBERNETES_REQUEST_TIMEOUT_S,
+        )
     else:
-        all_managed_namespaces = set(get_all_managed_namespaces(kube_client))
+        all_managed_namespaces = set(
+            get_all_managed_namespaces(
+                kube_client, request_timeout=DEFAULT_KUBERNETES_REQUEST_TIMEOUT_S
+            )
+        )
         all_pods = __get_all_pods_parallel(all_managed_namespaces)
 
-    all_nodes = get_all_nodes(kube_client)
+    all_nodes = get_all_nodes(
+        kube_client, request_timeout=DEFAULT_KUBERNETES_REQUEST_TIMEOUT_S
+    )
 
     return all_pods, all_nodes
