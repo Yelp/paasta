@@ -241,6 +241,29 @@
                         }
                     }
                 },
+                "ssm_secrets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "source": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9._/-]+$",
+                                "$comment": "A valid AWS Parameter Store name. Eg. '/my-service/prod/db_password' or 'my-service-db-password'"
+                            },
+                            "secret_name": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z_]+[a-zA-Z0-9_]*$"
+                            }
+                        },
+                        "required": [
+                            "source",
+                            "secret_name"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "uniqueItems": true
+                },
                 "uses_bulkdata": {
                     "type": "boolean"
                 },
