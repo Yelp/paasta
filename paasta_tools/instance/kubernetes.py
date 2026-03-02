@@ -504,7 +504,7 @@ def filter_actually_running_replicasets(
 
     A replicaset is considered "actually running" if:
     - It has non-zero desired replicas OR non-zero ready replicas, OR
-    - It has pods associated with it (e.g., terminating pods)
+    - It has ANY pods associated with it (e.g., terminating pods are still "running")
 
     This ensures that replicasets with only terminating pods are still shown
     in status output until all pods are fully removed.
