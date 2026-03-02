@@ -515,6 +515,7 @@ def filter_actually_running_replicasets(
         if not (
             rs.spec.replicas == 0
             and ready_replicas_from_replicaset(rs) == 0
+            # TODO: replace this with looking at `rs.status.terminating_replicas` in k8s 1.31+
             and (
                 pod_status_by_replicaset is None
                 or not pod_status_by_replicaset.get(rs.metadata.name)
