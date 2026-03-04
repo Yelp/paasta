@@ -2971,15 +2971,26 @@ def force_delete_pods(
 
 @time_cache(ttl=60)
 def get_all_namespaces(
-    kube_client: KubeClient, label_selector: Optional[str] = None
+    kube_client: KubeClient,
+    label_selector: Optional[str] = None,
+    # XXX: this should eventually have an actual default - but we need to figure out what that number should be
+    request_timeout: int | None = None,
 ) -> List[str]:
-    namespaces = kube_client.core.list_namespace(label_selector=label_selector)
+    namespaces = kube_client.core.list_namespace(
+        label_selector=label_selector, _request_timeout=request_timeout
+    )
     return [item.metadata.name for item in namespaces.items]
 
 
-def get_all_managed_namespaces(kube_client: KubeClient) -> List[str]:
+def get_all_managed_namespaces(
+    kube_client: KubeClient,
+    # XXX: this should eventually have an actual default - but we need to figure out what that number should be
+    request_timeout: int | None = None,
+) -> List[str]:
     return get_all_namespaces(
-        kube_client=kube_client, label_selector=f"{paasta_prefixed('managed')}=true"
+        kube_client=kube_client,
+        label_selector=f"{paasta_prefixed('managed')}=true",
+        request_timeout=request_timeout,
     )
 
 
@@ -3598,11 +3609,20 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: Optional[str]) -> List[V1Pod]:
+def get_all_pods(
+    kube_client: KubeClient,
+    namespace: Optional[str],
+    # XXX: this should eventually have an actual default - but we need to figure out what that number should be P
+    request_timeout: int | None = None,
+) -> List[V1Pod]:
     if namespace:
-        return kube_client.core.list_namespaced_pod(namespace=namespace).items
+        return kube_client.core.list_namespaced_pod(
+            namespace=namespace, _request_timeout=request_timeout
+        ).items
     else:
-        return kube_client.core.list_pod_for_all_namespaces().items
+        return kube_client.core.list_pod_for_all_namespaces(
+            _request_timeout=request_timeout
+        ).items
 
 
 @time_cache(ttl=300)
@@ -3749,8 +3769,10 @@ def get_active_versions_for_service(
 
 def get_all_nodes(
     kube_client: KubeClient,
+    # XXX: this should eventually have an actual default - but we need to figure out what that number should be
+    request_timeout: int | None = None,
 ) -> List[V1Node]:
-    return kube_client.core.list_node().items
+    return kube_client.core.list_node(_request_timeout=request_timeout).items
 
 
 @time_cache(ttl=60)
