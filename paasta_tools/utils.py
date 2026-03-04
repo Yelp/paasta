@@ -1858,6 +1858,7 @@ PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
 
 class LocalRunConfig(TypedDict, total=False):
     default_cluster: str
+    decrypt_secrets_by_default: bool
 
 
 class SparkRunConfig(TypedDict, total=False):
