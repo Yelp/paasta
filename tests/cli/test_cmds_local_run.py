@@ -396,6 +396,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.decrypt_secrets = True
     args.volumes = []
     args.assume_role_arn = ""
     args.assume_pod_identity = False
@@ -476,6 +477,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.decrypt_secrets = True
     args.volumes = []
     args.assume_role_arn = ""
     args.assume_pod_identity = False
@@ -561,6 +563,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.decrypt_secrets = True
     args.volumes = []
     args.assume_role_arn = ""
     args.assume_pod_identity = False
@@ -646,6 +649,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.vault_auth_method = "ldap"
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
+        args.decrypt_secrets = True
         args.volumes = []
         args.assume_role_arn = ""
         args.assume_pod_identity = False
@@ -733,6 +737,7 @@ def test_configure_and_run_docker_container_respects_docker_sha(
         args.vault_auth_method = "ldap"
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
+        args.decrypt_secrets = True
 
         fake_config = AdhocJobConfig(
             service="fake_service",
