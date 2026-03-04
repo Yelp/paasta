@@ -34,6 +34,7 @@ import requests
 from docker import errors
 from docker.api.client import APIClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_service_configuration
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.cli.authentication import get_service_auth_token
@@ -585,15 +586,6 @@ def get_docker_run_cmd(
     detach,
 ):
     cmd = ["paasta_docker_wrapper", "run"]
-    if os.getuid() == 0:
-        # we no longer want to gate registry credentials with the root user,
-        # so we always execute Docker as the calling user.
-        cmd = [
-            "sudo",
-            "-u",
-            get_username(),
-            f"HOME=/nail/home/{get_username()}",
-        ] + cmd
     for k in env.keys():
         cmd.append("--env")
         cmd.append(f"{k}")
@@ -1365,15 +1357,42 @@ def configure_and_run_docker_container(
     )
 
 
-def should_reexec_as_root(skip_secrets: bool, action: str) -> bool:
+def docker_config_available():
+    home = os.path.expanduser("~")
+    oldconfig = os.path.join(home, ".dockercfg")
+    newconfig = os.path.join(home, ".docker", "config.json")
+    return (os.path.isfile(oldconfig) and os.access(oldconfig, os.R_OK)) or (
+        os.path.isfile(newconfig) and os.access(newconfig, os.R_OK)
+    )
+
+
+def should_reexec_as_root(
+    service: str, skip_secrets: bool, action: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> bool:
     # local-run can't pull secrets from Vault in prod without a root-owned token
     need_vault_token = not skip_secrets and action == "pull"
-    return need_vault_token and os.geteuid() != 0
+
+    # there are some special teams with their own private docker registries and no ro creds
+    # however, we don't know what registry is to be used without loading the service config
+    service_info = read_service_configuration(service, soa_dir)
+    # technically folks can set the standard registry as a value here, but atm no one is doing that :p
+    registry_override = service_info.get("docker_registry")
+    # note: we could also have a list of registries that have ro creds, but this seems fine for now
+    uses_private_registry = (
+        registry_override
+        and registry_override
+        in load_system_paasta_config().get_private_docker_registries()
+    )
+    need_docker_config = uses_private_registry and action == "pull"
+
+    return (need_vault_token or need_docker_config) and os.geteuid() != 0
 
 
 def paasta_local_run(args):
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
-    if should_reexec_as_root(args.skip_secrets, args.action):
+    if should_reexec_as_root(
+        service, args.skip_secrets, args.action, args.yelpsoa_config_root
+    ):
         # XXX: we should re-architect this to not need sudo, but for now,
         # re-exec ourselves with sudo to get access to the paasta vault token
         # NOTE: once we do that, we can also remove the venv check above :)
