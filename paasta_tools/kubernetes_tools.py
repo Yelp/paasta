@@ -2995,7 +2995,7 @@ def delete_pod_by_name(
         RuntimeError: If pod exists but deletion fails
     """
     # First verify the pod exists and belongs to this service instance
-    pods = a_sync.block(
+    pods = run_sync(
         pods_for_service_instance,
         service,
         instance,
