@@ -1093,11 +1093,11 @@ def run_docker_container(
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        wrapper_path = shutil.which("paasta_docker_wrapper")
+        executable_path = shutil.which(docker_run_cmd[0])
         # To properly simulate mesos, we pop the PATH, which is not available to
         # The executor
         merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        execlpe(executable_path, *docker_run_cmd, merged_env)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
