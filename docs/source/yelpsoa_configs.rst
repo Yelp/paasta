@@ -738,6 +738,13 @@ Each Tron **action** of a job MAY specify the following:
     then the command should be something available in the docker container (it should NOT
     start with ``paasta local-run``).
 
+  * ``ssm_secrets``: A list of configurations for syncing secrets from the AWS SSM Parameter Store to the service as environment variables. Each entry requires:
+
+    * ``source``: The name of the parameter in AWS SSM (e.g., ``/my-service/prod/db_password``).
+    * ``secret_name``: The name of the environment variable to be created in the service.
+
+    **Note**: Fetching parameters requires the ``paasta-secrets-sync`` IAM role. The AWS region is automatically inferred from the target cluster's configuration.
+
 If a Tron **action** of a job is of executor type ``spark``, it MAY specify the following:
 
   * ``spark_paasta_cluster``: The Paasta cluster on which to run spark jobs (spark executors).
