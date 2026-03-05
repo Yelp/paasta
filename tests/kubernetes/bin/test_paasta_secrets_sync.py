@@ -1222,12 +1222,17 @@ def ssm_patches():
     ) as mock_boto3, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
         autospec=True,
-    ) as mock_create_or_update:
+    ) as mock_create_or_update, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_tron_instance_configs",
+        autospec=True,
+        return_value=[],
+    ) as mock_load_tron_configs:
         yield (
             mock_config_loader,
             mock_load_system_config,
             mock_boto3,
             mock_create_or_update,
+            mock_load_tron_configs,
         )
 
 
@@ -1237,6 +1242,7 @@ def test_sync_ssm_secrets_happy_path(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1313,6 +1319,7 @@ def test_sync_ssm_secrets_no_region_raises_error(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     # Empty cluster config
@@ -1335,6 +1342,7 @@ def test_sync_ssm_secrets_client_error(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1379,6 +1387,7 @@ def test_sync_ssm_secrets_api_exception(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1424,6 +1433,7 @@ def test_sync_ssm_secrets_empty_secrets(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1460,6 +1470,7 @@ def test_sync_ssm_secrets_no_secrets_configured(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1496,6 +1507,7 @@ def test_sync_ssm_secrets_skips_non_matching_namespaces(ssm_patches):
         mock_load_system_config,
         mock_boto3,
         mock_create_or_update,
+        mock_load_tron_configs,
     ) = ssm_patches
 
     mock_load_system_config.return_value.get_kube_clusters.return_value = {
@@ -1560,3 +1572,65 @@ def test_sync_ssm_secrets_skips_non_matching_namespaces(ssm_patches):
     # Should only create K8s secret for instance 1
     assert mock_create_or_update.call_count == 1
     assert mock_create_or_update.call_args[1]["namespace"] == "paastasvc-my-service"
+
+
+def test_sync_ssm_secrets_tron_configs(ssm_patches):
+    (
+        mock_config_loader,
+        mock_load_system_config,
+        mock_boto3,
+        mock_create_or_update,
+        mock_load_tron_configs,
+    ) = ssm_patches
+
+    mock_load_system_config.return_value.get_kube_clusters.return_value = {
+        "my-cluster": {"aws_region": "us-west-2"}
+    }
+    mock_sts_client = mock.MagicMock()
+    mock_ssm_client = mock.MagicMock()
+    mock_boto3.client.side_effect = [mock_sts_client, mock_ssm_client]
+    mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+    mock_sts_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "fake_key",
+            "SecretAccessKey": "fake_secret",
+            "SessionToken": "fake_token",
+        }
+    }
+    mock_ssm_client.get_parameter.return_value = {
+        "Parameter": {"Value": "tron_secret_value"}
+    }
+
+    mock_config_loader.return_value.instance_configs.return_value = []
+
+    tron_config = mock.MagicMock(
+        config_dict={
+            "ssm_secrets": [{"source": "/tron/param", "secret_name": "TRON_VAR"}]
+        }
+    )
+    tron_config.get_namespace.return_value = "tron"
+    tron_config.get_sanitised_instance_name.return_value = "my-service--job.action"
+    mock_load_tron_configs.return_value = [tron_config]
+
+    result = sync_ssm_secrets(
+        kube_client=mock.Mock(),
+        cluster="my-cluster",
+        service="my-service",
+        soa_dir="/fake/dir",
+        namespace="tron",
+    )
+
+    assert result is True
+    mock_load_tron_configs.assert_called_once_with(
+        service="my-service",
+        cluster="my-cluster",
+        load_deployments=False,
+        soa_dir="/fake/dir",
+    )
+    mock_ssm_client.get_parameter.assert_called_once_with(
+        Name="/tron/param", WithDecryption=True
+    )
+    assert mock_create_or_update.call_count == 1
+    _, kwargs = mock_create_or_update.call_args
+    assert kwargs["namespace"] == "tron"
+    assert kwargs["get_secret_data"]() == {"TRON_VAR": "dHJvbl9zZWNyZXRfdmFsdWU="}

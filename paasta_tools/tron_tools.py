@@ -46,11 +46,14 @@ from typing import Optional
 from paasta_tools import monitoring_tools
 from paasta_tools import spark_tools
 from paasta_tools.kubernetes_tools import NodeSelectorConfig
+from paasta_tools.kubernetes_tools import SsmSecretConfig
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import contains_zone_label
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_service_account_name
+from paasta_tools.kubernetes_tools import get_ssm_secret_name
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import raw_selectors_to_requirements
 from paasta_tools.kubernetes_tools import to_node_label
@@ -254,6 +257,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     max_runtime: str
     mrjob: bool
     idempotent: bool
+    ssm_secrets: List[SsmSecretConfig]
 
 
 class TronActionConfig(InstanceConfig):
@@ -422,6 +426,9 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
+    def get_sanitised_instance_name(self) -> str:
+        return get_kubernetes_app_name(self.service, self.instance)
+
     # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken.
     # Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
@@ -541,6 +548,25 @@ class TronActionConfig(InstanceConfig):
                     ),
                     "key": secret,
                 }
+        return secret_env
+
+    def get_ssm_secret_env(self) -> Mapping[str, dict]:
+        ssm_secrets = self.config_dict.get("ssm_secrets", [])
+        if not ssm_secrets:
+            return {}
+
+        secret_env = {}
+        for ssm_secret in ssm_secrets:
+            secret = ssm_secret["secret_name"]
+            secret_env[secret] = {
+                "secret_name": get_ssm_secret_name(
+                    self.get_namespace(),
+                    self.get_sanitised_instance_name(),
+                    secret,
+                ),
+                "key": secret,
+            }
+
         return secret_env
 
     def get_field_selector_env(self) -> Dict[str, FieldSelectorConfig]:
@@ -978,7 +1004,11 @@ def format_tron_action_dict(action_config: TronActionConfig):
             executor, "kubernetes"
         )
 
-        result["secret_env"] = action_config.get_secret_env()
+        # Merge ssm-secrets & paasta-secrets with the latter taking priority
+        result["secret_env"] = {
+            **action_config.get_ssm_secret_env(),
+            **action_config.get_secret_env(),
+        }
         result["field_selector_env"] = action_config.get_field_selector_env()
         all_env = action_config.get_env(system_paasta_config)
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
@@ -986,7 +1016,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["env"] = {
             k: v
             for k, v in all_env.items()
-            if not is_secret_ref(v) and k not in result["field_selector_env"]
+            if not is_secret_ref(v)
+            and k not in result["field_selector_env"]
+            and k not in result["secret_env"]
         }
         result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
         result["node_selectors"] = action_config.get_node_selectors()
