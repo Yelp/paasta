@@ -16,12 +16,12 @@
 import os
 import re
 
-import a_sync
+from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.async_utils import run_sync
 
 from . import exceptions
 from . import framework
 from . import mesos_file
-from paasta_tools.async_utils import async_ttl_cache
 
 
 class Task:
@@ -33,7 +33,11 @@ class Task:
         self.__items = items
 
     def __str__(self):
-        return "{}:{}".format(a_sync.block(self.slave), self["id"])
+        try:
+            slave = run_sync(self.slave)
+        except RuntimeError:
+            return "{}:{}".format(self["slave_id"], self["id"])
+        return "{}:{}".format(slave, self["id"])
 
     def __getitem__(self, name):
         return self.__items[name]

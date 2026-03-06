@@ -1,1 +1,0 @@
-../docs/source/installation/example_cluster.rst

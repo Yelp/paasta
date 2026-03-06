@@ -18,9 +18,9 @@ from unittest.mock import patch
 
 import pytest
 
+from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import capture_oom_events_from_stdin
 from paasta_tools.oom_logger import log_to_clog
-from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import main
 from paasta_tools.oom_logger import send_sfx_event
 

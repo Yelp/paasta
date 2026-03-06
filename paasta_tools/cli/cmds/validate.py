@@ -25,13 +25,13 @@ from glob import glob
 from pathlib import Path
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 import pytz
 from croniter import croniter
@@ -39,47 +39,49 @@ from environment_tools.type_utils import available_location_types
 from environment_tools.type_utils import compare_types
 from environment_tools.type_utils import convert_location_type
 from jsonschema import Draft4Validator
-from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import RefResolver
 from jsonschema import ValidationError
+from jsonschema import exceptions
 from mypy_extensions import TypedDict
-from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
+from ruamel.yaml import SafeConstructor
 from ruamel.yaml.comments import CommentedMap
 
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import DEFAULT_PROMQL_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import DEFAULT_TZ
+from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
-from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -145,34 +147,40 @@ CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
 
+_PROMQL_ONLY_FIELDS = {"metrics_query", "series_query", "target_type", "resources"}
+
 INVALID_AUTOSCALING_FIELDS = {
     # setpoint isn't included here because we need to confirm that setpoint = 0.8
     # (since it's auto-added at parse-time)
-    METRICS_PROVIDER_ACTIVE_REQUESTS: {"prometheus-adapter-config"},
+    METRICS_PROVIDER_ACTIVE_REQUESTS: _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_CPU: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
+    METRICS_PROVIDER_MEMORY: {
+        "desired_active_requests_per_replica",
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_GUNICORN: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_PISCINA: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_UWSGI: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_UWSGI_V2: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_WORKER_LOAD: {
         "desired_active_requests_per_replica",
-        "prometheus-adapter-config",
-    },
+    }
+    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_PROMQL: {"desired_active_requests_per_replica"},
 }
 
@@ -611,6 +619,11 @@ def validate_paasta_objects(service_path):
 def validate_unique_instance_names(service_path):
     """Check that the service does not use the same instance name more than once"""
     soa_dir, service = path_to_soa_dir_service(service_path)
+    skip_list = (
+        load_system_paasta_config().get_skip_unique_instance_name_validation_services()
+    )
+    if service in skip_list:
+        return True
     check_passed = True
 
     for cluster in list_clusters(service, soa_dir):
@@ -731,19 +744,16 @@ def _validate_active_requests_autoscaling_configs(
 def _validate_arbitrary_promql_autoscaling_configs(
     metrics_provider_config: MetricsProviderDict,
 ) -> None:
-    # This is a bit incorrect, since the default autoscaling setpoint is 0.8,
-    # someone could theoretically bypass this by setting setpoint: 0.8 in their
-    # soaconfigs; but I think it's approximately fine for now
-    if (
-        metrics_provider_config.get("setpoint", DEFAULT_AUTOSCALING_SETPOINT)
-        != DEFAULT_AUTOSCALING_SETPOINT
-    ):
+    if not metrics_provider_config.get("metrics_query"):
         raise AutoscalingValidationError(
-            "setpoint is not supported for arbitrary PromQL"
+            "arbitrary-promql metrics provider requires metrics_query to be set"
         )
-    if not metrics_provider_config.get("prometheus_adapter_config"):
+    setpoint = metrics_provider_config.get(
+        "setpoint", DEFAULT_PROMQL_AUTOSCALING_SETPOINT
+    )
+    if setpoint <= 0:
         raise AutoscalingValidationError(
-            "arbitrary promql metrics provider requires prometheus_adapter_config to be set"
+            "setpoint must be a positive number for arbitrary-promql"
         )
 
 

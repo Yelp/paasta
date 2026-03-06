@@ -1,5 +1,0 @@
-{
-    "cluster": "testcluster",
-    "zookeeper": "zk://zookeeper/mesos-testcluster",
-    "docker_registry": "docker-dev.yelpcorp.com"
-}

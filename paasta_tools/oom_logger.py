@@ -46,11 +46,10 @@ from containerd.services.containers.v1 import containers_pb2_grpc
 from docker.errors import APIError
 
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.utils import _log
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import load_system_paasta_config
-
 
 # Sorry to any non-yelpers but this won't
 # do much as our metrics and logging libs

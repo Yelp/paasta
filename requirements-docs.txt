@@ -1,6 +1,5 @@
 alabaster==0.7.16
 aspy.yaml==0.3.0
-astroid==2.4.2
 Babel==2.17.0
 cached-property==1.3.1
 cfgv==1.0.0
@@ -9,11 +8,11 @@ flake8==3.5.0
 freezegun==1.5.5
 identify==1.0.6
 imagesize==1.4.1
-isort==4.2.5
+isort==5.13.2
 jinja2==3.1.6
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
-nodeenv==1.1.4
+nodeenv==1.10.0
 path.py==8.1
 pbr==3.1.1
 pep8==1.5.7
@@ -22,10 +21,9 @@ pre-commit==1.10.1
 pycodestyle==2.3.1
 pyflakes==1.6.0
 Pygments==2.19.2
-pylint==2.6.0
 pytest==3.3.1
 pytest-asyncio==0.8.0
-requirements-tools==1.1.2
+requirements-tools==2.1.0
 snowballstemmer==3.0.1
 Sphinx==8.1.3
 sphinx-rtd-theme

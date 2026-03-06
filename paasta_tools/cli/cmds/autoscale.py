@@ -28,12 +28,11 @@ from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
-from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import PaastaColors
-
 
 log = logging.getLogger(__name__)
 

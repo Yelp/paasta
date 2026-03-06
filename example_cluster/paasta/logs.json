@@ -1,8 +1,0 @@
-{
-    "log_writer": {
-        "driver": "file",
-        "options": {
-            "path_format": "/var/log/paasta_logs/{service}.log"
-        }
-    }
-}

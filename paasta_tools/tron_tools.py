@@ -20,70 +20,65 @@ import pkgutil
 import re
 import subprocess
 from string import Formatter
-from typing import cast
 from typing import List
 from typing import Mapping
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
-from service_configuration_lib.spark_config import get_total_driver_memory_mb
 from service_configuration_lib.spark_config import SparkConfBuilder
+from service_configuration_lib.spark_config import get_total_driver_memory_mb
 
 from paasta_tools import yaml_tools as yaml
-from paasta_tools.mesos_tools import mesos_services_running_here
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
-from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.tron.client import TronClient
-from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import time_cache
-from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import TronSecretVolume
-from paasta_tools.utils import get_k8s_url_for_cluster
-from paasta_tools.utils import validate_pool
-from paasta_tools.utils import PoolsNotConfiguredError
-from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import ProjectedSAVolume
+from typing import Any
+from typing import Dict
+from typing import Optional
 
+from paasta_tools import monitoring_tools
 from paasta_tools import spark_tools
-
-from paasta_tools.kubernetes_tools import (
-    NodeSelectorConfig,
-    allowlist_denylist_to_requirements,
-    contains_zone_label,
-    get_service_account_name,
-    limit_size_with_hash,
-    raw_selectors_to_requirements,
-    to_node_label,
-)
+from paasta_tools.kubernetes_tools import NodeSelectorConfig
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
+from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
+from paasta_tools.kubernetes_tools import contains_zone_label
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_service_account_name
+from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.kubernetes_tools import raw_selectors_to_requirements
+from paasta_tools.kubernetes_tools import to_node_label
+from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import is_shared_secret_from_secret_name
-from paasta_tools.secret_tools import get_secret_name_from_ref
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
-from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-
-from paasta_tools import monitoring_tools
-from paasta_tools.monitoring_tools import list_teams
-from typing import Optional
-from typing import Dict
-from typing import Any
+from paasta_tools.tron import tron_command_context
+from paasta_tools.tron.client import TronClient
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DockerVolume
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.utils import ProjectedSAVolume
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import TronSecretVolume
+from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import time_cache
+from paasta_tools.utils import validate_pool
 
 log = logging.getLogger(__name__)
 logging.getLogger("tron").setLevel(logging.WARNING)
@@ -95,7 +90,6 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
-MESOS_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
 EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE = {"paasta": "kubernetes", "spark": "spark"}
 KUBERNETES_NAMESPACE = "tron"
@@ -105,7 +99,6 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
     "spark": "tron",
 }
 DEFAULT_TZ = "US/Pacific"
-clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
 DEFAULT_SPARK_EXECUTOR_POOL = "batch"
 
@@ -510,6 +503,10 @@ class TronActionConfig(InstanceConfig):
 
             # our internal Spark configuration service needs this to determine if any special behavior is required
             env["SPARK_DRIVER_TYPE"] = "tron"
+            env["SERVICE_ACCOUNT_NAME"] = get_service_account_name(
+                iam_role=self.get_spark_executor_iam_role(),
+            )
+            env.update(system_paasta_config.get_default_spark_driver_env())
 
         return env
 
@@ -556,10 +553,10 @@ class TronActionConfig(InstanceConfig):
         }
 
     def get_cpu_burst_add(self) -> float:
-        """For Tron jobs, we don't let them burst by default, because they
-        don't represent "real-time" workloads, and should not impact
+        """For Tron jobs, we don't let them burst because they
+        don't represent "real-time" workloads and should not impact
         neighbors"""
-        return self.config_dict.get("cpu_burst_add", 0)
+        return 0
 
     def get_executor(self):
         return self.config_dict.get("executor", "paasta")
@@ -648,36 +645,17 @@ class TronActionConfig(InstanceConfig):
             for key, op, value in requirements
         ]
 
-    def get_calculated_constraints(self):
-        """Combine all configured Mesos constraints."""
-        constraints = self.get_constraints()
-        if constraints is not None:
-            return constraints
-        else:
-            constraints = self.get_extra_constraints()
-            constraints.extend(
-                self.get_deploy_constraints(
-                    blacklist=self.get_deploy_blacklist(),
-                    whitelist=self.get_deploy_whitelist(),
-                    # Don't have configs for the paasta cluster
-                    system_deploy_blacklist=[],
-                    system_deploy_whitelist=None,
-                )
-            )
-            constraints.extend(self.get_pool_constraints())
-            return constraints
-
     def get_nerve_namespace(self) -> None:
         return None
 
     def validate(self):
         error_msgs = []
         error_msgs.extend(super().validate())
-        # Tron is a little special, because it can *not* have a deploy group
-        # But only if an action is running via ssh and not via paasta
+        # Tron is a little special: deploy_group is required for k8s actions;
+        # ssh actions may omit it.
         if (
             self.get_deploy_group() is None
-            and self.get_executor() in MESOS_EXECUTOR_NAMES
+            and self.get_executor() in KUBERNETES_EXECUTOR_NAMES
         ):
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
@@ -949,15 +927,6 @@ def format_volumes(paasta_volume_list):
 
 
 def format_master_config(master_config, default_volumes, dockercfg_location):
-    mesos_options = master_config.get("mesos_options", {})
-    mesos_options.update(
-        {
-            "default_volumes": format_volumes(default_volumes),
-            "dockercfg_location": dockercfg_location,
-        }
-    )
-    master_config["mesos_options"] = mesos_options
-
     k8s_options = master_config.get("k8s_options", {})
     if k8s_options:
         # Only add default volumes if we already have k8s_options
@@ -1011,7 +980,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         result["secret_env"] = action_config.get_secret_env()
         result["field_selector_env"] = action_config.get_field_selector_env()
-        all_env = action_config.get_env()
+        all_env = action_config.get_env(system_paasta_config)
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
         # or for field selector env vars to be overwritten
         result["env"] = {
@@ -1043,7 +1012,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 },
             ]
 
-        # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
+        # XXX: once we're off the legacy cap format we can make get_cap_* return just the cap names as a list
         result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
         result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
 
@@ -1147,22 +1116,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
 
-    elif executor in MESOS_EXECUTOR_NAMES:
-        result["executor"] = "mesos"
-        constraint_labels = ["attribute", "operator", "value"]
-        result["constraints"] = [
-            dict(zip(constraint_labels, constraint))
-            for constraint in action_config.get_calculated_constraints()
-        ]
-        result["docker_parameters"] = [
-            {"key": param["key"], "value": param["value"]}
-            for param in action_config.format_docker_parameters()
-        ]
-        result["env"] = action_config.get_env()
-
-    # the following config is only valid for k8s/Mesos since we're not running SSH actions
+    # the following config is only valid for k8s since we're not running SSH actions
     # in a containerized fashion
-    if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
+    if executor in KUBERNETES_EXECUTOR_NAMES:
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
@@ -1355,22 +1311,10 @@ def validate_complete_config(
         os.path.abspath(soa_dir), "tron", cluster, MASTER_NAMESPACE + ".yaml"
     )
 
-    # TODO: remove creating the master config here once we're fully off of mesos
-    # since we only have it here to verify that the generated tronfig will be valid
-    # given that the kill-switch will affect PaaSTA's setup_tron_namespace script (we're
-    # not reading the kill-switch in Tron since it's not easily accessible at the point
-    # at which we'd like to fallback to Mesos if toggled)
-    master_config = yaml.safe_load(
-        create_complete_master_config(cluster=cluster, soa_dir=soa_dir)
-    )
-    k8s_enabled_for_cluster = master_config.get("k8s_options", {}).get("enabled", False)
-
     preproccessed_config = {}
     # Use Tronfig on generated config from PaaSTA to validate the rest
     preproccessed_config["jobs"] = {
-        job_config.get_name(): format_tron_job_dict(
-            job_config=job_config, k8s_enabled=k8s_enabled_for_cluster
-        )
+        job_config.get_name(): format_tron_job_dict(job_config=job_config)
         for job_config in job_configs
     }
 
@@ -1446,22 +1390,3 @@ def get_tron_dashboard_for_cluster(cluster: str):
     if "Tron" not in dashboards:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
     return dashboards["Tron"]
-
-
-def tron_jobs_running_here() -> List[Tuple[str, str, int]]:
-    return mesos_services_running_here(
-        framework_filter=lambda fw: fw["name"].startswith("tron"),
-        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
-    )
-
-
-def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:
-    """Parses tron mesos task ids, like schematizer.traffic_generator.28414.turnstyle.46da87d7-6092-4ed4-b926-ffa7b21c7785"""
-    try:
-        service, job, job_run, action, uuid = task_id.split(".")
-    except Exception as e:
-        log.warning(
-            f"Couldn't parse the mesos task id into a valid tron job: {task_id}: {e}"
-        )
-        service, job, action = "unknown_service", "unknown_job", "unknown_action"
-    return service, f"{job}.{action}"

@@ -43,10 +43,3 @@ To run the full suite of integration tests, you can run
 Warning: This might take some time.
 
 To iterate on itests, see the `docs <https://github.com/Yelp/paasta/blob/master/paasta_itests/README.md>`_.
-
-
-Other Testing
-=============
-
-If you want to iterate against a semi realistic cluster, then you can use the example cluster.
-See the `docs <installation/example_cluster.html>`_ for instructions using it.

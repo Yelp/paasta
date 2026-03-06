@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-from contextlib import contextmanager
-from unittest.mock import patch
 
 import pytest
 
@@ -21,24 +19,8 @@ from paasta_tools.cli.cli import get_argparser
 from paasta_tools.cli.cli import main
 
 
-@contextmanager
-def patch_soadir_dependencies():
-    with (
-        patch("paasta_tools.utils.list_services", autospec=True) as mock_list_services,
-        patch("paasta_tools.utils.list_clusters", autospec=True) as mock_list_clusters,
-        patch(
-            "paasta_tools.utils.list_all_instances_for_service", autospec=True
-        ) as mock_list_instances,
-    ):
-        mock_list_clusters.return_value = []
-        mock_list_services.return_value = []
-        mock_list_instances.return_value = []
-        yield
-
-
 def each_command():
-    with patch_soadir_dependencies():
-        parser = get_argparser()
+    parser = get_argparser()
     # We're doing some wacky inspection here, let's make sure things are sane
     (subparsers,) = [
         action
@@ -55,10 +37,7 @@ def each_command():
 @pytest.mark.parametrize("cmd", each_command())
 def test_help(cmd, capfd):
     # Should pass and produce something
-    with (
-        pytest.raises(SystemExit) as excinfo,
-        patch_soadir_dependencies(),
-    ):
+    with pytest.raises(SystemExit) as excinfo:
         main((cmd, "--help"))
     assert excinfo.value.code == 0
     assert cmd in capfd.readouterr()[0]

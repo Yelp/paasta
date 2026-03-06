@@ -28,7 +28,6 @@ from paasta_tools.cli.cmds import logs
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
 
-
 try:  # pragma: no cover (yelpy)
     import scribereader  # noqa: F401
 

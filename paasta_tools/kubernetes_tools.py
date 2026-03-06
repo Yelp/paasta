@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import base64
 import functools
 import hashlib
@@ -26,7 +27,6 @@ from functools import lru_cache
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
-from typing import cast
 from typing import Collection
 from typing import Container
 from typing import Dict
@@ -41,15 +41,14 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
-import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import CoreV1Event
-from kubernetes.client import models
 from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
@@ -129,6 +128,7 @@ from kubernetes.client import V2MetricSpec
 from kubernetes.client import V2MetricTarget
 from kubernetes.client import V2ObjectMetricSource
 from kubernetes.client import V2ResourceMetricSource
+from kubernetes.client import models
 from kubernetes.client.models import V2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -136,53 +136,54 @@ from service_configuration_lib import read_soa_metadata
 
 from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.async_utils import run_sync
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
-from paasta_tools.long_running_service_tools import host_passes_blacklist
-from paasta_tools.long_running_service_tools import host_passes_whitelist
-from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
-from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.long_running_service_tools import host_passes_blacklist
+from paasta_tools.long_running_service_tools import host_passes_whitelist
+from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.utils import CAPS_DROP
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import CAPS_DROP
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import KubeContainerResourceRequest
-from paasta_tools.utils import load_service_instance_config
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
-
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_git_sha_from_dockerurl
+from paasta_tools.utils import load_service_instance_config
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import time_cache
 
 log = logging.getLogger(__name__)
 
@@ -396,6 +397,11 @@ class CryptoKeyConfig(TypedDict):
     decrypt: List[str]
 
 
+class SsmSecretConfig(TypedDict):
+    source: str
+    secret_name: str
+
+
 class NodeSelectorInNotIn(TypedDict):
     operator: Literal["In", "NotIn"]
     values: List[str]
@@ -433,8 +439,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    node_selectors: Dict[str, NodeSelectorConfig]
-    node_selectors_preferred: List[NodeSelectorsPreferredConfigDict]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
@@ -449,6 +453,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
+    ssm_secrets: List[SsmSecretConfig]
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
@@ -814,22 +819,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         policy["scaleDown"].update(autoscaling_params.get("scaledown_policies", {}))
         return policy
 
-    def namespace_external_metric_name(self, metric_name: str) -> str:
-        return f"{self.get_sanitised_deployment_name()}-{metric_name}"
+    def namespace_custom_prometheus_metric_name(self, metric_name: str) -> str:
+        return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
-        prometheus_hpa_metric_name = (
-            f"{self.namespace_external_metric_name(provider['type'])}-prom"
+        prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
+            provider["type"]
         )
 
-        if provider["type"] == METRICS_PROVIDER_CPU:
+        if provider["type"] in {METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY}:
             return V2MetricSpec(
                 type="Resource",
                 resource=V2ResourceMetricSource(
-                    name="cpu",
+                    name=provider["type"],
                     target=V2MetricTarget(
                         type="Utilization",
                         average_utilization=int(target * 100),
@@ -861,6 +866,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             )
         elif provider["type"] == METRICS_PROVIDER_PROMQL:
+            target_type = provider.get("target_type", "AverageValue")
+            if target_type == "AverageValue":
+                metric_target = V2MetricTarget(
+                    type="AverageValue",
+                    average_value=target,
+                )
+            else:
+                metric_target = V2MetricTarget(
+                    type="Value",
+                    value=target,
+                )
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -868,11 +884,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
-                    target=V2MetricTarget(
-                        # Use the setpoint specified by the user.
-                        type="Value",
-                        value=target,
-                    ),
+                    target=metric_target,
                 ),
             )
         elif provider["type"] in {
@@ -1204,6 +1216,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars, shared_secret_env_vars = self.get_env_vars_that_use_secrets()
+        ssm_secret_env_vars = self.get_ssm_secret_env_vars()
 
         user_env = [
             V1EnvVar(name=name, value=value)
@@ -1215,7 +1228,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             secret_env_vars=secret_env_vars,
             shared_secret_env_vars=shared_secret_env_vars,
         )
-        return user_env + self.get_kubernetes_environment()  # type: ignore
+
+        return user_env + ssm_secret_env_vars + self.get_kubernetes_environment()  # type: ignore
 
     def get_kubernetes_secret_env_vars(
         self,
@@ -1291,6 +1305,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
         ]
         return kubernetes_env
+
+    def get_ssm_secret_env_vars(self) -> Sequence[V1EnvVar]:
+        ssm_secrets = self.config_dict.get("ssm_secrets", [])
+        if not ssm_secrets:
+            return []
+
+        sanitised_deployment_name = self.get_sanitised_deployment_name()
+
+        env_vars = []
+        for ssm_secret in ssm_secrets:
+            secret = ssm_secret["secret_name"]
+            env_vars.append(
+                V1EnvVar(
+                    name=secret,
+                    value_from=V1EnvVarSource(
+                        secret_key_ref=V1SecretKeySelector(
+                            name=get_ssm_secret_name(
+                                self.get_namespace(), sanitised_deployment_name, secret
+                            ),
+                            key=secret,
+                            optional=False,
+                        )
+                    ),
+                )
+            )
+
+        return env_vars
 
     def get_resource_requirements(self) -> V1ResourceRequirements:
         limits = {
@@ -1521,8 +1562,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> bool:
         return self.get_lifecycle_dict().get(
             "pre_stop_wait_for_connections_to_complete",
-            service_namespace_config.is_in_smartstack()
-            and service_namespace_config.get_longest_timeout_ms() >= 20000,
+            service_namespace_config.is_in_smartstack(),
         )
 
     def get_kubernetes_container_termination_action(
@@ -1545,14 +1585,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 #    just as the pod is terminated.
                 # 2. Every second, checks if there are any established connections to the pod. It exits when there are no
                 #    established connections.
-                # It exits when all connections are closed, which should mean the pod can be safely terminated.
+                #
                 # The first four fields of /proc/net/tcp are:
                 # 1. slot number (which is not relevant here, but it's a decimal number left-padded with whitespace)
-                # 2. local address:port (both in hex)
-                # 3. remote address:port (both in hex)
+                # 2. local address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
+                # 3. remote address:port (both in hex; IP address is padded to 8 digits, port is padded to 4 digits)
                 # 4. state (in hex)
                 # State 01 means ESTABLISHED.
-                hex_port = hex(self.get_container_port()).upper()[2:]
+                hex_port = f"{self.get_container_port():04X}"
                 command = [
                     "/bin/sh",
                     "-c",
@@ -2708,13 +2748,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_pre_stop_wait_for_connections_to_complete(
                 service_namespace_config
             ):
+                # When meshd encounters transient ZK read errors (typically trying to read a znode that has since been
+                # deleted), it skips updating the endpoints file for one cycle.
+                # During bounces of large services, this can happen repeatedly, as lots of znodes are deleted.
+                # Pad the time we wait here to account for that.
+                # If everything is working correctly, this extra time is not needed, as the pre-stop hook will finish
+                # as soon as zero connections are open on the container's port.
+                # Thus, we can be pretty generous here.
+                longest_time_we_expect_meshd_to_be_stuck = 300
+
                 # If the max timeout is more than 30 minutes, cap it to 30 minutes.
                 # Most services with ultra-long timeouts are probably able to handle SIGTERM gracefully anyway.
+
                 default += int(
                     math.ceil(
                         min(
                             1800,
-                            service_namespace_config.get_longest_timeout_ms() / 1000,
+                            service_namespace_config.get_longest_timeout_ms() / 1000
+                            + longest_time_we_expect_meshd_to_be_stuck,
                         )
                     )
                 )
@@ -2904,7 +2955,7 @@ def force_delete_pods(
     kube_client: KubeClient,
 ) -> None:
     # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
-    pods_to_delete = a_sync.block(
+    pods_to_delete = run_sync(
         pods_for_service_instance,
         paasta_service,
         instance,
@@ -3566,10 +3617,8 @@ def list_matching_deployments_in_all_namespaces(
 async def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ReplicaSet]:
-    async_list_replica_set = a_sync.to_async(
-        kube_client.deployments.list_namespaced_replica_set
-    )
-    response = await async_list_replica_set(
+    response = await asyncio.to_thread(
+        kube_client.deployments.list_namespaced_replica_set,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3580,10 +3629,8 @@ async def replicasets_for_service_instance(
 async def controller_revisions_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ControllerRevision]:
-    async_list_controller_revisions = a_sync.to_async(
-        kube_client.deployments.list_namespaced_controller_revision
-    )
-    response = await async_list_controller_revisions(
+    response = await asyncio.to_thread(
+        kube_client.deployments.list_namespaced_controller_revision,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3594,8 +3641,8 @@ async def controller_revisions_for_service_instance(
 async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1Pod]:
-    async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
-    response = await async_list_pods(
+    response = await asyncio.to_thread(
+        kube_client.core.list_namespaced_pod,
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
@@ -3945,7 +3992,8 @@ async def get_events_for_object(
         # asyncio event loop when doing things like getting events for all the Pods for a service with
         # a large amount of replicas. therefore, we need to wrap the kubernetes client into something
         # that's awaitable so that we can actually do things concurrently and not serially
-        events = await a_sync.to_async(kube_client.core.list_namespaced_event)(
+        events = await asyncio.to_thread(
+            kube_client.core.list_namespaced_event,
             namespace=obj.metadata.namespace,
             field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
             limit=MAX_EVENTS_TO_RETRIEVE,
@@ -3971,11 +4019,12 @@ async def get_hpa(
     name: str,
     namespace: str,
 ) -> V2HorizontalPodAutoscaler:
-    async_get_hpa = a_sync.to_async(
-        kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
-    )
     try:
-        return await async_get_hpa(name, namespace)
+        return await asyncio.to_thread(
+            kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler,
+            name,
+            namespace,
+        )
     except ApiException as e:
         if e.status == 404:
             return None
@@ -4603,6 +4652,42 @@ def get_paasta_secret_signature_name(
         namespace=namespace,
         secret_identifier="secret",
         service_name=service_name,
+        key_name=key_name,
+    )
+
+
+def get_ssm_secret_name(namespace: str, deployment_name: str, key_name: str) -> str:
+    """
+    Used whenever creating or referencing an SSM secret
+
+    :param namespace: Unsanitised namespace of a service that will use the secret
+    :param deployment_name: Unsanitised deployment_name, typically "{service}-{instance}"
+    :param key_name: Name of the actual secret
+    :return: Sanitised SSM secret name
+    """
+    return _get_secret_name(
+        namespace=namespace,
+        secret_identifier="ssm-secret",
+        service_name=deployment_name,
+        key_name=key_name,
+    )
+
+
+def get_ssm_secret_signature_name(
+    namespace: str, deployment_name: str, key_name: str
+) -> str:
+    """
+    Get SSM signature name stored as kubernetes configmap
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param deployment_name: Unsanitised deployment_name, typically "{service}-{instance}"
+    :param key_name: Name of the actual secret
+    :return: Sanitised SSM signature name
+    """
+    return _get_secret_signature_name(
+        namespace=namespace,
+        secret_identifier="ssm-secret",
+        service_name=deployment_name,
         key_name=key_name,
     )
 

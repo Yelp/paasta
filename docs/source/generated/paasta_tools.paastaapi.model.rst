@@ -12,6 +12,7 @@ Submodules
    paasta_tools.paastaapi.model.autoscaling_override
    paasta_tools.paastaapi.model.deploy_queue
    paasta_tools.paastaapi.model.deploy_queue_service_instance
+   paasta_tools.paastaapi.model.deployment_info
    paasta_tools.paastaapi.model.envoy_backend
    paasta_tools.paastaapi.model.envoy_location
    paasta_tools.paastaapi.model.envoy_status

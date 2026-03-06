@@ -41,23 +41,23 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
 )
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
-from paasta_tools.kubernetes_tools import ensure_namespace
-from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.metrics import metrics_lib
-from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import SPACER
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

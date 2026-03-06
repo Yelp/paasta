@@ -14,6 +14,7 @@
 # limitations under the License.
 """PaaSTA log reader for humans"""
 import argparse
+import asyncio
 import datetime
 import json
 import logging
@@ -41,11 +42,12 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-import a_sync
 import isodate
 import nats
 import pytz
 from dateutil import tz
+
+from paasta_tools.async_utils import run_sync
 
 try:
     from scribereader import scribereader
@@ -85,18 +87,17 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import verify_instances
-from paasta_tools.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
-from paasta_tools.utils import datetime_convert_timezone
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import datetime_convert_timezone
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import get_log_name_for_service
-
+from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
 
 DEFAULT_COMPONENTS = ["stdout", "stderr"]
 
@@ -1297,11 +1298,11 @@ class VectorLogsReader(LogReader):
                     instances,
                     pods,
                 ):
-                    await a_sync.run(
+                    await asyncio.to_thread(
                         print_log, decoded_data, levels, raw_mode, strip_headers
                     )
 
-        a_sync.block(tail_logs_from_nats)
+        run_sync(tail_logs_from_nats)
 
 
 def scribe_env_to_locations(scribe_env) -> Mapping[str, Any]:

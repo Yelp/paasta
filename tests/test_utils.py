@@ -2286,51 +2286,6 @@ class TestInstanceConfig:
         fake_conf.get_dependencies() == expected
 
     @pytest.mark.parametrize(
-        ("security", "expected"),
-        [
-            ({}, None),
-            (None, None),
-            ({"outbound_firewall": "monitor"}, "monitor"),
-            ({"outbound_firewall": "foo"}, "foo"),
-        ],
-    )
-    def test_get_outbound_firewall(self, security, expected):
-        fake_conf = utils.InstanceConfig(
-            service="",
-            cluster="",
-            instance="",
-            config_dict={"security": security},
-            branch_dict=None,
-        )
-        fake_conf.get_outbound_firewall() == expected
-
-    @pytest.mark.parametrize(
-        ("security", "expected"),
-        [
-            ({}, (True, "")),
-            ({"outbound_firewall": "monitor"}, (True, "")),
-            ({"outbound_firewall": "block"}, (True, "")),
-            (
-                {"outbound_firewall": "foo"},
-                (False, 'Unrecognized outbound_firewall value "foo"'),
-            ),
-            (
-                {"outbound_firewall": "monitor", "foo": 1},
-                (False, 'Unrecognized items in security dict of service config: "foo"'),
-            ),
-        ],
-    )
-    def test_check_security(self, security, expected):
-        fake_conf = utils.InstanceConfig(
-            service="",
-            cluster="",
-            instance="",
-            config_dict={"security": security},
-            branch_dict=None,
-        )
-        assert fake_conf.check_security() == expected
-
-    @pytest.mark.parametrize(
         ("dependencies_reference", "dependencies", "expected"),
         [
             (None, None, (True, "")),
@@ -2432,6 +2387,7 @@ def test_validate_service_instance_invalid():
     mock_flink_instances = [("service1", "flink")]
     mock_flinkeks_instances = [("service1", "flinkeks")]
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
+    mock_cassandraclustereks_instances = [("service1", "cassandraclustereks")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
     mock_nrtsearcheks_instances = [("service1", "nrtsearcheks")]
@@ -2453,6 +2409,7 @@ def test_validate_service_instance_invalid():
             mock_flink_instances,
             mock_flinkeks_instances,
             mock_cassandracluster_instances,
+            mock_cassandraclustereks_instances,
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
             mock_nrtsearcheks_instances,

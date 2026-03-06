@@ -14,9 +14,9 @@
 # limitations under the License.
 import sys
 
+from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.utils import DEFAULT_SOA_DIR

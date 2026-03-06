@@ -13,7 +13,6 @@ from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
-from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.tron_tools import TronActionConfigDict
 from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
@@ -105,12 +104,8 @@ class TestTronActionConfig:
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_env(
-        self, mock_read_soa_metadata, action_config, executor, monkeypatch
-    ):
-        monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
-        action_config.config_dict["executor"] = executor
+    def test_get_env(self, mock_read_soa_metadata, action_config, monkeypatch):
+        action_config.config_dict["executor"] = "paasta"
         with mock.patch(
             "paasta_tools.utils.get_service_docker_registry",
             autospec=True,
@@ -215,10 +210,9 @@ class TestTronActionConfig:
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() == "paasta"
 
-    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_executor_paasta(self, executor, action_config):
-        action_config.config_dict["executor"] = executor
-        assert action_config.get_executor() == executor
+    def test_get_executor_paasta(self, action_config):
+        action_config.config_dict["executor"] = "paasta"
+        assert action_config.get_executor() == "paasta"
 
 
 class TestTronJobConfig:
@@ -876,16 +870,6 @@ class TestTronTools:
         master_config = {
             "some_key": 101,
             "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/tmp",
-                        "host_path": "/nail/tmp",
-                        "mode": "RW",
-                    }
-                ],
-                "other_mesos": True,
-            },
         }
         paasta_volumes = [
             {"containerPath": "/nail/other", "hostPath": "/other/home", "mode": "RW"}
@@ -894,21 +878,7 @@ class TestTronTools:
         result = tron_tools.format_master_config(
             master_config, paasta_volumes, dockercfg
         )
-        assert result == {
-            "some_key": 101,
-            "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/other",
-                        "host_path": "/other/home",
-                        "mode": "RW",
-                    }
-                ],
-                "dockercfg_location": dockercfg,
-                "other_mesos": True,
-            },
-        }
+        assert result == {"some_key": 101, "another": "hello"}
 
         master_config["k8s_options"] = {
             "kubeconfig_path": "/var/lib/tron/kubeconfig.conf"
@@ -1336,7 +1306,7 @@ class TestTronTools:
             "jira_ticket": None,
             "service_account_name": None,
             "ui_port": 39091,
-            "user": os.getenv("USER"),
+            "user": "TRON",
             "aws_account_id": None,
         }
         expected_scs_conf = json.dumps(expected_scs_conf_json, indent=4)
@@ -1442,6 +1412,7 @@ class TestTronTools:
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SCS_CONF_STR": expected_scs_conf,
+                "SERVICE_ACCOUNT_NAME": "paasta--arn-aws-iam-000000000000-role-some-role",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
                 "SPARK_DRIVER_TYPE": "tron",
@@ -2247,15 +2218,3 @@ fake_job:
         ]
         result = tron_tools.list_tron_clusters("foo")
         assert sorted(result) == ["dev-cluster2", "prod"]
-
-
-def test_parse_service_instance_from_executor_id_happy():
-    actual = tron_tools.parse_service_instance_from_executor_id(
-        "schematizer.traffic_generator.28414.turnstyle.46da87d7-6092-4ed4-b926-ffa7b21c7785"
-    )
-    assert actual == ("schematizer", "traffic_generator.turnstyle")
-
-
-def test_parse_service_instance_from_executor_id_sad():
-    actual = tron_tools.parse_service_instance_from_executor_id("UNKNOWN")
-    assert actual == ("unknown_service", "unknown_job.unknown_action")

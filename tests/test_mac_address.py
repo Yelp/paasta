@@ -11,7 +11,6 @@ import pytest
 
 from paasta_tools import mac_address
 
-
 skip_if_osx = pytest.mark.skipif(
     sys.platform == "darwin", reason="Flock is not present on OS X"
 )

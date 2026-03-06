@@ -42,12 +42,11 @@ from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.check_services_replication_tools import parse_args
 from paasta_tools.eks_tools import EksDeploymentConfig
-from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
-
 
 log = logging.getLogger(__name__)
 DEFAULT_ALERT_AFTER = "10m"

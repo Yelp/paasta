@@ -33,6 +33,7 @@ Submodules
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
+   paasta_tools.cassandraclustereks_tools
    paasta_tools.check_autoscaler_max_instances
    paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_flink_services_health
@@ -46,19 +47,14 @@ Submodules
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
    paasta_tools.cleanup_tron_namespaces
-   paasta_tools.clusterman
    paasta_tools.config_utils
    paasta_tools.delete_kubernetes_deployments
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
-   paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
    paasta_tools.eks_tools
    paasta_tools.envoy_tools
-   paasta_tools.firewall
-   paasta_tools.firewall_logging
-   paasta_tools.firewall_update
    paasta_tools.flink_tools
    paasta_tools.flinkeks_tools
    paasta_tools.generate_authenticating_services
@@ -66,7 +62,6 @@ Submodules
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
    paasta_tools.hacheck
-   paasta_tools.iptables
    paasta_tools.kafkacluster_tools
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances

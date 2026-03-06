@@ -15,8 +15,9 @@
 # limitations under the License.
 import os
 
-from . import exceptions
 from paasta_tools.async_utils import async_ttl_cache
+
+from . import exceptions
 
 
 class File:

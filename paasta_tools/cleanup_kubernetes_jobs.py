@@ -59,8 +59,8 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.monitoring_tools import send_event
-from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 

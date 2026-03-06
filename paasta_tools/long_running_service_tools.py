@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import socket
+from typing import TYPE_CHECKING
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -9,25 +10,30 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
+from typing import cast
 
 import service_configuration_lib
 
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import load_system_paasta_config
+
+if TYPE_CHECKING:
+    from paasta_tools.kubernetes_tools import NodeSelectorConfig
+    from paasta_tools.kubernetes_tools import NodeSelectorsPreferredConfigDict
 
 log = logging.getLogger(__name__)
 logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)
@@ -36,6 +42,7 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
+DEFAULT_PROMQL_AUTOSCALING_SETPOINT = 1.0
 DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA = 1
 DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
@@ -44,6 +51,7 @@ DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 
 METRICS_PROVIDER_CPU = "cpu"
+METRICS_PROVIDER_MEMORY = "memory"
 METRICS_PROVIDER_UWSGI = "uwsgi"
 METRICS_PROVIDER_UWSGI_V2 = "uwsgi-v2"
 METRICS_PROVIDER_GUNICORN = "gunicorn"
@@ -54,6 +62,7 @@ METRICS_PROVIDER_WORKER_LOAD = "worker-load"
 
 ALL_METRICS_PROVIDERS = [
     METRICS_PROVIDER_CPU,
+    METRICS_PROVIDER_MEMORY,
     METRICS_PROVIDER_UWSGI,
     METRICS_PROVIDER_UWSGI_V2,
     METRICS_PROVIDER_GUNICORN,
@@ -89,6 +98,8 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     should_ping_for_unhealthy_pods: bool
     weight: int
     unhealthy_pod_eviction_policy: str
+    node_selectors: Dict[str, "NodeSelectorConfig"]
+    node_selectors_preferred: List["NodeSelectorsPreferredConfigDict"]
 
 
 class ServiceNamespaceConfig(dict):
@@ -371,9 +382,20 @@ class LongRunningServiceConfig(InstanceConfig):
             params["metrics_providers"] = [default_provider_params]
         else:
             params["metrics_providers"] = [
-                deep_merge_dictionaries(
-                    overrides=provider,
-                    defaults=default_provider_params,
+                cast(
+                    MetricsProviderDict,
+                    deep_merge_dictionaries(
+                        overrides=provider,
+                        defaults={
+                            **default_provider_params,
+                            # arbitrary-promql has a different default setpoint
+                            "setpoint": (
+                                DEFAULT_PROMQL_AUTOSCALING_SETPOINT
+                                if provider.get("type") == METRICS_PROVIDER_PROMQL
+                                else DEFAULT_AUTOSCALING_SETPOINT
+                            ),
+                        },
+                    ),
                 )
                 for provider in params["metrics_providers"]
             ]

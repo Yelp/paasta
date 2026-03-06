@@ -38,13 +38,14 @@ from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
 )
-from paasta_tools.kubernetes_tools import get_all_service_accounts
 from paasta_tools.kubernetes_tools import JOB_TYPE_LABEL_NAME
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_all_service_accounts
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import load_system_paasta_config
 
 logger = logging.getLogger(__name__)
 REMOTE_RUN_JOB_LABEL = "remote-run"
@@ -154,6 +155,7 @@ def remote_run_start(
     formatted_job.metadata.name = job_name
     app_wrapper = get_application_wrapper(formatted_job)
     app_wrapper.soa_config = deployment_config
+    ensure_namespace(kube_client, deployment_config.get_namespace())
     app_wrapper.ensure_service_account(kube_client)
 
     # Launch pod

@@ -16,8 +16,8 @@ from typing import Optional
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import load_v2_deployments_json
 
 
 def get_currently_deployed_sha(service, deploy_group, soa_dir=DEFAULT_SOA_DIR):

@@ -17,15 +17,14 @@ import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
-from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_service_instance_config
-from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import load_service_instance_config
+from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import prompt_pick_one
-
 
 log = logging.getLogger(__name__)
 

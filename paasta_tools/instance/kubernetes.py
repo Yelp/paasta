@@ -16,7 +16,6 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
-import a_sync
 import pytz
 import requests.exceptions
 from kubernetes.client import V1Container
@@ -36,27 +35,29 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
+from paasta_tools.async_utils import run_sync
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.long_running_service_tools import (
     get_expected_instance_count_for_namespace,
 )
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
-
 
 INSTANCE_TYPES_CR = {
     "flink",
     "flinkeks",
     "cassandracluster",
+    "cassandraclustereks",
     "kafkacluster",
 }
 INSTANCE_TYPES_K8S = {
@@ -71,6 +72,7 @@ INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     flinkeks=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
+    cassandraclustereks=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     nrtsearchserviceeks=nrtsearchservice_tools.cr_id,
@@ -292,6 +294,11 @@ async def pod_info(
         "events": pod_event_messages,
         "git_sha": pod.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": pod.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "delete_timestamp": (
+            pod.metadata.deletion_timestamp.timestamp()
+            if pod.metadata.deletion_timestamp
+            else None
+        ),
     }
 
 
@@ -383,8 +390,10 @@ async def mesh_status(
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
-    async_get_nodes = a_sync.to_async(kubernetes_tools.get_all_nodes)
-    nodes = await async_get_nodes(settings.kubernetes_client)
+    nodes = await asyncio.to_thread(
+        kubernetes_tools.get_all_nodes,
+        settings.kubernetes_client,
+    )
 
     replication_checker = KubeSmartstackEnvoyReplicationChecker(
         nodes=nodes,
@@ -552,11 +561,29 @@ def cr_status(
 
 def filter_actually_running_replicasets(
     replicaset_list: Sequence[V1ReplicaSet],
+    pod_status_by_replicaset: Optional[Mapping[str, Sequence[Any]]] = None,
 ) -> List[V1ReplicaSet]:
+    """Filter replicasets to only include those that are actually running.
+
+    A replicaset is considered "actually running" if:
+    - It has non-zero desired replicas OR non-zero ready replicas, OR
+    - It has ANY pods associated with it (e.g., terminating pods are still "running")
+
+    This ensures that replicasets with only terminating pods are still shown
+    in status output until all pods are fully removed.
+    """
     return [
         rs
         for rs in replicaset_list
-        if not (rs.spec.replicas == 0 and ready_replicas_from_replicaset(rs) == 0)
+        if not (
+            rs.spec.replicas == 0
+            and ready_replicas_from_replicaset(rs) == 0
+            # TODO: replace this with looking at `rs.status.terminating_replicas` in k8s 1.31+
+            and (
+                pod_status_by_replicaset is None
+                or not pod_status_by_replicaset.get(rs.metadata.name)
+            )
+        )
     ]
 
 
@@ -611,7 +638,7 @@ def bounce_status(
     )
 
     if job_config.get_persistent_volumes():
-        version_objects = a_sync.block(
+        version_objects = run_sync(
             kubernetes_tools.controller_revisions_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
@@ -619,7 +646,7 @@ def bounce_status(
             namespace=job_config.get_kubernetes_namespace(),
         )
     else:
-        replicasets = a_sync.block(
+        replicasets = run_sync(
             kubernetes_tools.replicasets_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
@@ -682,7 +709,7 @@ def find_all_relevant_namespaces(
     }
 
 
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_status_v2(
     service: str,
     instance: str,
@@ -706,8 +733,12 @@ async def kubernetes_status_v2(
         return status
 
     if all_namespaces:
-        relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
-            service, instance, kube_client, job_config
+        relevant_namespaces = await asyncio.to_thread(
+            find_all_relevant_namespaces,
+            service,
+            instance,
+            kube_client,
+            job_config,
         )
     else:
         relevant_namespaces = {job_config.get_kubernetes_namespace()}
@@ -890,10 +921,11 @@ async def get_versions_for_replicasets(
         replicaset_list.extend(await coro)
 
     # For the purpose of active_versions/app_count, don't count replicasets that
-    # are at 0/0.
-    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-
+    # are at 0/0 unless they have terminating pods.
     pod_status_by_replicaset = await pod_status_by_replicaset_task
+    actually_running_replicasets = filter_actually_running_replicasets(
+        replicaset_list, pod_status_by_replicaset
+    )
     versions = await asyncio.gather(
         *[
             get_replicaset_status(
@@ -1218,7 +1250,7 @@ async def get_version_for_controller_revision(
 
 
 # TODO: Cleanup old kubernetes status
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_status(
     service: str,
     instance: str,
@@ -1392,7 +1424,7 @@ def ready_replicas_from_replicaset(replicaset: V1ReplicaSet) -> int:
     return ready_replicas
 
 
-@a_sync.to_blocking
+@to_blocking
 async def kubernetes_mesh_status(
     service: str,
     instance: str,

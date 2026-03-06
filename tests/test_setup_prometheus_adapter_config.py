@@ -7,6 +7,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
@@ -67,11 +68,13 @@ def test_create_instance_active_requests_scaling_rule(
         }
     )
     paasta_cluster = "test_cluster"
+    metric_name = "test_service-test_instance-active-requests-prom"
     rule = create_instance_active_requests_scaling_rule(
         service=service_name,
         instance_config=instance_config,
         metrics_provider_config=metrics_provider_config,
         paasta_cluster=paasta_cluster,
+        metric_name=metric_name,
     )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -91,6 +94,7 @@ def test_create_instance_active_requests_scaling_rule(
         in rule["metricsQuery"]
     )
     assert f"paasta_instance='{expected_instance}'" in rule["metricsQuery"]
+    assert rule["name"]["as"].endswith("-active-requests-prom")
 
 
 def test_create_instance_uwsgi_scaling_rule() -> None:
@@ -104,11 +108,13 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
         }
     )
     paasta_cluster = "test_cluster"
+    metric_name = "test_service-test_instance-uwsgi-prom"
     rule = create_instance_uwsgi_scaling_rule(
         service=service_name,
         instance_config=instance_config,
         metrics_provider_config=metrics_provider_config,
         paasta_cluster=paasta_cluster,
+        metric_name=metric_name,
     )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -124,6 +130,7 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
         str(metrics_provider_config["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
+    assert rule["name"]["as"].endswith("-uwsgi-prom")
 
 
 def test_create_instance_uwsgi_v2_scaling_rule() -> None:
@@ -137,11 +144,13 @@ def test_create_instance_uwsgi_v2_scaling_rule() -> None:
         }
     )
     paasta_cluster = "test_cluster"
+    metric_name = "test_service-test_instance-uwsgi-v2-prom"
     rule = create_instance_uwsgi_v2_scaling_rule(
         service=service_name,
         instance_config=instance_config,
         metrics_provider_config=metrics_provider_config,
         paasta_cluster=paasta_cluster,
+        metric_name=metric_name,
     )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -158,6 +167,7 @@ def test_create_instance_uwsgi_v2_scaling_rule() -> None:
         str(metrics_provider_config["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
+    assert rule["name"]["as"].endswith("-uwsgi-v2-prom")
 
 
 def test_create_instance_worker_load_scaling_rule() -> None:
@@ -171,11 +181,13 @@ def test_create_instance_worker_load_scaling_rule() -> None:
         }
     )
     paasta_cluster = "test_cluster"
+    metric_name = "test_service-test_instance-worker-load-prom"
     rule = create_instance_worker_load_scaling_rule(
         service=service_name,
         instance_config=instance_config,
         metrics_provider_config=metrics_provider_config,
         paasta_cluster=paasta_cluster,
+        metric_name=metric_name,
     )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -214,11 +226,13 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
         }
     )
     paasta_cluster = "test_cluster"
+    metric_name = "test_service-test_instance-gunicorn-prom"
     rule = create_instance_gunicorn_scaling_rule(
         service=service_name,
         instance_config=instance_config,
         metrics_provider_config=metrics_provider_config,
         paasta_cluster=paasta_cluster,
+        metric_name=metric_name,
     )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -234,6 +248,7 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
         str(metrics_provider_config["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
+    assert rule["name"]["as"].endswith("-gunicorn-prom")
 
 
 @pytest.mark.parametrize(
@@ -251,6 +266,24 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                             "moving_average_window_seconds": 20120302,
                         }
                         if x == METRICS_PROVIDER_CPU
+                        else None
+                    )
+                ),
+            ),
+            0,
+        ),
+        (
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_metrics_provider=mock.Mock(
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_MEMORY,
+                            "setpoint": 0.8,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_MEMORY
                         else None
                     )
                 ),
@@ -380,19 +413,21 @@ def test__minify_promql(query: str, expected: str) -> None:
     assert _minify_promql(query) == expected
 
 
-def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
+def test_create_instance_arbitrary_promql_scaling_rule_no_series_query():
+    metric_name = "service-instance-arbitrary-promql-prom"
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
         instance_config=mock.Mock(
             instance="instance",
             get_namespace=mock.Mock(return_value="paasta"),
         ),
-        metrics_provider_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
+        metrics_provider_config={"metrics_query": "foo"},
         paasta_cluster="cluster",
+        metric_name=metric_name,
     )
 
     assert rule == {
-        "name": {"as": "service-instance-arbitrary-promql"},
+        "name": {"as": "service-instance-arbitrary-promql-prom"},
         "resources": {
             "overrides": {
                 "namespace": {"resource": "namespace"},
@@ -404,7 +439,8 @@ def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
     }
 
 
-def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
+def test_create_instance_arbitrary_promql_scaling_rule_with_series_query():
+    metric_name = "service-instance-arbitrary-promql-prom"
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
         instance_config=mock.Mock(
@@ -412,22 +448,46 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
             get_namespace=mock.Mock(return_value="test_namespace"),
         ),
         metrics_provider_config={
-            "prometheus_adapter_config": {
-                "metricsQuery": "foo",
-                "seriesQuery": "bar",
-            }
+            "metrics_query": "foo",
+            "series_query": "bar",
         },
         paasta_cluster="cluster",
+        metric_name=metric_name,
     )
 
     assert rule == {
-        "name": {"as": "service-instance-arbitrary-promql"},
+        "name": {"as": "service-instance-arbitrary-promql-prom"},
         "resources": {
             "overrides": {
                 "namespace": {"resource": "namespace"},
                 "deployment": {"group": "apps", "resource": "deployments"},
             },
         },
-        "metricsQuery": "foo",  # if seriesQuery is specified, the user's metricsQuery should be unaltered.
+        "metricsQuery": "foo",  # if series_query is specified, the user's metrics_query should be unaltered.
+        "seriesQuery": "bar",
+    }
+
+
+def test_create_instance_arbitrary_promql_scaling_rule_with_custom_resources():
+    metric_name = "service-instance-arbitrary-promql-prom"
+    rule = create_instance_arbitrary_promql_scaling_rule(
+        service="service",
+        instance_config=mock.Mock(
+            instance="instance",
+            get_namespace=mock.Mock(return_value="test_namespace"),
+        ),
+        metrics_provider_config={
+            "metrics_query": "foo",
+            "series_query": "bar",
+            "resources": {"template": "kube_<<.Resource>>"},
+        },
+        paasta_cluster="cluster",
+        metric_name=metric_name,
+    )
+
+    assert rule == {
+        "name": {"as": "service-instance-arbitrary-promql-prom"},
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": "foo",
         "seriesQuery": "bar",
     }

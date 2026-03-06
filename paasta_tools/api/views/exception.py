@@ -20,7 +20,6 @@ import logging
 from pyramid.response import Response
 from pyramid.view import view_config
 
-
 log = logging.getLogger(__name__)
 
 

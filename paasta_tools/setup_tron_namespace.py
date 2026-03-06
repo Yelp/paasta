@@ -30,12 +30,12 @@ import ruamel.yaml as yaml
 
 from paasta_tools import spark_tools
 from paasta_tools import tron_tools
-from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
-from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import TronJobConfig
+from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)

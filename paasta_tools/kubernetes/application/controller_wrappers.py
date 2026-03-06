@@ -13,15 +13,15 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
+from paasta_tools.kubernetes_tools import HpaOverride
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_service_account
-from paasta_tools.kubernetes_tools import HpaOverride
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubeDeployment
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance

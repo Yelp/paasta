@@ -43,18 +43,17 @@ from fnmatch import fnmatch
 from functools import lru_cache
 from functools import wraps
 from subprocess import PIPE
-from subprocess import Popen
 from subprocess import STDOUT
+from subprocess import Popen
 from types import FrameType
+from typing import IO
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Collection
 from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
-from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -69,6 +68,7 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
+from typing import cast
 
 import choice
 import dateutil.tz
@@ -85,7 +85,6 @@ from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
 from paasta_tools import yaml_tools as yaml
-
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -141,6 +140,7 @@ INSTANCE_TYPES = (
     "flink",
     "flinkeks",
     "cassandracluster",
+    "cassandraclustereks",
     "kafkacluster",
     "monkrelays",
     "nrtsearchservice",
@@ -159,6 +159,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "flinkeks": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
+    "cassandraclustereks": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
     "nrtsearchserviceeks": "paasta-nrtsearchservices",
@@ -255,8 +256,6 @@ Constraint = Sequence[str]
 # e.g. ['GROUP_BY', 'habitat', 2]. Tron doesn't like that so we'll convert to Constraint later.
 UnstringifiedConstraint = Sequence[Union[str, int, float]]
 
-SecurityConfigDict = Dict  # Todo: define me.
-
 
 class VolumeWithMode(TypedDict):
     mode: str
@@ -345,7 +344,6 @@ class InstanceConfigDict(TypedDict, total=False):
     aws_ebs_volumes: List[AwsEbsVolume]
     secret_volumes: List[SecretVolume]
     projected_sa_volumes: List[ProjectedSAVolume]
-    security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
     constraints: List[UnstringifiedConstraint]
@@ -862,37 +860,6 @@ class InstanceConfig:
                 )
         return True, ""
 
-    def check_security(self) -> Tuple[bool, str]:
-        security = self.config_dict.get("security")
-        if security is None:
-            return True, ""
-
-        outbound_firewall = security.get("outbound_firewall")
-
-        if outbound_firewall is None:
-            return True, ""
-
-        if outbound_firewall is not None and outbound_firewall not in (
-            "block",
-            "monitor",
-        ):
-            return (
-                False,
-                'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
-            )
-
-        unknown_keys = set(security.keys()) - {
-            "outbound_firewall",
-        }
-        if unknown_keys:
-            return (
-                False,
-                'Unrecognized items in security dict of service config: "%s"'
-                % ",".join(unknown_keys),
-            )
-
-        return True, ""
-
     def check_dependencies_reference(self) -> Tuple[bool, str]:
         dependencies_reference = self.config_dict.get("dependencies_reference")
         if dependencies_reference is None:
@@ -919,7 +886,6 @@ class InstanceConfig:
         check_methods = {
             "cpus": self.check_cpus,
             "mem": self.check_mem,
-            "security": self.check_security,
             "dependencies_reference": self.check_dependencies_reference,
             "deploy_group": self.check_deploy_group,
         }
@@ -940,7 +906,6 @@ class InstanceConfig:
             params = [
                 "cpus",
                 "mem",
-                "security",
                 "dependencies_reference",
                 "deploy_group",
             ]
@@ -1067,17 +1032,6 @@ class InstanceConfig:
             return None
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
-
-    def get_outbound_firewall(self) -> Optional[str]:
-        """Return 'block', 'monitor', or None as configured in security->outbound_firewall
-
-        Defaults to None if not specified in the config
-
-        :returns: A string specified in the config, None if not specified"""
-        security = self.config_dict.get("security")
-        if not security:
-            return None
-        return security.get("outbound_firewall")
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
@@ -1291,13 +1245,6 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             {
                 "color": PaastaColors.yellow,
                 "help": "Stderr from a service's running processes.",
-            },
-        ),
-        (
-            "security",
-            {
-                "color": PaastaColors.red,
-                "help": "Logs from security-related services such as firewall monitoring",
             },
         ),
         ("oom", {"color": PaastaColors.red, "help": "Kernel OOM events."}),
@@ -2032,6 +1979,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
+    default_spark_driver_env: Dict[str, str]
     supported_storage_classes: Sequence[str]
     synapse_haproxy_url_format: str
     synapse_host: str
@@ -2051,6 +1999,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_driver_port: int
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
+    skip_unique_instance_name_validation: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2489,6 +2438,10 @@ class SystemPaastaConfig:
         :returns: The spark-run system_paasta_config dictionary"""
         return self.config_dict.get("spark_run_config", {})
 
+    def get_default_spark_driver_env(self) -> Dict[str, str]:
+        """Get default environment variables to set on Spark driver containers."""
+        return self.config_dict.get("default_spark_driver_env", {})
+
     def get_paasta_native_config(self) -> PaastaNativeConfig:
         return self.config_dict.get("paasta_native", {})
 
@@ -2716,6 +2669,9 @@ class SystemPaastaConfig:
 
     def get_skip_cpu_burst_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_burst_validation", [])
+
+    def get_skip_unique_instance_name_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_unique_instance_name_validation", [])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
@@ -2982,7 +2938,7 @@ def get_user_agent() -> str:
 
 
 @contextlib.contextmanager
-def atomic_file_write(target_path: str) -> Iterator[IO]:
+def atomic_file_write(target_path: str, mode: int = 0o0666) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
@@ -2995,7 +2951,7 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
             temp_target_path = f.name
             yield f
 
-        mode = 0o0666 & (~get_umask())
+        mode = mode & (~get_umask())
         os.chmod(temp_target_path, mode)
         os.rename(temp_target_path, target_path)
 

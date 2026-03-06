@@ -4,7 +4,6 @@ from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 
-
 FORECAST_POLICY_KEY = "forecast_policy"
 
 

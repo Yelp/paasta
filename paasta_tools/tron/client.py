@@ -21,7 +21,6 @@ from paasta_tools import yaml_tools as yaml
 from paasta_tools.cli.authentication import get_service_auth_token
 from paasta_tools.utils import get_user_agent
 
-
 log = logging.getLogger(__name__)
 
 

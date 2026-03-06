@@ -1,16 +1,24 @@
 import os
 import subprocess
+import sys
 from subprocess import PIPE
 
 
 def cmd(args, capture_output=True):
-    if capture_output:
-        ret = subprocess.run(args.split(" "), stdout=PIPE, stderr=PIPE)
-        ret.stdout = ret.stdout.decode("utf-8")
-        ret.stderr = ret.stderr.decode("utf-8")
-        return ret
-    else:
-        return subprocess.run(args.split(" "))
+    try:
+        return subprocess.run(
+            args.split(" "),
+            stdout=PIPE if capture_output else None,
+            stderr=PIPE if capture_output else None,
+            check=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        if exc.stdout:
+            print(exc.stdout)
+        if exc.stderr:
+            print(exc.stderr, file=sys.stderr)
+        raise
 
 
 def start_paasta_api():
@@ -30,7 +38,7 @@ def paasta_apply():
         "python -m paasta_tools.setup_kubernetes_job {} -v".format(
             service_instances.stdout.strip()
         ),
-        False,
+        True,
     )
 
 

@@ -29,6 +29,9 @@ from kazoo.retry import KazooRetry
 from mypy_extensions import TypedDict
 from retry import retry
 
+from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.utils import get_user_agent
+
 from . import exceptions
 from . import framework
 from . import log
@@ -37,8 +40,6 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
-from paasta_tools.async_utils import async_ttl_cache
-from paasta_tools.utils import get_user_agent
 
 ZOOKEEPER_TIMEOUT = 1
 

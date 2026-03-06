@@ -19,7 +19,6 @@ from typing import List
 from typing import Optional
 from typing import TypedDict
 
-
 _autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)
 
 
@@ -43,8 +42,12 @@ class MetricsProviderDict(TypedDict, total=False):
     forecast_policy: Optional[str]
     moving_average_window_seconds: Optional[int]
     use_resource_metrics: bool
-    prometheus_adapter_config: Optional[dict]
     max_instances_alert_threshold: float
+    # arbitrary-promql specific fields
+    metrics_query: Optional[str]
+    series_query: Optional[str]
+    target_type: Optional[str]
+    resources: Optional[dict]
 
 
 class AutoscalingParamsDict(TypedDict, total=False):

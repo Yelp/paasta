@@ -23,6 +23,7 @@ from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
+from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import assume_aws_role
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
@@ -31,7 +32,6 @@ from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.local_run import get_local_run_environment_vars
-from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import paasta_local_run
 from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
 from paasta_tools.cli.cmds.local_run import perform_http_healthcheck

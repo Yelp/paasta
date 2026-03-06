@@ -19,7 +19,6 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DeploymentsJsonV2
 
-
 TEST_SERVICE_NAME = "example_happyhour"
 TEST_SOA_DIR = "fake_soa_dir"
 TEST_CLUSTER_NAME = "cluster"

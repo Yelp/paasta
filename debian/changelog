@@ -1,3 +1,238 @@
+paasta-tools (1.44.1) jammy; urgency=medium
+
+  * 1.44.1 tagged with 'make release'
+    Commit: Revert "get rid of one reason to use sudo (#4252)"  This
+    reverts commit 57b53a3deefc98475ec9a69935112dd8927c4ad7.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 04 Mar 2026 10:02:07 -0800
+
+paasta-tools (1.44.0) jammy; urgency=medium
+
+  * 1.44.0 tagged with 'make release'
+    Commit: get rid of one reason to use sudo (#4252)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 04 Mar 2026 03:55:59 -0800
+
+paasta-tools (1.43.3) jammy; urgency=medium
+
+  * 1.43.3 tagged with 'make release'
+    Commit: small improvements to remote-run (#4247)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 18 Feb 2026 06:13:18 -0800
+
+paasta-tools (1.43.2) jammy; urgency=medium
+
+  * 1.43.2 tagged with 'make release'
+    Commit: Fix PaaSTA status for CassandraClusters during EKS migration
+    (#4244)  Currently, `paasta status` doesn"t work for
+    `cassandraclustereks-` configs in yelpsoa until the clusters are
+    migrated. This implements the same mechanism Flink did which is to
+    get the status of both EKS and NonEKS deployment configs.  This PR
+    also introduces the `skip_unique_instance_name_validation` similar
+    to `skip_cpu_burst_validation` so we can temporarily allow identical
+    instance names while the migration is ongoing.
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Mon, 16 Feb 2026 03:42:57 -0800
+
+paasta-tools (1.43.1) jammy; urgency=medium
+
+  * 1.43.1 tagged with 'make release'
+    Commit: Add cassandra eks support (#4233)
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Thu, 12 Feb 2026 02:20:10 -0800
+
+paasta-tools (1.43.0) jammy; urgency=medium
+
+  * 1.43.0 tagged with 'make release'
+    Commit: Don"t allow cpu burst for tron (#4242)  While ostensibly
+    allowed by the schema, this isn"t actually usable in tron due to
+    validate_tronfig_rules not seeing this as valid.  Given that no one
+    has needed burst in 7 years (when Yelp/paasta#2571 was merged), I
+    think it"s safe to say that we can just entirely remove this :p
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Feb 2026 12:36:19 -0800
+
+paasta-tools (1.42.0) jammy; urgency=medium
+
+  * 1.42.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/document_following_other_service"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Feb 2026 11:36:16 -0800
+
+paasta-tools (1.41.2) jammy; urgency=medium
+
+  * 1.41.2 tagged with 'make release'
+    Commit: Merge pull request #4232 from Yelp/u/robj/remove-tron-mesos-
+    reporting-v2  remove mesos paths from tron_tools
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 11 Feb 2026 04:02:21 -0800
+
+paasta-tools (1.41.1) jammy; urgency=medium
+
+  * 1.41.1 tagged with 'make release'
+    Commit: Fix arbitrary-promql metric naming bug by DRYing metric name
+    construction
+
+ -- Evan Krall <krall@yelp.com>  Thu, 05 Feb 2026 11:13:17 -0800
+
+paasta-tools (1.41.0) jammy; urgency=medium
+
+  * 1.41.0 tagged with 'make release'
+    Commit: Add tests for METRICS_PROVIDER_PROMQL in
+    get_autoscaling_provider_spec
+
+ -- Evan Krall <krall@yelp.com>  Wed, 04 Feb 2026 11:44:45 -0800
+
+paasta-tools (1.40.1) jammy; urgency=medium
+
+  * 1.40.1 tagged with 'make release'
+    Commit: Merge pull request #4224 from Yelp/u/robj/fix-k8s-itests-
+    setup  fix the k8s_itests
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 03 Feb 2026 08:12:23 -0800
+
+paasta-tools (1.40.0) jammy; urgency=medium
+
+  * 1.40.0 tagged with 'make release'
+    Commit: spark-run: long-lasting SSO token (#4217)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 03 Feb 2026 01:35:26 -0800
+
+paasta-tools (1.39.1) jammy; urgency=medium
+
+  * 1.39.1 tagged with 'make release'
+    Commit: Merge pull request #4214 from Yelp/u/jfong/moving-avg-window-
+    scrape-interval  Make moving_average_window_seconds at least 60s
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Feb 2026 09:45:09 -0800
+
+paasta-tools (1.39.0) jammy; urgency=medium
+
+  * 1.39.0 tagged with 'make release'
+    Commit: Add a new endpoint to return deployment info for a (service,
+    deploy group) (#4212)  I feel like I"ve wanted this before - but now
+    I need it for use in Airflow (to ensure folks aren"t hardcoding tags
+    and whatnot for the service images they"re using) :p  NOTE: this is
+    mostly `claude` with some hand-holding - I"ll be adding a Skill to
+    add endpoints in an upcoming PR
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 02 Feb 2026 06:26:21 -0800
+
+paasta-tools (1.38.0) jammy; urgency=medium
+
+  * 1.38.0 tagged with 'make release'
+    Commit: add use-sso-service-auth-token to spark-run (#4213)
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 02 Feb 2026 02:12:47 -0800
+
+paasta-tools (1.37.1) jammy; urgency=medium
+
+  * 1.37.1 tagged with 'make release'
+    Commit: Merge pull request #4203 from Yelp/u/robj/remove-a-sync
+    replace a_sync library
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 02 Feb 2026 02:03:18 -0800
+
+paasta-tools (1.37.0) xenial; urgency=medium
+
+  * 1.37.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/smarter_prestop_everywhere"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 27 Jan 2026 15:49:40 -0800
+
+paasta-tools (1.36.14) xenial; urgency=medium
+
+  * 1.36.14 tagged with 'make release'
+    Commit: Merge pull request #4207 from Yelp/u/robj/fix-validate
+    remove security key check from paasta validate
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 27 Jan 2026 09:21:07 -0800
+
+paasta-tools (1.36.13) xenial; urgency=medium
+
+  * 1.36.13 tagged with 'make release'
+    Commit: Merge pull request #4200 from Yelp/u/robj/remove-iptables-
+    code  Remove iptables code
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 27 Jan 2026 03:23:52 -0800
+
+paasta-tools (1.36.12) xenial; urgency=medium
+
+  * 1.36.12 tagged with 'make release'
+    Commit: Merge pull request #4198 from Yelp/u/pgreen/secret-sync-ssm-
+    support-automount  Support syncing secrets from AWS SSM Parameter
+    Store
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 22 Jan 2026 07:54:25 -0800
+
+paasta-tools (1.36.11) xenial; urgency=medium
+
+  * 1.36.11 tagged with 'make release'
+    Commit: Merge pull request #4201 from Yelp/u/robj/revert-local-run-
+    shift  Revert "Merge pull request #4184 from Yelp/u/robj/local-run-
+    mesosisms"
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 20 Jan 2026 06:55:12 -0800
+
+paasta-tools (1.36.10) xenial; urgency=medium
+
+  * 1.36.10 tagged with 'make release'
+    Commit: Merge pull request #4184 from Yelp/u/robj/local-run-
+    mesosisms  remove mesosisms from local-run; remove
+    paasta_docker_wrapper
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 19 Jan 2026 06:50:03 -0800
+
+paasta-tools (1.36.9) xenial; urgency=medium
+
+  * 1.36.9 tagged with 'make release'
+    Commit: Added code to export user, service account name vars to env
+    for scs (#4193)  Added code to export user, service account name
+    vars to env for scs
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 15 Jan 2026 08:37:26 -0800
+
+paasta-tools (1.36.8) xenial; urgency=medium
+
+  * 1.36.8 tagged with 'make release'
+    Commit: Merge pull request #4185 from Yelp/u/robj/remove-clusterman-
+    metrics  remove references to clusterman_metrics
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 12 Jan 2026 04:16:14 -0800
+
+paasta-tools (1.36.7) xenial; urgency=medium
+
+  * 1.36.7 tagged with 'make release'
+    Commit: Merge pull request #4195 from Yelp/joycek/update-endpoint-
+    latency  Update name and field type for endpoint latency
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 09 Jan 2026 11:34:36 -0800
+
+paasta-tools (1.36.6) xenial; urgency=medium
+
+  * 1.36.6 tagged with 'make release'
+    Commit: Merge pull request #4191 from Yelp/joycek/latency-alerting
+    Add new smartstack fields for latency alerting
+
+ -- Joyce Kung <joycek@10-40-30-138-uswest1cdevc.dev.yelpcorp.com>  Wed, 07 Jan 2026 12:36:52 -0800
+
+paasta-tools (1.36.5) xenial; urgency=medium
+
+  * 1.36.5 tagged with 'make release'
+    Commit: Bump vault-tools version (#4189)  We"ve deleted an internal
+    ecosystem, and this will stop that ecosystem name from showing up in
+    paasta secret files
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 07 Jan 2026 10:30:32 -0800
+
+paasta-tools (1.36.4) xenial; urgency=medium
+
+  * 1.36.4 tagged with 'make release'
+    Commit: spark-run: add warning message when using pod-identity
+    without service name (#4188)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 07 Jan 2026 07:06:40 -0800
+
 paasta-tools (1.36.3) xenial; urgency=medium
 
   * 1.36.3 tagged with 'make release'

@@ -38,6 +38,10 @@ endif
 
 .PHONY: all docs test itest k8s_itests quick-test
 
+PIPX ?= pipx
+PYTHON ?= python3.10
+VIRTUALENV ?= $(shell if [ -n "$$PIPX_BIN_DIR" ]; then echo "$$PIPX_BIN_DIR/virtualenv"; else echo "$$HOME/.local/bin/virtualenv"; fi)
+
 dev: .paasta/bin/activate
 	.paasta/bin/tox
 
@@ -67,9 +71,11 @@ dev-api: .tox/py310-linux
 	.paasta/bin/tox -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.10 .paasta
-	.paasta/bin/pip install -r requirements-bootstrap.txt
-	.paasta/bin/pip install -U tox==3.28.0
+	@command -v $(PIPX) >/dev/null 2>&1 || { echo "pipx is required to install virtualenv"; exit 1; }
+	$(PIPX) install --force virtualenv
+	test -d .paasta/bin/activate || $(VIRTUALENV) -p $(PYTHON) .paasta
+	.paasta/bin/python -m pip install -r requirements-bootstrap.txt
+	.paasta/bin/python -m pip install -U tox==3.28.0
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate

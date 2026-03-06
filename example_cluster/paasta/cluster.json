@@ -1,4 +1,0 @@
-{
-    "cluster": "testcluster",
-    "zookeeper": "zk://zookeeper:2181/mesos-testcluster"
-}

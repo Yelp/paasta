@@ -25,10 +25,10 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_git_url
-from paasta_tools.utils import list_services
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import get_git_url
+from paasta_tools.utils import list_services
 
 NO_DESCRIPTION_MESSAGE = "No 'description' entry in service.yaml. Please add a one line sentence that describes this service"
 NO_EXTERNAL_LINK_MESSAGE = (

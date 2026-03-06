@@ -18,7 +18,6 @@ from multiprocessing import Pool
 from os import cpu_count
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -26,26 +25,27 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import cast
 
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import V1Node
+from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import group_pods_by_service_instance
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import V1Node
-from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SPACER
 
 try:
     import yelp_meteorite

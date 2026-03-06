@@ -75,9 +75,7 @@ from kubernetes.client import V2MetricIdentifier
 from kubernetes.client import V2MetricSpec
 from kubernetes.client import V2MetricTarget
 from kubernetes.client import V2ResourceMetricSource
-from kubernetes.client.models.v2_object_metric_source import (
-    V2ObjectMetricSource,
-)
+from kubernetes.client.models.v2_object_metric_source import V2ObjectMetricSource
 from kubernetes.client.rest import ApiException
 from requests.exceptions import ConnectionError
 
@@ -88,6 +86,16 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.contrib.get_running_task_allocation import (
     get_pod_pool as task_allocation_get_pod_pool,
 )
+from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
+from paasta_tools.kubernetes_tools import KubeAffinityCondition
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeContainerResources
+from paasta_tools.kubernetes_tools import KubeCustomResource
+from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.kubernetes_tools import KubernetesDeployStatus
+from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
@@ -122,18 +130,8 @@ from paasta_tools.kubernetes_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_secret_signature
 from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.kubernetes_tools import group_pods_by_service_instance
-from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
-from paasta_tools.kubernetes_tools import KubeAffinityCondition
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubeContainerResources
-from paasta_tools.kubernetes_tools import KubeCustomResource
-from paasta_tools.kubernetes_tools import KubeDeployment
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
-from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -154,14 +152,16 @@ from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import CAPS_DROP
+from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
@@ -170,6 +170,13 @@ from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TopologySpreadConstraintDict
+
+# Expected pre-stop command for smartstack services waiting for connections on port 8888
+EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT = [
+    "/bin/sh",
+    "-c",
+    "sleep 30; while grep '^ *[0-9]*: ........:22B8 ........:.... 01 ' /proc/net/tcp; do sleep 1; echo; done",
+]
 
 
 def test_force_delete_pods():
@@ -936,7 +943,9 @@ class TestKubernetesDeploymentConfig:
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
                         pre_stop=V1LifecycleHandler(
-                            _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
+                            _exec=V1ExecAction(
+                                command=EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT
+                            )
                         )
                     ),
                     liveness_probe=V1Probe(
@@ -962,6 +971,7 @@ class TestKubernetesDeploymentConfig:
             service_namespace_config.get_healthcheck_mode.return_value = "http"
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
             service_namespace_config.get_longest_timeout_ms.return_value = 1000
+            service_namespace_config.is_in_smartstack.return_value = True
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
@@ -2674,9 +2684,21 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "is_in_smartstack,termination_action,expected",
         [
-            (True, None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            (True, "", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            (True, [], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            (
+                True,
+                None,
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # no termination action, waits for connections
+            (
+                True,
+                "",
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # empty termination action, waits for connections
+            (
+                True,
+                [],
+                EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT,
+            ),  # empty termination action, waits for connections
             (True, "/bin/no-args", ["/bin/no-args"]),  # no args command
             (True, ["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
             (
@@ -2820,10 +2842,10 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (METRICS_PROVIDER_CPU,),
+        (METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY),
     )
-    def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
-        # with cpu
+    def test_get_autoscaling_metric_spec_cpu_memory(self, metrics_provider):
+        # with cpu or memory
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
@@ -2867,7 +2889,7 @@ class TestKubernetesDeploymentConfig:
                     V2MetricSpec(
                         type="Resource",
                         resource=V2ResourceMetricSource(
-                            name="cpu",
+                            name=metrics_provider,
                             target=V2MetricTarget(
                                 type="Utilization",
                                 average_utilization=50.0,
@@ -3280,6 +3302,62 @@ class TestKubernetesDeploymentConfig:
         )
         expected_res = None
         assert expected_res == return_value
+
+    @pytest.mark.parametrize(
+        "target_type,expected_target_type,expected_target_field",
+        [
+            ("AverageValue", "AverageValue", "average_value"),
+            ("Value", "Value", "value"),
+            (None, "AverageValue", "average_value"),  # default
+        ],
+    )
+    def test_get_autoscaling_metric_spec_arbitrary_promql(
+        self, target_type, expected_target_type, expected_target_field
+    ):
+        metrics_provider = {
+            "type": METRICS_PROVIDER_PROMQL,
+            "setpoint": 0.5,
+            "metrics_query": "sum(rate(my_metric[5m]))",
+        }
+        if target_type is not None:
+            metrics_provider["target_type"] = target_type
+
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_providers": [metrics_provider]},
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+            "paasta",
+        )
+        assert return_value is not None
+        assert len(return_value.spec.metrics) == 1
+        metric_spec = return_value.spec.metrics[0]
+        assert metric_spec.type == "Object"
+        assert (
+            metric_spec.object.metric.name == "service-instance-arbitrary-promql-prom"
+        )
+        assert metric_spec.object.target.type == expected_target_type
+        # Check that the correct field is set based on target type
+        if expected_target_field == "average_value":
+            assert metric_spec.object.target.average_value == 0.5
+            assert metric_spec.object.target.value is None
+        else:
+            assert metric_spec.object.target.value == 0.5
+            assert metric_spec.object.target.average_value is None
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
@@ -5021,7 +5099,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c86f676"
+            == "config31b524d4"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

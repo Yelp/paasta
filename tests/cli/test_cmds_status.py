@@ -29,6 +29,7 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
@@ -41,7 +42,6 @@ from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import missing_deployments_message
-from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_cassandra_status
@@ -3099,6 +3099,48 @@ class TestFormatKubernetesPodTable:
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
+
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
+    def test_terminating(
+        self,
+        mock_datetime_module,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567890.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567830.0
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (a minute ago)"
+        )
+
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
+    def test_terminating_future(
+        self,
+        mock_datetime_module,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567830.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567890.0
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (in a minute)"
+        )
 
     def test_no_health(
         self,

@@ -39,7 +39,6 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-import a_sync
 import humanize
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
@@ -47,15 +46,17 @@ from service_configuration_lib import read_deploy
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
-from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.api.client import PaastaOApiClient
+from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.async_utils import run_sync
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
+from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -67,10 +68,10 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
-from paasta_tools.kubernetes_tools import format_pod_event_messages
-from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
+from paasta_tools.kubernetes_tools import format_pod_event_messages
+from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
@@ -83,26 +84,27 @@ from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.paastaapi.models import KubernetesVersion
 from paasta_tools.tron_tools import TronActionConfig
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_deployment_version_from_dockerurl
 from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SystemPaastaConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -115,6 +117,7 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -139,8 +142,13 @@ InstanceStatusWriter = Callable[
 EKS_DEPLOYMENT_CONFIGS = [
     EksDeploymentConfig,
     FlinkEksDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
 ]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
+CASSANDRA_DEPLOYMENT_CONFIGS = [
+    CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
+]
 
 
 def add_subparser(
@@ -459,7 +467,19 @@ def format_kubernetes_pod_table(pods, verbose: int):
         hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
         phase = pod.phase
         reason = pod.reason
-        if phase is None or phase == "Pending":
+        # Check if pod is terminating (has deletion timestamp)
+        delete_timestamp = getattr(pod, "delete_timestamp", None)
+        if delete_timestamp:
+            now = datetime.now()
+            deletion_time = datetime.fromtimestamp(delete_timestamp)
+            time_diff = deletion_time - now
+            time_remaining = abs(time_diff.total_seconds())
+            time_str = humanize.naturaldelta(timedelta(seconds=time_remaining))
+            if time_diff.total_seconds() > 0:
+                health_check_status = PaastaColors.cyan(f"Terminating (in {time_str})")
+            else:
+                health_check_status = PaastaColors.cyan(f"Terminating ({time_str} ago)")
+        elif phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
@@ -987,7 +1007,7 @@ def _print_flink_status_from_job_manager(
     if flink_jobs.get("jobs"):
         job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
-        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
+        jobs = run_sync(get_flink_job_details, service, instance, job_ids, client)
     except Exception as e:
         output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))
@@ -2085,8 +2105,11 @@ def report_status_for_cluster(
         if namespace in actual_deployments:
             deployed_instances.append(instance)
 
-        # Case: flink instances don't use `deployments.json`
-        elif instance_whitelist.get(instance) == FlinkDeploymentConfig:
+        # Case: flink/cassandra instances don't use `deployments.json`
+        elif (
+            instance_whitelist.get(instance)
+            in FLINK_DEPLOYMENT_CONFIGS + CASSANDRA_DEPLOYMENT_CONFIGS
+        ):
             deployed_instances.append(instance)
 
         # Case: service NOT deployed to cluster.instance
@@ -2309,12 +2332,15 @@ def paasta_status(args) -> int:
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
+            all_cassandra = all(
+                (i in CASSANDRA_DEPLOYMENT_CONFIGS) for i in instances.values()
+            )
             actual_deployments: Mapping[str, DeploymentVersion]
-            if all_flink:
+            if all_flink or all_cassandra:
                 actual_deployments = {}
             else:
                 actual_deployments = get_actual_deployments(service, soa_dir)
-            if all_flink or actual_deployments:
+            if all_flink or all_cassandra or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(
@@ -2440,4 +2466,5 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,
     cassandracluster=print_cassandra_status,
+    cassandraclustereks=print_cassandra_status,
 )

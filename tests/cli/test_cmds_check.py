@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
+from paasta_tools.cli.cmds.check import NoSuchService
 from paasta_tools.cli.cmds.check import deploy_check
 from paasta_tools.cli.cmds.check import deploy_has_security_check
 from paasta_tools.cli.cmds.check import deployments_check
@@ -25,7 +26,6 @@ from paasta_tools.cli.cmds.check import makefile_check
 from paasta_tools.cli.cmds.check import makefile_has_a_tab
 from paasta_tools.cli.cmds.check import makefile_has_docker_tag
 from paasta_tools.cli.cmds.check import makefile_responds_to
-from paasta_tools.cli.cmds.check import NoSuchService
 from paasta_tools.cli.cmds.check import paasta_check
 from paasta_tools.cli.cmds.check import sensu_check
 from paasta_tools.cli.cmds.check import service_dir_check

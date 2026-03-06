@@ -17,7 +17,6 @@ import csv
 import logging
 import random
 from typing import Any
-from typing import cast
 from typing import Collection
 from typing import DefaultDict
 from typing import Dict
@@ -30,6 +29,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
 from typing import Union
+from typing import cast
 
 import requests
 from kubernetes.client import V1Node
@@ -43,11 +43,11 @@ from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.monitoring_tools import ReplicationChecker
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
-from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import get_user_agent
 
 
 class HaproxyBackend(TypedDict, total=False):

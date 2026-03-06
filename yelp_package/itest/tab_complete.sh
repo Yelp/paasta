@@ -36,12 +36,18 @@ tab_complete_fail() {
 # This test will need to be modified if we add any new subcommands that start with
 # with the provided pre_typed:
 pre_typed='st'
+comp_line="paasta $pre_typed"
+comp_point=${#comp_line}
 expected=`echo -e "start\vstatus\vstop"`
 # We feed the special env variables available at tab completion time
 # to the paasta command to make it return back the tab completion output to
 # fd 8, which we redirect to 1 so we can capture it
 # See https://github.com/kislyuk/argcomplete#debugging
-actual=`COMP_LINE="paasta $pre_typed" COMP_POINT=99 _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null`
+actual=`COMP_LINE="$comp_line" COMP_POINT=$comp_point _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null || true`
+if [[ -z "$actual" ]]; then
+    echo "Tab completion for '$pre_typed' returned no output"
+    exit 1
+fi
 if [[ $expected == $actual ]]; then
     tab_complete_pass "$pre_typed"
 else
@@ -49,7 +55,11 @@ else
 fi
 
 # Test tab completion in zsh
-zsh_actual=$(zsh -c "COMP_LINE='paasta $pre_typed' COMP_POINT=99 _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null")
+zsh_actual=$(zsh -c "COMP_LINE='$comp_line' COMP_POINT=$comp_point _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null" || true)
+if [[ -z "$zsh_actual" ]]; then
+    echo "Zsh tab completion for '$pre_typed' returned no output"
+    exit 1
+fi
 if [[ $expected == $zsh_actual ]]; then
     tab_complete_pass "$pre_typed"
 else

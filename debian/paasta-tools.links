@@ -26,8 +26,6 @@ opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
 opt/venvs/paasta-tools/bin/paasta_dump_locally_running_services usr/bin/paasta_dump_locally_running_services
 opt/venvs/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
-opt/venvs/paasta-tools/bin/paasta_firewall_logging usr/bin/paasta_firewall_logging
-opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
 opt/venvs/paasta-tools/bin/paasta_list_kubernetes_service_instances usr/bin/paasta_list_kubernetes_service_instances
 opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/paasta_list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_oom_logger usr/bin/paasta_oom_logger

@@ -23,7 +23,6 @@ from paasta_tools.smartstack_tools import (
 )
 from paasta_tools.utils import load_system_paasta_config
 
-
 system_paasta_config = load_system_paasta_config()
 
 synapse_port = system_paasta_config.get_synapse_port()

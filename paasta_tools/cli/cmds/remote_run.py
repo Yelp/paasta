@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -25,19 +26,18 @@ from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import parse_error
 from paasta_tools.cli.utils import run_interactive_cli
+from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.kubernetes.remote_run import format_remote_run_job_name
 from paasta_tools.kubernetes.remote_run import load_eks_or_adhoc_deployment_config
-from paasta_tools.kubernetes.remote_run import TOOLBOX_MOCK_SERVICE
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
-
 
 KUBECTL_EXEC_CMD_TEMPLATE = (
     "{kubectl_wrapper} --token {token} exec -it -n {namespace} {pod} -- /bin/bash"
@@ -66,6 +66,15 @@ def _list_services_and_toolboxes() -> List[str]:
     return list(list_services()) + sorted(
         f"{TOOLBOX_MOCK_SERVICE}-{instance}" for instance in toolbox_instances
     )
+
+
+def _validate_cluster_name(cluster: str) -> str:
+    clusters = list(list_clusters())
+    if cluster not in clusters:
+        raise argparse.ArgumentTypeError(
+            f"Unknown cluster {cluster!r}. Valid clusters: {', '.join(clusters)}"
+        )
+    return cluster
 
 
 def _get_kubectl_wrapper(cluster: str) -> str:
@@ -126,7 +135,7 @@ def paasta_remote_run_copy(
         )
 
     if args.toolbox:
-        cp_command = exec_command.split(" ")
+        cp_command = exec_command
     else:
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
@@ -139,8 +148,9 @@ def paasta_remote_run_copy(
             source=args.copy_file_source,
             dest=args.copy_file_dest,
             token=token_response.token,
-        ).split(" ")
-    call = subprocess.run(cp_command, capture_output=True)
+        )
+
+    call = subprocess.run(shlex.split(cp_command), capture_output=True)
     if call.returncode != 0:
         print("Error copying file from remote-run pod: ", file=sys.stderr)
         print(call.stderr.decode("utf-8"), file=sys.stderr)
@@ -223,6 +233,7 @@ def paasta_remote_run_start(
         # I.e., being `nobody` is fine in a normal remote-run, but in toolbox containers
         # we will require knowing the real user (and some tools may need that too).
         exec_command = f"ssh -A {poll_response.pod_address}"
+        print(f"Connecting to {poll_response.pod_address} via SSH...")
     else:
         token_response = client.remote_run.remote_run_token(
             args.service, args.instance, user
@@ -236,18 +247,25 @@ def paasta_remote_run_start(
             pod=poll_response.pod_name,
             token=token_response.token,
         )
+        print(
+            f"Connecting to {poll_response.namespace}:{poll_response.pod_name} via kubectl...",
+        )
 
     if args.copy_file:
         for filename in args.copy_file:
-            cp_command = KUBECTL_CP_TO_CMD_TEMPLATE.format(
-                kubectl_wrapper=kubectl_wrapper,
-                namespace=poll_response.namespace,
-                pod=poll_response.pod_name,
-                source=filename,
-                dest=os.path.join("/tmp", os.path.basename(filename)),
-                token=token_response.token,
-            ).split(" ")
-            call = subprocess.run(cp_command, capture_output=True)
+            cp_command = (
+                f"scp -A {filename} {poll_response.pod_address}:/tmp/"
+                if args.toolbox
+                else KUBECTL_CP_TO_CMD_TEMPLATE.format(
+                    kubectl_wrapper=kubectl_wrapper,
+                    namespace=poll_response.namespace,
+                    pod=poll_response.pod_name,
+                    source=filename,
+                    dest=os.path.join("/tmp", os.path.basename(filename)),
+                    token=token_response.token,
+                )
+            )
+            call = subprocess.run(shlex.split(cp_command), capture_output=True)
             if call.returncode != 0:
                 print("Error copying file to remote-run pod: ", file=sys.stderr)
                 print(call.stderr.decode("utf-8"), file=sys.stderr)
@@ -320,7 +338,7 @@ def add_common_args_to_parser(parser: argparse.ArgumentParser):
         "--cluster",
         help="The name of the cluster you wish to run your task on. Required.",
         required=True,
-        choices=list_clusters(),
+        type=_validate_cluster_name,
     )
     cluster_arg.completer = lazy_choices_completer(list_clusters)  # type: ignore
 

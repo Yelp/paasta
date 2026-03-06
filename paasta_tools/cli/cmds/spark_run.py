@@ -8,7 +8,6 @@ import socket
 import sys
 from configparser import ConfigParser
 from typing import Any
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -16,43 +15,34 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import Union
+from typing import cast
 
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import AWS_DEFAULT_CREDENTIALS_PROVIDER
+from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_spark_hourly_cost
-from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.authentication import get_service_auth_token
+from paasta_tools.cli.authentication import maintain_valid_sso_token
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.kubernetes_tools import get_service_account_name
-from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
-from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.tron_tools import load_tron_instance_configs
-from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import get_k8s_url_for_cluster
-from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
-from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import is_using_unprivileged_containers
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
@@ -60,15 +50,21 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import _run
+from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
+from paasta_tools.utils import get_username
+from paasta_tools.utils import is_using_unprivileged_containers
+from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import validate_pool
-
 
 DEFAULT_AWS_REGION = "us-west-2"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
-clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
@@ -359,7 +355,8 @@ def add_subparser(subparsers):
         default=None,
     )
 
-    list_parser.add_argument(
+    service_auth_group = list_parser.add_mutually_exclusive_group()
+    service_auth_group.add_argument(
         "--use-service-auth-token",
         help=(
             "Acquire service authentication token for the underlying instance,"
@@ -367,6 +364,17 @@ def add_subparser(subparsers):
         ),
         action="store_true",
         dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+    service_auth_group.add_argument(
+        "--use-sso-service-auth-token",
+        help=(
+            "Acquire service authentication token from SSO provider,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_sso_service_auth_token",
         required=False,
         default=False,
     )
@@ -697,6 +705,8 @@ def get_spark_env(
     else:
         spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
+    spark_env.update(system_paasta_config.get_default_spark_driver_env())
+
     return spark_env
 
 
@@ -937,22 +947,15 @@ def configure_and_run_docker_container(
             log.info(history_server_url_msg)
     print(f"Selected cluster manager: {cluster_manager}\n")
 
-    if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
-        resources = get_resources_requested(spark_conf)
-        hourly_cost = get_spark_hourly_cost(
-            clusterman_metrics,
-            resources,
-            spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
-            args.pool,
-        )
-        message = (
-            f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
-            f" is estimated to cost ${hourly_cost} per hour"
-        )
-        if clusterman_metrics.util.costs.should_warn(hourly_cost):
-            print(PaastaColors.red(f"WARNING: {message}"))
-        else:
-            print(message)
+    if args.use_sso_service_auth_token:
+        # To simulate what would happen in a k8s pod, this mounts a directory in the local spark-run
+        # container where a background process will keep an SSO auth token updated until the container
+        # process terminates.
+        local_token_path = os.path.expanduser("~/.paasta/auth")
+        k8s_token_config = system_paasta_config.get_service_auth_token_volume_config()
+        container_token_path = k8s_token_config["container_path"]
+        maintain_valid_sso_token(local_token_path)
+        volumes.append(f"{local_token_path}:{container_token_path}:ro")
 
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
@@ -965,12 +968,6 @@ def configure_and_run_docker_container(
         docker_memory_limit=docker_memory_limit,
         docker_shm_size=docker_shm_size,
         docker_cpu_limit=docker_cpu_limit,
-    )
-
-
-def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
-    return is_mrjob or any(
-        c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]
     )
 
 
@@ -1319,14 +1316,18 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-
+            if not args.service or args.service == DEFAULT_SPARK_SERVICE:
+                print(
+                    "--service was not specified, this may prevent correctly matching allowed IAM roles",
+                    file=sys.stderr,
+                )
             allowed_iam_roles = get_all_iam_roles_for_service(
                 args.service, args.cluster
             )
             if args.force_pod_identity not in allowed_iam_roles:
                 print(
                     f"{args.force_pod_identity} is not an allowed role for this service. "
-                    f"Allowed roles are: {allowed_iam_roles}.",
+                    f"Allowed roles for {args.service} in {args.cluster} are: {allowed_iam_roles}.",
                     file=sys.stderr,
                 )
                 return 1

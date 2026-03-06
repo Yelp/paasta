@@ -10,8 +10,8 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAME
 from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE
-from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import replace_namespaced_configmap
 
 log = logging.getLogger(__name__)

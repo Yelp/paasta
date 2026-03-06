@@ -4,7 +4,6 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 
-
 ConstraintState = Dict[str, Dict[str, Any]]
 ConstraintOp = Callable[[str, str, str, ConstraintState], bool]
 

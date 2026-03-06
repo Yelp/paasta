@@ -23,8 +23,8 @@ from behave import then
 from behave import when
 from dulwich.objects import Blob
 from dulwich.objects import Commit
-from dulwich.objects import parse_timezone
 from dulwich.objects import Tree
+from dulwich.objects import parse_timezone
 from dulwich.repo import Repo
 
 from paasta_tools import generate_deployments_for_service

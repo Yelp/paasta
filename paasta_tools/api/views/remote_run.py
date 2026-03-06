@@ -23,7 +23,6 @@ from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
 from paasta_tools.kubernetes.remote_run import remote_run_token
 
-
 DEFAULT_MAX_DURATION = 60 * 60  # 1 hour
 
 

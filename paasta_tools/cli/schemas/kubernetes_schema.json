@@ -703,17 +703,6 @@
                         "type": "string"
                     }
                 },
-                "security": {
-                    "type": "object",
-                    "properties": {
-                        "outbound_firewall": {
-                            "enum": [
-                                "block",
-                                "monitor"
-                            ]
-                        }
-                    }
-                },
                 "sidecar_resource_requirements": {
                     "type": "object",
                     "additionalProperties": false,

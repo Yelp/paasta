@@ -19,8 +19,8 @@ import pytest
 from pyramid.httpexceptions import HTTPForbidden
 from pyramid.registry import Registry
 
-from paasta_tools.api.tweens import auth
 from paasta_tools.api.tweens import Handler
+from paasta_tools.api.tweens import auth
 
 
 @pytest.fixture

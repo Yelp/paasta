@@ -12,17 +12,16 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
-import a_sync
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ResourceRequirements
 
 from paasta_tools import kubernetes_tools
 from paasta_tools import mesos_tools
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
-
 
 MAIN_CONTAINER_TYPE = "main"
 
@@ -84,7 +83,7 @@ async def get_pool_from_mesos_task(task: Task) -> Optional[str]:
         return None
 
 
-@a_sync.to_blocking
+@to_blocking
 async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
     tasks = await mesos_tools.get_cached_list_of_running_tasks_from_frameworks()
     info_list = []

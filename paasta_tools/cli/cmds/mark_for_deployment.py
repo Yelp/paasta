@@ -40,7 +40,6 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
-import a_sync
 import humanize
 import progressbar
 from service_configuration_lib import read_deploy
@@ -53,7 +52,9 @@ from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.async_utils import to_blocking
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
@@ -77,10 +78,13 @@ from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.slack import get_slack_client
-from paasta_tools.utils import _log
-from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import RollbackTypes
+from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import _log
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_files_of_type_in_dir
 from paasta_tools.utils import get_git_url
@@ -89,9 +93,6 @@ from paasta_tools.utils import get_username
 from paasta_tools.utils import ldap_user_search
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import RollbackTypes
-from paasta_tools.utils import TimeoutError
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
@@ -1180,7 +1181,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         except (KeyError, asyncio.InvalidStateError):
             pass
 
-    @a_sync.to_blocking
+    @to_blocking
     async def do_wait_for_deployment(
         self, target_commit: str, target_image_version: Optional[str] = None
     ) -> None:
@@ -1752,6 +1753,7 @@ WAIT_FOR_INSTANCE_CLASSES = [
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    CassandraClusterEksDeploymentConfig,
 ]
 
 

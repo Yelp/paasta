@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
 import pytest
@@ -27,6 +27,7 @@ from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1TokenRequestSpec
 from kubernetes.client.exceptions import ApiException
 
+from paasta_tools.kubernetes.remote_run import RemoteRunError
 from paasta_tools.kubernetes.remote_run import bind_role_to_service_account
 from paasta_tools.kubernetes.remote_run import create_pod_scoped_role
 from paasta_tools.kubernetes.remote_run import create_remote_run_service_account
@@ -40,13 +41,15 @@ from paasta_tools.kubernetes.remote_run import remote_run_ready
 from paasta_tools.kubernetes.remote_run import remote_run_start
 from paasta_tools.kubernetes.remote_run import remote_run_stop
 from paasta_tools.kubernetes.remote_run import remote_run_token
-from paasta_tools.kubernetes.remote_run import RemoteRunError
 
 
+@patch("paasta_tools.kubernetes.remote_run.ensure_namespace", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_start(mock_client, mock_load_config, mock_wrapper_getter):
+def test_remote_run_start(
+    mock_client, mock_load_config, mock_wrapper_getter, mock_ensure_namespace
+):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_load_config.return_value.config_dict = {}
@@ -78,10 +81,13 @@ def test_remote_run_start(mock_client, mock_load_config, mock_wrapper_getter):
     mock_wrapper.create.assert_called_once_with(mock_client)
 
 
+@patch("paasta_tools.kubernetes.remote_run.ensure_namespace", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_start_command(mock_client, mock_load_config, mock_wrapper_getter):
+def test_remote_run_start_command(
+    mock_client, mock_load_config, mock_wrapper_getter, mock_ensure_namespace
+):
     mock_client = mock_client.return_value
     mock_load_config.return_value.get_namespace.return_value = "namespace"
     mock_load_config.return_value.config_dict = {}
@@ -115,12 +121,13 @@ def test_remote_run_start_command(mock_client, mock_load_config, mock_wrapper_ge
     mock_wrapper.create.assert_called_once_with(mock_client)
 
 
+@patch("paasta_tools.kubernetes.remote_run.ensure_namespace", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.remote_run_stop", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.load_eks_service_config", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
 def test_remote_run_start_recreate(
-    mock_client, mock_load_config, mock_wrapper_getter, mock_stop
+    mock_client, mock_load_config, mock_wrapper_getter, mock_stop, mock_ensure_namespace
 ):
     def _create_mock_job(name: str):
         mock_job = MagicMock()
@@ -158,10 +165,13 @@ def test_remote_run_start_recreate(
     )
 
 
+@patch("paasta_tools.kubernetes.remote_run.ensure_namespace", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.get_application_wrapper", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.generate_toolbox_deployment", autospec=True)
 @patch("paasta_tools.kubernetes.remote_run.KubeClient", autospec=True)
-def test_remote_run_start_toolbox(mock_client, mock_gen_config, mock_wrapper_getter):
+def test_remote_run_start_toolbox(
+    mock_client, mock_gen_config, mock_wrapper_getter, mock_ensure_namespace
+):
     mock_client = mock_client.return_value
     mock_gen_config.return_value.get_namespace.return_value = "remote-run-toolbox"
     mock_gen_config.return_value.config_dict = {}

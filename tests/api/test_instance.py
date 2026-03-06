@@ -172,10 +172,7 @@ def test_add_executor_info():
     }
     mock_task = mock.Mock(
         _Task__items={"a": "thing"},
-        executor=AsyncMock(
-            return_value=mock_executor,
-            func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
-        ),
+        executor=AsyncMock(return_value=mock_executor),
     )
     ret = instance.add_executor_info(mock_task)
     expected = {"a": "thing", "executor": {"some": "thing"}}
@@ -189,10 +186,7 @@ def test_add_executor_info():
 
 
 def test_add_slave_info():
-    mock_slave = AsyncMock(
-        return_value=mock.Mock(_MesosSlave__items={"some": "thing"}),
-        func=AsyncMock(),  # https://github.com/notion/a_sync/pull/40
-    )
+    mock_slave = AsyncMock(return_value=mock.Mock(_MesosSlave__items={"some": "thing"}))
     mock_task = mock.Mock(_Task__items={"a": "thing"}, slave=mock_slave)
     expected = {"a": "thing", "slave": {"some": "thing"}}
     assert instance.add_slave_info(mock_task)._Task__items == expected

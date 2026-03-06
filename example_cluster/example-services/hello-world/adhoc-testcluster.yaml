@@ -1,8 +1,0 @@
----
-remote:
-  deploy_group: testcluster.everything
-  cpus: .1
-  mem: 64
-  cmd: echo "Batch starting..." && /bin/sleep 5s && echo "Batch sucessful!"
-  # extra_volumes:
-  # - {containerPath: /nail/tmp, hostPath: /nail/tmp, mode: RO}

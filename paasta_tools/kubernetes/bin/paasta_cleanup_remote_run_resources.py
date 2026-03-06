@@ -27,9 +27,8 @@ from paasta_tools.kubernetes.remote_run import get_remote_run_jobs
 from paasta_tools.kubernetes.remote_run import get_remote_run_role_bindings
 from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import get_remote_run_service_accounts
-from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import KubeClient
-
+from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 
 ListingFuncType = Callable[[KubeClient, str], Sequence[Any]]
 DeletionFuncType = Callable[[str, str], Any]

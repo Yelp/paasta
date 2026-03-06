@@ -16,7 +16,6 @@ from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 
-
 logger = logging.getLogger(__name__)
 email_from_address = f"paasta@{getfqdn()}"
 

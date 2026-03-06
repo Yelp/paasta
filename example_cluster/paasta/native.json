@@ -1,6 +1,0 @@
-{
-    "paasta_native": {
-        "principal": "slave",
-        "secret": "secret1"
-    }
-}

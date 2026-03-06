@@ -1,1 +1,0 @@
-../mesos-paasta/setup-ssh.sh

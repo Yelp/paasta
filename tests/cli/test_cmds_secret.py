@@ -17,8 +17,8 @@ from unittest import mock
 from pytest import raises
 
 from paasta_tools.cli.cmds import secret
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
 
 
 def test_add_subparser():

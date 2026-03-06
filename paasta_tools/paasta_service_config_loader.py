@@ -21,14 +21,13 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_service_instance_configs
 from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoDeploymentsAvailable
-
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())

@@ -36,8 +36,8 @@ from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Node
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import get_all_nodes
 
 log = logging.getLogger(__name__)
 

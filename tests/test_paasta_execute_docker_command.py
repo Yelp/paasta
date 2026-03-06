@@ -16,9 +16,9 @@ from unittest import mock
 import docker
 import pytest
 
+from paasta_tools.paasta_execute_docker_command import TimeoutException
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_execute_docker_command import main
-from paasta_tools.paasta_execute_docker_command import TimeoutException
 
 
 def test_execute_in_container():

@@ -25,12 +25,10 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
--   repo: https://github.com/asottile/reorder_python_imports
-    rev: v1.4.0
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
     hooks:
-    -   id: reorder-python-imports
-        args: [--py3-plus]
-        additional_dependencies: [aspy.refactor_imports==0.5.3]
+    -   id: isort
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/asottile/pyupgrade
     rev: v1.12.0

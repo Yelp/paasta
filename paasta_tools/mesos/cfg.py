@@ -17,7 +17,6 @@ import copy
 import errno
 import json
 
-
 DEFAULTS = {
     "debug": "false",
     "log_file": None,

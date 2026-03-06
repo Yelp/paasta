@@ -14,7 +14,6 @@
 # limitations under the License.
 import glob
 
-from pkg_resources import yield_lines
 from setuptools import find_packages
 from setuptools import setup
 
@@ -23,7 +22,13 @@ from paasta_tools import __version__
 
 def get_install_requires():
     with open("requirements-minimal.txt", "r") as f:
-        minimal_reqs = list(yield_lines(f.read()))
+        # Parse requirements, stripping comments and empty lines
+        minimal_reqs = []
+        for line in f:
+            line = line.strip()
+            # Skip empty lines and comments
+            if line and not line.startswith("#"):
+                minimal_reqs.append(line)
 
     return minimal_reqs
 
@@ -37,7 +42,7 @@ setup(
     description="Tools for Yelps SOA infrastructure",
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
-    python_requires=">=3.9.0",
+    python_requires=">=3.10.0",
     install_requires=get_install_requires(),
     scripts=[
         "paasta_tools/apply_external_resources.py",
@@ -87,8 +92,6 @@ setup(
             "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",
             "paasta_setup_tron_namespace=paasta_tools.setup_tron_namespace:main",
             "paasta_docker_wrapper=paasta_tools.docker_wrapper:main",
-            "paasta_firewall_update=paasta_tools.firewall_update:main",
-            "paasta_firewall_logging=paasta_tools.firewall_logging:main",
             "paasta_oom_logger=paasta_tools.oom_logger:main",
             "paasta_broadcast_log=paasta_tools.broadcast_log_to_services:main",
             "paasta_dump_locally_running_services=paasta_tools.dump_locally_running_services:main",

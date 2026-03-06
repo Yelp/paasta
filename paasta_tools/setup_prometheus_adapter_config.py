@@ -18,10 +18,10 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import cast
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -32,11 +32,11 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.eks_tools import EksDeploymentConfig
-from paasta_tools.kubernetes_tools import ensure_namespace
-from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.long_running_service_tools import ALL_METRICS_PROVIDERS
 from paasta_tools.long_running_service_tools import (
     DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -59,6 +59,7 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
@@ -210,33 +211,70 @@ def create_instance_scaling_rule(
     if metrics_provider_config["type"] == METRICS_PROVIDER_CPU:
         log.debug("[{service}] prometheus-based CPU scaling is not supported")
         return None
+
+    if metrics_provider_config["type"] == METRICS_PROVIDER_MEMORY:
+        log.debug("[{service}] prometheus-based memory scaling is not supported")
+        return None
+
+    metric_name = instance_config.namespace_custom_prometheus_metric_name(
+        metrics_provider_config["type"]
+    )
+
     if metrics_provider_config["type"] == METRICS_PROVIDER_UWSGI:
         return create_instance_uwsgi_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_UWSGI_V2:
         return create_instance_uwsgi_v2_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_WORKER_LOAD:
         return create_instance_worker_load_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_PISCINA:
         return create_instance_piscina_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_GUNICORN:
         return create_instance_gunicorn_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
         return create_instance_active_requests_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_PROMQL:
         return create_instance_arbitrary_promql_scaling_rule(
-            service, instance_config, metrics_provider_config, paasta_cluster
+            service,
+            instance_config,
+            metrics_provider_config,
+            paasta_cluster,
+            metric_name,
         )
 
     raise ValueError(
@@ -249,6 +287,7 @@ def create_instance_active_requests_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -345,8 +384,6 @@ def create_instance_active_requests_scaling_rule(
         k8s:deployment:pods_status_ready{{{worker_filter_terms}}}
     """
 
-    metric_name = f"{deployment_name}-active-requests-prom"
-
     return {
         "name": {"as": metric_name},
         "seriesQuery": _minify_promql(series_query),
@@ -360,6 +397,7 @@ def create_instance_uwsgi_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -448,8 +486,6 @@ def create_instance_uwsgi_scaling_rule(
         {desired_instances} / {ready_pods_namespaced}
     """
 
-    metric_name = f"{deployment_name}-uwsgi-prom"
-
     return {
         "name": {"as": metric_name},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
@@ -463,6 +499,7 @@ def create_instance_uwsgi_v2_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -471,7 +508,6 @@ def create_instance_uwsgi_v2_scaling_rule(
     moving_average_window = metrics_provider_config.get(
         "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
     )
-    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
     # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
     # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
@@ -521,8 +557,6 @@ def create_instance_uwsgi_v2_scaling_rule(
         )
     """
 
-    metric_name = f"{deployment_name}-uwsgi-v2-prom"
-
     return {
         "name": {"as": metric_name},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
@@ -536,6 +570,7 @@ def create_instance_worker_load_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance using generic worker_busy metric.
@@ -545,7 +580,6 @@ def create_instance_worker_load_scaling_rule(
         "moving_average_window_seconds",
         DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
-    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
     # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
     # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
@@ -595,8 +629,6 @@ def create_instance_worker_load_scaling_rule(
         )
     """
 
-    metric_name = f"{deployment_name}-worker-load-prom"
-
     return {
         "name": {"as": metric_name},
         "seriesQuery": f"worker_busy{{{worker_filter_terms}}}",
@@ -610,6 +642,7 @@ def create_instance_piscina_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -694,7 +727,7 @@ def create_instance_piscina_scaling_rule(
     """
 
     return {
-        "name": {"as": f"{deployment_name}-piscina-prom"},
+        "name": {"as": metric_name},
         "seriesQuery": f"piscina_pool_utilization{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
@@ -706,6 +739,7 @@ def create_instance_gunicorn_scaling_rule(
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -792,8 +826,6 @@ def create_instance_gunicorn_scaling_rule(
         {desired_instances} / {current_replicas}
     """
 
-    metric_name = f"{deployment_name}-gunicorn-prom"
-
     return {
         "name": {"as": metric_name},
         "seriesQuery": f"gunicorn_worker_busy{{{worker_filter_terms}}}",
@@ -802,24 +834,32 @@ def create_instance_gunicorn_scaling_rule(
     }
 
 
+DEFAULT_ARBITRARY_PROMQL_RESOURCES: PrometheusAdapterResourceConfig = {
+    "overrides": {
+        "namespace": {"resource": "namespace"},
+        "deployment": {"group": "apps", "resource": "deployments"},
+    },
+}
+
+
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
+    metric_name: str,
 ) -> PrometheusAdapterRule:
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    prometheus_adapter_config = metrics_provider_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
-    if "seriesQuery" in prometheus_adapter_config:
-        # If the user specifies seriesQuery, don't wrap their metricsQuery, under the assumption that they may not want
+    if "series_query" in metrics_provider_config:
+        # If the user specifies series_query, don't wrap their metrics_query, under the assumption that they may not want
         # us to mess with their labels.
-        series_query = prometheus_adapter_config["seriesQuery"]
-        metrics_query = prometheus_adapter_config["metricsQuery"]
+        series_query = metrics_provider_config["series_query"]
+        metrics_query = metrics_provider_config["metrics_query"]
     else:
-        # If the user doesn't specify seriesQuery, assume they want to just write some promql that returns a number.
+        # If the user doesn't specify series_query, assume they want to just write some promql that returns a number.
         # Set up series_query to match the default `resources`
         series_query = f"""
             kube_deployment_labels{{
@@ -832,7 +872,7 @@ def create_instance_arbitrary_promql_scaling_rule(
         metrics_query = f"""
             label_replace(
                 label_replace(
-                    {prometheus_adapter_config["metricsQuery"]},
+                    {metrics_provider_config["metrics_query"]},
                     'deployment',
                     '{deployment_name}',
                     '',
@@ -847,18 +887,15 @@ def create_instance_arbitrary_promql_scaling_rule(
 
     return {
         "name": {
-            "as": f"{deployment_name}-arbitrary-promql",
+            "as": metric_name,
         },
         "seriesQuery": _minify_promql(series_query),
         "metricsQuery": _minify_promql(metrics_query),
-        "resources": prometheus_adapter_config.get(
-            "resources",
-            {
-                "overrides": {
-                    "namespace": {"resource": "namespace"},
-                    "deployment": {"group": "apps", "resource": "deployments"},
-                },
-            },
+        "resources": cast(
+            PrometheusAdapterResourceConfig,
+            metrics_provider_config.get(
+                "resources", DEFAULT_ARBITRARY_PROMQL_RESOURCES
+            ),
         ),
     }
 

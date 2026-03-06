@@ -30,7 +30,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import write_json_configuration_file
 from paasta_tools.utils import write_yaml_configuration_file
 
-
 AUTHORIZATION_CONFIG_FILE = "authorization.yaml"
 
 
