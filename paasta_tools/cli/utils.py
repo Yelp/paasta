@@ -16,6 +16,7 @@ import difflib
 import fnmatch
 import getpass
 import hashlib
+import json
 import logging
 import os
 import pty
@@ -1138,3 +1139,16 @@ def run_interactive_cli(
         f"exec {cmd}"
     )
     pty.spawn([shell, "-c", wrapped_cmd])
+
+
+def parse_error(body: str) -> str:
+    """Parse API error response body to extract meaningful error message."""
+    try:
+        body_object = json.loads(body)
+    except json.decoder.JSONDecodeError:
+        return body
+    return (
+        body_object.get("reason")
+        or body_object.get("message")
+        or json.dumps(body_object, indent=4)
+    )
