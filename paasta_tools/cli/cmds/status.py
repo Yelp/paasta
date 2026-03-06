@@ -972,11 +972,11 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
+        # Flink /overview returns all fields or none, so jobs_running
+        # is sufficient as a canary for the entire response.
         if getattr(overview, "jobs_running", None) is None:
             output.append(
-                PaastaColors.yellow(
-                    "    Jobs: unknown (jobmanager is not responding)"
-                )
+                PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
             )
         else:
             jobs_total_count = (
