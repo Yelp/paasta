@@ -1,3 +1,11 @@
+paasta-tools (1.45.0) jammy; urgency=medium
+
+  * 1.45.0 tagged with 'make release'
+    Commit: Merge pull request #4180 from Yelp/jfong/restart_replica
+    Add a "restart --replica" option
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 06 Mar 2026 11:10:59 -0800
+
 paasta-tools (1.44.1) jammy; urgency=medium
 
   * 1.44.1 tagged with 'make release'
