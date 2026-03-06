@@ -972,17 +972,13 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-        if any(
-            getattr(overview, field, None) is None
-            for field in (
-                "jobs_running",
-                "jobs_finished",
-                "jobs_failed",
-                "jobs_cancelled",
-            )
-        ):
+        # Flink /overview returns all fields or none, so jobs_running
+        # is sufficient as a canary for the entire response.
+        if getattr(overview, "jobs_running", None) is None:
             output.append(
-                PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+                PaastaColors.yellow(
+                    "    Jobs: unknown (jobmanager is not responding)"
+                )
             )
         else:
             jobs_total_count = (
@@ -999,14 +995,6 @@ def _print_flink_status_from_job_manager(
                 f" {overview.jobs_cancelled} cancelled,"
                 f" {jobs_total_count} total"
             )
-        if any(
-            getattr(overview, field, None) is None
-            for field in ("taskmanagers", "slots_available", "slots_total")
-        ):
-            output.append(
-                PaastaColors.yellow("    Slots: unknown (jobmanager is not responding)")
-            )
-        else:
             output.append(
                 "   "
                 f" {overview.taskmanagers} taskmanagers,"
