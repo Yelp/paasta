@@ -766,11 +766,13 @@ def append_pod_status(pod_status, output: List[str]):
         color_fn = (
             PaastaColors.green
             if pod["phase"] == "Running" and pod["container_state"] == "Running"
-            else PaastaColors.red
-            # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
-            if pod["phase"] == "Failed"
-            or pod["container_state_reason"] == "CrashLoopBackOff"
-            else PaastaColors.yellow
+            else (
+                PaastaColors.red
+                # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
+                if pod["phase"] == "Failed"
+                or pod["container_state_reason"] == "CrashLoopBackOff"
+                else PaastaColors.yellow
+            )
         )
 
         rows.append(
@@ -970,25 +972,46 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-        jobs_total_count = (
-            overview.jobs_running
-            + overview.jobs_finished
-            + overview.jobs_failed
-            + overview.jobs_cancelled
-        )
-        output.append(
-            "    Jobs:"
-            f" {overview.jobs_running} running,"
-            f" {overview.jobs_finished} finished,"
-            f" {overview.jobs_failed} failed,"
-            f" {overview.jobs_cancelled} cancelled,"
-            f" {jobs_total_count} total"
-        )
-        output.append(
-            "   "
-            f" {overview.taskmanagers} taskmanagers,"
-            f" {overview.slots_available}/{overview.slots_total} slots available"
-        )
+        if any(
+            getattr(overview, field, None) is None
+            for field in (
+                "jobs_running",
+                "jobs_finished",
+                "jobs_failed",
+                "jobs_cancelled",
+            )
+        ):
+            output.append(
+                PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+            )
+        else:
+            jobs_total_count = (
+                overview.jobs_running
+                + overview.jobs_finished
+                + overview.jobs_failed
+                + overview.jobs_cancelled
+            )
+            output.append(
+                "    Jobs:"
+                f" {overview.jobs_running} running,"
+                f" {overview.jobs_finished} finished,"
+                f" {overview.jobs_failed} failed,"
+                f" {overview.jobs_cancelled} cancelled,"
+                f" {jobs_total_count} total"
+            )
+        if any(
+            getattr(overview, field, None) is None
+            for field in ("taskmanagers", "slots_available", "slots_total")
+        ):
+            output.append(
+                PaastaColors.yellow("    Slots: unknown (jobmanager is not responding)")
+            )
+        else:
+            output.append(
+                "   "
+                f" {overview.taskmanagers} taskmanagers,"
+                f" {overview.slots_available}/{overview.slots_total} slots available"
+            )
 
     flink_jobs = FlinkJobs()
     flink_jobs.jobs = []
@@ -1063,9 +1086,11 @@ def _print_flink_status_from_job_manager(
             color_fn = (
                 PaastaColors.green
                 if job.get("state") and job.get("state") == "RUNNING"
-                else PaastaColors.red
-                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
-                else PaastaColors.yellow
+                else (
+                    PaastaColors.red
+                    if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                    else PaastaColors.yellow
+                )
             )
             job_info_str = fmt.format(
                 job_id=job_id,
@@ -2224,12 +2249,12 @@ def get_filters(
 
         filters.append(
             # If the instance owner is None, check the service owner, else check the instance owner
-            lambda conf: get_team(
-                overrides={}, service=conf.get_service(), soa_dir=args.soa_dir
+            lambda conf: (
+                get_team(overrides={}, service=conf.get_service(), soa_dir=args.soa_dir)
+                in owners
+                if conf.get_team() is None
+                else conf.get_team() in owners
             )
-            in owners
-            if conf.get_team() is None
-            else conf.get_team() in owners
         )
 
     return filters

@@ -2675,6 +2675,58 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
+    def test_overview_none_fields_when_jobmanager_crashlooping(
+        self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+        flink_instance_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+
+        none_overview = paastamodels.FlinkClusterOverview(
+            _check_type=False,
+            taskmanagers=None,
+            slots_total=None,
+            slots_available=None,
+            jobs_running=None,
+            jobs_finished=None,
+            jobs_cancelled=None,
+            jobs_failed=None,
+        )
+        mock_api.service.get_flink_cluster_overview.return_value = none_overview
+        mock_api.service.list_flink_cluster_jobs.return_value = paastamodels.FlinkJobs(
+            jobs=[]
+        )
+
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=0,
+        )
+
+        assert return_value == 0
+        assert (
+            PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+            in output
+        )
+        assert (
+            PaastaColors.yellow("    Slots: unknown (jobmanager is not responding)")
+            in output
+        )
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
