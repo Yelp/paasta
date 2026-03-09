@@ -13,6 +13,8 @@
 # limitations under the License.
 from unittest import mock
 
+import pytest
+
 from paasta_tools import remote_git
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfigDict
@@ -777,3 +779,303 @@ class TestRestartCmd:
         assert ret == 1
         assert not mock_paasta_start.called
         assert "paasta restart is currently unsupported for Flink instances" in out
+
+
+@pytest.mark.parametrize("force_flag", [False, True])
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.socket.getfqdn", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_success(
+    mock_apply_args_filters,
+    mock_get_instance_config,
+    mock_get_deploy_info,
+    mock_can_user_deploy_service,
+    mock_getfqdn,
+    mock_get_username,
+    mock_log,
+    mock_log_audit,
+    mock_load_system_paasta_config,
+    mock_get_paasta_oapi_client_with_auth,
+    force_flag,
+):
+    """Test successful replica restart with and without force flag."""
+    # Mock CLI args
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+    args.soa_dir = "/test/soa/dir"
+    args.force = force_flag
+
+    # Mock apply_args_filters to return single service/instance/cluster
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {"test-service": {"main": None}}
+    }
+
+    # Mock service config as Kubernetes
+    mock_service_config = KubernetesDeploymentConfig(
+        service="test-service",
+        cluster="test-cluster",
+        instance="main",
+        config_dict={},
+        branch_dict=None,
+    )
+    mock_get_instance_config.return_value = mock_service_config
+
+    # Mock permissions
+    mock_get_deploy_info.return_value = {"deploy_groups": []}
+    mock_can_user_deploy_service.return_value = True
+
+    # Mock username and hostname
+    mock_get_username.return_value = "test-user"
+    mock_getfqdn.return_value = "test-host.example.com"
+
+    # Mock API client
+    mock_client = mock.Mock()
+    mock_response = {
+        "message": "Initiated replica restart of test-pod-12345 successfully",
+        "service": "test-service",
+        "instance": "main",
+        "replica_name": "test-pod-12345",
+    }
+    mock_client.service.instance_replica_restart.return_value = mock_response
+    mock_get_paasta_oapi_client_with_auth.return_value = mock_client
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 0
+
+    # Verify API call was made with correct parameters
+    mock_client.service.instance_replica_restart.assert_called_once_with(
+        service="test-service",
+        instance="main",
+        replica_name="test-pod-12345",
+        force=force_flag,
+    )
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_multiple_clusters(mock_apply_args_filters):
+    """Test replica restart with multiple clusters fails."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+
+    # Mock multiple clusters
+    mock_apply_args_filters.return_value = {
+        "cluster1": {"test-service": {"main": None}},
+        "cluster2": {"test-service": {"main": None}},
+    }
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_multiple_services(mock_apply_args_filters):
+    """Test replica restart with multiple services fails."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+
+    # Mock multiple services
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {
+            "service1": {"main": None},
+            "service2": {"main": None},
+        }
+    }
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_multiple_instances(mock_apply_args_filters):
+    """Test replica restart with multiple instances fails."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+
+    # Mock multiple instances
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {"test-service": {"main": None, "canary": None}}
+    }
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_non_kubernetes_instance(
+    mock_apply_args_filters, mock_get_instance_config
+):
+    """Test replica restart with non-Kubernetes instance type fails."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+    args.soa_dir = "/test/soa/dir"
+
+    # Mock single valid cluster/service/instance
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {"test-service": {"main": None}}
+    }
+
+    # Mock non-Kubernetes service config
+    mock_service_config = mock.Mock()
+    mock_service_config.__class__ = object  # Not KubernetesDeploymentConfig
+    mock_get_instance_config.return_value = mock_service_config
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_permission_denied(
+    mock_apply_args_filters,
+    mock_get_instance_config,
+    mock_get_deploy_info,
+    mock_can_user_deploy_service,
+):
+    """Test replica restart with insufficient permissions fails."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+    args.soa_dir = "/test/soa/dir"
+
+    # Mock single valid cluster/service/instance
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {"test-service": {"main": None}}
+    }
+
+    # Mock Kubernetes service config
+    mock_service_config = KubernetesDeploymentConfig(
+        service="test-service",
+        cluster="test-cluster",
+        instance="main",
+        config_dict={},
+        branch_dict=None,
+    )
+    mock_get_instance_config.return_value = mock_service_config
+
+    # Mock permission denied
+    mock_get_deploy_info.return_value = {"deploy_groups": []}
+    mock_can_user_deploy_service.return_value = False
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
+)
+@mock.patch("socket.getfqdn", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+def test_paasta_restart_replica_api_error(
+    mock_apply_args_filters,
+    mock_get_instance_config,
+    mock_get_deploy_info,
+    mock_can_user_deploy_service,
+    mock_getfqdn,
+    mock_get_username,
+    mock_log,
+    mock_log_audit,
+    mock_load_system_paasta_config,
+    mock_get_paasta_oapi_client_with_auth,
+):
+    """Test replica restart with API error."""
+    args = mock.Mock()
+    args.replica = "test-pod-12345"
+    args.soa_dir = "/test/soa/dir"
+
+    # Mock apply_args_filters to return single service/instance/cluster
+    mock_apply_args_filters.return_value = {
+        "test-cluster": {"test-service": {"main": None}}
+    }
+
+    # Mock service config as Kubernetes
+    mock_service_config = KubernetesDeploymentConfig(
+        service="test-service",
+        cluster="test-cluster",
+        instance="main",
+        config_dict={},
+        branch_dict=None,
+    )
+    mock_get_instance_config.return_value = mock_service_config
+
+    # Mock permissions
+    mock_get_deploy_info.return_value = {"deploy_groups": []}
+    mock_can_user_deploy_service.return_value = True
+
+    # Mock logging
+    mock_get_username.return_value = "test-user"
+    mock_getfqdn.return_value = "test-host.example.com"
+
+    # Mock API client with error
+    from paasta_tools.paastaapi.exceptions import ApiException
+
+    mock_client = mock.Mock()
+    mock_api_exception = ApiException(status=404)
+    mock_api_exception.body = '{"error": "Replica not found"}'
+    mock_client.service.instance_replica_restart.side_effect = mock_api_exception
+    mock_get_paasta_oapi_client_with_auth.return_value = mock_client
+
+    result = start_stop_restart.paasta_restart_replica(args)
+
+    assert result == 1

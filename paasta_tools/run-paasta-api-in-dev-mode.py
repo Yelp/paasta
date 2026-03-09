@@ -28,7 +28,13 @@ def main():
     # find unused port
     port = pick_random_port("paasta-dev-api")
     # Generate api endpoints
-    api_endpoints = {"api_endpoints": {cluster: f"http://localhost:{port}"}}
+    # Just create both non-eks and eks endpoints, one has to be right :D
+    api_endpoints = {
+        "api_endpoints": {
+            cluster: f"http://localhost:{port}",
+            f"eks-{cluster}": f"http://localhost:{port}",
+        }
+    }
     api_endpoints_path = os.path.join(os.getcwd(), config_path, "api_endpoints.json")
     os.chmod(api_endpoints_path, 0o777)
     with open(api_endpoints_path, "w") as f:
