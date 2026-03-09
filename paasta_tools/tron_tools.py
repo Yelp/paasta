@@ -426,9 +426,6 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
-    def get_sanitised_instance_name(self) -> str:
-        return get_kubernetes_app_name(self.service, self.instance)
-
     # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken.
     # Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
@@ -561,7 +558,7 @@ class TronActionConfig(InstanceConfig):
             secret_env[secret] = {
                 "secret_name": get_ssm_secret_name(
                     self.get_namespace(),
-                    self.get_sanitised_instance_name(),
+                    get_kubernetes_app_name(self.service, self.instance),
                     secret,
                 ),
                 "key": secret,

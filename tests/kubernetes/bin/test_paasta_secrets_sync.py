@@ -1609,7 +1609,8 @@ def test_sync_ssm_secrets_tron_configs(ssm_patches):
         }
     )
     tron_config.get_namespace.return_value = "tron"
-    tron_config.get_sanitised_instance_name.return_value = "my-service--job.action"
+    tron_config.service = "my-service"
+    tron_config.instance = "job.action"
     mock_load_tron_configs.return_value = [tron_config]
 
     result = sync_ssm_secrets(

@@ -11,6 +11,7 @@ from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_ssm_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
@@ -215,12 +216,6 @@ class TestTronActionConfig:
         action_config.config_dict["executor"] = "paasta"
         assert action_config.get_executor() == "paasta"
 
-    def test_get_sanitised_instance_name(self, action_config):
-        # service="my_service", instance="cool_job.print"
-        assert (
-            action_config.get_sanitised_instance_name() == "my--service-cool--job.print"
-        )
-
     def test_get_ssm_secret_env(self, action_config):
         action_config.config_dict["ssm_secrets"] = [
             {"source": "/ssm/param", "secret_name": "SSM_SECRET"}
@@ -230,7 +225,9 @@ class TestTronActionConfig:
             "SSM_SECRET": {
                 "secret_name": get_ssm_secret_name(
                     "tron",
-                    action_config.get_sanitised_instance_name(),
+                    get_kubernetes_app_name(
+                        action_config.service, action_config.instance
+                    ),
                     "SSM_SECRET",
                 ),
                 "key": "SSM_SECRET",
@@ -1945,7 +1942,7 @@ class TestTronTools:
 
         expected_secret_name = get_ssm_secret_name(
             "tron",
-            action_config.get_sanitised_instance_name(),
+            get_kubernetes_app_name(action_config.service, action_config.instance),
             "SSM_SECRET",
         )
         assert result["secret_env"] == {

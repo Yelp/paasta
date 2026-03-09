@@ -46,6 +46,7 @@ from paasta_tools.kubernetes_tools import SsmSecretConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
@@ -607,7 +608,10 @@ def sync_ssm_secrets(
             "ssm_secrets"
         ):
             ssm_instance_configs.append(
-                (tron_config.get_sanitised_instance_name(), tron_config)
+                (
+                    get_kubernetes_app_name(tron_config.service, tron_config.instance),
+                    tron_config,
+                )
             )
 
     for sanitised_instance_name, config in ssm_instance_configs:
