@@ -288,6 +288,9 @@ def simulate_healthcheck_on_service(
             print("{}{}".format(color(f"Healthcheck failed! {msg}"), extra_msg))
 
             if after_grace_period_attempts == max_failures:
+                print(
+                    "If the service requires secrets to start, you can add the --decrypt-secrets argument"
+                )
                 break
 
             time.sleep(interval)
