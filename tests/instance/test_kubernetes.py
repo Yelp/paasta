@@ -791,16 +791,16 @@ def test_filter_actually_running_replicasets():
     ]
     # the `spec` kwarg is special to Mock so we have to set it this way.
     replicaset_list[0].configure_mock(
-        **{"spec.replicas": 5, "status.ready_replicas": 5}
+        **{"spec.replicas": 5, "status.ready_replicas": 5, "metadata.name": "rs-0"}
     )
     replicaset_list[1].configure_mock(
-        **{"spec.replicas": 5, "status.ready_replicas": 0}
+        **{"spec.replicas": 5, "status.ready_replicas": 0, "metadata.name": "rs-1"}
     )
     replicaset_list[2].configure_mock(
-        **{"spec.replicas": 0, "status.ready_replicas": 0}
+        **{"spec.replicas": 0, "status.ready_replicas": 0, "metadata.name": "rs-2"}
     )
     replicaset_list[3].configure_mock(
-        **{"spec.replicas": 0, "status.ready_replicas": 5}
+        **{"spec.replicas": 0, "status.ready_replicas": 5, "metadata.name": "rs-3"}
     )
 
     expected = [
@@ -809,6 +809,35 @@ def test_filter_actually_running_replicasets():
         replicaset_list[3],
     ]
     assert pik.filter_actually_running_replicasets(replicaset_list) == expected
+
+    pod_status_by_replicaset = {
+        "rs-0": [mock.Mock()],
+        "rs-2": [mock.Mock()],  # rs-2 has terminating pods
+    }
+    expected_with_terminating = [
+        replicaset_list[0],
+        replicaset_list[1],
+        replicaset_list[2],  # Now included because it has pods
+        replicaset_list[3],
+    ]
+    assert (
+        pik.filter_actually_running_replicasets(
+            replicaset_list, pod_status_by_replicaset
+        )
+        == expected_with_terminating
+    )
+
+    # With empty pod list for rs-2, it should be filtered out
+    pod_status_by_replicaset_empty = {
+        "rs-0": [mock.Mock()],
+        "rs-2": [],  # rs-2 has no pods
+    }
+    assert (
+        pik.filter_actually_running_replicasets(
+            replicaset_list, pod_status_by_replicaset_empty
+        )
+        == expected
+    )
 
 
 @pytest.mark.asyncio
@@ -1333,3 +1362,217 @@ async def test_mesh_status_envoy_timeout_retry():
         assert result["registration"] == "service.main"
         assert len(result["locations"]) == 1
         assert mock_checker.get_hostname_in_pool.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "test_type,expected",
+    [
+        ("kubernetes", True),
+        ("eks", True),
+        ("tron", False),
+        ("adhoc", False),
+        ("flink", False),
+    ],
+)
+def test_can_restart_replica(test_type, expected):
+    """Test that only standard k8s instance types support replica restart."""
+    assert pik.can_restart_replica(test_type) is expected
+
+
+@mock.patch("paasta_tools.instance.kubernetes.ServiceNamespaceConfig", autospec=True)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_restart_replica_by_name_success(
+    mock_handlers, mock_delete_pod, mock_service_namespace_config
+):
+    """Test successful replica restart by name."""
+
+    mock_settings = mock.Mock()
+    mock_settings.cluster = "test-cluster"
+    mock_settings.soa_dir = "/test/soa/dir"
+    mock_settings.kubernetes_client = mock.Mock()
+
+    mock_loader = mock.Mock()
+    mock_job_config = mock.Mock()
+    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+    mock_job_config.get_termination_grace_period.return_value = None
+    mock_loader.return_value = mock_job_config
+
+    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+    mock_delete_pod.return_value = True
+
+    # Mock ServiceNamespaceConfig
+    mock_service_namespace_config_instance = mock.Mock()
+    mock_service_namespace_config.return_value = mock_service_namespace_config_instance
+
+    result = pik.restart_replica_by_name(
+        service="test-service",
+        instance="main",
+        instance_type="kubernetes",
+        replica_name="test-pod-12345",
+        settings=mock_settings,
+    )
+
+    assert result is True
+
+    mock_loader.assert_called_once_with(
+        service="test-service",
+        instance="main",
+        cluster="test-cluster",
+        soa_dir="/test/soa/dir",
+        load_deployments=False,
+    )
+
+    mock_delete_pod.assert_called_once_with(
+        pod_name="test-pod-12345",
+        service="test-service",
+        instance="main",
+        namespace="test-namespace",
+        kube_client=mock_settings.kubernetes_client,
+        grace_period_seconds=None,
+    )
+
+
+@mock.patch(
+    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_restart_replica_by_name_pod_not_found(mock_handlers, mock_delete_pod):
+    """Test replica restart when pod is not found."""
+    mock_settings = mock.Mock()
+    mock_settings.cluster = "test-cluster"
+    mock_settings.soa_dir = "/test/soa/dir"
+    mock_settings.kubernetes_client = mock.Mock()
+
+    mock_loader = mock.Mock()
+    mock_job_config = mock.Mock()
+    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+    mock_loader.return_value = mock_job_config
+
+    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+
+    # delete_pod's False return value implies pod not found
+    mock_delete_pod.return_value = False
+
+    result = pik.restart_replica_by_name(
+        service="test-service",
+        instance="main",
+        instance_type="kubernetes",
+        replica_name="nonexistent-pod-99999",
+        settings=mock_settings,
+    )
+
+    assert result is False
+
+
+def test_restart_replica_by_name_unsupported_instance_type():
+    """Test replica restart with unsupported instance type."""
+    mock_settings = mock.Mock()
+
+    with pytest.raises(
+        RuntimeError, match="Replica restart not supported for instance type tron"
+    ):
+        pik.restart_replica_by_name(
+            service="test-service",
+            instance="main",
+            instance_type="tron",
+            replica_name="test-pod-12345",
+            settings=mock_settings,
+        )
+
+
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_restart_replica_by_name_no_kubernetes_client(mock_handlers):
+    """Test replica restart when Kubernetes client is not available."""
+    # Mock the settings without kubernetes client
+    mock_settings = mock.Mock()
+    mock_settings.cluster = "test-cluster"
+    mock_settings.soa_dir = "/test/soa/dir"
+    mock_settings.kubernetes_client = None
+
+    # Mock the job config loader and job config
+    mock_loader = mock.Mock()
+    mock_job_config = mock.Mock()
+    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+    mock_loader.return_value = mock_job_config
+
+    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+
+    with pytest.raises(RuntimeError, match="Kubernetes client not available"):
+        pik.restart_replica_by_name(
+            service="test-service",
+            instance="main",
+            instance_type="kubernetes",
+            replica_name="test-pod-12345",
+            settings=mock_settings,
+        )
+
+
+@pytest.mark.parametrize(
+    "force,expected_grace_period",
+    [
+        (True, 0),
+        (False, None),
+    ],
+)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_restart_replica_by_name_force_parameter(
+    mock_handlers,
+    mock_delete_pod,
+    force,
+    expected_grace_period,
+):
+    """Test restart_replica_by_name with different force parameter values."""
+    mock_settings = mock.Mock()
+    mock_settings.cluster = "test-cluster"
+    mock_settings.soa_dir = "/test/soa/dir"
+    mock_settings.kubernetes_client = mock.Mock()
+
+    mock_loader = mock.Mock()
+    mock_job_config = mock.Mock()
+    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+    mock_loader.return_value = mock_job_config
+
+    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+    mock_delete_pod.return_value = True
+
+    result = pik.restart_replica_by_name(
+        service="test-service",
+        instance="main",
+        instance_type="kubernetes",
+        replica_name="test-pod-12345",
+        settings=mock_settings,
+        force=force,
+    )
+
+    assert result is True
+
+    # Should call delete_pod_by_name with expected grace period
+    mock_delete_pod.assert_called_once_with(
+        pod_name="test-pod-12345",
+        service="test-service",
+        instance="main",
+        namespace="test-namespace",
+        kube_client=mock_settings.kubernetes_client,
+        grace_period_seconds=expected_grace_period,
+    )

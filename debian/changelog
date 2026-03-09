@@ -1,3 +1,27 @@
+paasta-tools (1.45.1) jammy; urgency=medium
+
+  * 1.45.1 tagged with 'make release'
+    Commit: get rid of one reason to use sudo (take 2) (#4255)  * local-
+    run: get rid of one reason to use sudo * local-run: fix execlpe args
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 09 Mar 2026 04:00:50 -0700
+
+paasta-tools (1.45.0) jammy; urgency=medium
+
+  * 1.45.0 tagged with 'make release'
+    Commit: Merge pull request #4180 from Yelp/jfong/restart_replica
+    Add a "restart --replica" option
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 06 Mar 2026 11:10:59 -0800
+
+paasta-tools (1.44.1) jammy; urgency=medium
+
+  * 1.44.1 tagged with 'make release'
+    Commit: Revert "get rid of one reason to use sudo (#4252)"  This
+    reverts commit 57b53a3deefc98475ec9a69935112dd8927c4ad7.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 04 Mar 2026 10:02:07 -0800
+
 paasta-tools (1.44.0) jammy; urgency=medium
 
   * 1.44.0 tagged with 'make release'

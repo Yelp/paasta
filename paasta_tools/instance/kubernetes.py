@@ -145,6 +145,65 @@ def set_cr_desired_state(
         raise RuntimeError(error_message)
 
 
+def can_restart_replica(instance_type: str) -> bool:
+    """Check if replica restart is supported for this instance type."""
+    return instance_type in INSTANCE_TYPES_K8S
+
+
+def restart_replica_by_name(
+    service: str,
+    instance: str,
+    instance_type: str,
+    replica_name: str,
+    settings: Any,
+    force: bool = False,
+) -> bool:
+    """Restart a specific replica by name within a service instance.
+
+    If force is True, force delete the pod immediately (grace_period_seconds=0).
+    If False, use the service's configured termination grace period.
+
+    NOTE: will actually delete the replica and let Kubernetes replace it
+    """
+    if not can_restart_replica(instance_type):
+        raise RuntimeError(
+            f"Replica restart not supported for instance type {instance_type}"
+        )
+
+    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
+    job_config = config_loader(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=False,
+    )
+
+    kube_client = settings.kubernetes_client
+    if kube_client is None:
+        raise RuntimeError("Kubernetes client not available")
+
+    # Determine grace period based on force flag
+    if force:
+        grace_period_seconds = 0
+    else:
+        # Uses the pod's already-configured grace period
+        grace_period_seconds = None
+
+    # Note: We are not actually fully 'restarting' a replica for k8s instances
+    # Instead, we are deleting the existing pod, then k8s will automatically create a
+    # replacement pod to maintain the desired replica count.
+
+    return kubernetes_tools.delete_pod_by_name(
+        pod_name=replica_name,
+        service=service,
+        instance=instance,
+        namespace=job_config.get_kubernetes_namespace(),
+        kube_client=kube_client,
+        grace_period_seconds=grace_period_seconds,
+    )
+
+
 async def autoscaling_status(
     kube_client: kubernetes_tools.KubeClient,
     job_config: LongRunningServiceConfig,
@@ -235,6 +294,11 @@ async def pod_info(
         "events": pod_event_messages,
         "git_sha": pod.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": pod.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "delete_timestamp": (
+            pod.metadata.deletion_timestamp.timestamp()
+            if pod.metadata.deletion_timestamp
+            else None
+        ),
     }
 
 
@@ -497,11 +561,29 @@ def cr_status(
 
 def filter_actually_running_replicasets(
     replicaset_list: Sequence[V1ReplicaSet],
+    pod_status_by_replicaset: Optional[Mapping[str, Sequence[Any]]] = None,
 ) -> List[V1ReplicaSet]:
+    """Filter replicasets to only include those that are actually running.
+
+    A replicaset is considered "actually running" if:
+    - It has non-zero desired replicas OR non-zero ready replicas, OR
+    - It has ANY pods associated with it (e.g., terminating pods are still "running")
+
+    This ensures that replicasets with only terminating pods are still shown
+    in status output until all pods are fully removed.
+    """
     return [
         rs
         for rs in replicaset_list
-        if not (rs.spec.replicas == 0 and ready_replicas_from_replicaset(rs) == 0)
+        if not (
+            rs.spec.replicas == 0
+            and ready_replicas_from_replicaset(rs) == 0
+            # TODO: replace this with looking at `rs.status.terminating_replicas` in k8s 1.31+
+            and (
+                pod_status_by_replicaset is None
+                or not pod_status_by_replicaset.get(rs.metadata.name)
+            )
+        )
     ]
 
 
@@ -839,10 +921,11 @@ async def get_versions_for_replicasets(
         replicaset_list.extend(await coro)
 
     # For the purpose of active_versions/app_count, don't count replicasets that
-    # are at 0/0.
-    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-
+    # are at 0/0 unless they have terminating pods.
     pod_status_by_replicaset = await pod_status_by_replicaset_task
+    actually_running_replicasets = filter_actually_running_replicasets(
+        replicaset_list, pod_status_by_replicaset
+    )
     versions = await asyncio.gather(
         *[
             get_replicaset_status(

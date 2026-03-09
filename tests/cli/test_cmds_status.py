@@ -2675,6 +2675,58 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
+    def test_overview_none_fields_when_jobmanager_crashlooping(
+        self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+        flink_instance_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+
+        none_overview = paastamodels.FlinkClusterOverview(
+            _check_type=False,
+            taskmanagers=None,
+            slots_total=None,
+            slots_available=None,
+            jobs_running=None,
+            jobs_finished=None,
+            jobs_cancelled=None,
+            jobs_failed=None,
+        )
+        mock_api.service.get_flink_cluster_overview.return_value = none_overview
+        mock_api.service.list_flink_cluster_jobs.return_value = paastamodels.FlinkJobs(
+            jobs=[]
+        )
+
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=0,
+        )
+
+        assert return_value == 0
+        assert (
+            PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+            in output
+        )
+        assert (
+            PaastaColors.yellow("    Slots: unknown (jobmanager is not responding)")
+            in output
+        )
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_output_0_verbose(
@@ -3099,6 +3151,48 @@ class TestFormatKubernetesPodTable:
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
+
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
+    def test_terminating(
+        self,
+        mock_datetime_module,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567890.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567830.0
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (a minute ago)"
+        )
+
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
+    def test_terminating_future(
+        self,
+        mock_datetime_module,
+        mock_naturaltime,
+        mock_kubernetes_pod,
+    ):
+        from datetime import datetime as real_datetime
+
+        current_time = real_datetime.fromtimestamp(1234567830.0)
+        mock_datetime_module.now.return_value = current_time
+        mock_datetime_module.fromtimestamp.side_effect = (
+            lambda ts: real_datetime.fromtimestamp(ts)
+        )
+        mock_kubernetes_pod.delete_timestamp = 1234567890.0
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.cyan(
+            "Terminating (in a minute)"
+        )
 
     def test_no_health(
         self,
