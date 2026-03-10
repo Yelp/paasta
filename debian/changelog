@@ -1,3 +1,12 @@
+paasta-tools (1.45.2) jammy; urgency=medium
+
+  * 1.45.2 tagged with 'make release'
+    Commit: Merge pull request #4259 from anohovsky/fix-flink-crashloop-
+    canary-check  Simplify flink overview None check to use jobs_running
+    as canary
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Mar 2026 06:52:48 -0700
+
 paasta-tools (1.45.1) jammy; urgency=medium
 
   * 1.45.1 tagged with 'make release'
