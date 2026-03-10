@@ -2720,10 +2720,7 @@ class TestPrintFlinkStatus:
             PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
             in output
         )
-        assert (
-            PaastaColors.yellow("    Slots: unknown (jobmanager is not responding)")
-            in output
-        )
+        assert not any("taskmanagers" in line for line in output)
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
