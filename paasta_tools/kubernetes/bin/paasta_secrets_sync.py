@@ -23,6 +23,7 @@ import sys
 import time
 from collections import defaultdict
 from functools import partial
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generator
@@ -31,6 +32,7 @@ from typing import Mapping
 from typing import Optional
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import boto3
 from botocore.exceptions import ClientError
@@ -40,9 +42,11 @@ from typing_extensions import Literal
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import SsmSecretConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
@@ -56,6 +60,8 @@ from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
+from paasta_tools.tron_tools import TronActionConfig
+from paasta_tools.tron_tools import load_tron_instance_configs
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DEFAULT_VAULT_TOKEN_FILE
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
@@ -492,6 +498,57 @@ def sync_secrets(
     return True
 
 
+def _sync_ssm_secret(
+    ssm_client: Any,
+    kube_client: KubeClient,
+    service: str,
+    namespace: str,
+    sanitised_instance_name: str,
+    ssm_secret: SsmSecretConfig,
+) -> bool:
+    """
+    Fetch a single SSM secret and sync it to Kubernetes.
+    Returns True on success.
+    """
+
+    # [eks|tron]-schema.json ensures these are always present & valid
+    source = ssm_secret["source"]
+    key = ssm_secret["secret_name"]
+
+    try:
+        response = ssm_client.get_parameter(Name=source, WithDecryption=True)
+        value = response["Parameter"]["Value"]
+        secret_value = base64.b64encode(value.encode("utf-8")).decode("utf-8")
+
+        secret_data = {key: secret_value}
+
+        create_or_update_k8s_secret(
+            service=service,
+            signature_name=get_ssm_secret_signature_name(
+                namespace,
+                sanitised_instance_name,
+                sanitise_kubernetes_name(key),
+            ),
+            secret_name=get_ssm_secret_name(
+                namespace,
+                sanitised_instance_name,
+                sanitise_kubernetes_name(key),
+            ),
+            get_secret_data=(lambda: secret_data),
+            secret_signature=_get_dict_signature(secret_data),
+            kube_client=kube_client,
+            namespace=namespace,
+        )
+    except ClientError:
+        log.exception(f"Failed to fetch SSM parameter {source} for {service}")
+        return False
+    except ApiException:
+        log.exception(f"Kubernetes API failed while syncing {key} for {service}")
+        return False
+
+    return True
+
+
 def sync_ssm_secrets(
     kube_client: KubeClient,
     cluster: str,
@@ -517,7 +574,7 @@ def sync_ssm_secrets(
         RoleArn=role_arn, RoleSessionName="PaastaSecretsSync"
     )
     credentials = assumed_role_object["Credentials"]
-    client = boto3.client(
+    ssm_client = boto3.client(
         "ssm",
         region_name=aws_region,
         aws_access_key_id=credentials["AccessKeyId"],
@@ -526,59 +583,49 @@ def sync_ssm_secrets(
     )
 
     success = True
+    ssm_instance_configs: List[
+        Tuple[str, Union[KubernetesDeploymentConfig, TronActionConfig]]
+    ] = []
+
     for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
         for instance_config in config_loader.instance_configs(
             cluster=cluster, instance_type_class=instance_type_class
         ):
-            if instance_config.get_namespace() != namespace:
-                continue
+            if (
+                instance_config.get_namespace() == namespace
+                and instance_config.config_dict.get("ssm_secrets")
+            ):
+                ssm_instance_configs.append(
+                    (instance_config.get_sanitised_deployment_name(), instance_config)
+                )
 
-            sanitised_deployment_name = instance_config.get_sanitised_deployment_name()
-            ssm_secrets = instance_config.config_dict.get("ssm_secrets", [])
-            if not ssm_secrets:
-                continue
+    # config_loader.instance_configs breaks when loading TronConfigs
+    # so we handle them separately
+    for tron_config in load_tron_instance_configs(
+        service=service, cluster=cluster, load_deployments=False, soa_dir=soa_dir
+    ):
+        if tron_config.get_namespace() == namespace and tron_config.config_dict.get(
+            "ssm_secrets"
+        ):
+            ssm_instance_configs.append(
+                (
+                    get_kubernetes_app_name(tron_config.service, tron_config.instance),
+                    tron_config,
+                )
+            )
 
-            for ssm_secret in ssm_secrets:
-                # eks-schema.json ensures these are always present & valid
-                source = ssm_secret.get("source")
-                key = ssm_secret.get("secret_name")
-
-                try:
-                    response = client.get_parameter(Name=source, WithDecryption=True)
-                    value = response["Parameter"]["Value"]
-                    secret_value = base64.b64encode(value.encode("utf-8")).decode(
-                        "utf-8"
-                    )
-
-                    secret_data = {key: secret_value}
-
-                    create_or_update_k8s_secret(
-                        service=service,
-                        signature_name=get_ssm_secret_signature_name(
-                            namespace,
-                            sanitised_deployment_name,
-                            sanitise_kubernetes_name(key),
-                        ),
-                        secret_name=get_ssm_secret_name(
-                            namespace,
-                            sanitised_deployment_name,
-                            sanitise_kubernetes_name(key),
-                        ),
-                        get_secret_data=(lambda: secret_data),
-                        secret_signature=_get_dict_signature(secret_data),
-                        kube_client=kube_client,
-                        namespace=namespace,
-                    )
-                except ClientError:
-                    log.exception(
-                        f"Failed to fetch SSM parameter {source} for {service}"
-                    )
-                    success = False
-                except ApiException:
-                    log.exception(
-                        f"Kubernetes API failed while syncing {key} for {service}"
-                    )
-                    success = False
+    for sanitised_instance_name, config in ssm_instance_configs:
+        ssm_secrets: List[SsmSecretConfig] = config.config_dict.get("ssm_secrets", [])
+        for ssm_secret in ssm_secrets:
+            if not _sync_ssm_secret(
+                ssm_client=ssm_client,
+                kube_client=kube_client,
+                service=service,
+                namespace=namespace,
+                sanitised_instance_name=sanitised_instance_name,
+                ssm_secret=ssm_secret,
+            ):
+                success = False
 
     return success
 

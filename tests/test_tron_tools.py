@@ -11,6 +11,8 @@ from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
+from paasta_tools.kubernetes_tools import get_ssm_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import TronActionConfigDict
@@ -213,6 +215,27 @@ class TestTronActionConfig:
     def test_get_executor_paasta(self, action_config):
         action_config.config_dict["executor"] = "paasta"
         assert action_config.get_executor() == "paasta"
+
+    def test_get_ssm_secret_env(self, action_config):
+        action_config.config_dict["ssm_secrets"] = [
+            {"source": "/ssm/param", "secret_name": "SSM_SECRET"}
+        ]
+        result = action_config.get_ssm_secret_env()
+        assert result == {
+            "SSM_SECRET": {
+                "secret_name": get_ssm_secret_name(
+                    "tron",
+                    get_kubernetes_app_name(
+                        action_config.service, action_config.instance
+                    ),
+                    "SSM_SECRET",
+                ),
+                "key": "SSM_SECRET",
+            }
+        }
+
+    def test_get_ssm_secret_env_empty(self, action_config):
+        assert action_config.get_ssm_secret_env() == {}
 
 
 class TestTronJobConfig:
@@ -1881,6 +1904,52 @@ class TestTronTools:
             "secret_env": {},
         }
         assert result["env"]["SHELL"] == "/bin/bash"
+
+    def test_format_tron_action_dict_ssm_secrets(self):
+        action_dict = {
+            "command": "echo hi",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "paasta",
+            "cpus": 1,
+            "mem": 512,
+            "disk": 10,
+            "pool": "default",
+            "env": {"SHELL": "/bin/bash", "SSM_SECRET": "not_a_secret"},
+            "ssm_secrets": [{"source": "/ssm/param", "secret_name": "SSM_SECRET"}],
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=None,
+            cluster="test-cluster",
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
+
+        expected_secret_name = get_ssm_secret_name(
+            "tron",
+            get_kubernetes_app_name(action_config.service, action_config.instance),
+            "SSM_SECRET",
+        )
+        assert result["secret_env"] == {
+            "SSM_SECRET": {"secret_name": expected_secret_name, "key": "SSM_SECRET"}
+        }
+        # SSM secret var should be excluded from plain env
+        assert "SSM_SECRET" not in result["env"]
 
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config(self, mock_read_extra_service_information):
