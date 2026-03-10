@@ -1,3 +1,11 @@
+paasta-tools (1.45.1) jammy; urgency=medium
+
+  * 1.45.1 tagged with 'make release'
+    Commit: get rid of one reason to use sudo (take 2) (#4255)  * local-
+    run: get rid of one reason to use sudo * local-run: fix execlpe args
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 09 Mar 2026 04:00:50 -0700
+
 paasta-tools (1.45.0) jammy; urgency=medium
 
   * 1.45.0 tagged with 'make release'
