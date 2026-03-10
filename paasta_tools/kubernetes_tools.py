@@ -155,6 +155,7 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.metrics.metrics_lib import get_metrics_interface
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -186,6 +187,50 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import time_cache
 
 log = logging.getLogger(__name__)
+
+
+class _TimedApiClient:
+    """Wraps a kubernetes API sub-client to emit a meteorite timer for every method call.
+
+    Metric: paasta.kube_api_call_duration
+    Dimensions: operation (e.g. "core.list_namespaced_pod")
+    """
+
+    def __init__(self, client: Any, prefix: str) -> None:
+        # Use object.__setattr__ to avoid triggering our own __getattr__
+        object.__setattr__(self, "_client", client)
+        object.__setattr__(self, "_prefix", prefix)
+
+    def __getattr__(self, name: str) -> Any:
+        attr = getattr(object.__getattribute__(self, "_client"), name)
+        if not callable(attr):
+            return attr
+        prefix = object.__getattribute__(self, "_prefix")
+        operation = f"{prefix}.{name}"
+
+        @functools.wraps(attr)
+        def timed(*args: Any, **kwargs: Any) -> Any:
+            try:
+                timer = get_metrics_interface("paasta").create_timer(
+                    "kube_api_call_duration",
+                    default_dimensions={"operation": operation},
+                )
+                timer.start()
+            except Exception:
+                log.debug("Failed to start kube_api_call_duration timer", exc_info=True)
+                return attr(*args, **kwargs)
+            try:
+                return attr(*args, **kwargs)
+            finally:
+                try:
+                    timer.stop()
+                except Exception:
+                    log.debug(
+                        "Failed to stop kube_api_call_duration timer", exc_info=True
+                    )
+
+        return timed
+
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 KUBE_CONFIG_USER_PATH = "/etc/kubernetes/paasta.conf"
@@ -623,15 +668,29 @@ class KubeClient:
         self.api_client = kube_client.ApiClient()
         self.api_client.user_agent = f"paasta/{component}/v{__version__}"
 
-        self.deployments = kube_client.AppsV1Api(self.api_client)
-        self.core = kube_client.CoreV1Api(self.api_client)
-        self.policy = kube_client.PolicyV1Api(self.api_client)
-        self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
-        self.batches = kube_client.BatchV1Api(self.api_client)
+        self.deployments = _TimedApiClient(
+            kube_client.AppsV1Api(self.api_client), "deployments"
+        )
+        self.core = _TimedApiClient(kube_client.CoreV1Api(self.api_client), "core")
+        self.policy = _TimedApiClient(
+            kube_client.PolicyV1Api(self.api_client), "policy"
+        )
+        self.apiextensions = _TimedApiClient(
+            kube_client.ApiextensionsV1Api(self.api_client), "apiextensions"
+        )
+        self.batches = _TimedApiClient(
+            kube_client.BatchV1Api(self.api_client), "batches"
+        )
 
-        self.custom = kube_client.CustomObjectsApi(self.api_client)
-        self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
-        self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
+        self.custom = _TimedApiClient(
+            kube_client.CustomObjectsApi(self.api_client), "custom"
+        )
+        self.autoscaling = _TimedApiClient(
+            kube_client.AutoscalingV2Api(self.api_client), "autoscaling"
+        )
+        self.rbac = _TimedApiClient(
+            kube_client.RbacAuthorizationV1Api(self.api_client), "rbac"
+        )
 
         self.request = self.api_client.request
         # This function is used by the k8s client to serialize OpenAPI objects
