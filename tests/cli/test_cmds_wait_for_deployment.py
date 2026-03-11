@@ -18,12 +18,15 @@ from unittest.mock import patch
 import pytest
 from pytest import raises
 
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_version
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_version_is_latest
 from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
@@ -138,6 +141,84 @@ def test_check_if_instance_is_done(
         version=DeploymentVersion(sha="abc123", image_version=None),
         instance_config=mock_kubernetes_deployment_config("fake_instance"),
     )
+
+
+@pytest.mark.parametrize(
+    "instance_config,expected_cluster",
+    [
+        (
+            KubernetesDeploymentConfig(
+                service="fake_service",
+                cluster="infrastage",
+                instance="fake_instance",
+                config_dict={"deploy_group": "fake_deploy_group"},
+                branch_dict=None,
+                soa_dir="fake_soa_dir",
+            ),
+            "infrastage",
+        ),
+        (
+            EksDeploymentConfig(
+                service="fake_service",
+                cluster="infrastage",
+                instance="fake_instance",
+                config_dict={"deploy_group": "fake_deploy_group"},
+                branch_dict=None,
+                soa_dir="fake_soa_dir",
+            ),
+            "eks-infrastage",
+        ),
+        (
+            CassandraClusterDeploymentConfig(
+                service="fake_service",
+                cluster="infrastage",
+                instance="fake_instance",
+                config_dict={"deploy_group": "fake_deploy_group"},
+                branch_dict=None,
+                soa_dir="fake_soa_dir",
+            ),
+            "infrastage",
+        ),
+        (
+            CassandraClusterEksDeploymentConfig(
+                service="fake_service",
+                cluster="infrastage",
+                instance="fake_instance",
+                config_dict={"deploy_group": "fake_deploy_group"},
+                branch_dict=None,
+                soa_dir="fake_soa_dir",
+            ),
+            "eks-infrastage",
+        ),
+    ],
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_oapi_client",
+    autospec=True,
+)
+def test_check_if_instance_is_done_routes_to_correct_cluster(
+    mock_get_paasta_oapi_client,
+    mock__log,
+    instance_config,
+    expected_cluster,
+):
+    mock_paasta_api_client = Mock()
+    mock_paasta_api_client.api_error = ApiException
+    mock_paasta_api_client.service.bounce_status_instance.return_value = (
+        fake_bounce_status_resp()
+    )
+    mock_get_paasta_oapi_client.return_value = mock_paasta_api_client
+
+    mark_for_deployment.check_if_instance_is_done(
+        service="fake_service",
+        instance="fake_instance",
+        cluster="infrastage",
+        version=DeploymentVersion(sha="abc123", image_version=None),
+        instance_config=instance_config,
+    )
+
+    mock_get_paasta_oapi_client.assert_called_once_with(cluster=expected_cluster)
 
 
 @patch(
