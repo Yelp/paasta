@@ -1,3 +1,10 @@
+paasta-tools (1.46.0) jammy; urgency=medium
+
+  * 1.46.0 tagged with 'make release'
+    Commit: local-run: stop decrypting secrets by default (#4253)
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 11 Mar 2026 02:36:42 -0700
+
 paasta-tools (1.45.2) jammy; urgency=medium
 
   * 1.45.2 tagged with 'make release'
