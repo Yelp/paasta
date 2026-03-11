@@ -288,6 +288,9 @@ def simulate_healthcheck_on_service(
             print("{}{}".format(color(f"Healthcheck failed! {msg}"), extra_msg))
 
             if after_grace_period_attempts == max_failures:
+                print(
+                    "If the service requires secrets to start, you can add the --decrypt-secrets argument"
+                )
                 break
 
             time.sleep(interval)
@@ -476,13 +479,28 @@ def add_subparser(subparsers):
         required=False,
         default="/var/spool/.paasta_vault_token",
     )
-    list_parser.add_argument(
+    try:
+        local_run_config = load_system_paasta_config().get_local_run_config()
+        decrypt_by_default = local_run_config.get("decrypt_secrets_by_default", False)
+    except Exception:
+        decrypt_by_default = False
+    skip_secret_deprecation = "" if decrypt_by_default else "[Deprecated] "
+    secrets_group = list_parser.add_mutually_exclusive_group()
+    secrets_group.add_argument(
         "--skip-secrets",
-        help="Skip decrypting secrets, useful if running non-interactively",
+        help=f"{skip_secret_deprecation}Skip decrypting secrets, useful if running non-interactively",
         dest="skip_secrets",
         required=False,
         action="store_true",
-        default=False,
+        default=not decrypt_by_default,
+    )
+    secrets_group.add_argument(
+        "--decrypt-secrets",
+        help="Decrypt service secrets and inject them in the container environment",
+        dest="decrypt_secrets",
+        required=False,
+        action="store_true",
+        default=decrypt_by_default,
     )
     list_parser.add_argument(
         "--assume-role-aws-account",
@@ -963,9 +981,6 @@ def run_docker_container(
                 print(
                     f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
                 )
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
                 sys.exit(1)
         else:
             try:
@@ -987,9 +1002,6 @@ def run_docker_container(
                 )
             except Exception as e:
                 print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
-                print(
-                    "If you don't need the secrets for local-run, you can add --skip-secrets"
-                )
                 sys.exit(1)
         environment.update(secret_environment)
     if (
@@ -1355,7 +1367,7 @@ def configure_and_run_docker_container(
         framework=instance_type,
         secret_provider_name=system_paasta_config.get_secret_provider_name(),
         secret_provider_kwargs=secret_provider_kwargs,
-        skip_secrets=args.skip_secrets,
+        skip_secrets=args.skip_secrets and not args.decrypt_secrets,
         assume_pod_identity=args.assume_pod_identity,
         assume_role_arn=args.assume_role_arn,
         assume_role_aws_account=assume_role_aws_account,
@@ -1373,7 +1385,9 @@ def should_reexec_as_root(skip_secrets: bool, action: str) -> bool:
 
 def paasta_local_run(args):
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
-    if should_reexec_as_root(args.skip_secrets, args.action):
+    if should_reexec_as_root(
+        args.skip_secrets and not args.decrypt_secrets, args.action
+    ):
         # XXX: we should re-architect this to not need sudo, but for now,
         # re-exec ourselves with sudo to get access to the paasta vault token
         # NOTE: once we do that, we can also remove the venv check above :)
