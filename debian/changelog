@@ -1,3 +1,28 @@
+paasta-tools (1.46.1) jammy; urgency=medium
+
+  * 1.46.1 tagged with 'make release'
+    Commit: TOOL-606: fix mark-for-deployment for CassandraClusterEKS
+    resources (#4262)  Problem ---- paasta mark-for-deployment fails
+    with a 404 when checking deployment status for services using
+    cassandraclustereks configs (i.e. cassandra clusters migrated to
+    EKS). The code determines which API endpoint to query using
+    `is_eks=(instance_config.get_instance_type() == "eks")`
+    `get_instance_type()` returns the `config_filename_prefix`, which is
+    "cassandraclustereks" — not "eks" — so the check is false and the
+    API call goes to the non-EKS cluster (e.g., infrastage instead of
+    eks-infrastage), resulting in a 404 when trying to deploy migrated
+    clusters.  Solution ---- Change the `== "eks"` check to
+    `.endswith("eks")` at both call sites in `mark_for_deployment.py`
+    (`check_if_instance_is_done` and `diagnose_why_instance_is_stuck`).
+    This matches all EKS instance types (eks, cassandraclustereks,
+    flinkeks, nrtsearchserviceeks) and follows the existing pattern used
+    in setup_kubernetes_cr.py.  It should not affect FlinkEKS or
+    NRTSearchServiceEKS because only Cassandra and regular PaaSTA
+    deployments go through `WAIT_FOR_INSTANCE_CLASSES`.  Signed-off-by:
+    Max Falk <gfalk@yelp.com>
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Mar 2026 08:22:28 -0700
+
 paasta-tools (1.46.0) jammy; urgency=medium
 
   * 1.46.0 tagged with 'make release'
