@@ -6078,3 +6078,91 @@ def test_delete_pod_by_name_no_pods():
 
         assert result is False
         mock_client.core.delete_namespaced_pod.assert_not_called()
+
+class TestTimedApiClient:
+    def _make_client(self, mock_get_metrics_interface):
+        inner = mock.MagicMock()
+        inner.some_method.return_value = "result"
+        inner.some_attr = "plain_value"
+        proxy = kubernetes_tools._TimedApiClient(inner, "core")
+        return proxy, inner
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_metrics_interface",
+        autospec=True,
+    )
+    def test_times_a_method_call(self, mock_get_metrics_interface):
+        mock_timer = mock.MagicMock()
+        mock_get_metrics_interface.return_value.create_timer.return_value = mock_timer
+        proxy, inner = self._make_client(mock_get_metrics_interface)
+
+        result = proxy.some_method("arg1", kw="val")
+
+        assert result == inner.some_method.return_value
+        mock_get_metrics_interface.assert_called_once_with("paasta")
+        mock_get_metrics_interface.return_value.create_timer.assert_called_once_with(
+            "kube_api_call_duration",
+            default_dimensions={"operation": "core.some_method"},
+        )
+        mock_timer.start.assert_called_once()
+        mock_timer.stop.assert_called_once()
+        inner.some_method.assert_called_once_with("arg1", kw="val")
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_metrics_interface",
+        autospec=True,
+    )
+    def test_returns_non_callable_attributes_unwrapped(
+        self, mock_get_metrics_interface
+    ):
+        proxy, inner = self._make_client(mock_get_metrics_interface)
+
+        assert proxy.some_attr == "plain_value"
+        mock_get_metrics_interface.assert_not_called()
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_metrics_interface",
+        autospec=True,
+    )
+    def test_emits_timer_even_when_underlying_call_raises(
+        self, mock_get_metrics_interface
+    ):
+        mock_timer = mock.MagicMock()
+        mock_get_metrics_interface.return_value.create_timer.return_value = mock_timer
+        proxy, inner = self._make_client(mock_get_metrics_interface)
+        inner.some_method.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            proxy.some_method()
+
+        mock_timer.start.assert_called_once()
+        mock_timer.stop.assert_called_once()
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_metrics_interface",
+        autospec=True,
+    )
+    def test_survives_exception_in_timer_start(self, mock_get_metrics_interface):
+        mock_get_metrics_interface.return_value.create_timer.side_effect = Exception(
+            "metrics down"
+        )
+        proxy, inner = self._make_client(mock_get_metrics_interface)
+
+        result = proxy.some_method("x")
+
+        assert result == inner.some_method.return_value
+        inner.some_method.assert_called_once_with("x")
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_metrics_interface",
+        autospec=True,
+    )
+    def test_survives_exception_in_timer_stop(self, mock_get_metrics_interface):
+        mock_timer = mock.MagicMock()
+        mock_timer.stop.side_effect = Exception("stop failed")
+        mock_get_metrics_interface.return_value.create_timer.return_value = mock_timer
+        proxy, inner = self._make_client(mock_get_metrics_interface)
+
+        result = proxy.some_method()
+
+        assert result == inner.some_method.return_value
