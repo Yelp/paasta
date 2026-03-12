@@ -1,3 +1,22 @@
+paasta-tools (1.46.2) jammy; urgency=medium
+
+  * 1.46.2 tagged with 'make release'
+    Commit: Add some default request timeouts in
+    check_services_replication_tools (#4251)  urllib3 strikes again!  By
+    default, urllib3 doesn"t set any sort of timeout for requests, which
+    means that you can easily have your code hang forever if a request
+    gets stuck for whatever reason :p  We use indirectly through the k8s
+    clientlib, but since we use that pretty heavily, I"m just starting
+    with setting some (hopefully generous) timeouts for the clientlib
+    functions that we call from our replication checker since we"ve been
+    seeing some hangs there recently :p  I"m hoping that I can figure
+    out a good way to instrument these functions so that we can get some
+    actual data and set better values at all the call sites (or set a
+    reasonable default that encompasses all our current uses) - but for
+    now, this will hopefully cause less bogus pages :)
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Mar 2026 11:13:28 -0700
+
 paasta-tools (1.46.1) jammy; urgency=medium
 
   * 1.46.1 tagged with 'make release'
