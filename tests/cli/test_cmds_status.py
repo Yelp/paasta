@@ -28,6 +28,8 @@ import pytest
 import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import kubernetes_tools
 from paasta_tools import utils
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeploymentConfig
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import append_pod_status
@@ -352,7 +354,7 @@ def test_status_calls_sergeants(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         cluster=cluster,
-        instance_whitelist={"fi": mock_instance_config.__class__},
+        instance_whitelist={"fi": [mock_instance_config.__class__]},
         system_paasta_config=system_paasta_config,
         lock=mock.ANY,
         verbose=False,
@@ -453,7 +455,9 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
 
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ["cluster1"]
-    assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
+    assert pargs["cluster1"]["fake_service"] == {
+        "instance1": [mock_inst1.__class__],
+    }
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -501,10 +505,12 @@ def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_inst
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ["cluster1", "cluster2"]
     assert pargs["cluster1"]["fake_service"] == {
-        "instance1": mock_inst1.__class__,
-        "instance2": mock_inst2.__class__,
+        "instance1": [mock_inst1.__class__],
+        "instance2": [mock_inst2.__class__],
     }
-    assert pargs["cluster2"]["fake_service"] == {"instance3": mock_inst3.__class__}
+    assert pargs["cluster2"]["fake_service"] == {
+        "instance3": [mock_inst3.__class__],
+    }
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -627,8 +633,8 @@ def test_apply_args_filters_clusters_and_instances(
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ["cluster1"]
     assert pargs["cluster1"]["fake_service"] == {
-        "instance1": mock_inst1.__class__,
-        "instance3": mock_inst3.__class__,
+        "instance1": [mock_inst1.__class__],
+        "instance3": [mock_inst3.__class__],
     }
 
 
@@ -679,12 +685,14 @@ def test_apply_args_filters_shorthand_notation(
     pargs = apply_args_filters(args)
     if service_instance_name == "fake_service.instance1":
         assert sorted(pargs.keys()) == ["cluster1"]
-        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
+        assert pargs["cluster1"]["fake_service"] == {
+            "instance1": [mock_inst1.__class__],
+        }
     elif service_instance_name == "fake_service.instance1,instance2":
         assert sorted(pargs.keys()) == ["cluster1"]
         assert pargs["cluster1"]["fake_service"] == {
-            "instance1": mock_inst1.__class__,
-            "instance2": mock_inst2.__class__,
+            "instance1": [mock_inst1.__class__],
+            "instance2": [mock_inst2.__class__],
         }
     elif service_instance_name == "fake_service.instance3":
         assert sorted(pargs.keys()) == []
@@ -767,6 +775,57 @@ def test_apply_args_filters_no_instances_found(
     assert "Did you mean any of these?" in output
     for i in ["instance1", "instance2", "instance3"]:
         assert i in output
+
+
+@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
+@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+def test_apply_args_filters_returns_both_cassandra_and_cassandraeks(
+    mock_validate_service_name,
+    mock_figure_out_service_name,
+    mock_list_services,
+    mock_get_instance_configs_for_service,
+):
+    """When both cassandracluster and cassandraclustereks configs exist for the
+    same instance name, apply_args_filters should return both config classes."""
+    args = StatusArgs(
+        service="fake_service",
+        soa_dir="/fake/soa/dir",
+        deploy_group=None,
+        clusters="cluster1",
+        instances="instance1",
+        owner=None,
+        registration=None,
+        verbose=False,
+        service_instance=None,
+    )
+    mock_validate_service_name.return_value = None
+    mock_figure_out_service_name.return_value = "fake_service"
+    mock_list_services.return_value = ["fake_service"]
+
+    mock_cassandra_inst = make_fake_instance_conf(
+        "cluster1", "fake_service", "instance1"
+    )
+    mock_cassandra_inst.__class__ = CassandraClusterDeploymentConfig
+    mock_cassandraeks_inst = make_fake_instance_conf(
+        "cluster1", "fake_service", "instance1"
+    )
+    mock_cassandraeks_inst.__class__ = CassandraClusterEksDeploymentConfig
+
+    mock_get_instance_configs_for_service.return_value = [
+        mock_cassandra_inst,
+        mock_cassandraeks_inst,
+    ]
+
+    pargs = apply_args_filters(args)
+    assert sorted(pargs.keys()) == ["cluster1"]
+    assert pargs["cluster1"]["fake_service"] == {
+        "instance1": [
+            CassandraClusterDeploymentConfig,
+            CassandraClusterEksDeploymentConfig,
+        ],
+    }
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -907,8 +966,8 @@ def test_status_with_registration(
         deploy_pipeline=ANY,
         actual_deployments=ANY,
         instance_whitelist={
-            "instance1": mock_inst_1.__class__,
-            "instance2": mock_inst_2.__class__,
+            "instance1": [mock_inst_1.__class__],
+            "instance2": [mock_inst_2.__class__],
         },
         system_paasta_config=system_paasta_config,
         lock=mock.ANY,
