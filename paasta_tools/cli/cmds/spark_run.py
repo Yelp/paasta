@@ -608,11 +608,7 @@ def get_docker_image(
         % docker_url,
         file=sys.stderr,
     )
-    # Need sudo for credentials when pulling images from paasta docker registry (docker-paasta.yelpcorp.com)
-    # However, in CI env, we can't connect to docker via root and we can pull with user `jenkins`
-    is_ci_env = "CI" in os.environ
-    cmd_prefix = "" if is_ci_env else "sudo -H "
-    retcode, _ = _run(f"{cmd_prefix}docker pull {docker_url}", stream=True, timeout=300)
+    retcode, _ = _run(f"docker pull {docker_url}", stream=True, timeout=300)
     if retcode != 0:
         print(
             "\nPull failed. Are you authorized to run docker commands?",
@@ -1040,11 +1036,7 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     if retcode != 0:
         return None
 
-    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
-        command = "sudo -H docker push %s" % docker_url
-    else:
-        command = "docker push %s" % docker_url
-
+    command = f"docker push {docker_url}"
     print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=False)
     if retcode != 0:
@@ -1068,21 +1060,7 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
         raise ValueError(f"Could not determine digest from output: {output}")
     digest = digest_match.group("digest")
 
-    image_url = f"{docker_url}@{digest}"
-
-    # If the local digest doesn't match the remote digest AND the registry is
-    # non-default (which requires requires authentication, and consequently sudo),
-    # downstream `docker run` commands will fail trying to authenticate.
-    # To work around this, we can proactively `sudo docker pull` here so that
-    # the image exists locally and can be `docker run` without sudo
-    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
-        command = f"sudo -H docker pull {image_url}"
-        print(PaastaColors.grey(command))
-        retcode, output = _run(command, stream=False)
-        if retcode != 0:
-            raise NoDockerImageError(f"Could not pull {image_url}: {output}")
-
-    return image_url
+    return f"{docker_url}@{digest}"
 
 
 def validate_work_dir(s):
