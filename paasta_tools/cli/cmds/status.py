@@ -2403,7 +2403,7 @@ def paasta_status(args) -> int:
         lock.cancel()
         # Exit immediately, the inflight threads hold nothing that needs
         # cleanup, and a normal sys.exit() would block waiting for them.
-        os._exit(128 + signal.SIGINT)
+        os._exit(128 + signal.SIGINT)  # follow unix convention for a ^C exit code
     else:
         executor.shutdown(wait=True)
 
