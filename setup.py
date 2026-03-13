@@ -12,38 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# Minimal setup.py to handle standalone scripts alongside pyproject.toml
+# All other metadata, dependencies, and entry points are defined in pyproject.toml
 import glob
 
-from setuptools import find_packages
 from setuptools import setup
 
-from paasta_tools import __version__
-
-
-def get_install_requires():
-    with open("requirements-minimal.txt", "r") as f:
-        # Parse requirements, stripping comments and empty lines
-        minimal_reqs = []
-        for line in f:
-            line = line.strip()
-            # Skip empty lines and comments
-            if line and not line.startswith("#"):
-                minimal_reqs.append(line)
-
-    return minimal_reqs
-
-
 setup(
-    name="paasta-tools",
-    version=__version__,
-    provides=["paasta_tools"],
-    author="Compute Infrastructure @ Yelp",
-    author_email="compute-infra@yelp.com",
-    description="Tools for Yelps SOA infrastructure",
-    packages=find_packages(exclude=("tests*", "scripts*")),
-    include_package_data=True,
-    python_requires=">=3.10.0",
-    install_requires=get_install_requires(),
     scripts=[
         "paasta_tools/apply_external_resources.py",
         "paasta_tools/check_autoscaler_max_instances.py",
@@ -79,24 +55,4 @@ setup(
     ]
     + glob.glob("paasta_tools/contrib/*.sh")
     + glob.glob("paasta_tools/contrib/[!_]*.py"),
-    entry_points={
-        "console_scripts": [
-            "paasta=paasta_tools.cli.cli:main",
-            "paasta-api=paasta_tools.api.api:main",
-            "paasta-deployd=paasta_tools.deployd.master:main",
-            "paasta-fsm=paasta_tools.cli.fsm_cmd:main",
-            "paasta_prune_completed_pods=paasta_tools.prune_completed_pods:main",
-            "paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main",
-            "paasta_cleanup_expired_autoscaling_overrides=paasta_tools.cleanup_expired_autoscaling_overrides:main",
-            "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
-            "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",
-            "paasta_setup_tron_namespace=paasta_tools.setup_tron_namespace:main",
-            "paasta_docker_wrapper=paasta_tools.docker_wrapper:main",
-            "paasta_oom_logger=paasta_tools.oom_logger:main",
-            "paasta_broadcast_log=paasta_tools.broadcast_log_to_services:main",
-            "paasta_dump_locally_running_services=paasta_tools.dump_locally_running_services:main",
-            "paasta_habitat_fixer=paasta_tools.contrib.habitat_fixer:main",
-        ],
-        "paste.app_factory": ["paasta-api-config=paasta_tools.api.api:make_app"],
-    },
 )
