@@ -307,7 +307,7 @@ def get_actual_deployments(
     return actual_deployments
 
 
-class CancellableLock:
+class CancellablePrinter:
     """Thread-safe printer that suppresses output after cancellation."""
 
     def __init__(self) -> None:
@@ -328,7 +328,7 @@ def paasta_status_on_api_endpoint(
     service: str,
     instance: str,
     system_paasta_config: SystemPaastaConfig,
-    lock: CancellableLock,
+    printer: CancellablePrinter,
     verbose: int,
     new: bool = False,
     is_eks: bool = False,
@@ -395,7 +395,7 @@ def paasta_status_on_api_endpoint(
             )
             ret_code = ret
 
-    lock.print_output("\n".join(output))
+    printer.print_output("\n".join(output))
 
     return ret_code
 
@@ -2098,7 +2098,7 @@ def report_status_for_cluster(
     actual_deployments: Mapping[str, DeploymentVersion],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
-    lock: CancellableLock,
+    printer: CancellablePrinter,
     verbose: int = 0,
     new: bool = False,
     all_namespaces: bool = False,
@@ -2155,7 +2155,7 @@ def report_status_for_cluster(
                 service=service,
                 instance=deployed_instance,
                 system_paasta_config=system_paasta_config,
-                lock=lock,
+                printer=printer,
                 verbose=verbose,
                 new=new,
                 all_namespaces=all_namespaces,
@@ -2355,7 +2355,7 @@ def paasta_status(args) -> int:
     system_paasta_config = load_system_paasta_config()
 
     return_codes = [0]
-    lock = CancellableLock()
+    printer = CancellablePrinter()
     tasks = []
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
@@ -2382,7 +2382,7 @@ def paasta_status(args) -> int:
                             actual_deployments=actual_deployments,
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
-                            lock=lock,
+                            printer=printer,
                             verbose=args.verbose,
                             new=new,
                             all_namespaces=args.all_namespaces,
@@ -2400,7 +2400,7 @@ def paasta_status(args) -> int:
             return_code, output = future.result()
             return_codes.append(return_code)
     except KeyboardInterrupt:
-        lock.cancel()
+        printer.cancel()
         # Exit immediately, the inflight threads hold nothing that needs
         # cleanup, and a normal sys.exit() would block waiting for them.
         os._exit(128 + signal.SIGINT)  # follow unix convention for a ^C exit code
