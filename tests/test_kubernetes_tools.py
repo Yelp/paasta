@@ -1884,15 +1884,10 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
-        if autoscaling_metric_provider in (
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
-        ):
+        if autoscaling_metric_provider in (METRICS_PROVIDER_PISCINA,):
             expected_labels[
                 f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
             ] = "true"
-        elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
-            expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         if autoscaling_metric_provider in (
             METRICS_PROVIDER_UWSGI,
@@ -1967,7 +1962,7 @@ class TestKubernetesDeploymentConfig:
             ),
             (
                 [METRICS_PROVIDER_GUNICORN],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+                {},
             ),
             ([METRICS_PROVIDER_CPU], {}),
             ([METRICS_PROVIDER_UWSGI_V2], {}),
@@ -1978,13 +1973,12 @@ class TestKubernetesDeploymentConfig:
             ),
             (
                 [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_GUNICORN],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+                {},
             ),
             (
                 [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_GUNICORN],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
             ([METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_CPU], {}),
@@ -1994,7 +1988,7 @@ class TestKubernetesDeploymentConfig:
             ),
             (
                 [METRICS_PROVIDER_GUNICORN, METRICS_PROVIDER_CPU],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+                {},
             ),
             # Three provider combinations
             (
@@ -2005,7 +1999,6 @@ class TestKubernetesDeploymentConfig:
                 ],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
             (
@@ -2022,7 +2015,7 @@ class TestKubernetesDeploymentConfig:
                     METRICS_PROVIDER_GUNICORN,
                     METRICS_PROVIDER_CPU,
                 ],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
+                {},
             ),
             (
                 [
@@ -2032,7 +2025,6 @@ class TestKubernetesDeploymentConfig:
                 ],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
             # All providers
@@ -2045,7 +2037,6 @@ class TestKubernetesDeploymentConfig:
                 ],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
             (
@@ -2058,7 +2049,6 @@ class TestKubernetesDeploymentConfig:
                 ],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
         ],
