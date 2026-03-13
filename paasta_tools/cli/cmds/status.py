@@ -15,7 +15,9 @@
 import asyncio
 import concurrent.futures
 import difflib
+import os
 import shutil
+import signal
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -24,6 +26,7 @@ from datetime import timedelta
 from datetime import timezone
 from enum import Enum
 from itertools import groupby
+from threading import Event
 from threading import Lock
 from typing import Any
 from typing import Callable
@@ -304,12 +307,28 @@ def get_actual_deployments(
     return actual_deployments
 
 
+class CancellablePrinter:
+    """Thread-safe printer that suppresses output after cancellation."""
+
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._cancelled = Event()
+
+    def print_output(self, output: str) -> None:
+        with self._lock:
+            if not self._cancelled.is_set():
+                print(output, flush=True)
+
+    def cancel(self) -> None:
+        self._cancelled.set()
+
+
 def paasta_status_on_api_endpoint(
     cluster: str,
     service: str,
     instance: str,
     system_paasta_config: SystemPaastaConfig,
-    lock: Lock,
+    printer: CancellablePrinter,
     verbose: int,
     new: bool = False,
     is_eks: bool = False,
@@ -376,8 +395,7 @@ def paasta_status_on_api_endpoint(
             )
             ret_code = ret
 
-    with lock:
-        print("\n".join(output), flush=True)
+    printer.print_output("\n".join(output))
 
     return ret_code
 
@@ -2080,7 +2098,7 @@ def report_status_for_cluster(
     actual_deployments: Mapping[str, DeploymentVersion],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
-    lock: Lock,
+    printer: CancellablePrinter,
     verbose: int = 0,
     new: bool = False,
     all_namespaces: bool = False,
@@ -2137,7 +2155,7 @@ def report_status_for_cluster(
                 service=service,
                 instance=deployed_instance,
                 system_paasta_config=system_paasta_config,
-                lock=lock,
+                printer=printer,
                 verbose=verbose,
                 new=new,
                 all_namespaces=all_namespaces,
@@ -2337,7 +2355,7 @@ def paasta_status(args) -> int:
     system_paasta_config = load_system_paasta_config()
 
     return_codes = [0]
-    lock = Lock()
+    printer = CancellablePrinter()
     tasks = []
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
@@ -2364,7 +2382,7 @@ def paasta_status(args) -> int:
                             actual_deployments=actual_deployments,
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
-                            lock=lock,
+                            printer=printer,
                             verbose=args.verbose,
                             new=new,
                             all_namespaces=args.all_namespaces,
@@ -2375,19 +2393,19 @@ def paasta_status(args) -> int:
                 print(missing_deployments_message(service))
                 return_codes.append(1)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
-        try:
-            for future in concurrent.futures.as_completed(tasks):  # type: ignore
-                return_code, output = future.result()
-                return_codes.append(return_code)
-        except KeyboardInterrupt:
-            # ideally we wouldn't need to reach into `ThreadPoolExecutor`
-            # internals, but so far this is the best way to stop all these
-            # threads until a public interface is added
-            executor._threads.clear()  # type: ignore
-            concurrent.futures.thread._threads_queues.clear()  # type: ignore
-            raise KeyboardInterrupt
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+    tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
+    try:
+        for future in concurrent.futures.as_completed(tasks):  # type: ignore
+            return_code, output = future.result()
+            return_codes.append(return_code)
+    except KeyboardInterrupt:
+        printer.cancel()
+        # Exit immediately, the inflight threads hold nothing that needs
+        # cleanup, and a normal sys.exit() would block waiting for them.
+        os._exit(128 + signal.SIGINT)  # follow unix convention for a ^C exit code
+    else:
+        executor.shutdown(wait=True)
 
     return max(return_codes)
 

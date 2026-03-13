@@ -164,7 +164,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
-        lock=MagicMock(),
+        printer=MagicMock(),
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
         [], ["instance1", "instance2"], "instance"
@@ -354,7 +354,7 @@ def test_status_calls_sergeants(
         cluster=cluster,
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
-        lock=mock.ANY,
+        printer=mock.ANY,
         verbose=False,
         new=False,
         all_namespaces=False,
@@ -911,7 +911,7 @@ def test_status_with_registration(
             "instance2": mock_inst_2.__class__,
         },
         system_paasta_config=system_paasta_config,
-        lock=mock.ANY,
+        printer=mock.ANY,
         verbose=args.verbose,
         new=False,
         all_namespaces=True,
@@ -1661,7 +1661,7 @@ def test_paasta_status_on_api_endpoint_kubernetes_v2(
         service="fake_service",
         instance="fake_instance",
         system_paasta_config=system_paasta_config,
-        lock=MagicMock(),
+        printer=MagicMock(),
         verbose=0,
     )
 
@@ -1681,7 +1681,7 @@ def test_paasta_status_exception(system_paasta_config):
             service="fake_service",
             instance="fake_instance",
             system_paasta_config=system_paasta_config,
-            lock=MagicMock(),
+            printer=MagicMock(),
             verbose=False,
         )
 
