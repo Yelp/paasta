@@ -307,7 +307,7 @@ def get_actual_deployments(
     return actual_deployments
 
 
-class CancellablePrinter:
+class CancellableLock:
     """Thread-safe printer that suppresses output after cancellation."""
 
     def __init__(self) -> None:
@@ -328,7 +328,7 @@ def paasta_status_on_api_endpoint(
     service: str,
     instance: str,
     system_paasta_config: SystemPaastaConfig,
-    lock: CancellablePrinter,
+    lock: CancellableLock,
     verbose: int,
     new: bool = False,
     is_eks: bool = False,
@@ -2098,7 +2098,7 @@ def report_status_for_cluster(
     actual_deployments: Mapping[str, DeploymentVersion],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
-    lock: CancellablePrinter,
+    lock: CancellableLock,
     verbose: int = 0,
     new: bool = False,
     all_namespaces: bool = False,
@@ -2355,7 +2355,7 @@ def paasta_status(args) -> int:
     system_paasta_config = load_system_paasta_config()
 
     return_codes = [0]
-    lock = CancellablePrinter()
+    lock = CancellableLock()
     tasks = []
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
