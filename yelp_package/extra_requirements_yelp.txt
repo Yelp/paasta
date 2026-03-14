@@ -19,7 +19,7 @@ ndg-httpsclient==0.4.3              # vault-tools dependency
 okta-auth==1.2.1
 pycparser==2.20                     # vault-tools dependency
 pygpgme==0.3                        # vault-tools dependency
-pyjwt==2.9.0                        # okta-auth dependency
+pyjwt==2.12.0                        # okta-auth dependency
 pyopenssl==19.0.0                   # vault-tools dependency
 PySubnetTree==0.34                  # yelp-lib dependency
 python-jsonschema-objects==0.3.1    # slo-transcoder dependency
