@@ -1,3 +1,10 @@
+paasta-tools (1.47.0) jammy; urgency=medium
+
+  * 1.47.0 tagged with 'make release'
+    Commit: remove most sudo usages from spark-run (#4264)
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 16 Mar 2026 02:27:30 -0700
+
 paasta-tools (1.46.2) jammy; urgency=medium
 
   * 1.46.2 tagged with 'make release'
