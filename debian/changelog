@@ -1,3 +1,11 @@
+paasta-tools (1.47.1) jammy; urgency=medium
+
+  * 1.47.1 tagged with 'make release'
+    Commit: Merge pull request #4268 from Yelp/meu/bump-vault-tools-
+    2.3.1  Bump vault-tools to 2.3.1
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 18 Mar 2026 10:36:00 -0700
+
 paasta-tools (1.47.0) jammy; urgency=medium
 
   * 1.47.0 tagged with 'make release'
