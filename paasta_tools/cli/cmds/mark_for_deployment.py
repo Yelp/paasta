@@ -131,6 +131,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "-c",
         "-k",
         "--commit",
+        "--sha",
         help="Git sha to mark for deployment",
         required=True,
         type=validate_short_git_sha,

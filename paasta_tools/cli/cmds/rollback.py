@@ -71,6 +71,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     arg_commit = list_parser.add_argument(
         "-k",
         "--commit",
+        "--sha",
         help="Git SHA to mark for rollback. "
         "A commit to rollback to is required for paasta rollback to run. However if one is not provided, "
         "paasta rollback will instead output a list of valid git shas to rollback to.",
