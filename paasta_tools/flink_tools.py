@@ -31,6 +31,7 @@ from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.paastaapi.exceptions import ApiException
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
@@ -54,6 +55,7 @@ OVERVIEW_KEYS = {
     "jobs-failed",
 }
 JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time"}
+CHECKPOINT_KEYS = {"counts"}
 
 
 class TaskManagerConfig(TypedDict, total=False):
@@ -223,6 +225,12 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
         }
     if endpoint == "jobs":
         return json_response
+    if endpoint.endswith("checkpoints"):
+        return {
+            key: value
+            for (key, value) in json_response.items()
+            if key in CHECKPOINT_KEYS
+        }
     if endpoint.startswith("jobs"):
         return {
             key: value
@@ -322,6 +330,24 @@ async def get_flink_job_details_from_paasta_api_client(
     :param client: The paasta api client
     :returns: Flink jobs in the flink cluster"""
     return client.service.get_flink_cluster_job_details(
+        service=service,
+        instance=instance,
+        job_id=job_id,
+    )
+
+
+@async_timeout()
+async def get_flink_job_checkpoints_from_paasta_api_client(
+    service: str, instance: str, job_id: str, client: PaastaOApiClient
+) -> FlinkCheckpointStatus:
+    """Get checkpoint status for a flink job.
+
+    :param service: The service name
+    :param instance: The instance of the service to retrieve
+    :param job_id: The job ID
+    :param client: The paasta api client
+    :returns: Checkpoint status for the flink job"""
+    return client.service.get_flink_cluster_job_checkpoints(
         service=service,
         instance=instance,
         job_id=job_id,

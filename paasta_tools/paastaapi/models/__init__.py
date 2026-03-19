@@ -20,6 +20,8 @@ from paasta_tools.paastaapi.model.deployment_info import DeploymentInfo
 from paasta_tools.paastaapi.model.envoy_backend import EnvoyBackend
 from paasta_tools.paastaapi.model.envoy_location import EnvoyLocation
 from paasta_tools.paastaapi.model.envoy_status import EnvoyStatus
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
+from paasta_tools.paastaapi.model.flink_checkpoint_status_counts import FlinkCheckpointStatusCounts
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
 from paasta_tools.paastaapi.model.flink_job import FlinkJob
