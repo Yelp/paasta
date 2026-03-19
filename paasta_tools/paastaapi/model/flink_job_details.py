@@ -93,6 +93,7 @@ class FlinkJobDetails(ModelNormal):
             'name': (str,),  # noqa: E501
             'state': (str,),  # noqa: E501
             'start_time': (float,),  # noqa: E501
+            'timestamps': ({str: (float,)},),  # noqa: E501
         }
 
     @cached_property
@@ -105,6 +106,7 @@ class FlinkJobDetails(ModelNormal):
         'name': 'name',  # noqa: E501
         'state': 'state',  # noqa: E501
         'start_time': 'start-time',  # noqa: E501
+        'timestamps': 'timestamps',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -157,6 +159,7 @@ class FlinkJobDetails(ModelNormal):
             name (str): name of the flink job. [optional]  # noqa: E501
             state (str): state of the flink job. [optional]  # noqa: E501
             start_time (float): timestamp of job start time. [optional]  # noqa: E501
+            timestamps ({str: (float,)}): timestamps of job state transitions in epoch milliseconds. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

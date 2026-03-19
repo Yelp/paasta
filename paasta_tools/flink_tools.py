@@ -54,7 +54,7 @@ OVERVIEW_KEYS = {
     "jobs-cancelled",
     "jobs-failed",
 }
-JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time"}
+JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time", "timestamps"}
 
 
 class TaskManagerConfig(TypedDict, total=False):

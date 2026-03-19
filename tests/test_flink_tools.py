@@ -225,6 +225,19 @@ def test_curl_flink_endpoint_get_job_details(
         "state": "RUNNING",
         "name": "beam_happyhour.main.test_job",
         "start-time": 1655053223341,
+        "timestamps": {
+            "CREATED": 1655053223735,
+            "SUSPENDED": 0,
+            "FAILING": 0,
+            "FINISHED": 0,
+            "FAILED": 0,
+            "RUNNING": 1655842396454,
+            "CANCELLING": 0,
+            "RESTARTING": 1655842393301,
+            "RECONCILING": 0,
+            "CANCELED": 0,
+            "INITIALIZING": 1655053223341,
+        },
     }
 
 

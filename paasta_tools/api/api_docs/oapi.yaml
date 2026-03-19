@@ -255,6 +255,12 @@ components:
           description: timestamp of job start time
           format: float
           type: number
+        timestamps:
+          description: timestamps of job state transitions in epoch milliseconds
+          type: object
+          additionalProperties:
+            type: number
+            format: float
       type: object
     FlinkJobs:
       properties:
