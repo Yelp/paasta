@@ -225,7 +225,7 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
         }
     if endpoint == "jobs":
         return json_response
-    if endpoint.endswith("checkpoints"):
+    if endpoint.endswith("/checkpoints"):
         return {
             key: value
             for (key, value) in json_response.items()
