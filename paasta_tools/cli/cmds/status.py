@@ -1041,13 +1041,14 @@ def _print_flink_status_from_job_manager(
         return 1
 
     checkpoint_data: Dict[str, Any] = {}
+    checkpoint_fetch_failed = False
     if verbose > 1 and job_ids:
         try:
             checkpoint_data = run_sync(
                 get_flink_job_checkpoints, service, instance, job_ids, client
             )
         except Exception:
-            pass  # checkpoints are informational, don't fail status
+            checkpoint_fetch_failed = True
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if jobs:
@@ -1114,11 +1115,19 @@ def _print_flink_status_from_job_manager(
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
             output.append(job_info_str)
-            if verbose > 1 and job_id in checkpoint_data:
-                ckpt = checkpoint_data[job_id]
-                if not isinstance(ckpt, Exception) and hasattr(ckpt, "counts"):
-                    counts = ckpt.counts
-                    if counts is not None:
+            if verbose > 1:
+                if checkpoint_fetch_failed:
+                    output.append(
+                        PaastaColors.yellow("        Checkpoints: unavailable")
+                    )
+                elif job_id in checkpoint_data:
+                    ckpt = checkpoint_data[job_id]
+                    if isinstance(ckpt, Exception):
+                        output.append(
+                            PaastaColors.yellow("        Checkpoints: unavailable")
+                        )
+                    elif hasattr(ckpt, "counts") and ckpt.counts is not None:
+                        counts = ckpt.counts
                         output.append(
                             f"        Checkpoints:"
                             f" {counts.get('completed', 0)} completed,"
