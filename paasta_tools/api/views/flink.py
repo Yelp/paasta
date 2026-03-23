@@ -60,7 +60,7 @@ def get_flink_cluster_job_checkpoints(request):
     job_id = request.swagger_data.get("job_id")
     try:
         return curl_flink_endpoint(
-            cr_id(service, instance), f"jobs/{job_id}/checkpoints"
+            cr_id(service, instance), "jobs/{job_id}/checkpoints"
         )
     except ValueError as e:
         raise ApiFailure(e, 500)
