@@ -1115,7 +1115,6 @@ def _print_flink_status_from_job_manager(
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
             output.append(job_info_str)
-            # Checkpoint data may be empty during rollout while API server is updated
             if verbose > 1 and job_id in checkpoint_data:
                 ckpt = checkpoint_data[job_id]
                 if (
