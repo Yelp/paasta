@@ -1237,7 +1237,7 @@ async def get_flink_job_details(
 
 async def get_flink_job_checkpoints(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
-) -> Dict[str, FlinkCheckpointStatus]:
+) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
     """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""
     results = await asyncio.gather(
         *[
