@@ -80,6 +80,7 @@ from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
