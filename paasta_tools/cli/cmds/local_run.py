@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import base64
 import datetime
 import json
 import os
@@ -645,62 +644,12 @@ class LostContainerException(Exception):
     pass
 
 
-class DockerAuthConfig(TypedDict):
-    username: str
-    password: str
-
-
-def get_readonly_docker_registry_auth_config(
-    docker_url: str,
-) -> DockerAuthConfig | None:
-    system_paasta_config = load_system_paasta_config()
-    config_path = system_paasta_config.get_readonly_docker_registry_auth_file()
-
-    try:
-        with open(config_path) as f:
-            docker_config = json.load(f)
-    except Exception:
-        print(
-            PaastaColors.yellow(
-                "Warning: unable to load read-only docker registry credentials."
-            ),
-            file=sys.stderr,
-        )
-        # the best we can do is try to pull with whatever auth the user has configured locally
-        # i.e., root-owned docker config in /root/.docker/config.json
-        return None
-    registry = docker_url.split("/")[0]
-
-    # find matching auth config - our usual ro config will have at least two entries
-    # at the time this comment was written
-    auths = docker_config
-    for auth_url, auth_data in auths.items():
-        if registry in auth_url:
-            # Decode the base64 auth string if present
-            if "auth" in auth_data:
-                auth_string = base64.b64decode(auth_data["auth"]).decode("utf-8")
-                username, password = auth_string.split(":", 1)
-                return {"username": username, "password": password}
-
-    # we'll hit this for registries like docker-dev or extra-private internal registries
-    return None
-
-
 def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
     """Pull an image using the docker-py library with read-only registry credentials"""
     print(
         f"Please wait while the image ({docker_url}) is pulled (times out after 30m)...",
         file=sys.stderr,
     )
-
-    auth_config = get_readonly_docker_registry_auth_config(docker_url)
-    if not auth_config:
-        print(
-            PaastaColors.yellow(
-                "Warning: No read-only docker registry credentials found, attempting to pull without them."
-            ),
-            file=sys.stderr,
-        )
 
     try:
         with Timeout(
@@ -710,9 +659,7 @@ def docker_pull_image(docker_client: APIClient, docker_url: str) -> None:
             # this is slightly funky since pull() returns the output line-by-line, but as a dict
             # ...that we then need to format back to the usual `docker pull` output
             # :p
-            for line in docker_client.pull(
-                docker_url, auth_config=auth_config, stream=True, decode=True
-            ):
+            for line in docker_client.pull(docker_url, stream=True, decode=True):
                 # not all lines have an 'id' key :(
                 id_prefix = f"{line['id']}: " if "id" in line else ""
                 print(f"{id_prefix}{line['status']}", file=sys.stderr)
