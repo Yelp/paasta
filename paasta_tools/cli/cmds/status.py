@@ -80,6 +80,7 @@ from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
@@ -1040,6 +1041,15 @@ def _print_flink_status_from_job_manager(
         output.append(str(e))
         return 1
 
+    checkpoint_data: Dict[str, Any] = {}
+    if verbose > 1 and job_ids:
+        try:
+            checkpoint_data = run_sync(
+                get_flink_job_checkpoints, service, instance, job_ids, client
+            )
+        except Exception:
+            pass  # checkpoints are informational, don't fail status
+
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if jobs:
         max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
@@ -1105,6 +1115,21 @@ def _print_flink_status_from_job_manager(
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
             output.append(job_info_str)
+            if verbose > 1 and job_id in checkpoint_data:
+                ckpt = checkpoint_data[job_id]
+                if (
+                    not isinstance(ckpt, Exception)
+                    and hasattr(ckpt, "counts")
+                    and ckpt.counts is not None
+                ):
+                    counts = ckpt.counts
+                    output.append(
+                        f"        Checkpoints:"
+                        f" {counts['completed']} completed,"
+                        f" {counts['failed']} failed,"
+                        f" {counts['in_progress']} in progress,"
+                        f" {counts['restored']} restored"
+                    )
         else:
             output.append(
                 PaastaColors.yellow(
@@ -1207,6 +1232,22 @@ async def get_flink_job_details(
         ]
     )
     return [jd for jd in jobs_details]
+
+
+async def get_flink_job_checkpoints(
+    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
+) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
+    """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""
+    results = await asyncio.gather(
+        *[
+            flink_tools.get_flink_job_checkpoints_from_paasta_api_client(
+                service, instance, job_id, client
+            )
+            for job_id in job_ids
+        ],
+        return_exceptions=True,
+    )
+    return dict(zip(job_ids, results))
 
 
 def print_kubernetes_status_v2(

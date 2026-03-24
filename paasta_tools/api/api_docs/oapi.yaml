@@ -263,6 +263,39 @@ components:
             $ref: '#/components/schemas/FlinkJob'
           description: Flink jobs
           type: array
+    FlinkCheckpointStatus:
+      properties:
+        counts:
+          type: object
+          description: Checkpoint counts for a flink job
+          properties:
+            completed:
+              type: integer
+              format: int32
+              description: Number of completed checkpoints
+            failed:
+              type: integer
+              format: int32
+              description: Number of failed checkpoints
+            in_progress:
+              type: integer
+              format: int32
+              description: Number of in-progress checkpoints
+            restored:
+              type: integer
+              format: int32
+              description: Number of restored checkpoints
+            total:
+              type: integer
+              format: int32
+              description: Total number of checkpoints
+          required:
+            - completed
+            - failed
+            - in_progress
+            - restored
+            - total
+      type: object
     FloatAndError:
       properties:
         error_message:
@@ -1226,6 +1259,44 @@ paths:
         "599":
           description: Temporary issue fetching instance
       summary: Get details of a flink job in a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/jobs/{job_id}/checkpoints:
+    get:
+      operationId: get_flink_cluster_job_checkpoints
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Job id
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkCheckpointStatus'
+          description: Get checkpoint status of a flink job
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get checkpoint status of a flink job
       tags:
       - service
   /flink/{service}/{instance}/overview:

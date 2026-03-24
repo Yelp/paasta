@@ -228,6 +228,53 @@ def test_curl_flink_endpoint_get_job_details(
     }
 
 
+@mock.patch("requests.Response", autospec=True)
+@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
+@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
+def test_curl_flink_endpoint_get_job_checkpoints(
+    mock_get_cr,
+    mock_requests_get,
+    mock_response,
+):
+    mock_get_cr.return_value = {
+        "metadata": {
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
+        }
+    }
+    mock_requests_get.return_value = mock_response
+    mock_response.json.return_value = {
+        "counts": {
+            "completed": 100,
+            "failed": 2,
+            "in_progress": 1,
+            "restored": 0,
+            "total": 103,
+        },
+        "summary": {"checkpointed_size": 12345},
+        "latest": {"completed": {"id": 100}},
+    }
+
+    service = "kurupt"
+    instance = "main"
+    result = flink_tools.curl_flink_endpoint(
+        flink_tools.cr_id(service, instance),
+        "jobs/4210f0646f5c9ce1db0b3e5ae4372b82/checkpoints",
+    )
+
+    assert result == {
+        "counts": {
+            "completed": 100,
+            "failed": 2,
+            "in_progress": 1,
+            "restored": 0,
+            "total": 103,
+        },
+    }
+
+
 def test_get_flink_jobmanager_overview():
     with mock.patch(
         "paasta_tools.flink_tools._dashboard_get",

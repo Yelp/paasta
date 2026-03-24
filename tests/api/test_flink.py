@@ -160,3 +160,43 @@ class TestGetFlinkJobDetails:
         mock_curl_flink_endpoint.side_effect = ValueError("BOOM")
         with pytest.raises(ApiFailure):
             _ = flink.get_flink_cluster_job_details(mock_request)
+
+
+@mock.patch("paasta_tools.api.views.flink.curl_flink_endpoint", autospec=True)
+class TestGetFlinkJobCheckpoints:
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+            "job_id": "4210f0646f5c9ce1db0b3e5ae4372b82",
+        }
+        return request
+
+    def test_success(
+        self,
+        mock_curl_flink_endpoint,
+        mock_request,
+    ):
+        jm_response = {
+            "counts": {
+                "completed": 50,
+                "failed": 1,
+                "in_progress": 0,
+                "restored": 0,
+                "total": 51,
+            }
+        }
+        mock_curl_flink_endpoint.return_value = jm_response
+        api_response = flink.get_flink_cluster_job_checkpoints(mock_request)
+        assert jm_response == api_response
+
+    def test_failure(
+        self,
+        mock_curl_flink_endpoint,
+        mock_request,
+    ):
+        mock_curl_flink_endpoint.side_effect = ValueError("BOOM")
+        with pytest.raises(ApiFailure):
+            _ = flink.get_flink_cluster_job_checkpoints(mock_request)
