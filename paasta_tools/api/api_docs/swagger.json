@@ -2432,7 +2432,14 @@
                         "format": "float"
                     }
                 }
-            }
+            },
+            "required": [
+                "jid",
+                "name",
+                "state",
+                "start-time",
+                "timestamps"
+            ]
         },
         "FlinkClusterOverview": {
             "type": "object",

@@ -3063,6 +3063,7 @@ job_details_obj = paastamodels.FlinkJobDetails(
     name="beam_happyhour.main.beam_happyhour",
     state="RUNNING",
     start_time=float(1655053223341),
+    timestamps={"RUNNING": 1655053223341.0, "RESTARTING": 0.0},
 )
 
 jobs_obj = paastamodels.FlinkJobs(
