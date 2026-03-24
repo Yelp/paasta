@@ -108,8 +108,15 @@ class FlinkCheckpointStatusCounts(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, *args, **kwargs):  # noqa: E501
+    def __init__(self, completed, failed, in_progress, restored, total, *args, **kwargs):  # noqa: E501
         """FlinkCheckpointStatusCounts - a model defined in OpenAPI
+
+        Args:
+            completed (int): Number of completed checkpoints
+            failed (int): Number of failed checkpoints
+            in_progress (int): Number of in-progress checkpoints
+            restored (int): Number of restored checkpoints
+            total (int): Total number of checkpoints
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -142,11 +149,6 @@ class FlinkCheckpointStatusCounts(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            completed (int): Number of completed checkpoints. [optional]  # noqa: E501
-            failed (int): Number of failed checkpoints. [optional]  # noqa: E501
-            in_progress (int): Number of in-progress checkpoints. [optional]  # noqa: E501
-            restored (int): Number of restored checkpoints. [optional]  # noqa: E501
-            total (int): Total number of checkpoints. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -172,6 +174,11 @@ class FlinkCheckpointStatusCounts(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
+        self.completed = completed
+        self.failed = failed
+        self.in_progress = in_progress
+        self.restored = restored
+        self.total = total
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \

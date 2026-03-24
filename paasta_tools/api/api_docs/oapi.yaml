@@ -289,6 +289,12 @@ components:
               type: integer
               format: int32
               description: Total number of checkpoints
+          required:
+            - completed
+            - failed
+            - in_progress
+            - restored
+            - total
       type: object
     FloatAndError:
       properties:

@@ -2498,7 +2498,14 @@
                             "format": "int32",
                             "description": "Total number of checkpoints"
                         }
-                    }
+                    },
+                    "required": [
+                        "completed",
+                        "failed",
+                        "in_progress",
+                        "restored",
+                        "total"
+                    ]
                 }
             }
         },
