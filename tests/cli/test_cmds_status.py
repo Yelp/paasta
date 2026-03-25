@@ -2547,7 +2547,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink config:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2577,7 +2577,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink overview:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2606,7 +2606,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink jobs:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2625,7 +2625,7 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
 
-        # Errors while requesing job details
+        # Errors while requesting job details
         mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
         output = []
         return_value = print_flink_status(
@@ -2641,7 +2641,7 @@ class TestPrintFlinkStatus:
         assert return_value == 1
 
         # and output that an error has occurred
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception getting Flink jobs:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -2874,7 +2874,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         expected_output = [
-            "    Config SHA: 00000",
+            "    Config SHA: config00000",
             "    Repo(git): https://github.yelpcorp.com/services/fake_service",
             "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             "    Flink Pool: flink",
@@ -2882,19 +2882,19 @@ class TestPrintFlinkStatus:
             "    Flink Runbook: fake_runbook_url",
             "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             "    Flink Log Commands:",
             "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
             "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
             "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
             "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             "    Flink Monitoring:",
             "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
             "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             "    Pods: 3 running, 0 evicted, 0 other, 3 total",
         ]
@@ -2946,7 +2946,7 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         expected_output = [
-            "    Config SHA: 00000",
+            "    Config SHA: config00000",
             "    Repo(git): https://github.yelpcorp.com/services/fake_service",
             "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
             "    Flink Pool: flink-spot",
@@ -2954,19 +2954,19 @@ class TestPrintFlinkStatus:
             "    Flink Runbook: fake_runbook_url",
             "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
             "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             "    Flink Log Commands:",
             "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
             "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
             "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
             "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             "    Flink Monitoring:",
             "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
             "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
             "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
+            OUTPUT_HORIZONTAL_RULE,
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             "    Pods: 1 running, 0 evicted, 0 other, 1 total",
         ]
@@ -3085,7 +3085,7 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
 
 def _get_flink_base_status_verbose_0(metadata):
     return [
-        "    Config SHA: 00000",
+        "    Config SHA: config00000",
         f"    Flink version: {config_obj.flink_version}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
@@ -3093,14 +3093,14 @@ def _get_flink_base_status_verbose_0(metadata):
 
 def _get_flink_base_status_verbose_1(metadata):
     return [
-        "    Config SHA: 00000",
+        "    Config SHA: config00000",
+        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
+        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
         "    Repo(git): https://github.yelpcorp.com/services/fake_service",
         "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         "    Flink Pool: flink",
         "    Owner: fake_owner",
         "    Flink Runbook: fake_runbook_url",
-        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
-        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
 

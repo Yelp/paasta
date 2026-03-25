@@ -11,13 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import shutil
+from datetime import datetime
+from itertools import groupby
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
+import humanize
 import requests
 import service_configuration_lib
 from mypy_extensions import TypedDict
@@ -30,6 +35,8 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.monitoring_tools import get_runbook
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
@@ -38,6 +45,7 @@ from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -59,6 +67,42 @@ JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time", "timestamps"}
 
 class TaskManagerConfig(TypedDict, total=False):
     instances: int
+
+
+class PodCounts(TypedDict):
+    running: int
+    evicted: int
+    other: int
+    total: int
+
+
+class JobCounts(TypedDict):
+    running: int
+    finished: int
+    failed: int
+    cancelled: int
+    total: int
+
+
+class FlinkJobDetailsDict(TypedDict):
+    state: str
+    pod_counts: PodCounts
+    job_counts: Optional[JobCounts]
+    taskmanagers: Optional[int]
+    slots_available: Optional[int]
+    slots_total: Optional[int]
+    jobs: List[FlinkJobDetails]
+    overview_available: bool
+
+
+class FlinkInstanceDetails(TypedDict):
+    config_sha: str
+    version: Optional[str]
+    version_revision: Optional[str]
+    dashboard_url: Optional[str]
+    pool: Optional[str]
+    team: str
+    runbook: str
 
 
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -381,3 +425,349 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_flink_instance_details(
+    metadata: Mapping[str, Any],
+    flink_config: Optional[FlinkConfig],
+    flink_instance_config: "FlinkDeploymentConfig",
+    service: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> FlinkInstanceDetails:
+    """Collect Flink instance metadata and configuration details."""
+    labels = metadata.get("labels", {})
+    annotations = metadata.get("annotations", {})
+
+    config_sha = labels.get(paasta_prefixed("config_sha"))
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+
+    version = flink_config.flink_version if flink_config else None
+    version_revision = flink_config.flink_revision if flink_config else None
+    dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
+
+    pool = flink_instance_config.get_pool()
+    team = flink_instance_config.get_team() or get_team(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+    runbook = flink_instance_config.get_runbook() or get_runbook(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+
+    return {
+        "config_sha": config_sha,
+        "version": version,
+        "version_revision": version_revision,
+        "dashboard_url": dashboard_url,
+        "pool": pool,
+        "team": team,
+        "runbook": runbook,
+    }
+
+
+def format_flink_instance_header(
+    details: FlinkInstanceDetails, verbose: bool
+) -> List[str]:
+    """Format basic instance information (config SHA, version, dashboard URL)."""
+    output: List[str] = []
+
+    if details.get("config_sha"):
+        output.append(f"    Config SHA: {details['config_sha']}")
+
+    if details.get("version"):
+        if verbose and details.get("version_revision"):
+            output.append(
+                f"    Flink version: {details['version']} {details['version_revision']}"
+            )
+        else:
+            output.append(f"    Flink version: {details['version']}")
+
+    # Dashboard URL is only useful when the cluster is running (version is set)
+    if details.get("dashboard_url") and details.get("version"):
+        output.append(f"    URL: {details['dashboard_url']}/")
+
+    return output
+
+
+def format_flink_instance_metadata(
+    details: FlinkInstanceDetails, service: str
+) -> List[str]:
+    """Format verbose instance metadata (repo links, pool, owner, runbook)."""
+    output: List[str] = []
+    output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+    output.append(
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+    )
+    if details.get("pool"):
+        output.append(f"    Flink Pool: {details['pool']}")
+    if details.get("team"):
+        output.append(f"    Owner: {details['team']}")
+    if details.get("runbook"):
+        output.append(f"    Flink Runbook: {details['runbook']}")
+    return output
+
+
+def format_flink_config_links(service: str, ecosystem: str) -> List[str]:
+    """Format configuration repository links."""
+    return [
+        f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}",
+        f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}",
+    ]
+
+
+def format_flink_log_commands(service: str, instance: str, cluster: str) -> List[str]:
+    """Format paasta logs commands."""
+    return [
+        "    Flink Log Commands:",
+        f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}",
+        f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER",
+        f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER",
+        f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR",
+    ]
+
+
+def format_flink_monitoring_links(
+    service: str, instance: str, ecosystem: str, cluster: str
+) -> List[str]:
+    """Format Grafana and cost monitoring links."""
+    return [
+        "    Flink Monitoring:",
+        f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now",
+        f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
+        f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
+        f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters",
+    ]
+
+
+def collect_flink_job_details(
+    status: Mapping[str, Any],
+    overview: Optional[FlinkClusterOverview],
+    jobs: List[FlinkJobDetails],
+) -> FlinkJobDetailsDict:
+    """Collect job, pod, and resource information from status and overview."""
+    pod_running_count = 0
+    pod_evicted_count = 0
+    pod_other_count = 0
+
+    for pod in status.get("pod_status", []):
+        phase = pod.get("phase")
+        if phase == "Running":
+            pod_running_count += 1
+        elif phase == "Failed" and pod.get("reason") == "Evicted":
+            pod_evicted_count += 1
+        else:
+            pod_other_count += 1
+
+    pod_counts: PodCounts = {
+        "running": pod_running_count,
+        "evicted": pod_evicted_count,
+        "other": pod_other_count,
+        "total": pod_running_count + pod_evicted_count + pod_other_count,
+    }
+
+    job_counts: Optional[JobCounts] = None
+    taskmanagers = None
+    slots_available = None
+    slots_total = None
+
+    if overview and getattr(overview, "jobs_running", None) is not None:
+        jobs_total_count = (
+            overview.jobs_running
+            + overview.jobs_finished
+            + overview.jobs_failed
+            + overview.jobs_cancelled
+        )
+        job_counts = {
+            "running": overview.jobs_running,
+            "finished": overview.jobs_finished,
+            "failed": overview.jobs_failed,
+            "cancelled": overview.jobs_cancelled,
+            "total": jobs_total_count,
+        }
+        taskmanagers = overview.taskmanagers
+        slots_available = overview.slots_available
+        slots_total = overview.slots_total
+
+    return {
+        "state": status["state"],
+        "pod_counts": pod_counts,
+        "job_counts": job_counts,
+        "taskmanagers": taskmanagers,
+        "slots_available": slots_available,
+        "slots_total": slots_total,
+        "jobs": jobs,
+        "overview_available": overview is not None,
+    }
+
+
+def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
+    """Format state, pods, jobs summary, taskmanagers, and slots."""
+    output: List[str] = []
+
+    state = job_details["state"]
+    pod_counts = job_details["pod_counts"]
+    job_counts = job_details.get("job_counts")
+    taskmanagers = job_details.get("taskmanagers")
+    slots_available = job_details.get("slots_available")
+    slots_total = job_details.get("slots_total")
+
+    color = PaastaColors.green if state == "running" else PaastaColors.yellow
+    output.append(f"    State: {color(state.title())}")
+
+    formatted_evictions = (
+        PaastaColors.red(f"{pod_counts['evicted']}")
+        if pod_counts["evicted"] > 0
+        else f"{pod_counts['evicted']}"
+    )
+    output.append(
+        "    Pods:"
+        f" {pod_counts['running']} running,"
+        f" {formatted_evictions} evicted,"
+        f" {pod_counts['other']} other,"
+        f" {pod_counts['total']} total"
+    )
+
+    if job_counts is not None:
+        output.append(
+            "    Jobs:"
+            f" {job_counts['running']} running,"
+            f" {job_counts['finished']} finished,"
+            f" {job_counts['failed']} failed,"
+            f" {job_counts['cancelled']} cancelled,"
+            f" {job_counts['total']} total"
+        )
+    elif job_details.get("overview_available"):
+        output.append(
+            PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+        )
+
+    if (
+        taskmanagers is not None
+        and slots_available is not None
+        and slots_total is not None
+    ):
+        output.append(
+            f"    {taskmanagers} taskmanagers,"
+            f" {slots_available}/{slots_total} slots available"
+        )
+
+    return output
+
+
+def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
+    """Extract the job name from a Flink job details object."""
+    return flink_job["name"].split(".", 2)[-1]
+
+
+def format_flink_jobs_table(
+    jobs: List[FlinkJobDetails],
+    dashboard_url: str,
+    verbose: int,
+    checkpoint_data: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    """Format jobs table with job details, checkpoints, and restart timestamps."""
+    output: List[str] = []
+
+    if jobs:
+        max_job_name_length = max(len(get_flink_job_name(job)) for job in jobs)
+    else:
+        max_job_name_length = 10
+
+    allowed_max_job_name_length = min(
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
+    )
+
+    output.append("    Jobs:")
+    if verbose > 1:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+        )
+    else:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+        )
+
+    unique_jobs = (
+        sorted(jobs_group, key=lambda j: -j["start_time"])[0]  # type: ignore
+        for _, jobs_group in groupby(
+            sorted(
+                (j for j in jobs if j.get("name") and j.get("start_time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
+        )
+    )
+
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
+
+    for job in unique_jobs:
+        job_id = job["jid"]
+        if verbose > 1:
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+        {dashboard_url}"""
+        else:
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+
+        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
+
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else PaastaColors.red
+                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                else PaastaColors.yellow
+            )
+            job_info_str = fmt.format(
+                job_id=job_id,
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
+                state=color_fn((job.get("state") or "Unknown").title()),
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
+            output.append(job_info_str)
+
+            # Checkpoint data (verbose > 1)
+            if verbose > 1 and checkpoint_data and job_id in checkpoint_data:
+                ckpt = checkpoint_data[job_id]
+                if (
+                    not isinstance(ckpt, (Exception, BaseException))
+                    and hasattr(ckpt, "counts")
+                    and ckpt.counts is not None
+                ):
+                    counts = ckpt.counts
+                    output.append(
+                        f"        Checkpoints:"
+                        f" {counts['completed']} completed,"
+                        f" {counts['failed']} failed,"
+                        f" {counts['in_progress']} in progress,"
+                        f" {counts['restored']} restored"
+                    )
+
+            # Restart timestamp (verbose > 1)
+            if verbose > 1 and job.get("timestamps"):
+                restarting_ts = job["timestamps"].get("RESTARTING", 0)
+                if restarting_ts and restarting_ts > 0:
+                    try:
+                        last_restart = datetime.fromtimestamp(
+                            int(restarting_ts) // 1000
+                        )
+                        output.append(
+                            f"        Last restart:"
+                            f" {last_restart}"
+                            f" ({humanize.naturaltime(last_restart)})"
+                        )
+                    except (ValueError, TypeError, OSError):
+                        pass  # timestamps are informational
+        else:
+            output.append(
+                PaastaColors.yellow(
+                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
+                )
+            )
+            break
+
+    return output
