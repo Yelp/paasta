@@ -1,3 +1,19 @@
+paasta-tools (1.48.1) jammy; urgency=medium
+
+  * 1.48.1 tagged with 'make release'
+    Commit: remove references to read-only registry creds (#4272)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 24 Mar 2026 09:30:45 -0700
+
+paasta-tools (1.48.0) jammy; urgency=medium
+
+  * 1.48.0 tagged with 'make release'
+    Commit: Merge pull request #4270 from Yelp/u/nathanleigh/FLINK-
+    5911/checkpoint-counts  FLINK-5911: Add checkpoint counts to paasta
+    status for Flink services
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 24 Mar 2026 09:22:14 -0700
+
 paasta-tools (1.47.1) jammy; urgency=medium
 
   * 1.47.1 tagged with 'make release'

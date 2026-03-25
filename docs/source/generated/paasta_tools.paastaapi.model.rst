@@ -16,6 +16,8 @@ Submodules
    paasta_tools.paastaapi.model.envoy_backend
    paasta_tools.paastaapi.model.envoy_location
    paasta_tools.paastaapi.model.envoy_status
+   paasta_tools.paastaapi.model.flink_checkpoint_status
+   paasta_tools.paastaapi.model.flink_checkpoint_status_counts
    paasta_tools.paastaapi.model.flink_cluster_overview
    paasta_tools.paastaapi.model.flink_config
    paasta_tools.paastaapi.model.flink_job
