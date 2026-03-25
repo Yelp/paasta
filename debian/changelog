@@ -1,3 +1,12 @@
+paasta-tools (1.49.0) jammy; urgency=medium
+
+  * 1.49.0 tagged with 'make release'
+    Commit: Merge pull request #4271 from Yelp/u/nathanleigh/FLINK-
+    5911/restart-timestamp  FLINK-5911: Add last restart timestamp to
+    paasta status for Flink jobs
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 25 Mar 2026 10:45:19 -0700
+
 paasta-tools (1.48.1) jammy; urgency=medium
 
   * 1.48.1 tagged with 'make release'
