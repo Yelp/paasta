@@ -1130,6 +1130,20 @@ def _print_flink_status_from_job_manager(
                         f" {counts['in_progress']} in progress,"
                         f" {counts['restored']} restored"
                     )
+            if verbose > 1 and job.get("timestamps"):
+                restarting_ts = job["timestamps"].get("RESTARTING", 0)
+                if restarting_ts and restarting_ts > 0:
+                    try:
+                        last_restart = datetime.fromtimestamp(
+                            int(restarting_ts) // 1000
+                        )
+                        output.append(
+                            f"        Last restart:"
+                            f" {last_restart}"
+                            f" ({humanize.naturaltime(last_restart)})"
+                        )
+                    except (ValueError, TypeError, OSError):
+                        pass  # timestamps are informational
         else:
             output.append(
                 PaastaColors.yellow(

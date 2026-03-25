@@ -2676,6 +2676,74 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
+    def test_verbose_2_shows_checkpoints_and_restarts(
+        self,
+        mock_load_flink_instance_config,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+        flink_instance_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_load_flink_instance_config.return_value = flink_instance_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+
+        job_details_with_timestamps = paastamodels.FlinkJobDetails(
+            jid="4210f0646f5c9ce1db0b3e5ae4372b82",
+            name="beam_happyhour.main.beam_happyhour",
+            state="RUNNING",
+            start_time=float(1655053223341),
+            timestamps={
+                "RESTARTING": 1655842393301.0,
+                "RUNNING": 1655842396454.0,
+            },
+            _check_type=False,
+        )
+        mock_api.service.get_flink_cluster_job_details.return_value = (
+            job_details_with_timestamps
+        )
+
+        checkpoint_counts = paastamodels.FlinkCheckpointStatusCounts(
+            completed=100,
+            failed=2,
+            in_progress=1,
+            restored=0,
+            total=103,
+            _check_type=False,
+        )
+        checkpoint_status = paastamodels.FlinkCheckpointStatus(
+            counts=checkpoint_counts,
+            _check_type=False,
+        )
+        mock_api.service.get_flink_cluster_job_checkpoints.return_value = (
+            checkpoint_status
+        )
+
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=2,
+        )
+
+        assert return_value == 0
+        output_text = "\n".join(output)
+        assert (
+            "Checkpoints: 100 completed, 2 failed, 1 in progress, 0 restored"
+            in output_text
+        )
+        assert "Last restart:" in output_text
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     def test_overview_none_fields_when_jobmanager_crashlooping(
         self,
         mock_load_flink_instance_config,
@@ -2995,6 +3063,7 @@ job_details_obj = paastamodels.FlinkJobDetails(
     name="beam_happyhour.main.beam_happyhour",
     state="RUNNING",
     start_time=float(1655053223341),
+    timestamps={"RUNNING": 1655053223341.0, "RESTARTING": 0.0},
 )
 
 jobs_obj = paastamodels.FlinkJobs(
