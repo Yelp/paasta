@@ -1,3 +1,12 @@
+paasta-tools (1.49.1) jammy; urgency=medium
+
+  * 1.49.1 tagged with 'make release'
+    Commit: Merge pull request #4276 from Yelp/u/nathanleigh/FLINK-
+    5911/fix-timestamps-required  FLINK-5911: Make restart api fields
+    optional in FlinkJobDetails
+
+ -- Ilkin Mammadzada <ilkinmammadzada@yelp.com>  Thu, 26 Mar 2026 04:07:47 -0700
+
 paasta-tools (1.49.0) jammy; urgency=medium
 
   * 1.49.0 tagged with 'make release'
