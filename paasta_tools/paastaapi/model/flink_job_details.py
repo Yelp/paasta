@@ -121,15 +121,8 @@ class FlinkJobDetails(ModelNormal):
     ])
 
     @convert_js_args_to_python_args
-    def __init__(self, jid, name, state, start_time, timestamps, *args, **kwargs):  # noqa: E501
+    def __init__(self, *args, **kwargs):  # noqa: E501
         """FlinkJobDetails - a model defined in OpenAPI
-
-        Args:
-            jid (str): ID of the flink job
-            name (str): name of the flink job
-            state (str): state of the flink job
-            start_time (float): timestamp of job start time
-            timestamps ({str: (float,)}): timestamps of job state transitions in epoch milliseconds
 
         Keyword Args:
             _check_type (bool): if True, values for parameters in openapi_types
@@ -162,6 +155,11 @@ class FlinkJobDetails(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            jid (str): ID of the flink job. [optional]  # noqa: E501
+            name (str): name of the flink job. [optional]  # noqa: E501
+            state (str): state of the flink job. [optional]  # noqa: E501
+            start_time (float): timestamp of job start time. [optional]  # noqa: E501
+            timestamps ({str: (float,)}): timestamps of job state transitions in epoch milliseconds. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -187,11 +185,6 @@ class FlinkJobDetails(ModelNormal):
         self._configuration = _configuration
         self._visited_composed_classes = _visited_composed_classes + (self.__class__,)
 
-        self.jid = jid
-        self.name = name
-        self.state = state
-        self.start_time = start_time
-        self.timestamps = timestamps
         for var_name, var_value in kwargs.items():
             if var_name not in self.attribute_map and \
                         self._configuration is not None and \
