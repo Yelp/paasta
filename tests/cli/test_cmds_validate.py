@@ -23,6 +23,7 @@ from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import _check_advertise_discover
 from paasta_tools.cli.cmds.validate import _check_proxy_port_in_use
+from paasta_tools.cli.cmds.validate import _check_smartstack_clb_proxy
 from paasta_tools.cli.cmds.validate import _check_smartstack_name_length
 from paasta_tools.cli.cmds.validate import _check_smartstack_name_length_envoy
 from paasta_tools.cli.cmds.validate import _check_smartstack_proxied_through
@@ -1689,6 +1690,44 @@ def test_check_smartstack_proxied_through_valid():
         "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy", autospec=True
     ):
         _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_proxied_through_invalid():
+    smartstack_data = {"proxied_through": "proxy_service.main"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy",
+        side_effect=ValueError("Invalid proxy"),
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_smartstack_proxied_through(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_clb_proxy_no_clb_proxy():
+    smartstack_data = {}
+    _check_smartstack_clb_proxy(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_clb_proxy_valid():
+    smartstack_data = {"clb_proxy": "proxy_service.main"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy", autospec=True
+    ):
+        _check_smartstack_clb_proxy(smartstack_data, "/fake/soa/dir")
+
+
+def test_check_smartstack_clb_proxy_invalid():
+    smartstack_data = {"clb_proxy": "proxy_service.main"}
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate._check_smartstack_valid_proxy",
+        side_effect=ValueError("Invalid proxy"),
+        autospec=True,
+    ):
+        with pytest.raises(ValueError):
+            _check_smartstack_clb_proxy(smartstack_data, "/fake/soa/dir")
 
 
 def test_check_smartstack_valid_proxy_valid():
