@@ -2547,7 +2547,7 @@ class TestPrintFlinkStatus:
         )
 
         assert return_value == 1
-        assert PaastaColors.red("Exception when talking to the API:") in output
+        assert PaastaColors.red("Exception fetching Flink config from API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -3094,13 +3094,13 @@ def _get_flink_base_status_verbose_0(metadata):
 def _get_flink_base_status_verbose_1(metadata):
     return [
         "    Config SHA: 00000",
+        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
+        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
         "    Repo(git): https://github.yelpcorp.com/services/fake_service",
         "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
         "    Flink Pool: flink",
         "    Owner: fake_owner",
         "    Flink Runbook: fake_runbook_url",
-        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
-        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
 

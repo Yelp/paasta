@@ -76,7 +76,6 @@ from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -835,111 +834,51 @@ def _print_flink_status_from_job_manager(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
-    # Print Flink Config SHA
-    # Since metadata should be available no matter the state, we show it first. If this errors out
-    # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    labels = metadata.get("labels")
-    config_sha = labels.get(paasta_prefixed("config_sha"))
-    if config_sha is None:
-        raise ValueError(f"expected config sha on Flink, but received {metadata}")
-    if config_sha.startswith("config"):
-        config_sha = config_sha[6:]
-    output.append(f"    Config SHA: {config_sha}")
+    if metadata is None:
+        output.append(PaastaColors.red("    Flink cluster metadata is not available"))
+        return 1
 
-    if verbose:
-        # Print Flink repo links
-        output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
-        output.append(
-            f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
-        )
-
-        # Print Flink Pool information
-        flink_pool = flink_instance_config.get_pool()
-        output.append(f"    Flink Pool: {flink_pool}")
-
-        # Print ownership information
-        flink_monitoring_team = flink_instance_config.get_team() or get_team(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
-        output.append(f"    Owner: {flink_monitoring_team}")
-
-        # Print rb information
-        flink_rb_for_instance = flink_instance_config.get_runbook() or get_runbook(
-            overrides={}, service=service, soa_dir=DEFAULT_SOA_DIR
-        )
-        output.append(f"    Flink Runbook: {flink_rb_for_instance}")
-
-    # Print Flink Version
+    # Fetch flink config (version/revision) only when cluster is running
+    flink_config = None
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
-            output.append(PaastaColors.red("Exception when talking to the API:"))
+            output.append(PaastaColors.red("Exception fetching Flink config from API:"))
             output.append(str(e))
             return 1
 
-        if verbose:
-            output.append(
-                f"    Flink version: {flink_config.flink_version} {flink_config.flink_revision}"
-            )
-        else:
-            output.append(f"    Flink version: {flink_config.flink_version}")
+    try:
+        instance_details = flink_tools.get_flink_instance_details(
+            metadata, flink_config, flink_instance_config, service
+        )
+    except ValueError as e:
+        output.append(PaastaColors.red(str(e)))
+        return 1
 
-        # Print Flink Dashboard URL
-        # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
-        dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
-        output.append(f"    URL: {dashboard_url}/")
+    dashboard_url = instance_details.get("dashboard_url")
+    output.extend(
+        flink_tools.format_flink_instance_header(instance_details, verbose > 0)
+    )
 
     if verbose:
-        # Print Flink config link resources
+        output.extend(
+            flink_tools.format_flink_instance_metadata(instance_details, service)
+        )
         ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-        output.append(
-            f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+        output.extend(flink_tools.format_flink_config_links(service, ecosystem))
+        output.append(OUTPUT_HORIZONTAL_RULE)
+        output.extend(flink_tools.format_flink_log_commands(service, instance, cluster))
+        output.append(OUTPUT_HORIZONTAL_RULE)
+        output.extend(
+            flink_tools.format_flink_monitoring_links(
+                service, instance, ecosystem, cluster
+            )
         )
-        output.append(
-            f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
-        )
-
-        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
-
-        # Print Flink Log Commands
-        output.append("    Flink Log Commands:")
-        output.append(
-            f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}"
-        )
-        output.append(
-            f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER"
-        )
-        output.append(
-            f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER"
-        )
-        output.append(
-            f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR"
-        )
-
-        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
-
-        # Print Flink Metrics Links
-        output.append("    Flink Monitoring:")
-        output.append(
-            f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
-        )
-        output.append(
-            f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
-        )
-        output.append(
-            f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
-        )
-
-        # Print Flink Costs Link
-        output.append(
-            f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters"
-        )
-
-        output.append(f"{OUTPUT_HORIZONTAL_RULE}")
+        output.append(OUTPUT_HORIZONTAL_RULE)
 
     # Print Flink Cluster State
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
