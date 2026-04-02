@@ -839,8 +839,10 @@ def _print_flink_status_from_job_manager(
         output.append(PaastaColors.red("    Flink cluster metadata is not available"))
         return 1
 
-    # Fetch flink config (version/revision) only when cluster is running
-    flink_config = None
+    labels = metadata.get("labels", {})
+    config_sha = labels.get(paasta_prefixed("config_sha"), "").removeprefix("config")
+    output.append(f"    Config SHA: {config_sha}")
+
     if status["state"] == "running":
         try:
             flink_config = get_flink_config_from_paasta_api_client(
@@ -851,76 +853,43 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-    try:
-        instance_details = flink_tools.get_flink_instance_details(
-            metadata, flink_config, flink_instance_config, service
-        )
-    except ValueError as e:
-        output.append(PaastaColors.red(str(e)))
-        return 1
-
-    dashboard_url = instance_details.get("dashboard_url")
-    output.extend(
-        flink_tools.format_flink_instance_header(instance_details, verbose > 0)
-    )
-
-    if verbose:
-        output.extend(
-            flink_tools.format_flink_instance_metadata(instance_details, service)
-        )
-        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-        output.extend(flink_tools.format_flink_config_links(service, ecosystem))
-        output.append(OUTPUT_HORIZONTAL_RULE)
-        output.extend(flink_tools.format_flink_log_commands(service, instance, cluster))
-        output.append(OUTPUT_HORIZONTAL_RULE)
-        output.extend(
-            flink_tools.format_flink_monitoring_links(
-                service, instance, ecosystem, cluster
+        try:
+            instance_details = flink_tools.get_flink_instance_details(
+                metadata, flink_config, flink_instance_config, service
             )
-        )
-        output.append(OUTPUT_HORIZONTAL_RULE)
+        except ValueError as e:
+            output.append(PaastaColors.red(str(e)))
+            return 1
 
-    # Print Flink Cluster State
-    color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
-    output.append(f"    State: {color(status['state'].title())}")
-
-    # Print Flink Cluster Pod Info
-    pod_running_count = pod_evicted_count = pod_other_count = 0
-    # default for evicted in case where pod status is not available
-    evicted = f"{pod_evicted_count}"
-    for pod in status["pod_status"]:
-        if pod["phase"] == "Running":
-            pod_running_count += 1
-        elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
-            pod_evicted_count += 1
-        else:
-            pod_other_count += 1
-        evicted = (
-            PaastaColors.red(f"{pod_evicted_count}")
-            if pod_evicted_count > 0
-            else f"{pod_evicted_count}"
+        dashboard_url = instance_details.get("dashboard_url")
+        output.extend(
+            flink_tools.format_flink_instance_header(instance_details, verbose > 0)
         )
 
-    pods_total_count = pod_running_count + pod_evicted_count + pod_other_count
-    output.append(
-        "    Pods:"
-        f" {pod_running_count} running,"
-        f" {evicted} evicted,"
-        f" {pod_other_count} other,"
-        f" {pods_total_count} total"
-    )
+        if verbose:
+            output.extend(
+                flink_tools.format_flink_instance_metadata(instance_details, service)
+            )
+            ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+            output.extend(flink_tools.format_flink_config_links(service, ecosystem))
+            output.append(OUTPUT_HORIZONTAL_RULE)
+            output.extend(
+                flink_tools.format_flink_log_commands(service, instance, cluster)
+            )
+            output.append(OUTPUT_HORIZONTAL_RULE)
+            output.extend(
+                flink_tools.format_flink_monitoring_links(
+                    service, instance, ecosystem, cluster
+                )
+            )
+            output.append(OUTPUT_HORIZONTAL_RULE)
+    else:
+        dashboard_url = None
 
-    if not should_job_info_be_shown(status["state"]):
-        # In case where the jobmanager of cluster is in crashloopbackoff
-        # The pods for the cluster will be available and we need to show the pods.
-        # So that paasta status -v and kubectl get pods show the same consistent result.
-        if verbose and len(status["pod_status"]) > 0:
-            append_pod_status(status["pod_status"], output)
-        output.append("    No other information available in non-running state")
-        return 0
-
+    # Fetch overview only when running; pass None otherwise so collect_flink_job_details
+    # can distinguish "not running" from "running but jobmanager not responding"
+    overview = None
     if status["state"] == "running":
-        # Flink cluster overview from paasta api client
         try:
             overview = get_flink_overview_from_paasta_api_client(
                 service=service, instance=instance, client=client
@@ -930,32 +899,17 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-        # Flink /overview returns all fields or none, so jobs_running
-        # is sufficient as a canary for the entire response.
-        if getattr(overview, "jobs_running", None) is None:
-            output.append(
-                PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
-            )
-        else:
-            jobs_total_count = (
-                overview.jobs_running
-                + overview.jobs_finished
-                + overview.jobs_failed
-                + overview.jobs_cancelled
-            )
-            output.append(
-                "    Jobs:"
-                f" {overview.jobs_running} running,"
-                f" {overview.jobs_finished} finished,"
-                f" {overview.jobs_failed} failed,"
-                f" {overview.jobs_cancelled} cancelled,"
-                f" {jobs_total_count} total"
-            )
-            output.append(
-                "   "
-                f" {overview.taskmanagers} taskmanagers,"
-                f" {overview.slots_available}/{overview.slots_total} slots available"
-            )
+    job_details = flink_tools.collect_flink_job_details(status, overview, [])
+    output.extend(flink_tools.format_flink_state_and_pods(job_details))
+
+    if not should_job_info_be_shown(status["state"]):
+        # In case where the jobmanager of cluster is in crashloopbackoff
+        # The pods for the cluster will be available and we need to show the pods.
+        # So that paasta status -v and kubectl get pods show the same consistent result.
+        if verbose and len(status.get("pod_status", [])) > 0:
+            append_pod_status(status["pod_status"], output)
+        output.append("    No other information available in non-running state")
+        return 0
 
     flink_jobs = FlinkJobs()
     flink_jobs.jobs = []
