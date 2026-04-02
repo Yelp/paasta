@@ -30,6 +30,8 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.monitoring_tools import get_runbook
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
@@ -59,6 +61,16 @@ JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time", "timestamps"}
 
 class TaskManagerConfig(TypedDict, total=False):
     instances: int
+
+
+class FlinkInstanceDetails(TypedDict):
+    config_sha: str
+    version: Optional[str]
+    version_revision: Optional[str]
+    dashboard_url: Optional[str]
+    pool: Optional[str]
+    team: str
+    runbook: str
 
 
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -381,3 +393,117 @@ def get_flink_overview_from_paasta_api_client(
         service=service,
         instance=instance,
     )
+
+
+def get_flink_instance_details(
+    metadata: Mapping[str, Any],
+    flink_config: Optional[FlinkConfig],
+    flink_instance_config: "FlinkDeploymentConfig",
+    service: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> FlinkInstanceDetails:
+    """Collect Flink instance metadata and configuration details."""
+    labels = metadata.get("labels", {})
+    annotations = metadata.get("annotations", {})
+
+    config_sha = labels.get(paasta_prefixed("config_sha"))
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+    if config_sha.startswith("config"):
+        config_sha = config_sha[6:]  # strip "config" prefix (len("config") == 6)
+
+    version = flink_config.flink_version if flink_config else None
+    version_revision = flink_config.flink_revision if flink_config else None
+    dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
+
+    pool = flink_instance_config.get_pool()
+    team = flink_instance_config.get_team() or get_team(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+    runbook = flink_instance_config.get_runbook() or get_runbook(
+        overrides={}, service=service, soa_dir=soa_dir
+    )
+
+    return {
+        "config_sha": config_sha,
+        "version": version,
+        "version_revision": version_revision,
+        "dashboard_url": dashboard_url,
+        "pool": pool,
+        "team": team,
+        "runbook": runbook,
+    }
+
+
+def format_flink_instance_header(
+    details: FlinkInstanceDetails, verbose: bool
+) -> List[str]:
+    """Format basic instance information (config SHA, version, dashboard URL)."""
+    output: List[str] = []
+
+    if details.get("config_sha"):
+        output.append(f"    Config SHA: {details['config_sha']}")
+
+    if details.get("version"):
+        if verbose and details.get("version_revision"):
+            output.append(
+                f"    Flink version: {details['version']} {details['version_revision']}"
+            )
+        else:
+            output.append(f"    Flink version: {details['version']}")
+
+    # Dashboard URL is only useful when the cluster is running (version is set)
+    if details.get("dashboard_url") and details.get("version"):
+        output.append(f"    URL: {details['dashboard_url']}/")
+
+    return output
+
+
+def format_flink_instance_metadata(
+    details: FlinkInstanceDetails, service: str
+) -> List[str]:
+    """Format verbose instance metadata (repo links, pool, owner, runbook)."""
+    output: List[str] = []
+    output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+    output.append(
+        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+    )
+    if details.get("pool"):
+        output.append(f"    Flink Pool: {details['pool']}")
+    if details.get("team"):
+        output.append(f"    Owner: {details['team']}")
+    if details.get("runbook"):
+        output.append(f"    Flink Runbook: {details['runbook']}")
+    return output
+
+
+def format_flink_config_links(service: str, ecosystem: str) -> List[str]:
+    """Format configuration repository links."""
+    return [
+        f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}",
+        f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}",
+    ]
+
+
+def format_flink_log_commands(service: str, instance: str, cluster: str) -> List[str]:
+    """Format paasta logs commands."""
+    return [
+        "    Flink Log Commands:",
+        f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}",
+        f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER",
+        f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER",
+        f"      Supervisor:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.SUPERVISOR",
+    ]
+
+
+def format_flink_monitoring_links(
+    service: str, instance: str, ecosystem: str, cluster: str
+) -> List[str]:
+    """Format Grafana and cost monitoring links."""
+    return [
+        "    Flink Monitoring:",
+        f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now",
+        f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
+        f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
+        f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters",
+    ]

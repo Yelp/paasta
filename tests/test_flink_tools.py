@@ -13,6 +13,8 @@
 # limitations under the License.
 from unittest import mock
 
+import pytest
+
 import paasta_tools.flink_tools as flink_tools
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
@@ -379,3 +381,172 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
             branch_dict=None,
         )
         assert flink_deployment_config.get_pool() == "flink-spot"
+
+
+@pytest.fixture
+def flink_instance_config():
+    cfg = mock.Mock(spec=FlinkDeploymentConfig)
+    cfg.get_pool.return_value = "flink"
+    cfg.get_team.return_value = "fake_owner"
+    cfg.get_runbook.return_value = "fake_runbook_url"
+    return cfg
+
+
+class TestGetFlinkInstanceDetails:
+    def test_running_cluster(self, flink_instance_config):
+        metadata = {
+            "labels": {"paasta.yelp.com/config_sha": "config00000"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test.paasta:31080/app"
+            },
+        }
+        flink_config = mock.Mock(
+            flink_version="1.13.5",
+            flink_revision="0ff28a7",
+        )
+        result = flink_tools.get_flink_instance_details(
+            metadata, flink_config, flink_instance_config, "test_service"
+        )
+        assert result["config_sha"] == "00000"
+        assert result["version"] == "1.13.5"
+        assert result["version_revision"] == "0ff28a7"
+        assert result["dashboard_url"] == "http://flink.k8s.test.paasta:31080/app"
+        assert result["pool"] == "flink"
+        assert result["team"] == "fake_owner"
+        assert result["runbook"] == "fake_runbook_url"
+
+    def test_stopped_cluster(self, flink_instance_config):
+        metadata = {
+            "labels": {"paasta.yelp.com/config_sha": "config00000"},
+            "annotations": {},
+        }
+        result = flink_tools.get_flink_instance_details(
+            metadata, None, flink_instance_config, "test_service"
+        )
+        assert result["version"] is None
+        assert result["version_revision"] is None
+        assert result["dashboard_url"] is None
+
+    def test_missing_config_sha(self, flink_instance_config):
+        metadata = {"labels": {}, "annotations": {}}
+        with pytest.raises(ValueError, match="expected config sha"):
+            flink_tools.get_flink_instance_details(
+                metadata, None, flink_instance_config, "test_service"
+            )
+
+    def test_config_sha_without_prefix(self, flink_instance_config):
+        # Labels without the "config" prefix should be used as-is
+        metadata = {
+            "labels": {"paasta.yelp.com/config_sha": "abcdef12"},
+            "annotations": {},
+        }
+        result = flink_tools.get_flink_instance_details(
+            metadata, None, flink_instance_config, "test_service"
+        )
+        assert result["config_sha"] == "abcdef12"
+
+
+class TestFormatFlinkInstanceHeader:
+    def test_non_verbose(self):
+        details = {
+            "config_sha": "00000",
+            "version": "1.13.5",
+            "version_revision": "0ff28a7",
+            "dashboard_url": "http://flink.k8s.test.paasta:31080/app",
+            "pool": "flink",
+            "team": "test_team",
+            "runbook": "test_runbook",
+        }
+        result = flink_tools.format_flink_instance_header(details, verbose=False)
+        assert "    Config SHA: 00000" in result
+        assert "    Flink version: 1.13.5" in result
+        assert "0ff28a7" not in "\n".join(result)
+
+    def test_verbose(self):
+        details = {
+            "config_sha": "00000",
+            "version": "1.13.5",
+            "version_revision": "0ff28a7",
+            "dashboard_url": "http://flink.k8s.test.paasta:31080/app",
+            "pool": "flink",
+            "team": "test_team",
+            "runbook": "test_runbook",
+        }
+        result = flink_tools.format_flink_instance_header(details, verbose=True)
+        assert "    Flink version: 1.13.5 0ff28a7" in result
+        assert "    URL: http://flink.k8s.test.paasta:31080/app/" in result
+
+    def test_no_version_hides_url(self):
+        # Dashboard URL should not be shown when cluster is not running (no version)
+        details = {
+            "config_sha": "00000",
+            "version": None,
+            "version_revision": None,
+            "dashboard_url": "http://flink.k8s.test.paasta:31080/app",
+            "pool": "flink",
+            "team": "test_team",
+            "runbook": "test_runbook",
+        }
+        result = flink_tools.format_flink_instance_header(details, verbose=True)
+        assert len(result) == 1
+        assert "Config SHA" in result[0]
+        assert "URL" not in "\n".join(result)
+
+
+class TestFormatFlinkInstanceMetadata:
+    def test_output(self):
+        details = {
+            "config_sha": "00000",
+            "version": "1.13.5",
+            "version_revision": "0ff28a7",
+            "dashboard_url": "http://test",
+            "pool": "flink",
+            "team": "test_team",
+            "runbook": "test_runbook",
+        }
+        result = flink_tools.format_flink_instance_metadata(details, "test_service")
+        assert (
+            "    Repo(git): https://github.yelpcorp.com/services/test_service" in result
+        )
+        assert (
+            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/test_service"
+            in result
+        )
+        assert "    Flink Pool: flink" in result
+        assert "    Owner: test_team" in result
+        assert "    Flink Runbook: test_runbook" in result
+
+
+class TestFormatFlinkConfigLinks:
+    def test_output(self):
+        result = flink_tools.format_flink_config_links("my_service", "devc")
+        assert (
+            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/my_service"
+            in result
+        )
+        assert (
+            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/my_service"
+            in result
+        )
+
+
+class TestFormatFlinkLogCommands:
+    def test_output(self):
+        result = flink_tools.format_flink_log_commands("my_service", "main", "pnw-devc")
+        assert result[0] == "    Flink Log Commands:"
+        assert "paasta logs -a 1h -c pnw-devc -s my_service -i main" in result[1]
+        assert ".TASKMANAGER" in result[2]
+        assert ".JOBMANAGER" in result[3]
+        assert ".SUPERVISOR" in result[4]
+
+
+class TestFormatFlinkMonitoringLinks:
+    def test_output(self):
+        result = flink_tools.format_flink_monitoring_links(
+            "my_service", "main", "devc", "pnw-devc"
+        )
+        assert result[0] == "    Flink Monitoring:"
+        assert "var-service=my_service" in result[1]
+        assert "var-instance=main" in result[1]
+        assert "uswest2-devc" in result[1]
+        assert "pnw-devc" in result[4]  # Flink Cost link uses cluster name
