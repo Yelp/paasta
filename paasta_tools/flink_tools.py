@@ -471,7 +471,7 @@ def get_flink_instance_details(
 def format_flink_instance_header(
     details: FlinkInstanceDetails, verbose: bool
 ) -> List[str]:
-    """Format running cluster info (version, dashboard URL). Config SHA is shown separately."""
+    """Format running cluster info (version, dashboard URL, etc)."""
     output: List[str] = []
 
     if verbose:
