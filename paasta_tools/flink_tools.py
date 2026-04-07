@@ -97,6 +97,11 @@ class FlinkJobDetailsDict(TypedDict):
     overview_available: bool
 
 
+class FlinkClusterStatusDict(TypedDict):
+    state: str
+    pod_status: List[Mapping[str, Any]]
+
+
 class FlinkInstanceDetails(TypedDict):
     config_sha: str
     version: str
@@ -538,7 +543,7 @@ def format_flink_monitoring_links(
 
 
 def collect_flink_job_details(
-    status: Mapping[str, Any],
+    status: FlinkClusterStatusDict,
     overview: Optional[FlinkClusterOverview],
     jobs: List[FlinkJobDetails],
 ) -> FlinkJobDetailsDict:
