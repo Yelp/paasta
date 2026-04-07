@@ -762,7 +762,9 @@ def format_flink_jobs_table(
                 allowed_max_job_name_length=allowed_max_job_name_length,
                 state=color_fn((job.get("state").title() or "Unknown")),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}")
+                if dashboard_url
+                else "",
             )
             output.append(job_info_str)
             if verbose > 1 and job_id in checkpoint_data:
