@@ -10,14 +10,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import json
+import shutil
+from datetime import datetime
+from itertools import groupby
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Union
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
+import humanize
 import requests
 import service_configuration_lib
 from mypy_extensions import TypedDict
@@ -641,5 +648,158 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
             f"    {taskmanagers} taskmanagers,"
             f" {slots_available}/{slots_total} slots available"
         )
+
+    return output
+
+
+def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
+    return flink_job["name"].split(".", 2)[-1]
+
+
+def should_job_info_be_shown(cluster_state: str) -> bool:
+    return cluster_state in ("running", "stoppingsupervisor", "cleanupsupervisor")
+
+
+async def _fetch_flink_job_details(
+    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
+) -> List[FlinkJobDetails]:
+    jobs_details = await asyncio.gather(
+        *[
+            get_flink_job_details_from_paasta_api_client(
+                service, instance, job_id, client
+            )
+            for job_id in job_ids
+        ]
+    )
+    return list(jobs_details)
+
+
+async def _fetch_flink_job_checkpoints(
+    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
+) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
+    """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""
+    results = await asyncio.gather(
+        *[
+            get_flink_job_checkpoints_from_paasta_api_client(
+                service, instance, job_id, client
+            )
+            for job_id in job_ids
+        ],
+        return_exceptions=True,
+    )
+    return dict(zip(job_ids, results))
+
+
+def format_flink_jobs_table(
+    jobs: List[FlinkJobDetails],
+    job_ids: List[str],
+    checkpoint_data: Dict[str, Any],
+    dashboard_url: Optional[str],
+    verbose: int,
+) -> List[str]:
+    """Format the per-job rows table (name, state, timestamps, checkpoints)."""
+    output: List[str] = []
+
+    # Avoid cutting job name — use max length of actual job names
+    if jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
+    else:
+        max_job_name_length = 10
+
+    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
+    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
+    allowed_max_job_name_length = min(
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
+    )
+
+    output.append("    Jobs:")
+    if verbose > 1:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+        )
+    else:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+        )
+
+    # Use only the most recent job per name
+    unique_jobs = (
+        sorted(job_list, key=lambda j: -j["start_time"])[0]  # type: ignore
+        for _, job_list in groupby(
+            sorted(
+                (j for j in jobs if j.get("name") and j.get("start_time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
+        )
+    )
+
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
+
+    for job in unique_jobs:
+        job_id = job["jid"]
+        if verbose > 1:
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+        {dashboard_url}"""
+        else:
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else (
+                    PaastaColors.red
+                    if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                    else PaastaColors.yellow
+                )
+            )
+            job_info_str = fmt.format(
+                job_id=job_id,
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
+                state=color_fn((job.get("state").title() or "Unknown")),
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
+            output.append(job_info_str)
+            if verbose > 1 and job_id in checkpoint_data:
+                ckpt = checkpoint_data[job_id]
+                if (
+                    not isinstance(ckpt, Exception)
+                    and hasattr(ckpt, "counts")
+                    and ckpt.counts is not None
+                ):
+                    counts = ckpt.counts
+                    output.append(
+                        f"        Checkpoints:"
+                        f" {counts['completed']} completed,"
+                        f" {counts['failed']} failed,"
+                        f" {counts['in_progress']} in progress,"
+                        f" {counts['restored']} restored"
+                    )
+            if verbose > 1 and job.get("timestamps"):
+                restarting_ts = job["timestamps"].get("RESTARTING", 0)
+                if restarting_ts and restarting_ts > 0:
+                    try:
+                        last_restart = datetime.fromtimestamp(
+                            int(restarting_ts) // 1000
+                        )
+                        output.append(
+                            f"        Last restart:"
+                            f" {last_restart}"
+                            f" ({humanize.naturaltime(last_restart)})"
+                        )
+                    except (ValueError, TypeError, OSError):
+                        pass  # timestamps are informational
+        else:
+            output.append(
+                PaastaColors.yellow(
+                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
+                )
+            )
+            break
 
     return output

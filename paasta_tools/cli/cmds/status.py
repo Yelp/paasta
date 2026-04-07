@@ -12,11 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import concurrent.futures
 import difflib
 import os
-import shutil
 import signal
 import sys
 from collections import Counter
@@ -25,7 +23,6 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from enum import Enum
-from itertools import groupby
 from threading import Event
 from threading import Lock
 from typing import Any
@@ -79,7 +76,6 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
@@ -749,18 +745,6 @@ def status_kubernetes_job_human(
         )
 
 
-def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
-    return flink_job["name"].split(".", 2)[-1]
-
-
-def should_job_info_be_shown(cluster_state):
-    return (
-        cluster_state == "running"
-        or cluster_state == "stoppingsupervisor"
-        or cluster_state == "cleanupsupervisor"
-    )
-
-
 def get_pod_uptime(pod_deployed_timestamp: str):
     # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
     pod_creation_time = datetime.strptime(
@@ -902,7 +886,7 @@ def _print_flink_status_from_job_manager(
     job_details = flink_tools.collect_flink_job_details(status, overview, [])
     output.extend(flink_tools.format_flink_state_and_pods(job_details))
 
-    if not should_job_info_be_shown(status["state"]):
+    if not flink_tools.should_job_info_be_shown(status["state"]):
         # In case where the jobmanager of cluster is in crashloopbackoff
         # The pods for the cluster will be available and we need to show the pods.
         # So that paasta status -v and kubectl get pods show the same consistent result.
@@ -928,7 +912,9 @@ def _print_flink_status_from_job_manager(
     if flink_jobs.get("jobs"):
         job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
-        jobs = run_sync(get_flink_job_details, service, instance, job_ids, client)
+        jobs = run_sync(
+            flink_tools._fetch_flink_job_details, service, instance, job_ids, client
+        )
     except Exception as e:
         output.append(PaastaColors.red("Exception when talking to the API:"))
         output.append(str(e))
@@ -938,112 +924,20 @@ def _print_flink_status_from_job_manager(
     if verbose > 1 and job_ids:
         try:
             checkpoint_data = run_sync(
-                get_flink_job_checkpoints, service, instance, job_ids, client
+                flink_tools._fetch_flink_job_checkpoints,
+                service,
+                instance,
+                job_ids,
+                client,
             )
         except Exception:
             pass  # checkpoints are informational, don't fail status
 
-    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    if jobs:
-        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
-    else:
-        max_job_name_length = 10
-
-    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
-    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
-    allowed_max_job_name_length = min(
-        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
-    )
-
-    output.append("    Jobs:")
-    if verbose > 1:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
-        )
-    else:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
-        )
-
-    # Use only the most recent jobs
-    unique_jobs = (
-        sorted(jobs, key=lambda j: -j["start_time"])[0]  # type: ignore
-        for _, jobs in groupby(
-            sorted(
-                (j for j in jobs if j.get("name") and j.get("start_time")),
-                key=lambda j: j["name"],
-            ),
-            lambda j: j["name"],
+    output.extend(
+        flink_tools.format_flink_jobs_table(
+            jobs, job_ids, checkpoint_data, dashboard_url, verbose
         )
     )
-
-    allowed_max_jobs_printed = 3
-    job_printed_count = 0
-
-    for job in unique_jobs:
-        job_id = job["jid"]
-        if verbose > 1:
-            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
-        {dashboard_url}"""
-        else:
-            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
-        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
-        if verbose or job_printed_count < allowed_max_jobs_printed:
-            job_printed_count += 1
-            color_fn = (
-                PaastaColors.green
-                if job.get("state") and job.get("state") == "RUNNING"
-                else (
-                    PaastaColors.red
-                    if job.get("state") and job.get("state") in ("FAILED", "FAILING")
-                    else PaastaColors.yellow
-                )
-            )
-            job_info_str = fmt.format(
-                job_id=job_id,
-                job_name=get_flink_job_name(job),
-                allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
-                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
-            )
-            output.append(job_info_str)
-            if verbose > 1 and job_id in checkpoint_data:
-                ckpt = checkpoint_data[job_id]
-                if (
-                    not isinstance(ckpt, Exception)
-                    and hasattr(ckpt, "counts")
-                    and ckpt.counts is not None
-                ):
-                    counts = ckpt.counts
-                    output.append(
-                        f"        Checkpoints:"
-                        f" {counts['completed']} completed,"
-                        f" {counts['failed']} failed,"
-                        f" {counts['in_progress']} in progress,"
-                        f" {counts['restored']} restored"
-                    )
-            if verbose > 1 and job.get("timestamps"):
-                restarting_ts = job["timestamps"].get("RESTARTING", 0)
-                if restarting_ts and restarting_ts > 0:
-                    try:
-                        last_restart = datetime.fromtimestamp(
-                            int(restarting_ts) // 1000
-                        )
-                        output.append(
-                            f"        Last restart:"
-                            f" {last_restart}"
-                            f" ({humanize.naturaltime(last_restart)})"
-                        )
-                    except (ValueError, TypeError, OSError):
-                        pass  # timestamps are informational
-        else:
-            output.append(
-                PaastaColors.yellow(
-                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
-                )
-            )
-            break
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
@@ -1125,36 +1019,6 @@ def print_flinkeks_status(
         flink_eks_instance_config,
         verbose,
     )
-
-
-async def get_flink_job_details(
-    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
-) -> List[FlinkJobDetails]:
-    jobs_details = await asyncio.gather(
-        *[
-            flink_tools.get_flink_job_details_from_paasta_api_client(
-                service, instance, job_id, client
-            )
-            for job_id in job_ids
-        ]
-    )
-    return [jd for jd in jobs_details]
-
-
-async def get_flink_job_checkpoints(
-    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
-) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
-    """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""
-    results = await asyncio.gather(
-        *[
-            flink_tools.get_flink_job_checkpoints_from_paasta_api_client(
-                service, instance, job_id, client
-            )
-            for job_id in job_ids
-        ],
-        return_exceptions=True,
-    )
-    return dict(zip(job_ids, results))
 
 
 def print_kubernetes_status_v2(
