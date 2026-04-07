@@ -415,33 +415,23 @@ class TestGetFlinkInstanceDetails:
         assert result["team"] == "fake_owner"
         assert result["runbook"] == "fake_runbook_url"
 
-    def test_stopped_cluster(self, flink_instance_config):
-        metadata = {
-            "labels": {"paasta.yelp.com/config_sha": "config00000"},
-            "annotations": {},
-        }
-        result = flink_tools.get_flink_instance_details(
-            metadata, None, flink_instance_config, "test_service"
-        )
-        assert result["version"] is None
-        assert result["version_revision"] is None
-        assert result["dashboard_url"] is None
-
     def test_missing_config_sha(self, flink_instance_config):
+        flink_config = mock.Mock(flink_version="1.13.5", flink_revision="0ff28a7")
         metadata = {"labels": {}, "annotations": {}}
         with pytest.raises(ValueError, match="expected config sha"):
             flink_tools.get_flink_instance_details(
-                metadata, None, flink_instance_config, "test_service"
+                metadata, flink_config, flink_instance_config, "test_service"
             )
 
     def test_config_sha_without_prefix(self, flink_instance_config):
         # Labels without the "config" prefix should be used as-is
+        flink_config = mock.Mock(flink_version="1.13.5", flink_revision="0ff28a7")
         metadata = {
             "labels": {"paasta.yelp.com/config_sha": "abcdef12"},
             "annotations": {},
         }
         result = flink_tools.get_flink_instance_details(
-            metadata, None, flink_instance_config, "test_service"
+            metadata, flink_config, flink_instance_config, "test_service"
         )
         assert result["config_sha"] == "abcdef12"
 
@@ -458,9 +448,9 @@ class TestFormatFlinkInstanceHeader:
             "runbook": "test_runbook",
         }
         result = flink_tools.format_flink_instance_header(details, verbose=False)
-        assert "    Config SHA: 00000" in result
         assert "    Flink version: 1.13.5" in result
         assert "0ff28a7" not in "\n".join(result)
+        assert "Config SHA" not in "\n".join(result)
 
     def test_verbose(self):
         details = {
@@ -476,20 +466,18 @@ class TestFormatFlinkInstanceHeader:
         assert "    Flink version: 1.13.5 0ff28a7" in result
         assert "    URL: http://flink.k8s.test.paasta:31080/app/" in result
 
-    def test_no_version_hides_url(self):
-        # Dashboard URL should not be shown when cluster is not running (no version)
+    def test_no_dashboard_url(self):
+        # Dashboard URL line is omitted when annotation is absent
         details = {
             "config_sha": "00000",
-            "version": None,
-            "version_revision": None,
-            "dashboard_url": "http://flink.k8s.test.paasta:31080/app",
+            "version": "1.13.5",
+            "version_revision": "0ff28a7",
+            "dashboard_url": None,
             "pool": "flink",
             "team": "test_team",
             "runbook": "test_runbook",
         }
         result = flink_tools.format_flink_instance_header(details, verbose=True)
-        assert len(result) == 1
-        assert "Config SHA" in result[0]
         assert "URL" not in "\n".join(result)
 
 
@@ -550,3 +538,149 @@ class TestFormatFlinkMonitoringLinks:
         assert "var-instance=main" in result[1]
         assert "uswest2-devc" in result[1]
         assert "pnw-devc" in result[4]  # Flink Cost link uses cluster name
+
+
+class TestCollectFlinkJobDetails:
+    def test_running_with_overview(self):
+        status = {
+            "state": "running",
+            "pod_status": [
+                {"phase": "Running"},
+                {"phase": "Running"},
+                {"phase": "Failed", "reason": "Evicted"},
+            ],
+        }
+        overview = mock.Mock()
+        overview.jobs_running = 1
+        overview.jobs_finished = 0
+        overview.jobs_failed = 0
+        overview.jobs_cancelled = 0
+        overview.taskmanagers = 2
+        overview.slots_available = 3
+        overview.slots_total = 8
+
+        result = flink_tools.collect_flink_job_details(status, overview, [])
+
+        assert result["state"] == "running"
+        assert result["pod_counts"]["running"] == 2
+        assert result["pod_counts"]["evicted"] == 1
+        assert result["pod_counts"]["other"] == 0
+        assert result["pod_counts"]["total"] == 3
+        assert result["job_counts"] is not None
+        assert result["job_counts"]["running"] == 1
+        assert result["job_counts"]["total"] == 1
+        assert result["taskmanagers"] == 2
+        assert result["slots_available"] == 3
+        assert result["slots_total"] == 8
+        assert result["overview_available"] is True
+
+    def test_running_crashlooping_jobmanager(self):
+        # overview object returned but jobs_running is None (jobmanager not responding)
+        status = {"state": "running", "pod_status": [{"phase": "Running"}]}
+        overview = mock.Mock()
+        overview.jobs_running = None
+
+        result = flink_tools.collect_flink_job_details(status, overview, [])
+
+        assert result["job_counts"] is None
+        assert result["overview_available"] is True
+
+    def test_not_running_no_overview(self):
+        status = {"state": "stopped", "pod_status": [{"phase": "Running"}]}
+
+        result = flink_tools.collect_flink_job_details(status, None, [])
+
+        assert result["job_counts"] is None
+        assert result["overview_available"] is False
+
+    def test_defensive_pod_access(self):
+        # Pods without phase/reason should not crash
+        status = {
+            "state": "running",
+            "pod_status": [
+                {},  # no phase
+                {"phase": "Failed"},  # no reason
+                {"phase": "Failed", "reason": "OOMKilled"},
+            ],
+        }
+        result = flink_tools.collect_flink_job_details(status, None, [])
+
+        assert result["pod_counts"]["other"] == 3
+        assert result["pod_counts"]["evicted"] == 0
+
+
+class TestFormatFlinkStateAndPods:
+    def _make_details(self, **kwargs):
+        defaults = {
+            "state": "running",
+            "pod_counts": {"running": 2, "evicted": 0, "other": 0, "total": 2},
+            "job_counts": {
+                "running": 1,
+                "finished": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1,
+            },
+            "taskmanagers": 1,
+            "slots_available": 2,
+            "slots_total": 8,
+            "jobs": [],
+            "overview_available": True,
+        }
+        defaults.update(kwargs)
+        return defaults
+
+    def test_running_state(self):
+        from paasta_tools.utils import PaastaColors
+
+        result = flink_tools.format_flink_state_and_pods(self._make_details())
+        assert f"    State: {PaastaColors.green('Running')}" in result
+
+    def test_stopped_state_is_yellow(self):
+        from paasta_tools.utils import PaastaColors
+
+        result = flink_tools.format_flink_state_and_pods(
+            self._make_details(state="stopped")
+        )
+        assert f"    State: {PaastaColors.yellow('Stopped')}" in result
+
+    def test_pods_line(self):
+        result = flink_tools.format_flink_state_and_pods(self._make_details())
+        pods_line = next(line for line in result if "Pods:" in line)
+        assert "2 running" in pods_line
+        assert "0 evicted" in pods_line
+        assert "2 total" in pods_line
+
+    def test_evicted_pods_red(self):
+        from paasta_tools.utils import PaastaColors
+
+        details = self._make_details(
+            pod_counts={"running": 1, "evicted": 2, "other": 0, "total": 3}
+        )
+        result = flink_tools.format_flink_state_and_pods(details)
+        pods_line = next(line for line in result if "Pods:" in line)
+        assert PaastaColors.red("2") in pods_line
+
+    def test_jobs_summary_line(self):
+        result = flink_tools.format_flink_state_and_pods(self._make_details())
+        jobs_line = next(line for line in result if "Jobs:" in line)
+        assert "1 running" in jobs_line
+        assert "1 total" in jobs_line
+
+    def test_jobmanager_not_responding(self):
+        details = self._make_details(job_counts=None, overview_available=True)
+        result = flink_tools.format_flink_state_and_pods(details)
+        assert any("jobmanager is not responding" in line for line in result)
+
+    def test_no_jobs_line_when_not_running(self):
+        details = self._make_details(
+            state="stopped", job_counts=None, overview_available=False
+        )
+        result = flink_tools.format_flink_state_and_pods(details)
+        assert not any("Jobs:" in line for line in result)
+
+    def test_taskmanagers_slots_line(self):
+        result = flink_tools.format_flink_state_and_pods(self._make_details())
+        slots_line = next(line for line in result if "taskmanagers" in line)
+        assert "1 taskmanagers" in slots_line
+        assert "2/8 slots available" in slots_line

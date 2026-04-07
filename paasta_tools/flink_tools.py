@@ -40,6 +40,7 @@ from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -63,10 +64,36 @@ class TaskManagerConfig(TypedDict, total=False):
     instances: int
 
 
+class PodCounts(TypedDict):
+    running: int
+    evicted: int
+    other: int
+    total: int
+
+
+class JobCounts(TypedDict):
+    running: int
+    finished: int
+    failed: int
+    cancelled: int
+    total: int
+
+
+class FlinkJobDetailsDict(TypedDict):
+    state: str
+    pod_counts: PodCounts
+    job_counts: Optional[JobCounts]
+    taskmanagers: Optional[int]
+    slots_available: Optional[int]
+    slots_total: Optional[int]
+    jobs: List[FlinkJobDetails]
+    overview_available: bool
+
+
 class FlinkInstanceDetails(TypedDict):
     config_sha: str
-    version: Optional[str]
-    version_revision: Optional[str]
+    version: str
+    version_revision: str
     dashboard_url: Optional[str]
     pool: Optional[str]
     team: str
@@ -397,7 +424,7 @@ def get_flink_overview_from_paasta_api_client(
 
 def get_flink_instance_details(
     metadata: Mapping[str, Any],
-    flink_config: Optional[FlinkConfig],
+    flink_config: FlinkConfig,
     flink_instance_config: "FlinkDeploymentConfig",
     service: str,
     soa_dir: str = DEFAULT_SOA_DIR,
@@ -409,11 +436,10 @@ def get_flink_instance_details(
     config_sha = labels.get(paasta_prefixed("config_sha"))
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
-    if config_sha.startswith("config"):
-        config_sha = config_sha[6:]  # strip "config" prefix (len("config") == 6)
+    config_sha = config_sha.removeprefix("config")
 
-    version = flink_config.flink_version if flink_config else None
-    version_revision = flink_config.flink_revision if flink_config else None
+    version = flink_config.flink_version
+    version_revision = flink_config.flink_revision
     dashboard_url = annotations.get("flink.yelp.com/dashboard_url")
 
     pool = flink_instance_config.get_pool()
@@ -438,22 +464,17 @@ def get_flink_instance_details(
 def format_flink_instance_header(
     details: FlinkInstanceDetails, verbose: bool
 ) -> List[str]:
-    """Format basic instance information (config SHA, version, dashboard URL)."""
+    """Format running cluster info (version, dashboard URL). Config SHA is shown separately."""
     output: List[str] = []
 
-    if details.get("config_sha"):
-        output.append(f"    Config SHA: {details['config_sha']}")
+    if verbose:
+        output.append(
+            f"    Flink version: {details['version']} {details['version_revision']}"
+        )
+    else:
+        output.append(f"    Flink version: {details['version']}")
 
-    if details.get("version"):
-        if verbose and details.get("version_revision"):
-            output.append(
-                f"    Flink version: {details['version']} {details['version_revision']}"
-            )
-        else:
-            output.append(f"    Flink version: {details['version']}")
-
-    # Dashboard URL is only useful when the cluster is running (version is set)
-    if details.get("dashboard_url") and details.get("version"):
+    if details.get("dashboard_url"):
         output.append(f"    URL: {details['dashboard_url']}/")
 
     return output
@@ -507,3 +528,118 @@ def format_flink_monitoring_links(
         f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
         f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters",
     ]
+
+
+def collect_flink_job_details(
+    status: Mapping[str, Any],
+    overview: Optional[FlinkClusterOverview],
+    jobs: List[FlinkJobDetails],
+) -> FlinkJobDetailsDict:
+    """Collect job, pod, and resource information from status and overview."""
+    pod_running_count = 0
+    pod_evicted_count = 0
+    pod_other_count = 0
+
+    for pod in status.get("pod_status", []):
+        phase = pod.get("phase")
+        if phase == "Running":
+            pod_running_count += 1
+        elif phase == "Failed" and pod.get("reason") == "Evicted":
+            pod_evicted_count += 1
+        else:
+            pod_other_count += 1
+
+    pod_counts: PodCounts = {
+        "running": pod_running_count,
+        "evicted": pod_evicted_count,
+        "other": pod_other_count,
+        "total": pod_running_count + pod_evicted_count + pod_other_count,
+    }
+
+    job_counts: Optional[JobCounts] = None
+    taskmanagers = None
+    slots_available = None
+    slots_total = None
+
+    if overview and getattr(overview, "jobs_running", None) is not None:
+        jobs_total_count = (
+            overview.jobs_running
+            + overview.jobs_finished
+            + overview.jobs_failed
+            + overview.jobs_cancelled
+        )
+        job_counts = {
+            "running": overview.jobs_running,
+            "finished": overview.jobs_finished,
+            "failed": overview.jobs_failed,
+            "cancelled": overview.jobs_cancelled,
+            "total": jobs_total_count,
+        }
+        taskmanagers = overview.taskmanagers
+        slots_available = overview.slots_available
+        slots_total = overview.slots_total
+
+    return {
+        "state": status["state"],
+        "pod_counts": pod_counts,
+        "job_counts": job_counts,
+        "taskmanagers": taskmanagers,
+        "slots_available": slots_available,
+        "slots_total": slots_total,
+        "jobs": jobs,
+        "overview_available": overview is not None,
+    }
+
+
+def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
+    """Format state, pods, jobs summary, taskmanagers, and slots."""
+    output: List[str] = []
+
+    state = job_details["state"]
+    pod_counts = job_details["pod_counts"]
+    job_counts = job_details.get("job_counts")
+    taskmanagers = job_details.get("taskmanagers")
+    slots_available = job_details.get("slots_available")
+    slots_total = job_details.get("slots_total")
+
+    color = PaastaColors.green if state == "running" else PaastaColors.yellow
+    output.append(f"    State: {color(state.title())}")
+
+    formatted_evictions = (
+        PaastaColors.red(f"{pod_counts['evicted']}")
+        if pod_counts["evicted"] > 0
+        else f"{pod_counts['evicted']}"
+    )
+    output.append(
+        "    Pods:"
+        f" {pod_counts['running']} running,"
+        f" {formatted_evictions} evicted,"
+        f" {pod_counts['other']} other,"
+        f" {pod_counts['total']} total"
+    )
+
+    if job_counts is not None:
+        output.append(
+            "    Jobs:"
+            f" {job_counts['running']} running,"
+            f" {job_counts['finished']} finished,"
+            f" {job_counts['failed']} failed,"
+            f" {job_counts['cancelled']} cancelled,"
+            f" {job_counts['total']} total"
+        )
+    elif job_details.get("overview_available"):
+        output.append(
+            PaastaColors.yellow("    Jobs: unknown (jobmanager is not responding)")
+        )
+
+    if (
+        taskmanagers is not None
+        and slots_available is not None
+        and slots_total is not None
+    ):
+        output.append(
+            f"    {taskmanagers} taskmanagers,"
+            f" {slots_available}/{slots_total} slots available"
+        )
+
+    return output
