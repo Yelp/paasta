@@ -662,7 +662,7 @@ def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
 
 
 def should_job_info_be_shown(cluster_state: str) -> bool:
-    return cluster_state in ("running", "stoppingsupervisor", "cleanupsupervisor")
+    return cluster_state in {"running", "stoppingsupervisor", "cleanupsupervisor"}
 
 
 async def fetch_flink_job_details(
