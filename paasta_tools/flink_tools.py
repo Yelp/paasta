@@ -665,7 +665,7 @@ def should_job_info_be_shown(cluster_state: str) -> bool:
     return cluster_state in ("running", "stoppingsupervisor", "cleanupsupervisor")
 
 
-async def _fetch_flink_job_details(
+async def fetch_flink_job_details(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> List[FlinkJobDetails]:
     jobs_details = await asyncio.gather(
@@ -679,7 +679,7 @@ async def _fetch_flink_job_details(
     return list(jobs_details)
 
 
-async def _fetch_flink_job_checkpoints(
+async def fetch_flink_job_checkpoints(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
     """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""

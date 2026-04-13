@@ -911,7 +911,7 @@ def _print_flink_status_from_job_manager(
         job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
         jobs = run_sync(
-            flink_tools._fetch_flink_job_details, service, instance, job_ids, client
+            flink_tools.fetch_flink_job_details, service, instance, job_ids, client
         )
     except Exception as e:
         output.append(PaastaColors.red("Exception when talking to the API:"))
@@ -922,7 +922,7 @@ def _print_flink_status_from_job_manager(
     if verbose > 1 and job_ids:
         try:
             checkpoint_data = run_sync(
-                flink_tools._fetch_flink_job_checkpoints,
+                flink_tools.fetch_flink_job_checkpoints,
                 service,
                 instance,
                 job_ids,
