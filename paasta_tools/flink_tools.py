@@ -697,13 +697,16 @@ async def fetch_flink_job_checkpoints(
 
 def format_flink_jobs_table(
     jobs: List[FlinkJobDetails],
-    job_ids: List[str],
-    checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]],
     dashboard_url: Optional[str],
     verbose: int,
+    checkpoint_data: Optional[
+        Dict[str, Union[FlinkCheckpointStatus, BaseException]]
+    ] = None,
 ) -> List[str]:
     """Format the per-job rows table (name, state, timestamps, checkpoints)."""
     output: List[str] = []
+    if checkpoint_data is None:
+        checkpoint_data = {}
 
     # Avoid cutting job name — use max length of actual job names
     if jobs:

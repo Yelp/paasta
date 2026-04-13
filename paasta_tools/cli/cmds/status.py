@@ -921,7 +921,7 @@ def _print_flink_status_from_job_manager(
 
     output.extend(
         flink_tools.format_flink_jobs_table(
-            jobs, job_ids, checkpoint_data, dashboard_url, verbose
+            jobs, dashboard_url, verbose, checkpoint_data=checkpoint_data
         )
     )
 
