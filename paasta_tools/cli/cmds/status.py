@@ -61,9 +61,6 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -830,7 +827,7 @@ def _print_flink_status_from_job_manager(
 
     if status["state"] == "running":
         try:
-            flink_config = get_flink_config_from_paasta_api_client(
+            flink_config = flink_tools.get_flink_config_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
@@ -876,7 +873,7 @@ def _print_flink_status_from_job_manager(
     overview = None
     if status["state"] == "running":
         try:
-            overview = get_flink_overview_from_paasta_api_client(
+            overview = flink_tools.get_flink_overview_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
@@ -900,7 +897,7 @@ def _print_flink_status_from_job_manager(
     flink_jobs.jobs = []
     if status["state"] == "running":
         try:
-            flink_jobs = get_flink_jobs_from_paasta_api_client(
+            flink_jobs = flink_tools.get_flink_jobs_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
