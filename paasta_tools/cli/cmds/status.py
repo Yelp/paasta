@@ -76,6 +76,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
@@ -920,7 +921,7 @@ def _print_flink_status_from_job_manager(
         output.append(str(e))
         return 1
 
-    checkpoint_data: Dict[str, Any] = {}
+    checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]] = {}
     if verbose > 1 and job_ids:
         try:
             checkpoint_data = run_sync(

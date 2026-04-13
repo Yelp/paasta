@@ -698,7 +698,7 @@ async def _fetch_flink_job_checkpoints(
 def format_flink_jobs_table(
     jobs: List[FlinkJobDetails],
     job_ids: List[str],
-    checkpoint_data: Dict[str, Any],
+    checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]],
     dashboard_url: Optional[str],
     verbose: int,
 ) -> List[str]:
