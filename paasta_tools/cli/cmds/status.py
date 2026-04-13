@@ -907,7 +907,7 @@ def _print_flink_status_from_job_manager(
             except Exception:
                 pass  # checkpoints are informational, don't fail status
 
-    job_details = flink_tools.collect_flink_job_details(status, overview, [])
+    job_details = flink_tools.collect_flink_job_details(status, overview)
     output.extend(flink_tools.format_flink_state_and_pods(job_details))
 
     if not flink_tools.should_job_info_be_shown(status["state"]):

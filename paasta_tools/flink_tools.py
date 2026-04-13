@@ -93,7 +93,6 @@ class FlinkJobDetailsDict(TypedDict):
     taskmanagers: Optional[int]
     slots_available: Optional[int]
     slots_total: Optional[int]
-    jobs: List[FlinkJobDetails]
     overview_available: bool
 
 
@@ -545,7 +544,6 @@ def format_flink_monitoring_links(
 def collect_flink_job_details(
     status: FlinkClusterStatusDict,
     overview: Optional[FlinkClusterOverview],
-    jobs: List[FlinkJobDetails],
 ) -> FlinkJobDetailsDict:
     """Collect job, pod, and resource information from status and overview."""
     pod_running_count = 0
@@ -598,7 +596,6 @@ def collect_flink_job_details(
         "taskmanagers": taskmanagers,
         "slots_available": slots_available,
         "slots_total": slots_total,
-        "jobs": jobs,
         "overview_available": overview is not None,
     }
 

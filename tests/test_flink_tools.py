@@ -559,7 +559,7 @@ class TestCollectFlinkJobDetails:
         overview.slots_available = 3
         overview.slots_total = 8
 
-        result = flink_tools.collect_flink_job_details(status, overview, [])
+        result = flink_tools.collect_flink_job_details(status, overview)
 
         assert result["state"] == "running"
         assert result["pod_counts"]["running"] == 2
@@ -580,7 +580,7 @@ class TestCollectFlinkJobDetails:
         overview = mock.Mock()
         overview.jobs_running = None
 
-        result = flink_tools.collect_flink_job_details(status, overview, [])
+        result = flink_tools.collect_flink_job_details(status, overview)
 
         assert result["job_counts"] is None
         assert result["overview_available"] is True
@@ -588,7 +588,7 @@ class TestCollectFlinkJobDetails:
     def test_not_running_no_overview(self):
         status = {"state": "stopped", "pod_status": [{"phase": "Running"}]}
 
-        result = flink_tools.collect_flink_job_details(status, None, [])
+        result = flink_tools.collect_flink_job_details(status, None)
 
         assert result["job_counts"] is None
         assert result["overview_available"] is False
@@ -603,7 +603,7 @@ class TestCollectFlinkJobDetails:
                 {"phase": "Failed", "reason": "OOMKilled"},
             ],
         }
-        result = flink_tools.collect_flink_job_details(status, None, [])
+        result = flink_tools.collect_flink_job_details(status, None)
 
         assert result["pod_counts"]["other"] == 3
         assert result["pod_counts"]["evicted"] == 0
