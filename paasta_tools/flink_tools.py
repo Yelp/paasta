@@ -93,7 +93,6 @@ class FlinkJobDetailsDict(TypedDict):
     taskmanagers: Optional[int]
     slots_available: Optional[int]
     slots_total: Optional[int]
-    jobs: List[FlinkJobDetails]
     overview_available: bool
 
 
@@ -545,7 +544,6 @@ def format_flink_monitoring_links(
 def collect_flink_job_details(
     status: FlinkClusterStatusDict,
     overview: Optional[FlinkClusterOverview],
-    jobs: List[FlinkJobDetails],
 ) -> FlinkJobDetailsDict:
     """Collect job, pod, and resource information from status and overview."""
     pod_running_count = 0
@@ -598,7 +596,6 @@ def collect_flink_job_details(
         "taskmanagers": taskmanagers,
         "slots_available": slots_available,
         "slots_total": slots_total,
-        "jobs": jobs,
         "overview_available": overview is not None,
     }
 
@@ -662,10 +659,10 @@ def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
 
 
 def should_job_info_be_shown(cluster_state: str) -> bool:
-    return cluster_state in ("running", "stoppingsupervisor", "cleanupsupervisor")
+    return cluster_state in {"running", "stoppingsupervisor", "cleanupsupervisor"}
 
 
-async def _fetch_flink_job_details(
+async def fetch_flink_job_details(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> List[FlinkJobDetails]:
     jobs_details = await asyncio.gather(
@@ -679,7 +676,7 @@ async def _fetch_flink_job_details(
     return list(jobs_details)
 
 
-async def _fetch_flink_job_checkpoints(
+async def fetch_flink_job_checkpoints(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> Dict[str, Union[FlinkCheckpointStatus, BaseException]]:
     """Fetch checkpoint status for all jobs in parallel, return dict keyed by job_id."""
@@ -697,13 +694,16 @@ async def _fetch_flink_job_checkpoints(
 
 def format_flink_jobs_table(
     jobs: List[FlinkJobDetails],
-    job_ids: List[str],
-    checkpoint_data: Dict[str, Any],
     dashboard_url: Optional[str],
     verbose: int,
+    checkpoint_data: Optional[
+        Dict[str, Union[FlinkCheckpointStatus, BaseException]]
+    ] = None,
 ) -> List[str]:
     """Format the per-job rows table (name, state, timestamps, checkpoints)."""
     output: List[str] = []
+    if checkpoint_data is None:
+        checkpoint_data = {}
 
     # Avoid cutting job name — use max length of actual job names
     if jobs:

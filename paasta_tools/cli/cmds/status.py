@@ -61,9 +61,6 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -76,8 +73,8 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.model.flink_checkpoint_status import FlinkCheckpointStatus
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
-from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -827,9 +824,16 @@ def _print_flink_status_from_job_manager(
     config_sha = labels.get(paasta_prefixed("config_sha"), "").removeprefix("config")
     output.append(f"    Config SHA: {config_sha}")
 
+    # Initialize all vars upfront; populated only when cluster is running
+    dashboard_url = None
+    overview = None
+    jobs: List[FlinkJobDetails] = []
+    job_ids: List[str] = []
+    checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]] = {}
+
     if status["state"] == "running":
         try:
-            flink_config = get_flink_config_from_paasta_api_client(
+            flink_config = flink_tools.get_flink_config_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
@@ -867,15 +871,9 @@ def _print_flink_status_from_job_manager(
                 )
             )
             output.append(OUTPUT_HORIZONTAL_RULE)
-    else:
-        dashboard_url = None
 
-    # Fetch overview only when running; pass None otherwise so collect_flink_job_details
-    # can distinguish "not running" from "running but jobmanager not responding"
-    overview = None
-    if status["state"] == "running":
         try:
-            overview = get_flink_overview_from_paasta_api_client(
+            overview = flink_tools.get_flink_overview_from_paasta_api_client(
                 service=service, instance=instance, client=client
             )
         except Exception as e:
@@ -883,7 +881,33 @@ def _print_flink_status_from_job_manager(
             output.append(str(e))
             return 1
 
-    job_details = flink_tools.collect_flink_job_details(status, overview, [])
+        try:
+            flink_jobs = flink_tools.get_flink_jobs_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+            if flink_jobs.get("jobs"):
+                job_ids = [job.id for job in flink_jobs.get("jobs")]
+            jobs = run_sync(
+                flink_tools.fetch_flink_job_details, service, instance, job_ids, client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red("Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
+
+        if verbose > 1 and job_ids:
+            try:
+                checkpoint_data = run_sync(
+                    flink_tools.fetch_flink_job_checkpoints,
+                    service,
+                    instance,
+                    job_ids,
+                    client,
+                )
+            except Exception:
+                pass  # checkpoints are informational, don't fail status
+
+    job_details = flink_tools.collect_flink_job_details(status, overview)
     output.extend(flink_tools.format_flink_state_and_pods(job_details))
 
     if not flink_tools.should_job_info_be_shown(status["state"]):
@@ -895,47 +919,9 @@ def _print_flink_status_from_job_manager(
         output.append("    No other information available in non-running state")
         return 0
 
-    flink_jobs = FlinkJobs()
-    flink_jobs.jobs = []
-    if status["state"] == "running":
-        try:
-            flink_jobs = get_flink_jobs_from_paasta_api_client(
-                service=service, instance=instance, client=client
-            )
-        except Exception as e:
-            output.append(PaastaColors.red("Exception when talking to the API:"))
-            output.append(str(e))
-            return 1
-
-    jobs: List[FlinkJobDetails] = []
-    job_ids: List[str] = []
-    if flink_jobs.get("jobs"):
-        job_ids = [job.id for job in flink_jobs.get("jobs")]
-    try:
-        jobs = run_sync(
-            flink_tools._fetch_flink_job_details, service, instance, job_ids, client
-        )
-    except Exception as e:
-        output.append(PaastaColors.red("Exception when talking to the API:"))
-        output.append(str(e))
-        return 1
-
-    checkpoint_data: Dict[str, Any] = {}
-    if verbose > 1 and job_ids:
-        try:
-            checkpoint_data = run_sync(
-                flink_tools._fetch_flink_job_checkpoints,
-                service,
-                instance,
-                job_ids,
-                client,
-            )
-        except Exception:
-            pass  # checkpoints are informational, don't fail status
-
     output.extend(
         flink_tools.format_flink_jobs_table(
-            jobs, job_ids, checkpoint_data, dashboard_url, verbose
+            jobs, dashboard_url, verbose, checkpoint_data=checkpoint_data
         )
     )
 

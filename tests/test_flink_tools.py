@@ -559,7 +559,7 @@ class TestCollectFlinkJobDetails:
         overview.slots_available = 3
         overview.slots_total = 8
 
-        result = flink_tools.collect_flink_job_details(status, overview, [])
+        result = flink_tools.collect_flink_job_details(status, overview)
 
         assert result["state"] == "running"
         assert result["pod_counts"]["running"] == 2
@@ -580,7 +580,7 @@ class TestCollectFlinkJobDetails:
         overview = mock.Mock()
         overview.jobs_running = None
 
-        result = flink_tools.collect_flink_job_details(status, overview, [])
+        result = flink_tools.collect_flink_job_details(status, overview)
 
         assert result["job_counts"] is None
         assert result["overview_available"] is True
@@ -588,7 +588,7 @@ class TestCollectFlinkJobDetails:
     def test_not_running_no_overview(self):
         status = {"state": "stopped", "pod_status": [{"phase": "Running"}]}
 
-        result = flink_tools.collect_flink_job_details(status, None, [])
+        result = flink_tools.collect_flink_job_details(status, None)
 
         assert result["job_counts"] is None
         assert result["overview_available"] is False
@@ -603,7 +603,7 @@ class TestCollectFlinkJobDetails:
                 {"phase": "Failed", "reason": "OOMKilled"},
             ],
         }
-        result = flink_tools.collect_flink_job_details(status, None, [])
+        result = flink_tools.collect_flink_job_details(status, None)
 
         assert result["pod_counts"]["other"] == 3
         assert result["pod_counts"]["evicted"] == 0
@@ -684,3 +684,89 @@ class TestFormatFlinkStateAndPods:
         slots_line = next(line for line in result if "taskmanagers" in line)
         assert "1 taskmanagers" in slots_line
         assert "2/8 slots available" in slots_line
+
+
+@mock.patch("paasta_tools.flink_tools.shutil.get_terminal_size")
+class TestFormatFlinkJobsTable:
+    def _make_job(self, fields):
+        defaults = {
+            "jid": "abc123",
+            "name": "beam.main.test_job",
+            "state": "RUNNING",
+            "start_time": 1655053223341.0,
+            "timestamps": {},
+        }
+        defaults.update(fields)
+        return defaults
+
+    def test_verbose_shows_job_id(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        job = self._make_job({"jid": "abc123def456"})
+        result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 2)
+        output_text = "\n".join(result)
+        assert "Job ID" in output_text
+        assert "abc123def456" in output_text
+
+    def test_non_verbose_limits_to_3_jobs(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        jobs = [
+            self._make_job(
+                {
+                    "jid": f"id_job{i}",
+                    "name": f"beam.main.job{i}",
+                    "start_time": 1000000000000.0 + i * 1000000,
+                }
+            )
+            for i in range(4)
+        ]
+        result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 0)
+        output_text = "\n".join(result)
+        assert "Only showing 3" in output_text
+
+    def test_verbose_shows_all_jobs(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        jobs = [
+            self._make_job(
+                {
+                    "jid": f"id_job{i}",
+                    "name": f"beam.main.job{i}",
+                    "start_time": 1000000000000.0 + i * 1000000,
+                }
+            )
+            for i in range(4)
+        ]
+        result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 1)
+        output_text = "\n".join(result)
+        assert "Only showing" not in output_text
+        assert "job3" in output_text
+
+    def test_failed_job_state(self, mock_terminal_size):
+        from paasta_tools.utils import PaastaColors
+
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        job = self._make_job({"state": "FAILED"})
+        result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 0)
+        output_text = "\n".join(result)
+        assert PaastaColors.red("Failed") in output_text
+
+    def test_checkpoint_and_restart_display(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        job = self._make_job({"timestamps": {"RESTARTING": 1655842393301.0}})
+        ckpt = mock.Mock()
+        ckpt.counts = {"completed": 100, "failed": 2, "in_progress": 1, "restored": 0}
+        result = flink_tools.format_flink_jobs_table(
+            [job], "http://dashboard", 2, checkpoint_data={"abc123": ckpt}
+        )
+        output_text = "\n".join(result)
+        assert (
+            "Checkpoints: 100 completed, 2 failed, 1 in progress, 0 restored"
+            in output_text
+        )
+        assert "Last restart:" in output_text
+
+    def test_no_dashboard_url(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        job = self._make_job({})
+        result = flink_tools.format_flink_jobs_table([job], None, 2)
+        output_text = "\n".join(result)
+        assert "None" not in output_text
