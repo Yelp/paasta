@@ -1,3 +1,12 @@
+paasta-tools (1.49.3) jammy; urgency=medium
+
+  * 1.49.3 tagged with 'make release'
+    Commit: Merge pull request #4286 from Yelp/u/nathanleigh/FLINK-
+    5911/orchestrator-cleanup  FLINK-5911: Orchestrator cleanup in
+    status.py  (PR 4/4)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 14 Apr 2026 06:30:50 -0700
+
 paasta-tools (1.49.2) jammy; urgency=medium
 
   * 1.49.2 tagged with 'make release'
