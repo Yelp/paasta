@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import importlib.metadata
 from unittest import mock
 from unittest.mock import ANY
 from unittest.mock import AsyncMock
@@ -19,6 +20,7 @@ from unittest.mock import MagicMock
 from unittest.mock import call
 from unittest.mock import patch
 
+import pytest
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
@@ -1052,3 +1054,26 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_same_version():
 
         mfdp.update_slack_thread.assert_not_called()
         mock_print.assert_not_called()
+
+
+def _slo_transcoder_installed() -> bool:
+    try:
+        importlib.metadata.distribution("slo-transcoder")
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
+
+
+@pytest.mark.skipif(
+    not _slo_transcoder_installed(),
+    reason="slo-transcoder not installed (not on Yelp infra)",
+)
+def test_slo_transcoder_is_importable():
+    # this test only makes sense on yelpy boxes that have slo_transcoder installed
+    # ... and it will catch shenanigans like being unable to load slo_transcoder
+    # ... since we otherwise throw any exceptions into the void
+    # e.g., at one point this was broken due to a Python upgrade breaking a transitive
+    # dependency's importability in a way that we couldn't see without a debugger/LLM
+    from sticht.rollbacks.slo import SLO_TRANSCODER_LOADED
+
+    assert SLO_TRANSCODER_LOADED is True
