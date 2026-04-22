@@ -7,6 +7,9 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import _get_dict_signature
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
+    get_services_to_k8s_namespaces_from_extra_namespaces,
+)
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
     get_services_to_k8s_namespaces_to_allowlist,
 )
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import main
@@ -1635,3 +1638,72 @@ def test_sync_ssm_secrets_tron_configs(ssm_patches):
     _, kwargs = mock_create_or_update.call_args
     assert kwargs["namespace"] == "tron"
     assert kwargs["get_secret_data"]() == {"TRON_VAR": "dHJvbl9zZWNyZXRfdmFsdWU="}
+
+
+def test_get_services_to_k8s_namespaces_from_extra_namespaces(tmp_path):
+    # Set up a service with two secrets: one with extra_namespaces, one without.
+    svc_dir = tmp_path / "my-service" / "secrets"
+    svc_dir.mkdir(parents=True)
+    (svc_dir / "my-secret.json").write_text(
+        '{"extra_namespaces": ["mwaa", "other-ns"], "environments": {}}'
+    )
+    (svc_dir / "plain-secret.json").write_text('{"environments": {}}')
+
+    result = get_services_to_k8s_namespaces_from_extra_namespaces(
+        service_list=["my-service"],
+        soa_dir=str(tmp_path),
+    )
+
+    assert result == {
+        "my-service": {
+            "mwaa": {"my-secret"},
+            "other-ns": {"my-secret"},
+        }
+    }
+
+
+def test_get_services_to_k8s_namespaces_from_extra_namespaces_shared(tmp_path):
+    # _shared service secrets with extra_namespaces are handled the same way.
+    svc_dir = tmp_path / "_shared" / "secrets"
+    svc_dir.mkdir(parents=True)
+    (svc_dir / "shared-secret.json").write_text(
+        '{"extra_namespaces": ["mwaa"], "environments": {}}'
+    )
+
+    result = get_services_to_k8s_namespaces_from_extra_namespaces(
+        service_list=["_shared"],
+        soa_dir=str(tmp_path),
+    )
+
+    assert result == {"_shared": {"mwaa": {"shared-secret"}}}
+
+
+def test_get_services_to_k8s_namespaces_from_extra_namespaces_no_secrets_dir(tmp_path):
+    # Services with no secrets dir produce an empty result.
+    result = get_services_to_k8s_namespaces_from_extra_namespaces(
+        service_list=["no-secrets-service"],
+        soa_dir=str(tmp_path),
+    )
+    assert result == {}
+
+
+def test_get_services_to_k8s_namespaces_from_extra_namespaces_multiple_services(
+    tmp_path,
+):
+    # Multiple services are each scanned independently.
+    for svc, ns in [("svc-a", "mwaa"), ("svc-b", "other-ns")]:
+        svc_dir = tmp_path / svc / "secrets"
+        svc_dir.mkdir(parents=True)
+        (svc_dir / "sec.json").write_text(
+            f'{{"extra_namespaces": ["{ns}"], "environments": {{}}}}'
+        )
+
+    result = get_services_to_k8s_namespaces_from_extra_namespaces(
+        service_list=["svc-a", "svc-b"],
+        soa_dir=str(tmp_path),
+    )
+
+    assert result == {
+        "svc-a": {"mwaa": {"sec"}},
+        "svc-b": {"other-ns": {"sec"}},
+    }

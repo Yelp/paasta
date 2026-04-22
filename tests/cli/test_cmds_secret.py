@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from argparse import ArgumentTypeError
 from unittest import mock
 
@@ -165,6 +166,7 @@ def test_paasta_secret():
             clusters="mesosstage",
             shared=False,
             cross_env_motivation="because ...",
+            extra_namespaces=None,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -192,6 +194,7 @@ def test_paasta_secret():
             clusters="mesosstage",
             shared=False,
             cross_env_motivation=None,
+            extra_namespaces=None,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -278,6 +281,7 @@ def test_paasta_secret():
             service=None,
             clusters="mesosstage",
             shared=True,
+            extra_namespaces=None,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -301,6 +305,7 @@ def test_paasta_secret():
             service=None,
             clusters=None,
             shared=True,
+            extra_namespaces=None,
         )
         with raises(SystemExit):
             secret.paasta_secret(mock_args)
@@ -352,3 +357,33 @@ def test_paasta_secret_run():
         assert (
             mock_exec.call_args[0][2].get("PAASTA_SECRET_TEST") == "test secret value"
         )
+
+
+def test_update_extra_namespaces_set(tmp_path):
+    secret_path = tmp_path / "my-secret.json"
+    secret_path.write_text('{"environments": {}}')
+
+    secret._update_extra_namespaces(str(secret_path), "mwaa,other-ns")
+
+    data = json.loads(secret_path.read_text())
+    assert data["extra_namespaces"] == ["mwaa", "other-ns"]
+
+
+def test_update_extra_namespaces_update(tmp_path):
+    secret_path = tmp_path / "my-secret.json"
+    secret_path.write_text('{"extra_namespaces": ["old-ns"], "environments": {}}')
+
+    secret._update_extra_namespaces(str(secret_path), "mwaa")
+
+    data = json.loads(secret_path.read_text())
+    assert data["extra_namespaces"] == ["mwaa"]
+
+
+def test_update_extra_namespaces_clear(tmp_path):
+    secret_path = tmp_path / "my-secret.json"
+    secret_path.write_text('{"extra_namespaces": ["mwaa"], "environments": {}}')
+
+    secret._update_extra_namespaces(str(secret_path), "")
+
+    data = json.loads(secret_path.read_text())
+    assert "extra_namespaces" not in data
