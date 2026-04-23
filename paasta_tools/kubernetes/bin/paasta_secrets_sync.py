@@ -526,7 +526,7 @@ def sync_secrets(
     with os.scandir(secret_dir) as secret_file_paths:
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith("json"):
-                secret = secret_file_path.name.replace(".json", "")
+                secret = secret_file_path.name.removesuffix(".json")
                 if secret_allowlist is not None:
                     if secret not in secret_allowlist:
                         log.debug(
