@@ -403,6 +403,7 @@ def _get_secret_provider_for_service(
 
 def _update_extra_namespaces(secret_path: str, extra_namespaces_arg: str) -> None:
     """Update the extra_namespaces field in a secret JSON file in-place."""
+    # TODO: Add metadata support to secret_provider impl (vault_tools) instead
     # vault_tools owns the normal write path for secret JSON files; this patches
     # only the extra_namespaces metadata field after the ciphertext has been written.
     namespaces: List[str] = [n for n in extra_namespaces_arg.split(",") if n]

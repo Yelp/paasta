@@ -104,11 +104,22 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
-    parser.add_argument(
+    namespace_group = parser.add_mutually_exclusive_group()
+    namespace_group.add_argument(
         "-n",
         "--namespace",
         dest="namespace",
         help="Overwrite destination namespace for secrets",
+    )
+    namespace_group.add_argument(
+        "--only-extra-namespaces",
+        action="store_true",
+        dest="only_extra_namespaces",
+        help=(
+            "Instead of deriving target namespaces from instance configs, sync secrets "
+            "only to the namespaces declared in each secret's 'extra_namespaces' field. "
+            "Use this for services that have no PaaSTA instances (e.g. MWAA workloads)."
+        ),
     )
     parser.add_argument(
         "-t",
@@ -133,16 +144,6 @@ def parse_args() -> argparse.Namespace:
         default="all",
         type=str,
         help="Define which type of secret to add/update. Default is 'all' (which does not include datastore-credentials)",
-    )
-    parser.add_argument(
-        "--only-extra-namespaces",
-        action="store_true",
-        dest="only_extra_namespaces",
-        help=(
-            "Instead of deriving target namespaces from instance configs, sync secrets "
-            "only to the namespaces declared in each secret's 'extra_namespaces' field. "
-            "Use this for services that have no PaaSTA instances (e.g. MWAA workloads)."
-        ),
     )
     args = parser.parse_args()
     return args
