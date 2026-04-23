@@ -1216,15 +1216,27 @@ def _check_smartstack_valid_proxy(proxied_through: str, soa_dir: str) -> None:
 
 
 def _check_smartstack_proxied_through(
-    smartstack_data: dict[str, Any],
+    smartstack_data: dict[str, Any],  # XXX: we should use a TypedDict here
     soa_dir: str,
-) -> None:  # XXX: we should use a TypedDict here
+) -> None:
     """Checks the proxied_through field of a Smartstack namespace refers to another valid Smartstack namespace"""
     if "proxied_through" not in smartstack_data:
         return
 
     proxied_through = smartstack_data["proxied_through"]
     _check_smartstack_valid_proxy(proxied_through, soa_dir)
+
+
+def _check_smartstack_clb_proxy(
+    smartstack_data: dict[str, Any],  # XXX: we should use a TypedDict here
+    soa_dir: str,
+) -> None:
+    """Checks the clb_proxy field of a Smartstack namespace refers to another valid Smartstack namespace"""
+    if "clb_proxy" not in smartstack_data:
+        return
+
+    clb_proxy = smartstack_data["clb_proxy"]
+    _check_smartstack_valid_proxy(clb_proxy, soa_dir)
 
 
 def validate_smartstack(service_path: str) -> bool:
@@ -1254,6 +1266,7 @@ def validate_smartstack(service_path: str) -> bool:
         _check_proxy_port_in_use(service, namespace, proxy_port)
         _check_advertise_discover(namespace_config)
         _check_smartstack_proxied_through(namespace_config, soa_dir)
+        _check_smartstack_clb_proxy(namespace_config, soa_dir)
 
     print(success("All SmartStack configs are valid"))
     return True
