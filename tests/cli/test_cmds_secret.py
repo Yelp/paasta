@@ -363,7 +363,7 @@ def test_update_extra_namespaces_set(tmp_path):
     secret_path = tmp_path / "my-secret.json"
     secret_path.write_text('{"environments": {}}')
 
-    secret._update_extra_namespaces(str(secret_path), "mwaa,other-ns")
+    secret._update_extra_namespaces(str(secret_path), ["mwaa", "other-ns"])
 
     data = json.loads(secret_path.read_text())
     assert data["extra_namespaces"] == ["mwaa", "other-ns"]
@@ -373,7 +373,7 @@ def test_update_extra_namespaces_update(tmp_path):
     secret_path = tmp_path / "my-secret.json"
     secret_path.write_text('{"extra_namespaces": ["old-ns"], "environments": {}}')
 
-    secret._update_extra_namespaces(str(secret_path), "mwaa")
+    secret._update_extra_namespaces(str(secret_path), ["mwaa"])
 
     data = json.loads(secret_path.read_text())
     assert data["extra_namespaces"] == ["mwaa"]
@@ -383,7 +383,7 @@ def test_update_extra_namespaces_clear(tmp_path):
     secret_path = tmp_path / "my-secret.json"
     secret_path.write_text('{"extra_namespaces": ["mwaa"], "environments": {}}')
 
-    secret._update_extra_namespaces(str(secret_path), "")
+    secret._update_extra_namespaces(str(secret_path), [])
 
     data = json.loads(secret_path.read_text())
     assert "extra_namespaces" not in data

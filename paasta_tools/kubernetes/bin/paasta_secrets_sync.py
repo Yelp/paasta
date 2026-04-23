@@ -355,7 +355,7 @@ def get_services_to_k8s_namespaces_from_extra_namespaces(
                 extra_namespaces = data.get("extra_namespaces", [])
                 if not extra_namespaces:
                     continue
-                secret_name = secret_file_path.name[: -len(".json")]
+                secret_name = secret_file_path.name.removesuffix(".json")
                 for namespace in extra_namespaces:
                     services_to_k8s_namespaces_to_allowlist[service].setdefault(
                         namespace, set()

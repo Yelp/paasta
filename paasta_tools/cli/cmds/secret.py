@@ -209,6 +209,7 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--extra-namespaces",
         default=None,
+        type=lambda v: v.split(",") if v else [],
         help=(
             "A comma-separated list of additional Kubernetes namespaces to sync this secret to, "
             "beyond those derived from PaaSTA instance configs. "
@@ -401,12 +402,11 @@ def _get_secret_provider_for_service(
     )
 
 
-def _update_extra_namespaces(secret_path: str, extra_namespaces_arg: str) -> None:
+def _update_extra_namespaces(secret_path: str, namespaces: List[str]) -> None:
     """Update the extra_namespaces field in a secret JSON file in-place."""
     # TODO: Add metadata support to secret_provider impl (vault_tools) instead
     # vault_tools owns the normal write path for secret JSON files; this patches
     # only the extra_namespaces metadata field after the ciphertext has been written.
-    namespaces: List[str] = [n for n in extra_namespaces_arg.split(",") if n]
     with open(secret_path, "r") as f:
         data = json.load(f)
     if namespaces:
