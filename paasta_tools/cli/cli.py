@@ -226,6 +226,7 @@ def parse_args(argv):
         else:
             parser = get_argparser(commands=[])
         argcomplete.autocomplete(parser)
+        return parser.parse_args(argv), parser
 
     parser = get_argparser(commands=[])
 
