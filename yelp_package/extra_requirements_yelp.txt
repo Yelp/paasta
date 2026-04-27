@@ -22,7 +22,7 @@ pygpgme==0.3                        # vault-tools dependency
 pyjwt==2.9.0                        # okta-auth dependency
 pyopenssl==19.0.0                   # vault-tools dependency
 PySubnetTree==0.34                  # yelp-lib dependency
-python-jsonschema-objects==0.3.1    # slo-transcoder dependency
+python-jsonschema-objects==0.4.1    # slo-transcoder dependency
 saml-helper==3.1.2                  # okta-auth dependency
 scribereader==1.1.1
 signalform-tools==0.0.16            # slo-transcoder dependency
