@@ -104,11 +104,22 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
-    parser.add_argument(
+    namespace_group = parser.add_mutually_exclusive_group()
+    namespace_group.add_argument(
         "-n",
         "--namespace",
         dest="namespace",
         help="Overwrite destination namespace for secrets",
+    )
+    namespace_group.add_argument(
+        "--only-extra-namespaces",
+        action="store_true",
+        dest="only_extra_namespaces",
+        help=(
+            "Instead of deriving target namespaces from instance configs, sync secrets "
+            "only to the namespaces declared in each secret's 'extra_namespaces' field. "
+            "Use this for services that have no PaaSTA instances (e.g. MWAA workloads)."
+        ),
     )
     parser.add_argument(
         "-t",
@@ -181,14 +192,22 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
-    services_to_k8s_namespaces_to_allowlist = (
-        get_services_to_k8s_namespaces_to_allowlist(
-            service_list=args.service_list,
-            cluster=cluster,
-            soa_dir=args.soa_dir,
-            kube_client=kube_client,
+    if args.only_extra_namespaces:
+        services_to_k8s_namespaces_to_allowlist = (
+            get_services_to_k8s_namespaces_from_extra_namespaces(
+                service_list=args.service_list,
+                soa_dir=args.soa_dir,
+            )
         )
-    )
+    else:
+        services_to_k8s_namespaces_to_allowlist = (
+            get_services_to_k8s_namespaces_to_allowlist(
+                service_list=args.service_list,
+                cluster=cluster,
+                soa_dir=args.soa_dir,
+                kube_client=kube_client,
+            )
+        )
 
     result = sync_all_secrets(
         kube_client=kube_client,
@@ -294,6 +313,53 @@ def get_services_to_k8s_namespaces_to_allowlist(
                     services_to_k8s_namespaces_to_allowlist["_shared"][
                         INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
                     ] = None
+
+    return dict(services_to_k8s_namespaces_to_allowlist)
+
+
+def get_services_to_k8s_namespaces_from_extra_namespaces(
+    service_list: List[str],
+    soa_dir: str,
+) -> Dict[
+    str,  # service
+    Dict[
+        str,  # namespace
+        Optional[Set[str]],  # allowlist of secret names, None means allow all.
+    ],
+]:
+    """
+    Build a service -> namespace -> allowlist mapping by scanning secret JSON files
+    for the 'extra_namespaces' field, rather than deriving namespaces from instance configs.
+
+    Only secrets that declare 'extra_namespaces' are included. Each such secret is added
+    to the allowlist for each namespace it declares. This is intended for use with
+    --only-extra-namespaces, for services that have no PaaSTA instances (e.g. MWAA workloads)
+    but still need secrets synced to specific namespaces.
+    """
+    services_to_k8s_namespaces_to_allowlist: Dict[
+        str, Dict[str, Optional[Set[str]]]
+    ] = defaultdict(dict)
+
+    for service in service_list:
+        secret_dir = os.path.join(soa_dir, service, "secrets")
+        if not os.path.isdir(secret_dir):
+            log.debug(f"No secrets dir for {service}, skipping extra_namespaces scan")
+            continue
+
+        with os.scandir(secret_dir) as secret_file_paths:
+            for secret_file_path in secret_file_paths:
+                if not secret_file_path.path.endswith(".json"):
+                    continue
+                with open(secret_file_path, "r") as f:
+                    data = json.load(f)
+                extra_namespaces = data.get("extra_namespaces", [])
+                if not extra_namespaces:
+                    continue
+                secret_name = secret_file_path.name.removesuffix(".json")
+                for namespace in extra_namespaces:
+                    services_to_k8s_namespaces_to_allowlist[service].setdefault(
+                        namespace, set()
+                    ).add(secret_name)
 
     return dict(services_to_k8s_namespaces_to_allowlist)
 
@@ -460,7 +526,7 @@ def sync_secrets(
     with os.scandir(secret_dir) as secret_file_paths:
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith("json"):
-                secret = secret_file_path.name.replace(".json", "")
+                secret = secret_file_path.name.removesuffix(".json")
                 if secret_allowlist is not None:
                     if secret not in secret_allowlist:
                         log.debug(
