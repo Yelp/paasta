@@ -218,14 +218,21 @@ def parse_args(argv):
     :return: an argparse.Namespace object mapping parameter names to the inputs
              from sys.argv
     """
+    if "_ARGCOMPLETE" in os.environ:
+        comp_line = os.environ.get("COMP_LINE", "")
+        comp_words = comp_line.split()
+        if len(comp_words) >= 2 and comp_words[1] in PAASTA_SUBCOMMANDS:
+            parser = get_argparser(commands=[comp_words[1]])
+        else:
+            parser = get_argparser(commands=[])
+        argcomplete.autocomplete(parser)
+
     parser = get_argparser(commands=[])
-    argcomplete.autocomplete(parser)
 
     args, _ = parser.parse_known_args(argv)
     if args.command:
         parser = get_argparser(commands=[args.command])
 
-    argcomplete.autocomplete(parser)
     return parser.parse_args(argv), parser
 
 

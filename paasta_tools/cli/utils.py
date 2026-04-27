@@ -571,8 +571,8 @@ def run_on_master(
 
 
 def lazy_choices_completer(list_func):
-    def inner(prefix, **kwargs):
-        options = list_func(**kwargs)
+    def inner(prefix):
+        options = list_func()
         return [o for o in options if o.startswith(prefix)]
 
     return inner
