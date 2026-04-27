@@ -1,3 +1,25 @@
+paasta-tools (1.49.5) jammy; urgency=medium
+
+  * 1.49.5 tagged with 'make release'
+    Commit: Re-enable SLO-based autorollbacks (#4288)  This is a tiny
+    bit silly :p  SLO-based autorollbacks have been silently broken
+    since Yelp/paasta#4065 - python-jsonschema-objects==0.3.1 tries to
+    import some types from `collections`, but some of those types were
+    moved to `collections.abc` in 3.10.  However...as we do a blanket
+    try-except with no logging - we totally missed this breakage as the
+    only way to see this is to first notice that these SLO rollbacks are
+    missing (usage of these is pretty spotty given some known issues)
+    and then either hook up a debugger or point an LLM to mark-for-
+    deployment to debug as this is otherwise a completely silent failure
+    :p  I"ve gone ahead and bumped python-jsonschema-objects to a
+    version compatible with 3.10 and added a somewhat silly test to
+    ensure that slo_transcoder is loadable - this test is skipped if
+    slo_transcoder is not installed (i.e., if you"re running the tests
+    outside of Yelp)  Once I bumped this package, I was able to see
+    autorollbacks working for my test service as expected :D
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 27 Apr 2026 06:24:55 -0700
+
 paasta-tools (1.49.4) jammy; urgency=medium
 
   * 1.49.4 tagged with 'make release'
