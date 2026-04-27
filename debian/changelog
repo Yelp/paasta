@@ -1,3 +1,13 @@
+paasta-tools (1.49.6) jammy; urgency=medium
+
+  * 1.49.6 tagged with 'make release'
+    Commit: Merge pull request #4290 from Yelp/jfong/AIRFLOW-3-support-
+    extra-ns-secrets  AIRFLOW-3: Add a new extra-namespaces option to
+    paasta secrets to support secret syncing without adding paasta
+    instances
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 27 Apr 2026 10:35:51 -0700
+
 paasta-tools (1.49.5) jammy; urgency=medium
 
   * 1.49.5 tagged with 'make release'
