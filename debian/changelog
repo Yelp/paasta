@@ -1,3 +1,11 @@
+paasta-tools (1.49.4) jammy; urgency=medium
+
+  * 1.49.4 tagged with 'make release'
+    Commit: Merge branch
+    "u/krall/fail_validation_if_clb_proxy_doesnt_exist"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 23 Apr 2026 14:37:46 -0700
+
 paasta-tools (1.49.3) jammy; urgency=medium
 
   * 1.49.3 tagged with 'make release'
