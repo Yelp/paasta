@@ -272,7 +272,7 @@
                         "type": "number",
                         "minimum": 0
                     },
-                    "timeout_server_threshold": {
+                    "timeout_threshold_ratio": {
                         "type": "number",
                         "minimum": 0,
                         "maximum": 1
