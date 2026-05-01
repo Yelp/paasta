@@ -2343,16 +2343,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if force_no_routable_ip
             else self.has_routable_ip(service_namespace_config, system_paasta_config)
         )
-        annotations: KubePodAnnotations = (
-            {
-                "smartstack_registrations": json.dumps(self.get_registrations()),
-                "paasta.yelp.com/routable_ip": has_routable_ip,
-            }
-            if service_namespace_config.is_in_smartstack()
-            else {
-                "paasta.yelp.com/routable_ip": has_routable_ip,
-            }
-        )
+        annotations: KubePodAnnotations = {
+            "paasta.yelp.com/routable_ip": has_routable_ip,
+        }
+
+        if service_namespace_config.is_in_smartstack():
+            annotations["smartstack_registrations"] = json.dumps(
+                self.get_registrations()
+            )
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
@@ -2859,8 +2857,10 @@ def get_kubernetes_services_running_here(
     services = []
     pods = get_k8s_pods()
     for pod in pods["items"]:
-        if pod["status"]["phase"] != "Running" or (
-            exclude_terminating and pod["metadata"].get("deletionTimestamp")
+        if (
+            pod["status"]["phase"] != "Running"
+            or "smartstack_registrations" not in pod["metadata"].get("annotations", {})
+            or (exclude_terminating and pod["metadata"].get("deletionTimestamp"))
         ):
             continue
         try:

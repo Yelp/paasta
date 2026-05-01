@@ -3572,6 +3572,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": "[]",
                         },
                     },
                     "spec": spec,
@@ -3589,6 +3590,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": "[]",
                         },
                     },
                     "spec": spec,
@@ -3606,6 +3608,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": "[]",
                         },
                     },
                     "spec": spec,
@@ -3638,29 +3641,12 @@ def test_get_kubernetes_services_running_here():
                 registrations=[],
                 weight=10,
             ),
-            KubernetesServiceRegistration(
-                name="kurupt",
-                instance="beats",
-                port=8888,
-                pod_ip="10.1.1.1",
-                registrations=[],
-                weight=10,
-            ),
         ]
 
         # mock a terminating pod
         mock_pod_results["items"][0]["metadata"]["deletionTimestamp"] = "now"
         mock_requests_get.return_value.json.return_value = mock_pod_results
-        assert get_kubernetes_services_running_here(exclude_terminating=True) == [
-            KubernetesServiceRegistration(
-                name="kurupt",
-                instance="beats",
-                port=8888,
-                pod_ip="10.1.1.1",
-                registrations=[],
-                weight=10,
-            ),
-        ]
+        assert get_kubernetes_services_running_here(exclude_terminating=True) == []
 
         # if the kubelet is down we don't want to reconfigure nerve until it comes back
         # and we can be sure what is running or not
