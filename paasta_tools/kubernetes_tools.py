@@ -2347,11 +2347,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
 
-        if service_namespace_config.is_in_smartstack():
-            annotations["smartstack_registrations"] = json.dumps(
-                self.get_registrations()
-            )
-
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
         # TODO: see if we can remove this as we're no longer using sfx data to scale
@@ -2476,6 +2471,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
+            annotations["smartstack_registrations"] = json.dumps(
+                self.get_registrations()
+            )
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod
@@ -2882,9 +2880,7 @@ def get_kubernetes_services_running_here(
                     port=port,
                     pod_ip=pod["status"]["podIP"],
                     registrations=json.loads(
-                        pod["metadata"]["annotations"].get(
-                            "smartstack_registrations", "[]"
-                        )
+                        pod["metadata"]["annotations"]["smartstack_registrations"]
                     ),
                     weight=weight,
                 )

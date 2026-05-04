@@ -3572,7 +3572,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
-                            "smartstack_registrations": "[]",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3590,7 +3590,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
-                            "smartstack_registrations": "[]",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3608,7 +3608,7 @@ def test_get_kubernetes_services_running_here():
                         },
                         "annotations": {
                             "iam.amazonaws.com/role": "",
-                            "smartstack_registrations": "[]",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3638,7 +3638,7 @@ def test_get_kubernetes_services_running_here():
                 instance="fm",
                 port=8888,
                 pod_ip="10.1.1.3",
-                registrations=[],
+                registrations=["compute-infra-test-service.main"],
                 weight=10,
             ),
         ]
