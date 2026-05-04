@@ -31,6 +31,7 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
+from paasta_tools.remote_git import create_rollback_tag
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
@@ -180,9 +181,14 @@ def get_versions_for_service(
             deploy_group = regex_match["deploy_group"]
             tstamp = regex_match["tstamp"]
             image_version = regex_match["image_version"]
+            tag_type = regex_match["tag"]
         except KeyError:
             pass
         else:
+            if tag_type != "deploy":
+                # i.e., we don't care about noise like rollback tags :)
+                continue
+
             # Now we filter and dedup by picking the most recent sha for a deploy group
             # Note that all strings are greater than ''
             if deploy_group in deploy_groups:
@@ -312,6 +318,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     # TODO: Add similar check for when image_version is empty and no-commit redeploys is enforced for requested deploy_group
 
     returncode = 0
+    performed_rollback = False
 
     for deploy_group in deploy_groups:
         rolled_back_from = get_currently_deployed_version(service, deploy_group)
@@ -326,6 +333,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         # we could also gate this by the return code from m-f-d, but we probably care more about someone wanting to
         # rollback than we care about if the underlying machinery was successfully able to complete the request
         if rolled_back_from != new_version:
+            performed_rollback = True
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
                 "rolled_back_to": str(new_version),
@@ -335,8 +343,31 @@ def paasta_rollback(args: argparse.Namespace) -> int:
             _log_audit(
                 action="rollback", action_details=audit_action_details, service=service
             )
+            if (
+                create_rollback_tag(
+                    git_url=git_url,
+                    deploy_group=deploy_group,
+                    bad_sha=rolled_back_from.sha,
+                    image_version=rolled_back_from.image_version,
+                )
+                != 0
+            ):
+                print(
+                    PaastaColors.yellow(
+                        f"WARNING: Failed to create rollback tag for {rolled_back_from.sha}. "
+                        "Jenkins will automatically re-deploy this commit in the near future!"
+                    )
+                )
+        else:
+            print(
+                PaastaColors.red(
+                    f"WARNING: {new_version.sha} is the currently deployed SHA for {deploy_group}! "
+                    f"You have not rolled back in {deploy_group}!"
+                )
+            )
+            returncode = 1
 
-    if returncode == 0:
+    if performed_rollback:
         print(
             PaastaColors.yellow(
                 f"WARNING: You MUST manually revert changes in Git! Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "

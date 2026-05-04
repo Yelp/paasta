@@ -201,7 +201,11 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 @patch("paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
+@patch("paasta_tools.remote_git.create_rollback_tag", autospec=True)
 def test_paasta_mark_for_deployment_with_good_rollback(
+    mock_create_rollback_tag,
+    mock_list_remote_refs,
     mock_get_metrics,
     mock_load_system_paasta_config,
     mock_list_deploy_groups,

@@ -109,6 +109,8 @@ ANY_CLUSTER = "N/A"
 ANY_INSTANCE = "N/A"
 DEFAULT_LOGLEVEL = "event"
 no_escape = re.compile(r"\x1B\[[0-9;]*[mK]")
+# NOTE: renaming these named groups will require refactoring users of this regex
+ROLLBACK_TAG_PATTERN = r"^refs/tags/paasta-{deploy_group}(?:\+(?P<image_version>.*)){{0,1}}-(?P<dtime>\d{{8}}T\d{{6}})-rollback$"
 
 # instead of the convention of using underscores in this scribe channel name,
 # the audit log uses dashes to prevent collisions with a service that might be
@@ -3723,6 +3725,35 @@ def get_latest_deployment_tag(
                 most_recent_sha = sha
                 most_recent_image_version = gd["image_version"]
     return most_recent_ref, most_recent_sha, most_recent_image_version
+
+
+def get_rollback_tags_for_sha(
+    refs: Dict[str, str], deploy_group: str, sha: str
+) -> List[Tuple[str, str]]:
+    """Gets all rollback tags for a given SHA in a deploy group.
+
+    :param refs: A dictionary mapping git refs to shas
+    :param deploy_group: The deployment group to look for tags for
+    :param sha: The git SHA to check for rollback tags
+
+    :returns: A list of (ref_name, timestamp) tuples for matching rollback
+              tags, sorted by timestamp descending (most recent first)
+
+              NOTE: timestamp is technically not necessary since it's
+              embedded in the tag name - but it does save some processing
+              later on :p
+    """
+    pattern = re.compile(
+        ROLLBACK_TAG_PATTERN.format(deploy_group=re.escape(deploy_group))
+    )
+    results: List[Tuple[str, str]] = []
+    for ref_name, ref_sha in refs.items():
+        if ref_sha != sha:
+            continue
+        if match := pattern.match(ref_name):
+            results.append((ref_name, match.group("dtime")))
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results
 
 
 def build_image_identifier(

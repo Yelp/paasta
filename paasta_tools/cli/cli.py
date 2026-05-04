@@ -102,6 +102,7 @@ def add_subparser(command, subparsers):
 PAASTA_SUBCOMMANDS = {
     "autoscale": "autoscale",
     "check": "check",
+    "check-rollback-status": "check_rollback_status",
     "cook-image": "cook_image",
     "get-docker-image": "get_docker_image",
     "get-image-version": "get_image_version",

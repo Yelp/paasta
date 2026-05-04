@@ -144,3 +144,30 @@ def test_get_authors_works_with_good_url(mock_run):
         command="ssh git@git.yelpcorp.com authors-of-changeset yelp-main a b",
         timeout=5.0,
     )
+
+
+def test_create_rollback_tag_success():
+    with mock.patch(
+        "paasta_tools.remote_git.create_remote_refs", autospec=True
+    ) as mock_create_remote_refs:
+        result = remote_git.create_rollback_tag(
+            git_url="git@git.yelpcorp.com:services/myservice",
+            deploy_group="prod.main",
+            bad_sha="a" * 40,
+        )
+        assert result == 0
+        mock_create_remote_refs.assert_called_once()
+
+
+def test_create_rollback_tag_failure():
+    with mock.patch(
+        "paasta_tools.remote_git.create_remote_refs",
+        autospec=True,
+        side_effect=Exception("connection refused"),
+    ):
+        result = remote_git.create_rollback_tag(
+            git_url="git@git.yelpcorp.com:services/myservice",
+            deploy_group="prod.main",
+            bad_sha="a" * 40,
+        )
+        assert result == 1
