@@ -1,3 +1,12 @@
+paasta-tools (1.49.7) jammy; urgency=medium
+
+  * 1.49.7 tagged with 'make release'
+    Commit: Merge pull request #4295 from Yelp/u/sofya/FLINK-
+    5946_udf_information  FLINK-5946: add UDF information for
+    streamhouse_queries
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 May 2026 11:52:51 -0700
+
 paasta-tools (1.49.6) jammy; urgency=medium
 
   * 1.49.6 tagged with 'make release'
