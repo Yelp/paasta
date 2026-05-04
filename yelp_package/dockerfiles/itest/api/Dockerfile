@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:jammy
+ARG BASE_IMAGE=docker-dev.yelpcorp.com/jammy_yelp
+FROM ${BASE_IMAGE}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
+ARG EXTRA_PPA=
 
 RUN apt-get update -yq && \
     apt-get install -yq \
-        # needed to add a ppa
         software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+    if [ -n "${EXTRA_PPA}" ]; then add-apt-repository "${EXTRA_PPA}"; fi
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
