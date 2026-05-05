@@ -277,6 +277,15 @@
                         "minimum": 0,
                         "maximum": 1
                     },
+                    "timeout_alerting": {
+                        "type": "boolean"
+                    },
+                    "timeout_page": {
+                        "type": "boolean"
+                    },
+                    "timeout_ticket": {
+                        "type": "boolean"
+                    },
                     "default_endpoint_alerting": {
                         "type": "boolean"
                     },
