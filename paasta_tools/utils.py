@@ -1920,6 +1920,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
     default_should_use_uwsgi_exporter: bool
+    default_bounce_overprovision_factor: float
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_metrics_provider: str
     deploy_whitelist: UnsafeDeployWhitelist
@@ -2166,6 +2167,9 @@ class SystemPaastaConfig:
         if hosts.startswith("zk://"):
             return hosts[len("zk://") :]
         return hosts
+
+    def get_bounce_overprovision_factor(self) -> float:
+        return self.config_dict.get("default_bounce_overprovision_factor", 1.0)
 
     def get_system_docker_registry(self) -> str:
         """Get the docker_registry defined in this host's cluster config file.
