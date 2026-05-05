@@ -855,6 +855,7 @@ def _print_flink_status_from_job_manager(
         )
 
         if verbose:
+            output.extend(flink_tools.format_flink_udf_info(flink_instance_config))
             output.extend(
                 flink_tools.format_flink_instance_metadata(instance_details, service)
             )

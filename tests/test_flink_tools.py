@@ -770,3 +770,32 @@ class TestFormatFlinkJobsTable:
         result = flink_tools.format_flink_jobs_table([job], None, 2)
         output_text = "\n".join(result)
         assert "None" not in output_text
+
+
+class TestFormatFlinkUdfInfo:
+    def _make_config(self, extra_config: dict) -> FlinkDeploymentConfig:
+        config_dict = FlinkDeploymentConfigDict(**extra_config)
+        return FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/dev/null",
+        )
+
+    def test_no_udf(self):
+        config = self._make_config({})
+        assert flink_tools.format_flink_udf_info(config) == []
+
+    def test_with_udf(self):
+        config = self._make_config(
+            {"udf_plugin_name": "canary_noop", "udf_plugin_version": "1.0.1"}
+        )
+        result = flink_tools.format_flink_udf_info(config)
+        assert result == ["    UDF plugin: canary_noop (version 1.0.1)"]
+
+    def test_udf_name_only(self):
+        config = self._make_config({"udf_plugin_name": "my_udf"})
+        result = flink_tools.format_flink_udf_info(config)
+        assert result == ["    UDF plugin: my_udf (version unknown)"]

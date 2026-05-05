@@ -114,6 +114,8 @@ class FlinkInstanceDetails(TypedDict):
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
     spot: bool
+    udf_plugin_name: str
+    udf_plugin_version: str
 
 
 class FlinkDeploymentConfig(LongRunningServiceConfig):
@@ -489,6 +491,15 @@ def format_flink_instance_header(
         output.append(f"    URL: {details['dashboard_url']}/")
 
     return output
+
+
+def format_flink_udf_info(config: FlinkDeploymentConfig) -> List[str]:
+    """Format UDF plugin info if configured."""
+    name = config.config_dict.get("udf_plugin_name")
+    if not name:
+        return []
+    version = config.config_dict.get("udf_plugin_version", "unknown")
+    return [f"    UDF plugin: {name} (version {version})"]
 
 
 def format_flink_instance_metadata(

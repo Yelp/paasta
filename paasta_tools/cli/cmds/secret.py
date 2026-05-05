@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import json
 import os
 import re
 import sys
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 
 from service_configuration_lib import DEFAULT_SOA_DIR
@@ -36,6 +38,7 @@ from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import _log_audit
+from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -202,6 +205,19 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
         "Defaults to all clusters in which the service runs. "
         "For example: --clusters pnw-prod,nova-prod ",
     ).completer = lazy_choices_completer(list_clusters)
+
+    parser.add_argument(
+        "--extra-namespaces",
+        default=None,
+        type=lambda v: v.split(",") if v else [],
+        help=(
+            "A comma-separated list of additional Kubernetes namespaces to sync this secret to, "
+            "beyond those derived from PaaSTA instance configs. "
+            "Use this for namespaces not managed by PaaSTA instances (e.g. 'mwaa'). "
+            "Pass an empty string to clear any previously set extra namespaces."
+        ),
+        metavar="NAMESPACES",
+    )
 
 
 def _add_vault_auth_args(parser: argparse.ArgumentParser):
@@ -386,6 +402,22 @@ def _get_secret_provider_for_service(
     )
 
 
+def _update_extra_namespaces(secret_path: str, namespaces: List[str]) -> None:
+    """Update the extra_namespaces field in a secret JSON file in-place."""
+    # TODO: Add metadata support to secret_provider impl (vault_tools) instead
+    # vault_tools owns the normal write path for secret JSON files; this patches
+    # only the extra_namespaces metadata field after the ciphertext has been written.
+    with open(secret_path, "r") as f:
+        data = json.load(f)
+    if namespaces:
+        data["extra_namespaces"] = namespaces
+    else:
+        data.pop("extra_namespaces", None)
+    with atomic_file_write(secret_path) as f:
+        json.dump(data, f, indent=4, sort_keys=True)
+        f.write("\n")
+
+
 def paasta_secret(args):
     if args.shared:
         service = SHARED_SECRET_SERVICE
@@ -470,6 +502,8 @@ def paasta_secret(args):
         secret_path = os.path.join(
             secret_provider.secret_dir, f"{args.secret_name}.json"
         )
+        if args.extra_namespaces is not None:
+            _update_extra_namespaces(secret_path, args.extra_namespaces)
         _log_audit(
             action=f"{args.action}-secret",
             action_details={"secret_name": args.secret_name, "clusters": args.clusters},
