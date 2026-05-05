@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:focal
+ARG BASE_IMAGE=docker-dev.yelpcorp.com/focal_yelp
+FROM ${BASE_IMAGE}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/focal/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:noble
+ARG BASE_IMAGE=docker-dev.yelpcorp.com/noble_yelp
+FROM ${BASE_IMAGE}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
+ARG EXTRA_PPA=
 RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+    if [ -n "${EXTRA_PPA}" ]; then add-apt-repository "${EXTRA_PPA}"; fi
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

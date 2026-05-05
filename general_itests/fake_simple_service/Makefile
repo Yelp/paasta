@@ -15,12 +15,12 @@
 DOCKER_TAG ?= fake_simple_service-$(USER)-dev
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
-	DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
+	BASE_IMAGE_BUILD_ARG ?=
 else
-	DOCKER_REGISTRY ?= ""
+	BASE_IMAGE_BUILD_ARG ?= --build-arg BASE_IMAGE=ubuntu:jammy
 endif
 
 .PHONY: cook-image
 
 cook-image:
-	docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) -t $(DOCKER_TAG) .
+	docker build $(BASE_IMAGE_BUILD_ARG) -t $(DOCKER_TAG) .

@@ -17,6 +17,8 @@ jobs:
           - general_itests
     env:
       DOCKER_REGISTRY: ""
+      BASE_IMAGE: ubuntu:jammy
+      EXTRA_PPA: ppa:deadsnakes/ppa
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2

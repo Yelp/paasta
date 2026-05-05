@@ -35,8 +35,8 @@ endif
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "docker.io/yelp/paastatools_$*_container" || true
-	cd dockerfiles/$*/ && docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
-	$(if $(filter-out $(PAASTA_ENV),YELP), --build-arg PIP_INDEX_URL=https://pypi.org/simple,) \
+	cd dockerfiles/$*/ && docker build \
+	$(if $(filter-out $(PAASTA_ENV),YELP), --build-arg BASE_IMAGE=ubuntu:$* --build-arg PIP_INDEX_URL=https://pypi.org/simple --build-arg EXTRA_PPA=ppa:deadsnakes/ppa,) \
 		-t "docker.io/yelp/paastatools_$*_container" .
 
 .SECONDEXPANSION:
