@@ -1,4 +1,6 @@
 # You need kind installed to run this!
+KIND_VERSION := v0.31.0
+KIND_NODE_IMAGE := kindest/node:v1.31.14
 CLUSTER  := ${USER}-k8s-test
 CWD := $(shell pwd)
 export PAASTA_CONFIG_DIR=$(CWD)/deployments/.tmp
@@ -33,12 +35,12 @@ all: clean itest
 
 kind:
 ifeq (,$(wildcard ./kind))
-	./scripts/install-kind.sh
+	./scripts/install-kind.sh $(KIND_VERSION)
+endif
 
 .create_cluster: kind
-	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
+	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG) --image $(KIND_NODE_IMAGE)
 	touch .create_cluster
-endif
 
 itest: .create_cluster
 	../.paasta/bin/tox -e k8s_itests
