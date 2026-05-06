@@ -338,7 +338,7 @@ def paasta_status_on_api_endpoint(
     output = [
         "",
         f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
-        f"    Grafana:  {PaastaColors.blue(dashboard_url)}",
+        f"    Grafana:    {PaastaColors.blue(dashboard_url)}",
     ]
     client = get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
