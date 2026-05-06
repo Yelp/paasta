@@ -2969,3 +2969,39 @@ def test_validate_pool_error(cluster, pool, system_paasta_config):
 )
 def test_get_git_sha_from_dockerurl(docker_url, long, expected):
     assert utils.get_git_sha_from_dockerurl(docker_url, long) == expected
+
+
+class TestGetRollbackTagsForSha:
+    def test_finds_rollback_tags(self):
+        bad_sha = "a" * 40
+        refs = {
+            "refs/tags/paasta-prod.main-20260420T120000-rollback": bad_sha,
+            "refs/tags/paasta-prod.main-20260420T130000-rollback": bad_sha,
+        }
+        results = utils.get_rollback_tags_for_sha(refs, "prod.main", bad_sha)
+        assert len(results) == 2
+        assert results[0][1] == "20260420T130000"
+        assert results[1][1] == "20260420T120000"
+
+    def test_ignores_other_deploy_groups(self):
+        bad_sha = "a" * 40
+        refs = {
+            "refs/tags/paasta-staging.main-20260420T120000-rollback": bad_sha,
+        }
+        results = utils.get_rollback_tags_for_sha(refs, "prod.main", bad_sha)
+        assert results == []
+
+    def test_ignores_deploy_tags(self):
+        sha = "a" * 40
+        refs = {
+            "refs/tags/paasta-prod.main-20260420T120000-deploy": sha,
+        }
+        results = utils.get_rollback_tags_for_sha(refs, "prod.main", sha)
+        assert results == []
+
+    def test_no_rollback_tags(self):
+        refs = {
+            "refs/tags/paasta-prod.main-20260420T120000-rollback": "b" * 40,
+        }
+        results = utils.get_rollback_tags_for_sha(refs, "prod.main", "a" * 40)
+        assert results == []

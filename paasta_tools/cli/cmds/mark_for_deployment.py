@@ -89,6 +89,7 @@ from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_files_of_type_in_dir
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
+from paasta_tools.utils import get_rollback_tags_for_sha
 from paasta_tools.utils import get_username
 from paasta_tools.utils import ldap_user_search
 from paasta_tools.utils import list_services
@@ -502,6 +503,30 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             raise ValueError(
                 f"Failed to find image in the registry for the following version {deployment_version}"
             )
+
+    try:
+        # XXX: manual m-f-d is pretty rare so this should be fine
+        # ...but we might need to detect manual m-f-d in the future
+        # and ask for explicit confirmation (note: "manual" is important
+        # here - we don't want to break the Jenkins case :p)
+        refs = remote_git.list_remote_refs(args.git_url)
+        rollback_tags = get_rollback_tags_for_sha(refs, deploy_group, commit)
+        if rollback_tags:
+            print(
+                PaastaColors.yellow(
+                    f"WARNING: Commit {commit} was previously rolled back for {deploy_group}."
+                )
+            )
+            for _, tstamp in rollback_tags:
+                print(PaastaColors.yellow(f"  Rolled back at: {tstamp}"))
+            print(
+                PaastaColors.red(
+                    "This commit may cause the same issues that triggered the original rollback. "
+                    "Proceed with caution!"
+                )
+            )
+    except remote_git.LSRemoteException:
+        log.debug("Could not check for rollback tags; skipping warning", exc_info=True)
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
     if not can_user_deploy_service(deploy_info, service):
@@ -1135,6 +1160,19 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.mark_for_deployment_return_code != 0:
             self.trigger("mfd_failed")
         else:
+            if (
+                remote_git.create_rollback_tag(
+                    git_url=self.git_url,
+                    deploy_group=self.deploy_group,
+                    bad_sha=self.commit,
+                    image_version=self.image_version,
+                )
+                != 0
+            ):
+                self.update_slack_thread(
+                    f"WARNING: Failed to create rollback tag for `{self.commit[:8]}`. "
+                    "Jenkins will automatically re-deploy this commit in the near future!"
+                )
             self.update_slack_thread(
                 f"Marked `{self.old_git_sha[:8]}` for {self.deploy_group}."
                 + (

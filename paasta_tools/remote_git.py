@@ -11,13 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import re
+from typing import Optional
 
 import dulwich.client
 import dulwich.errors
 
 from paasta_tools.utils import _run
+from paasta_tools.utils import format_tag
+from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import timeout
+
+log = logging.getLogger(__name__)
 
 
 def _make_determine_wants_func(ref_mutator):
@@ -125,3 +131,30 @@ def get_authors(git_url, from_sha, to_sha):
     else:
         # TODO: PAASTA-16927: support getting authors for services on GHE
         return 1, f"Fetching authors not supported for {git_server}"
+
+
+def create_rollback_tag(
+    git_url: str,
+    deploy_group: str,
+    bad_sha: str,
+    image_version: Optional[str] = None,
+) -> int:
+    """Create a rollback tag pointing at the bad SHA for a deploy group.
+
+    This marks a commit as having been rolled back, so that Jenkins
+    can avoid re-deploying it.
+    """
+    tag = get_paasta_tag_from_deploy_group(
+        identifier=deploy_group, desired_state="rollback", image_version=image_version
+    )
+    remote_tag = format_tag(tag)
+    ref_mutator = make_force_push_mutate_refs_func(targets=[remote_tag], sha=bad_sha)
+    try:
+        create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
+    except Exception as e:
+        log.warning(
+            f"Failed to create rollback tag for {bad_sha} in {deploy_group}: {e}"
+        )
+        return 1
+    log.info(f"Created rollback tag for {bad_sha} in {deploy_group}")
+    return 0
