@@ -238,6 +238,17 @@ def main(argv=None):
     """
     logging.basicConfig()
     warnings.filterwarnings("ignore", category=DeprecationWarning)
+    # this is unfortunate, but python-jsonschema-objects does not support
+    # draft-06 schemas (although, they still work since we're not doing
+    # anything fancy) and its not really worth updating all the schemas that
+    # we currently consume to use an older/supported version since there's
+    # nothing stopping folks from adding new schemas with an unsuppoerted
+    # version
+    warnings.filterwarnings(
+        "ignore",
+        message="Schema version.*not recognized",
+        module="python_jsonschema_objects",
+    )
 
     # if we are an external command, we need to exec out early.
     # The reason we exec out early is so we don't bother trying to parse
