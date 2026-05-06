@@ -33,7 +33,7 @@ RUN apt-get update > /dev/null && \
         gdebi-core \
         git \
         libffi-dev \
-        libgpgme11 \
+        libgpgme11t64 \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
