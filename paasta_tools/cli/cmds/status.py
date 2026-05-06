@@ -327,9 +327,18 @@ def paasta_status_on_api_endpoint(
     is_eks: bool = False,
     all_namespaces: bool = False,
 ) -> int:
+    ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+    dashboard_url = (
+        f"https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
+        f"?var-ServiceName={service}"
+        f"&var-Ecosystem={ecosystem}"
+        f"&var-SuperRegion={cluster}"
+        f"&var-Paasta_Instance={instance}"
+    )
     output = [
         "",
         f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
+        f"    Grafana:  {PaastaColors.blue(dashboard_url)}",
     ]
     client = get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
