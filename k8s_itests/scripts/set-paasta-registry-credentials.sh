@@ -5,12 +5,16 @@ CLUSTER=$1
 REGISTRY="docker-paasta.yelpcorp.com:443"
 
 echo "Generating registry credentials..."
-AUTH_TOKEN=$(../.tox/py310-linux/bin/python ./scripts/containerd_registry_setup.py)
+CREDS=$(echo "$REGISTRY" | docker-credential-yelp-okta get)
+USERNAME=$(echo "$CREDS" | jq -r '.Username')
+SECRET=$(echo "$CREDS" | jq -r '.Secret')
 
-if [ -z "$AUTH_TOKEN" ]; then
+if [ -z "$SECRET" ]; then
   echo "ERROR: Failed to generate registry credentials" >&2
   exit 1
 fi
+
+AUTH_TOKEN=$(echo -n "${USERNAME}:${SECRET}" | base64 -w 0)
 
 for node in $(./kind get nodes --name "${CLUSTER}"); do
   echo "Setting up registry credentials on kind node: $node ..."
