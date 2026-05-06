@@ -9,6 +9,7 @@ Submodules
 
    paasta_tools.cli.cmds.autoscale
    paasta_tools.cli.cmds.check
+   paasta_tools.cli.cmds.check_rollback_status
    paasta_tools.cli.cmds.cook_image
    paasta_tools.cli.cmds.get_docker_image
    paasta_tools.cli.cmds.get_image_version

@@ -1,3 +1,26 @@
+paasta-tools (1.50.0) jammy; urgency=medium
+
+  * 1.50.0 tagged with 'make release'
+    Commit: Silence python_jsonschema_objects warnings + upgrade monk
+    (#4301)  This gets rid of some annoying spam when using the CLI: ```
+    /nail/home/luisp/pg/Yelp/paasta/.tox/py310-linux/lib/python3.10/site-
+    packages/python_jsonschema_objects/__init__.py:49: UserWarning:
+    Schema version http://json-schema.org/draft-06/schema# not
+    recognized. Some keywords and features may not be supported.
+     warnings.warn( /nail/home/luisp/pg/Yelp/paasta/.tox/py310-
+    linux/lib/python3.10/site-packages/monk/util.py:9: UserWarning:
+    pkg_resources is deprecated as an API. See
+    https://setuptools.pypa.io/en/latest/pkg_resources.html. The
+    pkg_resources package is slated for removal as early as 2025-11-30.
+    Refrain from using this package or pin to Setuptools<81.   import
+    pkg_resources ```  The former is dealt with a silence (see my mini-
+    essay in the code) and the latter is dealt with by upgrading `monk` -
+    while the version bump looks pretty large, the major bumps here were
+    really just done as part of dropping support for older Python
+    versions
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 06 May 2026 12:02:17 -0700
+
 paasta-tools (1.49.7) jammy; urgency=medium
 
   * 1.49.7 tagged with 'make release'
