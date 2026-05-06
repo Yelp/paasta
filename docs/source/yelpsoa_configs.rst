@@ -1053,6 +1053,9 @@ These keys provide optional overrides for the default alerting behaviour.
    - ``error_threshold_ratio``: Error threshold ratio (0-1) for errors under this namespace. Defaults to **0.01**.
    - ``minimum_error_rps``: Minimum error rate per second for errors under this namespace before an alert can be triggered, minimum is zero. Defaults to **5**.
    - ``timeout_threshold_ratio``: Ratio (0-1) of ``timeout_server_ms`` at which to alert on p99 latency. Defaults to **0.8** (80%).
+   - ``timeout_alerting``: Enable latency/timeout alerting for this namespace. When true, alerts fire to the configured ``slack_channel`` when p99 latency exceeds the threshold. Defaults to **false**.
+   - ``timeout_page``: Page on latency threshold breach. Only applies when ``timeout_alerting`` is true. Defaults to **false**.
+   - ``timeout_ticket``: Create a Jira ticket on latency threshold breach. Only applies when ``timeout_alerting`` is true. Defaults to **false**.
    - ``default_endpoint_alerting``: Turn on alerts for all endpoints in this namespace. Defaults to **false**.
    - ``endpoint_error_threshold_ratio``: Error threshold ratio (0-1) for errors to any singular endpoint. Defaults to the namespace ``error_threshold_ratio`` if specified, or **0.01**.
    - ``endpoint_minimum_error_rps``: Minimum error rate per second for errors to any singular endpoint before an alert can be triggered for errors to any singular endpoint. Defaults to the namespace ``minimum_error_rps`` if specified, or **5**.
