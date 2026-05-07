@@ -490,11 +490,24 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         service=service, deploy_group=deploy_group
     )
     if deployment_version == old_deployment_version:
-        print(
-            "Warning: The image asked to be deployed already matches what is set to be deployed:"
-        )
-        print(deployment_version)
-        print("Continuing anyway.")
+        if not args.block:
+            print(
+                "Error: The image asked to be deployed already matches what "
+                f"is set to be deployed in deploy group {deploy_group}:"
+            )
+            print(f"  {deployment_version}")
+            print(
+                "This probably means a previous deploy may have failed or timed out. "
+                "It might not be safe to proceed to the next deploy group."
+            )
+            return 1
+        else:
+            print(
+                "Warning: The image asked to be deployed already matches "
+                "what is set to be deployed:"
+            )
+            print(deployment_version)
+            print("Continuing anyway.")
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(

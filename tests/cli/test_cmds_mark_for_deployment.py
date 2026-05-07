@@ -177,6 +177,29 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     )
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+def test_paasta_mark_for_deployment_fails_when_already_deployed_and_no_block(
+    mock_list_deploy_groups,
+    mock_get_currently_deployed_version,
+    _,
+):
+    class FakeArgsNoBlock(FakeArgs):
+        block = False
+
+    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        FakeArgs.commit, FakeArgs.image_version
+    )
+
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgsNoBlock)
+    assert ret == 1
+
+
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.run_timeout",
     new=1.0,
