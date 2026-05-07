@@ -912,8 +912,12 @@ def run_docker_container(
         # if secrets_for_owner_team enabled in yelpsoa for service
         if is_secrets_for_teams_enabled(service, soa_dir):
             try:
+                cluster = instance_config.cluster
+                kube_context = (
+                    cluster if cluster.startswith("eks-") else f"eks-{cluster}"
+                )
                 kube_client = KubeClient(
-                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                    config_file=KUBE_CONFIG_USER_PATH, context=kube_context
                 )
                 secret_environment = get_kubernetes_secret_env_variables(
                     kube_client, environment, service, instance_config.get_namespace()
