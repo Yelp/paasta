@@ -31,6 +31,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.secret_providers import SecretProvider
@@ -529,30 +530,42 @@ def paasta_secret(args):
     elif args.action == "run":
         new_environ = os.environ.copy()
 
-        system_paasta_config = load_system_paasta_config()
-        secret_provider_kwargs = {
-            "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
-            "vault_auth_method": args.vault_auth_method,
-            "vault_token_file": args.vault_token_file,
-        }
-
-        # This includes only the environment variables mapped to secrets,
-        # other environment variables are not included.
-        # All environment variables set in the current shell will also
-        # be passed through.
-        new_secret_vars = decrypt_secret_environment_variables(
-            secret_provider_name=system_paasta_config.get_secret_provider_name(),
-            environment=get_instance_config(
-                service=args.service,
-                instance=args.instance,
-                cluster=args.clusters,
-                soa_dir=args.yelpsoa_config_root,
-            ).get_env(),
+        instance_config = get_instance_config(
+            service=args.service,
+            instance=args.instance,
+            cluster=args.clusters,
             soa_dir=args.yelpsoa_config_root,
-            service_name=args.service,
-            cluster_name=args.clusters,
-            secret_provider_kwargs=secret_provider_kwargs,
         )
+        environment = instance_config.get_env()
+
+        if is_secrets_for_teams_enabled(service, args.yelpsoa_config_root):
+            cluster = instance_config.cluster
+            kube_context = cluster if cluster.startswith("eks-") else f"eks-{cluster}"
+            kube_client = KubeClient(
+                config_file=KUBE_CONFIG_USER_PATH, context=kube_context
+            )
+            new_secret_vars = get_kubernetes_secret_env_variables(
+                kube_client,
+                environment,
+                service,
+                instance_config.get_namespace(),
+            )
+        else:
+            system_paasta_config = load_system_paasta_config()
+            secret_provider_kwargs = {
+                "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
+                "vault_auth_method": args.vault_auth_method,
+                "vault_token_file": args.vault_token_file,
+            }
+
+            new_secret_vars = decrypt_secret_environment_variables(
+                secret_provider_name=system_paasta_config.get_secret_provider_name(),
+                environment=environment,
+                soa_dir=args.yelpsoa_config_root,
+                service_name=args.service,
+                cluster_name=args.clusters,
+                secret_provider_kwargs=secret_provider_kwargs,
+            )
 
         for var_name, var_value in new_secret_vars.items():
             new_environ[var_name] = var_value
