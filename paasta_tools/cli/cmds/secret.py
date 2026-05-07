@@ -273,11 +273,7 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
             action="store_true",
         )
     else:
-        service_group.add_argument(
-            "--shared",
-            action="store_false",
-            help=argparse.SUPPRESS,
-        )
+        service_group.set_defaults(shared=False)
 
 
 def add_subparser(subparsers):
