@@ -913,6 +913,10 @@ def run_docker_container(
         if is_secrets_for_teams_enabled(service, soa_dir):
             try:
                 cluster = instance_config.cluster
+                # Clusters that have both an EKS and non-EKS pair use
+                # eks-prefixed context names (e.g. eks-pnw-devc). Clusters
+                # like eksstage or spark clusters don't, but no one
+                # local-runs on those today.
                 kube_context = (
                     cluster if cluster.startswith("eks-") else f"eks-{cluster}"
                 )
