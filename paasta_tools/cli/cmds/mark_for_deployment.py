@@ -492,15 +492,26 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     if deployment_version == old_deployment_version:
         if not args.block:
             print(
-                "Error: The image asked to be deployed already matches what "
-                f"is set to be deployed in deploy group {deploy_group}:"
+                "Warning: The image asked to be deployed already matches "
+                f"what is set to be deployed in deploy group {deploy_group}:"
             )
             print(f"  {deployment_version}")
-            print(
-                "This probably means a previous deploy may have failed or timed out. "
-                "It might not be safe to proceed to the next deploy group."
-            )
-            return 1
+            print("Checking if all instances are healthy before proceeding...")
+            if check_deploy_group_is_healthy(
+                service=service,
+                deploy_group=deploy_group,
+                soa_dir=args.soa_dir,
+                version=deployment_version,
+            ):
+                print("All instances are healthy. Proceeding.")
+                return 0
+            else:
+                print(
+                    "Error: Not all instances are healthy for this version. "
+                    "A previous deploy may have failed or timed out. "
+                    "Not safe to proceed to the next deploy group."
+                )
+                return 1
         else:
             print(
                 "Warning: The image asked to be deployed already matches "
@@ -1677,6 +1688,42 @@ def ping_for_pods(
         notify_fn(
             f"Some of the replicas of your new version have {explanation}: {', '.join(f'`{p.name}`' for p in pods_with_reason)}\n{tip}"
         )
+
+
+def check_deploy_group_is_healthy(
+    service: str,
+    deploy_group: str,
+    soa_dir: str,
+    version: DeploymentVersion,
+) -> bool:
+    """Check whether all instances in a deploy group are healthy at the given version.
+
+    Used to gate pipeline progression when re-deploying a version that is
+    already marked for this deploy group.
+    """
+    try:
+        instance_configs_per_cluster = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, soa_dir
+            )
+        )
+    except NoSuchCluster:
+        return False
+
+    if not instance_configs_per_cluster:
+        return True
+
+    for cluster, instance_configs in instance_configs_per_cluster.items():
+        for instance_config in instance_configs:
+            if not check_if_instance_is_done(
+                service=service,
+                instance=instance_config.get_instance(),
+                cluster=cluster,
+                version=version,
+                instance_config=instance_config,
+            ):
+                return False
+    return True
 
 
 def check_if_instance_is_done(
