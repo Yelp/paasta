@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-CLUSTER=$1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLUSTER=${1:?Usage: $0 <cluster-name>}
 REGISTRY="docker-paasta.yelpcorp.com:443"
 
 echo "Generating registry credentials..."
@@ -16,7 +17,7 @@ fi
 
 AUTH_TOKEN=$(echo -n "${USERNAME}:${SECRET}" | base64 -w 0)
 
-for node in $(./kind get nodes --name "${CLUSTER}"); do
+for node in $("${SCRIPT_DIR}/kind" get nodes --name "${CLUSTER}"); do
   echo "Setting up registry credentials on kind node: $node ..."
   podman exec "${node}" sh -c "
     mkdir -p /etc/containerd/certs.d/${REGISTRY} && \

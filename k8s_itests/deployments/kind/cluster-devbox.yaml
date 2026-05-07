@@ -4,16 +4,23 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
   - role: worker
-    labels:
+    labels: &worker-labels
       yelp.com/pool: default
-    # this mount is needed for services which rely on /nail/etc/{ecosystem,runtime}
-    extraMounts:
+    extraMounts: &worker-mounts
       - hostPath: /nail/etc
         containerPath: /nail/etc
   - role: worker
-    labels:
-      yelp.com/pool: default
-    # this mount is needed for services which rely on /nail/etc/{ecosystem,runtime}
-    extraMounts:
-      - hostPath: /nail/etc
-        containerPath: /nail/etc
+    labels: *worker-labels
+    extraMounts: *worker-mounts
+  - role: worker
+    labels: *worker-labels
+    extraMounts: *worker-mounts
+  - role: worker
+    labels: *worker-labels
+    extraMounts: *worker-mounts
+  - role: worker
+    labels: *worker-labels
+    extraMounts: *worker-mounts
+  - role: worker
+    labels: *worker-labels
+    extraMounts: *worker-mounts
