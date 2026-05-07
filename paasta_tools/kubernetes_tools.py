@@ -2344,7 +2344,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             else self.has_routable_ip(service_namespace_config, system_paasta_config)
         )
         annotations: KubePodAnnotations = {
-            "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
 
@@ -2472,6 +2471,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
+            annotations["smartstack_registrations"] = json.dumps(
+                self.get_registrations()
+            )
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod

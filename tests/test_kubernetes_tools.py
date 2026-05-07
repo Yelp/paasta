@@ -1881,8 +1881,6 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/managed": "true",
             "paasta.yelp.com/deploy_group": "brentford.fm",
         }
-        if in_smtstk:
-            expected_labels["paasta.yelp.com/weight"] = "10"
 
         if autoscaling_metric_provider in (
             METRICS_PROVIDER_PISCINA,
@@ -1901,11 +1899,19 @@ class TestKubernetesDeploymentConfig:
         ):
             routable_ip = "true"
 
-        expected_annotations = {
-            "smartstack_registrations": '["kurupt.fm"]',
-            "paasta.yelp.com/routable_ip": routable_ip,
-            "iam.amazonaws.com/role": "",
-        }
+        if in_smtstk:
+            expected_labels["paasta.yelp.com/weight"] = "10"
+            expected_annotations = {
+                "smartstack_registrations": '["kurupt.fm"]',
+                "paasta.yelp.com/routable_ip": routable_ip,
+                "iam.amazonaws.com/role": "",
+            }
+        else:
+            expected_annotations = {
+                "paasta.yelp.com/routable_ip": routable_ip,
+                "iam.amazonaws.com/role": "",
+            }
+
         if autoscaling_metric_provider == METRICS_PROVIDER_UWSGI:
             expected_annotations["autoscaling"] = "uwsgi"
 
@@ -3565,8 +3571,8 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/instance": "fm",
                         },
                         "annotations": {
-                            "smartstack_registrations": "[]",
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3583,8 +3589,8 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/instance": "garage",
                         },
                         "annotations": {
-                            "smartstack_registrations": "[]",
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3601,8 +3607,8 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/instance": "grindah",
                         },
                         "annotations": {
-                            "smartstack_registrations": "[]",
                             "iam.amazonaws.com/role": "",
+                            "smartstack_registrations": '["compute-infra-test-service.main"]',
                         },
                     },
                     "spec": spec,
@@ -3632,9 +3638,9 @@ def test_get_kubernetes_services_running_here():
                 instance="fm",
                 port=8888,
                 pod_ip="10.1.1.3",
-                registrations=[],
+                registrations=["compute-infra-test-service.main"],
                 weight=10,
-            )
+            ),
         ]
 
         # mock a terminating pod
@@ -5105,7 +5111,7 @@ def test_warning_big_bounce_default_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configeed84480"
+            == "config8c16e42b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -5198,7 +5204,7 @@ def test_warning_big_bounce_common_config():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config0e657f9b"
+            == "config800d4a76"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
