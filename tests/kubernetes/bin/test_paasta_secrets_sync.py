@@ -41,6 +41,45 @@ def test_parse_args():
         assert parse_args()
 
 
+def test_main_dimensions_include_secret_type_and_namespace():
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.parse_args", autospec=True
+    ) as mock_parse_args, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_config, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.metrics_lib.system_timer",
+        autospec=True,
+    ) as mock_system_timer, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.KubeClient", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_services_to_k8s_namespaces_to_allowlist",
+        autospec=True,
+        return_value={},
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_all_secrets",
+        autospec=True,
+        return_value=True,
+    ):
+        mock_parse_args.return_value = mock.Mock(
+            cluster="my-cluster",
+            service_list=["my-service"],
+            secret_type="paasta-secret",
+            namespace="paasta-flinks",
+            only_extra_namespaces=False,
+        )
+        mock_load_config.return_value.get_cluster.return_value = "my-cluster"
+
+        with pytest.raises(SystemExit):
+            main()
+
+        _, kwargs = mock_system_timer.call_args
+        dims = kwargs["dimensions"]
+        assert dims["secret_type"] == "paasta-secret"
+        assert dims["namespace"] == "paasta-flinks"
+        assert dims["only_extra_namespaces"] is False
+
+
 def test_main():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.parse_args", autospec=True

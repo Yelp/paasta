@@ -4,6 +4,7 @@ from unittest import mock
 from py.test import raises
 
 from paasta_tools.metrics import metrics_lib
+from paasta_tools.metrics.metrics_lib import _parse_metric_labels_env
 
 
 class TestNoMetrics(unittest.TestCase):
@@ -67,3 +68,46 @@ class TestMeteoriteMetrics(unittest.TestCase):
 
     def tearDown(self):
         metrics_lib.yelp_meteorite = None
+
+
+class TestParseMetricLabelsEnv(unittest.TestCase):
+    def test_empty_envvar(self):
+        with mock.patch.dict("os.environ", {"PAASTA_METRICS_LABELS": ""}):
+            self.assertEqual(_parse_metric_labels_env(), {})
+
+    def test_envvar_absent(self):
+        env = {
+            k: v
+            for k, v in __import__("os").environ.items()
+            if k != "PAASTA_METRICS_LABELS"
+        }
+        with mock.patch.dict("os.environ", env, clear=True):
+            self.assertEqual(_parse_metric_labels_env(), {})
+
+    def test_single_label(self):
+        with mock.patch.dict(
+            "os.environ", {"PAASTA_METRICS_LABELS": "job=sync_paasta_secrets_flink"}
+        ):
+            self.assertEqual(
+                _parse_metric_labels_env(), {"job": "sync_paasta_secrets_flink"}
+            )
+
+    def test_multiple_labels(self):
+        with mock.patch.dict(
+            "os.environ", {"PAASTA_METRICS_LABELS": "job=sync_flink,workload=flink"}
+        ):
+            self.assertEqual(
+                _parse_metric_labels_env(), {"job": "sync_flink", "workload": "flink"}
+            )
+
+    def test_malformed_token_skipped(self):
+        with mock.patch.dict(
+            "os.environ", {"PAASTA_METRICS_LABELS": "bad_token_no_equals"}
+        ):
+            self.assertEqual(_parse_metric_labels_env(), {})
+
+    def test_mixed_valid_and_malformed(self):
+        with mock.patch.dict(
+            "os.environ", {"PAASTA_METRICS_LABELS": "good=val,bad_token,other=x"}
+        ):
+            self.assertEqual(_parse_metric_labels_env(), {"good": "val", "other": "x"})
