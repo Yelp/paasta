@@ -2147,14 +2147,6 @@ def apply_args_filters(
     return clusters_services_instances
 
 
-def print_jenkins_link(service: str, verbose: int) -> None:
-    if verbose >= 1:
-        jenkins_url = (
-            f"https://jenkins-paasta-k8s.yelpcorp.com/job/services-{service}-paasta/"
-        )
-        print(f"\nJenkins: {PaastaColors.blue(jenkins_url)}")
-
-
 def paasta_status(args) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -2166,9 +2158,9 @@ def paasta_status(args) -> int:
     tasks = []
     clusters_services_instances = apply_args_filters(args)
 
-    services = set().union(*clusters_services_instances.values())
-    for svc in services:
-        print_jenkins_link(svc, args.verbose)
+    if args.verbose and clusters_services_instances:
+        jenkins_url = f"http://y/jenkins?filter={args.service}"
+        print(f"\nDeployment Pipeline(s): {PaastaColors.blue(jenkins_url)}")
 
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
