@@ -454,22 +454,3 @@ The docker image must be pullable from the Kind cluster. For testing PaaSTA logi
 make clean-playground    # removes etc_paasta_playground/ and soa_config_playground/
 make k8s_clean           # deletes the Kind cluster entirely
 ```
-
-## VS Code Integration
-
-The repo includes VS Code debug configurations in `.vscode/launch.json`:
-
-| Configuration | What it does |
-|---|---|
-| `paasta API playground` | Starts API with debugger attached |
-| `paasta playground` | Runs `paasta status` with API as preLaunchTask |
-| `paasta status playground` | CLI status command (API must already be running) |
-| `Run setup k8s job in playground` | Deploys workloads to Kind cluster |
-| `Generate deployments.json in playground` | Regenerates deployments.json |
-| `Run cleanup k8s jobs in playground` | Removes stale K8s resources |
-
-The `Run API Playground` VS Code task (`.vscode/tasks.json`) runs `make playground-api`
-as a background task — used as `preLaunchTask` by the "paasta playground" config.
-
-All VS Code configs set the correct env vars (`KUBECONFIG`, `PAASTA_SYSTEM_CONFIG_DIR`,
-`PAASTA_TEST_CLUSTER`, `PAASTA_API_SOA_DIR`) so you don't need to configure them manually.
