@@ -3,24 +3,15 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
-  - role: worker
-    labels: &worker-labels
+  - &worker-entry
+    role: worker
+    labels:
       yelp.com/pool: default
-    extraMounts: &worker-mounts
+    extraMounts:
       - hostPath: /nail/etc
         containerPath: /nail/etc
-  - role: worker
-    labels: *worker-labels
-    extraMounts: *worker-mounts
-  - role: worker
-    labels: *worker-labels
-    extraMounts: *worker-mounts
-  - role: worker
-    labels: *worker-labels
-    extraMounts: *worker-mounts
-  - role: worker
-    labels: *worker-labels
-    extraMounts: *worker-mounts
-  - role: worker
-    labels: *worker-labels
-    extraMounts: *worker-mounts
+  - *worker-entry
+  - *worker-entry
+  - *worker-entry
+  - *worker-entry
+  - *worker-entry
