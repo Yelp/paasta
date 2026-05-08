@@ -126,6 +126,7 @@ InstanceStatusWriter = Callable[
             str,
             "cluster",  # noqa: F821  # flake8 false-positive, these are not var references
         ),
+        Arg(str, "ecosystem"),  # noqa: F821  # flake8 false-positive
         Arg(str, "service"),  # noqa: F821  # flake8 false-positive
         Arg(str, "instance"),  # noqa: F821  # flake8 false-positive
         Arg(List[str], "output"),  # noqa: F821  # flake8 false-positive
@@ -374,24 +375,15 @@ def paasta_status_on_api_endpoint(
             )
         )
         return 0
-    if any(t in ("kubernetes", "kubernetes_v2", "eks") for t in instance_types):
-        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-        dashboard_url = (
-            f"https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
-            f"?var-ServiceName={service}"
-            f"&var-Ecosystem={ecosystem}"
-            f"&var-SuperRegion={cluster}"
-            f"&var-Paasta_Instance={instance}"
-        )
-        output.append(f"    SL2:        {PaastaColors.blue(dashboard_url)}")
 
+    ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
     ret_code = 0
     for instance_type in instance_types:
         # check the actual status value and call the corresponding status writer
         service_status_value = getattr(status, instance_type)
         writer_callable = INSTANCE_TYPE_WRITERS.get(instance_type)
         ret = writer_callable(
-            cluster, service, instance, output, service_status_value, verbose
+            cluster, ecosystem, service, instance, output, service_status_value, verbose
         )
         if ret != 0:
             output.append(
@@ -421,6 +413,7 @@ def find_instance_types(status: Any) -> List[str]:
 
 def print_adhoc_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -944,6 +937,7 @@ def _print_flink_status_from_job_manager(
 
 def print_flink_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -982,6 +976,7 @@ def print_flink_status(
 
 def print_flinkeks_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -1021,6 +1016,7 @@ def print_flinkeks_status(
 
 def print_kubernetes_status_v2(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -1028,6 +1024,14 @@ def print_kubernetes_status_v2(
     verbose: int = 0,
 ) -> int:
     instance_state = get_instance_state(status)
+    dashboard_url = (
+        f"https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
+        f"?var-ServiceName={service}"
+        f"&var-Ecosystem={ecosystem}"
+        f"&var-SuperRegion={cluster}"
+        f"&var-Paasta_Instance={instance}"
+    )
+    output.append(f"    SL2:        {PaastaColors.blue(dashboard_url)}")
     output.append(f"    State: {instance_state}")
     output.append("    Running versions:")
     if not verbose:
@@ -1518,6 +1522,7 @@ def get_autoscaling_table(
 
 def print_kubernetes_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -1530,6 +1535,14 @@ def print_kubernetes_status(
     desired_state = desired_state_human(
         kubernetes_status.desired_state, kubernetes_status.expected_instance_count
     )
+    dashboard_url = (
+        f"https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
+        f"?var-ServiceName={service}"
+        f"&var-Ecosystem={ecosystem}"
+        f"&var-SuperRegion={cluster}"
+        f"&var-Paasta_Instance={instance}"
+    )
+    output.append(f"    SL2:        {PaastaColors.blue(dashboard_url)}")
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = KubernetesDeployStatus.fromstring(kubernetes_status.deploy_status)
@@ -1629,6 +1642,7 @@ def print_kubernetes_status(
 
 def print_tron_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -1656,6 +1670,7 @@ def print_tron_status(
 
 def print_cassandra_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
@@ -1807,6 +1822,7 @@ def node_property_to_str(prop: Dict[str, Any], verbose: int) -> str:
 
 def print_kafka_status(
     cluster: str,
+    ecosystem: str,
     service: str,
     instance: str,
     output: List[str],
