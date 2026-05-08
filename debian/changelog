@@ -1,3 +1,11 @@
+paasta-tools (1.50.3) jammy; urgency=medium
+
+  * 1.50.3 tagged with 'make release'
+    Commit: Merge pull request #4293 from Yelp/PAASTA-18866  fix: shell
+    cli autocomplete
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Fri, 08 May 2026 08:29:28 -0700
+
 paasta-tools (1.50.2) jammy; urgency=medium
 
   * 1.50.2 tagged with 'make release'
