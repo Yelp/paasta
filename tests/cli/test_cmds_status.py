@@ -37,7 +37,6 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import get_instance_state
-from paasta_tools.cli.cmds.status import get_sl2_dashboard
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
@@ -1643,9 +1642,13 @@ def mock_flink_status() -> Mapping[str, Any]:
     )
 
 
+@mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
 def test_paasta_status_on_api_endpoint_kubernetes_v2(
-    mock_get_paasta_oapi_client, system_paasta_config, mock_kubernetes_status_v2
+    mock_get_paasta_oapi_client,
+    mock_get_sl2_dashboard,
+    system_paasta_config,
+    mock_kubernetes_status_v2,
 ):
     fake_status_obj = paastamodels.InstanceStatus(
         git_sha="fake_git_sha",
@@ -1746,7 +1749,8 @@ def mock_kubernetes_status_v2():
 
 
 class TestPrintKubernetesStatusV2:
-    def test_error(self, mock_kubernetes_status_v2):
+    @mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
+    def test_error(self, mock_get_sl2_dashboard, mock_kubernetes_status_v2):
         mock_kubernetes_status_v2.error_message = "Something bad happened!"
         output = []
         return_code = print_kubernetes_status_v2(
@@ -1760,7 +1764,10 @@ class TestPrintKubernetesStatusV2:
         assert return_code == 1
         assert "Something bad happened!" in output[-1]
 
-    def test_successful_return_value(self, mock_kubernetes_status_v2):
+    @mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
+    def test_successful_return_value(
+        self, mock_get_sl2_dashboard, mock_kubernetes_status_v2
+    ):
         return_code = print_kubernetes_status_v2(
             cluster="cluster",
             service="service",
@@ -1771,6 +1778,7 @@ class TestPrintKubernetesStatusV2:
         )
         assert return_code == 0
 
+    @mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
     @mock.patch(
         "paasta_tools.cli.cmds.status.get_instance_state",
         autospec=True,
@@ -1783,6 +1791,7 @@ class TestPrintKubernetesStatusV2:
         self,
         mock_get_versions_table,
         mock_get_instance_state,
+        mock_get_sl2_dashboard,
         mock_kubernetes_status_v2,
     ):
         output = []
@@ -2160,7 +2169,8 @@ class TestGetVersionsTable:
 
 
 class TestPrintKubernetesStatus:
-    def test_error(self, mock_kubernetes_status):
+    @mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
+    def test_error(self, mock_get_sl2_dashboard, mock_kubernetes_status):
         mock_kubernetes_status.error_message = "Things went wrong"
         output = []
         return_value = print_kubernetes_status(
@@ -2174,7 +2184,10 @@ class TestPrintKubernetesStatus:
         assert return_value == 1
         assert PaastaColors.red("Things went wrong") in output[-1]
 
-    def test_successful_return_value(self, mock_kubernetes_status):
+    @mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
+    def test_successful_return_value(
+        self, mock_get_sl2_dashboard, mock_kubernetes_status
+    ):
         return_value = print_kubernetes_status(
             cluster="fake_cluster",
             service="fake_service",
@@ -2184,6 +2197,7 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
+    @patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True)
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2202,6 +2216,7 @@ class TestPrintKubernetesStatus:
         mock_naturaltime,
         mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
+        mock_get_sl2_dashboard,
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
@@ -2260,7 +2275,7 @@ class TestPrintKubernetesStatus:
             kubernetes_status=mock_kubernetes_status,
         )
 
-        dashboard_url = get_sl2_dashboard(
+        dashboard_url = mock_get_sl2_dashboard(
             cluster="fake_cluster", service="fake_service", instance="fake_instance"
         )
         expected_output = [
