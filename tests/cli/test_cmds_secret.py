@@ -331,6 +331,10 @@ def test_paasta_secret_run():
         "paasta_tools.cli.cmds.secret.get_instance_config",
         autospec=True,
     ), mock.patch(
+        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled",
+        autospec=True,
+        return_value=False,
+    ), mock.patch(
         "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
     ), mock.patch(
         "os.execvpe",
@@ -357,6 +361,52 @@ def test_paasta_secret_run():
         assert (
             mock_exec.call_args[0][2].get("PAASTA_SECRET_TEST") == "test secret value"
         )
+
+
+def test_paasta_secret_run_secrets_for_teams():
+    with mock.patch(
+        "paasta_tools.cli.cmds.secret.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled",
+        autospec=True,
+        return_value=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.secret.KubeClient",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.secret.get_kubernetes_secret_env_variables",
+        autospec=True,
+    ) as mock_get_k8s_secrets, mock.patch(
+        "os.execvpe",
+        autospec=True,
+    ) as mock_exec:
+        mock_instance_config = mock.MagicMock()
+        mock_instance_config.cluster = "pnw-devc"
+        mock_instance_config.get_namespace.return_value = "paasta"
+        mock_instance_config.get_env.return_value = {
+            "PAASTA_SECRET_FOO": "SECRET(foo)",
+        }
+        mock_get_instance_config.return_value = mock_instance_config
+        mock_get_k8s_secrets.return_value = {
+            "PAASTA_SECRET_FOO": "decrypted_value",
+        }
+        mock_args = mock.Mock(
+            action="run",
+            service="sast",
+            clusters="pnw-devc",
+            instance="main",
+            cmd=["foo"],
+        )
+
+        secret.paasta_secret(mock_args)
+
+        mock_exec.assert_called_once_with(
+            "foo",
+            ["foo"],
+            mock.ANY,
+        )
+        assert mock_exec.call_args[0][2].get("PAASTA_SECRET_FOO") == "decrypted_value"
 
 
 def test_update_extra_namespaces_set(tmp_path):
