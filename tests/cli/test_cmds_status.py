@@ -1695,6 +1695,8 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table", autospec=True
     ) as mock_format_kubernetes_replicaset_table, mock.patch(
         "paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True
     ):
         mock_kubernetes_status.replicasets = [
             paastamodels.KubernetesReplicaSet(
