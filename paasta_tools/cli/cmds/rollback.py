@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+from typing import Any
 from typing import Collection
 from typing import Dict
 from typing import Generator
@@ -22,6 +23,7 @@ from typing import Tuple
 from humanize import naturaltime
 
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
+from paasta_tools.cli.cmds.mark_for_deployment import get_authors_to_be_notified
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.cli.utils import extract_tags
@@ -33,6 +35,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.remote_git import create_rollback_tag
 from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import PaastaColors
@@ -240,6 +243,34 @@ def list_previous_versions(
         )
 
 
+def notify_rollback_slack(
+    service: str,
+    deploy_group: str,
+    git_url: str,
+    rolled_back_from: DeploymentVersion,
+    new_version: DeploymentVersion,
+    deploy_info: Dict[str, Any],
+) -> None:
+    slack_client = get_slack_client()
+    channels = deploy_info.get("slack_channels", [])
+    if not channels:
+        return
+
+    authors = get_authors_to_be_notified(
+        git_url=git_url,
+        from_sha=new_version.sha,  # rollback target (old good SHA)
+        to_sha=rolled_back_from.sha,  # the bad SHA being rolled back
+        authors=None,
+    )
+
+    message = (
+        f":rewind: *Rollback* of `{service}` in `{deploy_group}`\n"
+        f"Rolled back from `{rolled_back_from.sha[:8]}` to `{new_version.sha[:8]}`\n"
+        f"{authors}"
+    )
+    slack_client.post(channels=[channels[0]], message=message)
+
+
 def paasta_rollback(args: argparse.Namespace) -> int:
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
@@ -334,6 +365,14 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         # rollback than we care about if the underlying machinery was successfully able to complete the request
         if rolled_back_from != new_version:
             performed_rollback = True
+            notify_rollback_slack(
+                service=service,
+                deploy_group=deploy_group,
+                git_url=git_url,
+                rolled_back_from=rolled_back_from,
+                new_version=new_version,
+                deploy_info=deploy_info,
+            )
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
                 "rolled_back_to": str(new_version),
