@@ -213,6 +213,7 @@ def test_status_pending_pipeline_build_message(
     args.clusters = None
     args.instances = None
     args.owner = None
+    args.verbose = 0
     args.soa_dir = utils.DEFAULT_SOA_DIR
     args.registration = None
     args.service_instance = None
@@ -819,6 +820,7 @@ def test_status_with_owner(
     args.clusters = None
     args.deploy_group = None
     args.owner = "faketeam"
+    args.verbose = 0
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None

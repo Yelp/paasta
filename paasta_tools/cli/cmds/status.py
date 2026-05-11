@@ -2157,6 +2157,11 @@ def paasta_status(args) -> int:
     printer = CancellablePrinter()
     tasks = []
     clusters_services_instances = apply_args_filters(args)
+
+    if args.verbose and clusters_services_instances:
+        jenkins_url = f"http://y/jenkins?filter={args.service}"
+        print(f"\nDeployment Pipeline(s): {PaastaColors.blue(jenkins_url)}")
+
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
