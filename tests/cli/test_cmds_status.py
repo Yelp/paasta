@@ -1797,7 +1797,7 @@ class TestPrintKubernetesStatusV2:
             verbose=0,
         )
         joined_output = "\n".join(output)
-        assert f"State: {mock_get_instance_state.return_value}" in joined_output
+        assert f"State:      {mock_get_instance_state.return_value}" in joined_output
         mock_get_versions_table.assert_called_once_with(
             mock.ANY, "service", "instance", "cluster", 0
         )
@@ -2264,7 +2264,7 @@ class TestPrintKubernetesStatus:
             cluster="fake_cluster", service="fake_service", instance="fake_instance"
         )
         expected_output = [
-            f"    {PaastaColors.yellow('y/sl2')}       {PaastaColors.blue(dashboard_url)}",
+            f"    {PaastaColors.yellow('y/sl2:')}      {PaastaColors.blue(dashboard_url)}",
             f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
             f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]

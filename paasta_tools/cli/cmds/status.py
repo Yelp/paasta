@@ -1031,9 +1031,9 @@ def print_kubernetes_status_v2(
     instance_state = get_instance_state(status)
     dashboard_url = get_sl2_dashboard(cluster, service, instance)
     output.append(
-        f"    {PaastaColors.yellow('y/sl2')}       {PaastaColors.blue(dashboard_url)}"
+        f"    {PaastaColors.yellow('y/sl2:')}      {PaastaColors.blue(dashboard_url)}"
     )
-    output.append(f"    State: {instance_state}")
+    output.append(f"    State:      {instance_state}")
     output.append("    Running versions:")
     if not verbose:
         output.append(
@@ -1537,7 +1537,7 @@ def print_kubernetes_status(
     )
     dashboard_url = get_sl2_dashboard(cluster, service, instance)
     output.append(
-        f"    {PaastaColors.yellow('y/sl2')}       {PaastaColors.blue(dashboard_url)}"
+        f"    {PaastaColors.yellow('y/sl2:')}      {PaastaColors.blue(dashboard_url)}"
     )
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
