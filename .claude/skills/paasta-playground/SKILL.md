@@ -2,11 +2,12 @@
 name: paasta-playground
 description: >-
   How to test PaaSTA code changes against a local Kind Kubernetes cluster using the
-  playground environment. Use this skill whenever: testing CLI commands locally, verifying
-  API changes end-to-end, debugging PaaSTA behavior against real pods, running
-  mark-for-deployment status, logs or other CLI commands locally, or the user mentions "playground", "kind cluster",
-  "local testing", or "test against real k8s". Also use when the user wants to validate
-  code changes beyond unit tests — the playground bridges unit tests and production.
+  playground environment. The playground bridges unit tests and production.
+when_to_use: >-
+  Testing CLI commands locally, verifying API changes end-to-end, debugging PaaSTA
+  behavior against real pods, running mark-for-deployment/status/logs locally, or the
+  user mentions "playground", "kind cluster", "local testing", or "test against real k8s".
+  Also use when the user wants to validate code changes beyond unit tests.
 ---
 
 # PaaSTA Playground Testing
