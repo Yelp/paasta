@@ -37,6 +37,7 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import get_instance_state
+from paasta_tools.cli.cmds.status import get_sl2_dashboard
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
@@ -1705,7 +1706,6 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         mock_kubernetes_status.error_message = ""
         status.print_kubernetes_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -1751,7 +1751,6 @@ class TestPrintKubernetesStatusV2:
         output = []
         return_code = print_kubernetes_status_v2(
             cluster="cluster",
-            ecosystem="fake_ecosystem",
             service="service",
             instance="instance",
             output=output,
@@ -1764,7 +1763,6 @@ class TestPrintKubernetesStatusV2:
     def test_successful_return_value(self, mock_kubernetes_status_v2):
         return_code = print_kubernetes_status_v2(
             cluster="cluster",
-            ecosystem="fake_ecosystem",
             service="service",
             instance="instance",
             output=[],
@@ -1792,7 +1790,6 @@ class TestPrintKubernetesStatusV2:
         mock_get_versions_table.return_value = mock_versions_table
         print_kubernetes_status_v2(
             cluster="cluster",
-            ecosystem="fake_ecosystem",
             service="service",
             instance="instance",
             output=output,
@@ -2168,7 +2165,6 @@ class TestPrintKubernetesStatus:
         output = []
         return_value = print_kubernetes_status(
             cluster="fake_Cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2181,7 +2177,6 @@ class TestPrintKubernetesStatus:
     def test_successful_return_value(self, mock_kubernetes_status):
         return_value = print_kubernetes_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -2259,22 +2254,17 @@ class TestPrintKubernetesStatus:
         output = []
         print_kubernetes_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
             kubernetes_status=mock_kubernetes_status,
         )
 
-        dashboard_url = (
-            "https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
-            "?var-ServiceName=fake_service"
-            "&var-Ecosystem=fake_ecosystem"
-            "&var-SuperRegion=fake_cluster"
-            "&var-Paasta_Instance=fake_instance"
+        dashboard_url = get_sl2_dashboard(
+            cluster="fake_cluster", service="fake_service", instance="fake_instance"
         )
         expected_output = [
-            f"    SL2:        {PaastaColors.blue(dashboard_url)}",
+            f"    {PaastaColors.yellow('y/sl2')}       {PaastaColors.blue(dashboard_url)}",
             f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
             f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]
@@ -2298,7 +2288,6 @@ class TestPrintCassandraStatus:
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2326,7 +2315,6 @@ class TestPrintCassandraStatus:
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2376,7 +2364,6 @@ class TestPrintCassandraStatus:
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2410,7 +2397,6 @@ class TestPrintKafkaStatus:
         output = []
         return_value = print_kafka_status(
             cluster="fake_Cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2424,7 +2410,6 @@ class TestPrintKafkaStatus:
     def test_successful_return_value(self, mock_kafka_status):
         return_value = print_kafka_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -2443,7 +2428,6 @@ class TestPrintKafkaStatus:
         output = []
         print_kafka_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2494,7 +2478,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2527,7 +2510,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2562,7 +2544,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2593,7 +2574,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2623,7 +2603,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2656,7 +2635,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2692,7 +2670,6 @@ class TestPrintFlinkStatus:
 
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -2754,7 +2731,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2805,7 +2781,6 @@ class TestPrintFlinkStatus:
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2845,7 +2820,6 @@ class TestPrintFlinkStatus:
         output = []
         print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2896,7 +2870,6 @@ class TestPrintFlinkStatus:
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
         print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2950,7 +2923,6 @@ class TestPrintFlinkStatus:
         ][2:]
         print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2999,7 +2971,6 @@ class TestPrintFlinkStatus:
         output = []
         print_flink_status(
             cluster="fake_cluster",
-            ecosystem="fake_ecosystem",
             service="fake_service",
             instance="fake_instance",
             output=output,
