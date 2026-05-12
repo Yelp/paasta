@@ -305,10 +305,11 @@ This exercises the polling loop that checks `bounce_status`:
 
 ```bash
 # API must be running for this to work
+# First deploy a new version via setup_kubernetes_job, then run m-f-d with --wait-for-deployment
 .tox/py310-linux/bin/python -m paasta_tools.cli.cli mark-for-deployment \
   --service compute-infra-test-service \
   --deploy-group prod.main \
-  --commit $(jq -r '.v2.deployments["prod.main"].git_sha' soa_config_playground/compute-infra-test-service/deployments.json) \
+  --commit <new-sha> \
   --wait-for-deployment \
   -d ./soa_config_playground/
 ```
@@ -393,7 +394,6 @@ curl -s "$API_URL/v1/version"
 |-------|-------|-----|
 | `ImportError: cannot import name 'client' from 'kubernetes'` | Local `paasta_tools/kubernetes/` shadows pip `kubernetes` package | Always use `python -m` invocation, never direct script paths |
 | API returns 404 for bounce_status | API not reading playground soa_dir | Ensure `PAASTA_API_SOA_DIR=./soa_config_playground` is set (handled by `tox -e playground-api`) |
-| `get_currently_deployed_version` returns None in playground | The call at line 489 of `mark_for_deployment.py` doesn't pass `soa_dir` — reads from `DEFAULT_SOA_DIR` | Known pre-existing issue; for testing the version-match path, patch the function to pass `soa_dir` |
 | Pods stuck in Pending | Kind cluster lacks resources or not running | `make k8s_fake_cluster` to recreate; check `kubectl describe pod` for scheduling errors |
 | `Back-off pulling image` / `ImagePullBackOff` | Registry credentials expired (they rotate) | Re-run `k8s_itests/scripts/set-paasta-registry-credentials.sh $USER-k8s-test` (interactive auth required). Script is idempotent. |
 | API connection refused | API not started or crashed | Run `make playground-api` and wait for `[INFO] Booting worker` |
