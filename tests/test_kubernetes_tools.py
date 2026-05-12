@@ -3880,6 +3880,12 @@ def test_list_all_paasta_deployments(addl_labels, replicas):
     )
 
     assert list_all_paasta_deployments(kube_client=mock_client) == []
+    mock_client.deployments.list_deployment_for_all_namespaces.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true"
+    )
+    mock_client.deployments.list_stateful_set_for_all_namespaces.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true"
+    )
     mock_items = [
         mock.Mock(
             metadata=mock.Mock(
@@ -3890,6 +3896,7 @@ def test_list_all_paasta_deployments(addl_labels, replicas):
                     "yelp.com/paasta_config_sha": "b12345",
                     "paasta.yelp.com/service": "kurupt",
                     "paasta.yelp.com/instance": "fm",
+                    "paasta.yelp.com/managed": "true",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
@@ -3906,6 +3913,7 @@ def test_list_all_paasta_deployments(addl_labels, replicas):
                     "yelp.com/paasta_config_sha": "b12345",
                     "paasta.yelp.com/service": "kurupt",
                     "paasta.yelp.com/instance": "am",
+                    "paasta.yelp.com/managed": "true",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
@@ -3914,6 +3922,12 @@ def test_list_all_paasta_deployments(addl_labels, replicas):
             )
         ),
     ]
+    mock_client.deployments.list_deployment_for_all_namespaces.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true"
+    )
+    mock_client.deployments.list_stateful_set_for_all_namespaces.assert_called_once_with(
+        label_selector="paasta.yelp.com/managed=true"
+    )
 
     # Setting the number of replicas this way since spec
     # is a reserved argument for Mocks
