@@ -501,7 +501,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
                 service, deploy_group, args.soa_dir
             )
         )
-        all_healthy = all(
+        instance_health = [
             check_if_instance_is_done(
                 service=service,
                 instance=instance_config.get_instance(),
@@ -511,7 +511,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             )
             for cluster, instance_configs in instance_configs_per_cluster.items()
             for instance_config in instance_configs
-        )
+        ]
+        all_healthy = all(instance_health)
         if all_healthy:
             print(
                 "All instances are healthy at this version. "
