@@ -178,7 +178,11 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 
 
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.check_deploy_group_is_healthy",
+    "paasta_tools.cli.cmds.mark_for_deployment.check_if_instance_is_done",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
@@ -187,33 +191,52 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
 def test_paasta_mark_for_deployment_succeeds_when_already_deployed_and_healthy(
+    mock_list_remote_refs,
+    mock_load_system_paasta_config,
     mock_list_deploy_groups,
     mock_get_currently_deployed_version,
-    _,
-    mock_check_deploy_group_is_healthy,
+    mock_validate_service_name,
+    mock_get_instance_configs,
+    mock_check_if_instance_is_done,
 ):
-    class FakeArgsNoBlock(FakeArgs):
-        block = False
+    """When version already matches and all instances are healthy, return 0 early
+    without entering the state machine."""
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+
+    mock_instance_config = mock.Mock()
+    mock_instance_config.get_instance.return_value = "main"
+    mock_get_instance_configs.return_value = {"fake_cluster": [mock_instance_config]}
+    mock_check_if_instance_is_done.return_value = True
     mock_get_currently_deployed_version.return_value = DeploymentVersion(
         FakeArgs.commit, FakeArgs.image_version
     )
-    mock_check_deploy_group_is_healthy.return_value = True
 
-    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgsNoBlock)
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
     assert ret == 0
-    mock_check_deploy_group_is_healthy.assert_called_once_with(
+    mock_check_if_instance_is_done.assert_called_once_with(
         service="test_service",
-        deploy_group="test_deploy_group",
-        soa_dir="fake_soa_dir",
+        instance="main",
+        cluster="fake_cluster",
         version=DeploymentVersion(FakeArgs.commit, FakeArgs.image_version),
+        instance_config=mock_instance_config,
     )
 
 
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.check_deploy_group_is_healthy",
+    "paasta_tools.cli.cmds.mark_for_deployment.check_if_instance_is_done",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
@@ -222,22 +245,36 @@ def test_paasta_mark_for_deployment_succeeds_when_already_deployed_and_healthy(
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
 def test_paasta_mark_for_deployment_fails_when_already_deployed_and_unhealthy(
+    mock_list_remote_refs,
+    mock_load_system_paasta_config,
     mock_list_deploy_groups,
     mock_get_currently_deployed_version,
-    _,
-    mock_check_deploy_group_is_healthy,
+    mock_validate_service_name,
+    mock_get_instance_configs,
+    mock_check_if_instance_is_done,
 ):
-    class FakeArgsNoBlock(FakeArgs):
-        block = False
+    """When version already matches but instances are NOT healthy, return 1 to
+    block the pipeline from proceeding to the next deploy group."""
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+
+    mock_instance_config = mock.Mock()
+    mock_instance_config.get_instance.return_value = "main"
+    mock_get_instance_configs.return_value = {"fake_cluster": [mock_instance_config]}
+    mock_check_if_instance_is_done.return_value = False
     mock_get_currently_deployed_version.return_value = DeploymentVersion(
         FakeArgs.commit, FakeArgs.image_version
     )
-    mock_check_deploy_group_is_healthy.return_value = False
 
-    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgsNoBlock)
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
     assert ret == 1
 
 
@@ -1145,81 +1182,3 @@ def test_slo_transcoder_is_importable():
     from sticht.rollbacks.slo import SLO_TRANSCODER_LOADED
 
     assert SLO_TRANSCODER_LOADED is True
-
-
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
-    autospec=True,
-)
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.check_if_instance_is_done",
-    autospec=True,
-)
-class TestCheckDeployGroupIsHealthy:
-    version = DeploymentVersion(sha="abc123", image_version="extrastuff")
-
-    def test_returns_true_when_all_instances_healthy(
-        self, mock_check_instance, mock_get_configs
-    ):
-        instance_config = MagicMock()
-        instance_config.get_instance.return_value = "main"
-        mock_get_configs.return_value = {"cluster1": [instance_config]}
-        mock_check_instance.return_value = True
-
-        assert mark_for_deployment.check_deploy_group_is_healthy(
-            service="myservice",
-            deploy_group="prod",
-            soa_dir="/soa",
-            version=self.version,
-        )
-        mock_check_instance.assert_called_once_with(
-            service="myservice",
-            instance="main",
-            cluster="cluster1",
-            version=self.version,
-            instance_config=instance_config,
-        )
-
-    def test_returns_false_when_any_instance_unhealthy(
-        self, mock_check_instance, mock_get_configs
-    ):
-        healthy_config = MagicMock()
-        healthy_config.get_instance.return_value = "main"
-        unhealthy_config = MagicMock()
-        unhealthy_config.get_instance.return_value = "canary"
-        mock_get_configs.return_value = {
-            "cluster1": [healthy_config, unhealthy_config],
-        }
-        mock_check_instance.side_effect = [True, False]
-
-        assert not mark_for_deployment.check_deploy_group_is_healthy(
-            service="myservice",
-            deploy_group="prod",
-            soa_dir="/soa",
-            version=self.version,
-        )
-
-    def test_returns_true_when_no_instances(
-        self, mock_check_instance, mock_get_configs
-    ):
-        mock_get_configs.return_value = {}
-
-        assert mark_for_deployment.check_deploy_group_is_healthy(
-            service="myservice",
-            deploy_group="prod",
-            soa_dir="/soa",
-            version=self.version,
-        )
-        mock_check_instance.assert_not_called()
-
-    def test_returns_false_on_no_such_cluster(
-        self, mock_check_instance, mock_get_configs
-    ):
-        mock_get_configs.side_effect = mark_for_deployment.NoSuchCluster()
-
-        assert not mark_for_deployment.check_deploy_group_is_healthy(
-            service="myservice",
-            deploy_group="prod",
-            soa_dir="/soa",
-            version=self.version,
-        )
