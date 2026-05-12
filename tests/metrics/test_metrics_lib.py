@@ -76,12 +76,7 @@ class TestParseMetricLabelsEnv(unittest.TestCase):
             self.assertEqual(_parse_metric_labels_env(), {})
 
     def test_envvar_absent(self):
-        env = {
-            k: v
-            for k, v in __import__("os").environ.items()
-            if k != "PAASTA_METRICS_LABELS"
-        }
-        with mock.patch.dict("os.environ", env, clear=True):
+        with mock.patch.dict("os.environ", {}, clear=True):
             self.assertEqual(_parse_metric_labels_env(), {})
 
     def test_single_label(self):
