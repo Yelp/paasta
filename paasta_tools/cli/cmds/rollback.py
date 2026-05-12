@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import re
 from typing import Any
 from typing import Collection
 from typing import Dict
@@ -44,6 +45,7 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
 from paasta_tools.utils import parse_timestamp
 
@@ -263,12 +265,26 @@ def notify_rollback_slack(
         authors=None,
     )
 
+    rollback_user = get_username()
     message = (
-        f":rewind: *Rollback* of `{service}` in `{deploy_group}`\n"
+        f":rewind: *Rollback* of `{service}` in `{deploy_group}` by <@{rollback_user}>\n"
         f"Rolled back from `{rolled_back_from.sha[:8]}` to `{new_version.sha[:8]}`\n"
-        f"{authors}"
+        f"{authors}\n"
+        f":warning: The rolled-back commits must also be reverted in Git, "
+        f"or they will be redeployed on the next push."
     )
-    slack_client.post(channels=[channels[0]], message=message)
+
+    slack_client.post(channels=channels, message=message)
+
+    # DM each author directly
+    # parse usernames from the "<@user1>, <@user2>" format in authors string
+    # TODO: PAASTA-16927: support getting authors for services on GHE has to be fixed first
+    author_list = re.findall(r"<@(\w+)>", authors)
+    for author in author_list:
+        slack_client.post_single(
+            channel=f"@{author}",
+            message=message,
+        )
 
 
 def paasta_rollback(args: argparse.Namespace) -> int:
