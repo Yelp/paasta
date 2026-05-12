@@ -382,6 +382,30 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
         )
         assert flink_deployment_config.get_pool() == "flink-spot"
 
+    def test_explicit_pool_overrides_spot(self):
+        # When pool is explicitly set, it takes precedence over spot
+        config_dict = FlinkDeploymentConfigDict({"pool": "flink-spot-ebs", "spot": True})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert flink_deployment_config.get_pool() == "flink-spot-ebs"
+
+    def test_explicit_pool_without_spot(self):
+        # When pool is explicitly set without spot, pool still takes precedence
+        config_dict = FlinkDeploymentConfigDict({"pool": "flink-spot-ebs"})
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        assert flink_deployment_config.get_pool() == "flink-spot-ebs"
+
 
 @pytest.fixture
 def flink_instance_config():
