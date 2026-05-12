@@ -1,3 +1,12 @@
+paasta-tools (1.50.4) jammy; urgency=medium
+
+  * 1.50.4 tagged with 'make release'
+    Commit: Merge pull request #4294 from Yelp/u/mbrankin/PAASTA-
+    17887/improve-error-handling  PAASTA-17887 - improving PaaSTA
+    deployment error handling
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Tue, 12 May 2026 03:35:59 -0700
+
 paasta-tools (1.50.3) jammy; urgency=medium
 
   * 1.50.3 tagged with 'make release'
