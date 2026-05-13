@@ -545,6 +545,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             old_version=str(old_deployment_version),
             new_version=str(deployment_version),
             deploy_timeout=args.timeout,
+            wait_for_deployment=args.block,  # always True
         ),
     )
 
