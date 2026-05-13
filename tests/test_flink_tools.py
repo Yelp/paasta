@@ -384,7 +384,9 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
 
     def test_explicit_pool_overrides_spot(self):
         # When pool is explicitly set, it takes precedence over spot
-        config_dict = FlinkDeploymentConfigDict({"pool": "flink-spot-ebs", "spot": True})
+        config_dict = FlinkDeploymentConfigDict(
+            {"pool": "flink-spot-ebs", "spot": True}
+        )
         flink_deployment_config = FlinkDeploymentConfig(
             service="test_service",
             cluster="test_cluster",

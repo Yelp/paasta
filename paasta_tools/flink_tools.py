@@ -179,6 +179,7 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         if spot_config is False:
             return "flink"
         else:
+            # if not set or True, Flink instance defaults to use flink-spot pool
             return "flink-spot"
 
 
