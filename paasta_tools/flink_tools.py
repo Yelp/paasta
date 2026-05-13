@@ -166,7 +166,7 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
 
     def get_pool(self) -> Optional[str]:
         """
-        Returns the Karpenter pool name for this Flink instance.
+        Returns the pool a Flink instance is configured to use.
 
         If an explicit 'pool' key is set, it takes precedence. Otherwise falls back
         to the spot-based logic: spot=False -> "flink", else -> "flink-spot".
