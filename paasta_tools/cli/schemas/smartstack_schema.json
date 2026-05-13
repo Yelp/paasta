@@ -315,6 +315,11 @@
                                     "type": "number",
                                     "minimum": 0
                                 },
+                                "timeout_threshold_ratio": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                },
                                 "team": {
                                     "type": "string"
                                 },
