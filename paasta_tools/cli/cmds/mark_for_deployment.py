@@ -583,7 +583,13 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         ret = deploy_process.run()
         return ret
     finally:
-        deploy_timer.stop(tmp_dimensions={"exit_status": ret})
+        clusters = list(deploy_process.instance_configs_per_cluster.keys())
+        deploy_timer.stop(
+            tmp_dimensions={
+                "exit_status": ret,
+                "paasta_cluster": ",".join(clusters),
+            }
+        )
 
 
 class Progress:
@@ -1243,6 +1249,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     diagnosis_interval=self.diagnosis_interval,
                     time_before_first_diagnosis=self.time_before_first_diagnosis,
                     notify_fn=self.ping_authors,
+                    metrics_interface=self.metrics_interface,
                 )
             )
             self.wait_for_deployment_tasks[target_version] = wait_for_deployment_task
@@ -1444,6 +1451,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 name="rollback",
                 dimensions=dimensions,
             )
+        self.metrics_interface.create_counter(
+            "rollback_count",
+            default_dimensions=dict(
+                paasta_service=self.service,
+                deploy_group=self.deploy_group,
+            ),
+        ).count()
         _log_audit(
             action="rollback",
             action_details=rollback_details,
@@ -1850,6 +1864,7 @@ async def wait_for_deployment(
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
+    metrics_interface: Optional[metrics_lib.BaseMetrics] = None,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
         instance_configs_per_cluster = (
@@ -1893,6 +1908,9 @@ async def wait_for_deployment(
         time_before_first_diagnosis = (
             system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
         )
+
+    kube_clusters = system_paasta_config.get_kube_clusters()
+    start_time = time.time()
 
     with progressbar.ProgressBar(max_value=total_instances) as bar:
         instance_done_futures = []
@@ -1940,6 +1958,21 @@ async def wait_for_deployment(
                     instance_done_futures, timeout=timeout
                 ):
                     cluster, instance = await coro
+                    if metrics_interface:
+                        elapsed = time.time() - start_time
+                        cluster_info = kube_clusters.get(cluster, {})
+                        instance_timer = metrics_interface.create_timer(
+                            "instance_deploy_duration",
+                            default_dimensions=dict(
+                                paasta_service=service,
+                                deploy_group=deploy_group,
+                                paasta_cluster=cluster,
+                                paasta_instance=instance,
+                                superregion=cluster_info.get("superregion", "unknown"),
+                                ecosystem=cluster_info.get("ecosystem", "unknown"),
+                            ),
+                        )
+                        instance_timer.record(elapsed)
                     finished_instances += 1
                     bar.update(finished_instances)
                     if progress is not None:

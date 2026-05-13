@@ -305,11 +305,17 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             old_version="old-sha",
             new_version="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             deploy_timeout=600,
+            wait_for_deployment=True,
         ),
     )
     mock_timer = mock_get_metrics.return_value.create_timer.return_value
     mock_timer.start.assert_called_once_with()
-    mock_timer.stop.assert_called_once_with(tmp_dimensions=dict(exit_status=1))
+    mock_timer.stop.assert_called_once_with(
+        tmp_dimensions=dict(
+            exit_status=1,
+            paasta_cluster="fake_cluster,fake_cluster2",
+        )
+    )
     mock_emit_event = mock_get_metrics.return_value.emit_event
     event_dimensions = dict(
         paasta_service="test_service",
