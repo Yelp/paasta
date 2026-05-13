@@ -114,7 +114,6 @@ class FlinkInstanceDetails(TypedDict):
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
     spot: bool
-    pool: str
     udf_plugin_name: str
     udf_plugin_version: str
 
