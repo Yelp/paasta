@@ -100,6 +100,10 @@ def step_paasta_mark_for_deployments_when(context):
         "paasta_tools.cli.cmds.mark_for_deployment.validate_service_name",
         autospec=True,
         return_value=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+        autospec=True,
+        return_value=None,
     ):
         try:
             paasta_mark_for_deployment(fake_args)
