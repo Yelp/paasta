@@ -219,14 +219,29 @@ def parse_args(argv):
     :return: an argparse.Namespace object mapping parameter names to the inputs
              from sys.argv
     """
+    # NOTE: in "real" use, these env vars are set by
+    # paasta_tabcomplete.sh (which we plop into
+    # usr/share/bash-completion/completions/ as our completion script)
+    if "_ARGCOMPLETE" in os.environ:
+        # NOTE: COMP_LINE will be the full command so far
+        comp_line = os.environ.get("COMP_LINE", "")
+        comp_words = comp_line.split()
+
+        # ...but we want to grab the subcommand since the
+        # shell can handle tab-completing `paasta` :p
+        if len(comp_words) >= 2 and comp_words[1] in PAASTA_SUBCOMMANDS:
+            parser = get_argparser(commands=[comp_words[1]])
+        else:
+            parser = get_argparser(commands=[])
+        argcomplete.autocomplete(parser)
+        return parser.parse_args(argv), parser
+
     parser = get_argparser(commands=[])
-    argcomplete.autocomplete(parser)
 
     args, _ = parser.parse_known_args(argv)
     if args.command:
         parser = get_argparser(commands=[args.command])
 
-    argcomplete.autocomplete(parser)
     return parser.parse_args(argv), parser
 
 

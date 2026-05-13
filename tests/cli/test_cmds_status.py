@@ -213,6 +213,7 @@ def test_status_pending_pipeline_build_message(
     args.clusters = None
     args.instances = None
     args.owner = None
+    args.verbose = 0
     args.soa_dir = utils.DEFAULT_SOA_DIR
     args.registration = None
     args.service_instance = None
@@ -819,6 +820,7 @@ def test_status_with_owner(
     args.clusters = None
     args.deploy_group = None
     args.owner = "faketeam"
+    args.verbose = 0
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None
@@ -2839,8 +2841,14 @@ class TestPrintFlinkStatus:
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
+    @patch(
+        "paasta_tools.cli.cmds.status.get_pod_uptime",
+        autospec=True,
+        return_value="0d0h0m0s",
+    )
     def test_output_stopping_jobmanager(
         self,
+        mock_get_pod_uptime,
         mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
@@ -2889,8 +2897,14 @@ class TestPrintFlinkStatus:
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
+    @patch(
+        "paasta_tools.cli.cmds.status.get_pod_uptime",
+        autospec=True,
+        return_value="0d0h0m0s",
+    )
     def test_output_stopping_taskmanagers(
         self,
+        mock_get_pod_uptime,
         mock_load_flink_instance_config,
         mock_naturaltime,
         mock_get_paasta_oapi_client,
@@ -2942,8 +2956,14 @@ class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_flink_instance_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @patch(
+        "paasta_tools.cli.cmds.status.get_pod_uptime",
+        autospec=True,
+        return_value="0d0h0m0s",
+    )
     def test_output_1_verbose(
         self,
+        mock_get_pod_uptime,
         mock_load_system_paasta_config,
         mock_naturaltime,
         mock_load_flink_instance_config,
