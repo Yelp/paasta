@@ -386,6 +386,7 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
         "config_dict,expected_pool",
         [
             ({"pool": "flink-spot-ebs", "spot": True}, "flink-spot-ebs"),
+            ({"pool": "flink-spot-ebs", "spot": False}, "flink-spot-ebs"),
             ({"pool": "flink-spot-ebs"}, "flink-spot-ebs"),
         ],
     )
