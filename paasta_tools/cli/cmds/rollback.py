@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import re
 from typing import Any
 from typing import Collection
 from typing import Dict
@@ -255,8 +254,6 @@ def notify_rollback_slack(
 ) -> None:
     slack_client = get_slack_client()
     channels = deploy_info.get("slack_channels", [])
-    if not channels:
-        return
 
     authors = get_authors_to_be_notified(
         git_url=git_url,
@@ -274,17 +271,12 @@ def notify_rollback_slack(
         f"or they will be redeployed on the next push."
     )
 
-    slack_client.post(channels=channels, message=message)
+    if channels:
+        slack_client.post(channels=channels, message=message)
 
-    # DM each author directly
-    # parse usernames from the "<@user1>, <@user2>" format in authors string
+    # NICE TO HAVE: we DM all the authors but ticket below is a blocker
     # TODO: PAASTA-16927: support getting authors for services on GHE has to be fixed first
-    author_list = re.findall(r"<@(\w+)>", authors)
-    for author in author_list:
-        slack_client.post_single(
-            channel=f"@{author}",
-            message=message,
-        )
+    slack_client.post_single(channel=f"@{rollback_user}", message=message)
 
 
 def paasta_rollback(args: argparse.Namespace) -> int:
