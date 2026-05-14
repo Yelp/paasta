@@ -3005,3 +3005,19 @@ class TestGetRollbackTagsForSha:
         }
         results = utils.get_rollback_tags_for_sha(refs, "prod.main", "a" * 40)
         assert results == []
+
+
+class TestGetDefaultBounceOverprovisionFactor:
+    def test_returns_configured_value_with_percent(self):
+        config = SystemPaastaConfig(
+            config={"default_bounce_overprovision_factor": 0.5},
+            directory="/fake/dir",
+        )
+        assert config.get_bounce_overprovision_factor() == 0.5
+
+    def test_returns_default_when_not_configured(self):
+        config = SystemPaastaConfig(
+            config={},
+            directory="/fake/dir",
+        )
+        assert config.get_bounce_overprovision_factor() == 1.0
