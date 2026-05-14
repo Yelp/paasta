@@ -1,3 +1,11 @@
+paasta-tools (1.50.7) jammy; urgency=medium
+
+  * 1.50.7 tagged with 'make release'
+    Commit: Merge pull request #4309 from Yelp/u/cuza/paasta-playground-
+    skill  Add PaaSTA Playground Claude Skill
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 14 May 2026 08:17:17 -0700
+
 paasta-tools (1.50.6) jammy; urgency=medium
 
   * 1.50.6 tagged with 'make release'
