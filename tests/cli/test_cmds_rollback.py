@@ -81,6 +81,18 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         image_version=None,
     )
 
+    mock_notify_rollback_slack.assert_called_once()
+    notify_kwargs = mock_notify_rollback_slack.call_args[1]
+    assert notify_kwargs["service"] == fake_args.service
+    assert notify_kwargs["deploy_group"] == fake_args.deploy_groups
+    assert (
+        notify_kwargs["rolled_back_from"]
+        == mock_get_currently_deployed_version.return_value
+    )
+    assert notify_kwargs["new_version"] == DeploymentVersion(
+        sha=fake_args.commit, image_version=None
+    )
+
     # ensure that we logged each deploy group that was rolled back AND that we logged things correctly
     mock_log_audit.call_count == len(fake_args.deploy_groups)
     for call_args in mock_log_audit.call_args_list:
