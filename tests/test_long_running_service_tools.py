@@ -17,6 +17,7 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import SystemPaastaConfig
 
 
 class TestLongRunningServiceConfig:
@@ -472,3 +473,59 @@ def test_get_expected_instance_count_for_namespace():
             cluster="fake_cluster",
             instance_type_class=long_running_service_tools.LongRunningServiceConfig,
         )
+
+
+class TestGetBounceOverprovisionFactor:
+    def test_returns_value_from_config(self):
+        """Uses per-service config when set."""
+        mock_system_config = mock.Mock(spec=SystemPaastaConfig)
+        mock_system_config.get_bounce_overprovision_factor.return_value = 1.0
+        with mock.patch(
+            "paasta_tools.long_running_service_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=mock_system_config,
+        ):
+            service_config = long_running_service_tools.LongRunningServiceConfig(
+                service="test-service",
+                cluster="test-cluster",
+                instance="test-instance",
+                config_dict={"bounce_overprovision_factor": 0.5},
+                branch_dict=None,
+            )
+            assert service_config.get_bounce_overprovision_factor() == 0.5
+
+    def test_falls_back_to_system_default(self):
+        """Falls back to system default when not set per-service."""
+        mock_system_config = mock.Mock(spec=SystemPaastaConfig)
+        mock_system_config.get_bounce_overprovision_factor.return_value = 0.75
+        with mock.patch(
+            "paasta_tools.long_running_service_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=mock_system_config,
+        ):
+            service_config = long_running_service_tools.LongRunningServiceConfig(
+                service="test-service",
+                cluster="test-cluster",
+                instance="test-instance",
+                config_dict={},
+                branch_dict=None,
+            )
+            assert service_config.get_bounce_overprovision_factor() == 0.75
+
+    def test_falls_back_to_100_percent_when_nothing_configured(self):
+        """Falls back to 100% when neither per-service nor system default is set."""
+        mock_system_config = mock.Mock(spec=SystemPaastaConfig)
+        mock_system_config.get_bounce_overprovision_factor.return_value = 1.0
+        with mock.patch(
+            "paasta_tools.long_running_service_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=mock_system_config,
+        ):
+            service_config = long_running_service_tools.LongRunningServiceConfig(
+                service="test-service",
+                cluster="test-cluster",
+                instance="test-instance",
+                config_dict={},
+                branch_dict=None,
+            )
+            assert service_config.get_bounce_overprovision_factor() == 1.0

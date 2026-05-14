@@ -409,6 +409,10 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_margin_factor",
             autospec=True,
             return_value=bounce_margin_factor,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_overprovision_factor",
+            autospec=True,
+            return_value=1.0,
         ):
             assert (
                 self.deployment.get_deployment_strategy_config()
@@ -5117,6 +5121,10 @@ def test_warning_big_bounce_default_config():
         new=mock_load_system_paasta_config,
         autospec=False,
     ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_overprovision_factor",
+        autospec=True,
+        return_value=1.0,
+    ), mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         return_value=ServiceNamespaceConfig(),
         autospec=True,
@@ -5162,6 +5170,10 @@ def test_warning_big_bounce_routable_pod():
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         new=mock_load_system_paasta_config,
         autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_overprovision_factor",
+        autospec=True,
+        return_value=1.0,
     ), mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         return_value=ServiceNamespaceConfig({"proxy_port": 1}),
@@ -5209,6 +5221,10 @@ def test_warning_big_bounce_common_config():
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         new=mock_load_system_paasta_config,
         autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_overprovision_factor",
+        autospec=True,
+        return_value=1.0,
     ), mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         return_value=ServiceNamespaceConfig(),

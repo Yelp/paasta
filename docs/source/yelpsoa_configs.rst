@@ -416,6 +416,13 @@ instance MAY have:
       This fraction of boxes must agree that the task is up for the bounce to treat a task as healthy.
       Defaults to 1.0 -- haproxy on all queried boxes must agree that the task is up.
 
+  * ``bounce_overprovision_factor``: controls the maximum number of extra instances allowed above the desired count during a bounce,
+    as a fraction from 0.25 to 1. 0.25 is set as the floor to ensure at least 25% surge capacity is allowed.
+    * **Type:** Number (0.25-1)
+    * **Default:** System default is set to ``1.0``
+
+    Example:: bounce_overprovision_factor : 0.25
+
   * ``bounce_margin_factor``: proportionally increase the number of old instances
     to be drained when the crossover bounce method is used.
     0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).

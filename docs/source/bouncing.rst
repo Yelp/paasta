@@ -179,3 +179,12 @@ Tron Bouncing
 
 In PaaSTA Tron jobs are simply configured to use new code or config **on the
 next execution of the job**. In progress jobs are not adjusted or killed.
+
+Controlling Surge During Bounces
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, PaaSTA attempts to start as many replicas as were previously running during a bounce at once.
+If your service (among other reasons) is large and/or lives in a small pool, you can tune how many replicas PaaSTA will
+essentially "overprovision" during a bounce with the ``bounce_overprovision_factor`` option
+
+ See the docs on `bounce_overprovision_factor <yelpsoa_configs.html#eks-[clustername].yaml>`_ file.

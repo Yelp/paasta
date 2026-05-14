@@ -364,6 +364,7 @@ def paasta_status_on_api_endpoint(
     # TODO: Remove this when all clusters are returning status.version
     elif status.git_sha != "":
         output.append(f"    Git sha:    {status.git_sha} (desired)")
+
     instance_types = find_instance_types(status)
     if not instance_types:
         output.append(
@@ -1008,6 +1009,17 @@ def print_flinkeks_status(
     )
 
 
+def get_sl2_dashboard(cluster: str, service: str, instance: str) -> str:
+    ecosystem: str = load_system_paasta_config().get_ecosystem_for_cluster(cluster)
+    return (
+        f"https://grafana.yelpcorp.com/d/d304815a-aea2-4de9-8e67-d37645967801/service-load"
+        f"?var-ServiceName={service}"
+        f"&var-Ecosystem={ecosystem}"
+        f"&var-SuperRegion={cluster}"
+        f"&var-Paasta_Instance={instance}"
+    )
+
+
 def print_kubernetes_status_v2(
     cluster: str,
     service: str,
@@ -1017,7 +1029,11 @@ def print_kubernetes_status_v2(
     verbose: int = 0,
 ) -> int:
     instance_state = get_instance_state(status)
-    output.append(f"    State: {instance_state}")
+    dashboard_url = get_sl2_dashboard(cluster, service, instance)
+    output.append(
+        f"    {PaastaColors.yellow('y/sl2:')}      {PaastaColors.blue(dashboard_url)}"
+    )
+    output.append(f"    State:      {instance_state}")
     output.append("    Running versions:")
     if not verbose:
         output.append(
@@ -1518,6 +1534,10 @@ def print_kubernetes_status(
     )
     desired_state = desired_state_human(
         kubernetes_status.desired_state, kubernetes_status.expected_instance_count
+    )
+    dashboard_url = get_sl2_dashboard(cluster, service, instance)
+    output.append(
+        f"    {PaastaColors.yellow('y/sl2:')}      {PaastaColors.blue(dashboard_url)}"
     )
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
