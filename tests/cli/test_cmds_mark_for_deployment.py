@@ -313,7 +313,6 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_timer.stop.assert_called_once_with(
         tmp_dimensions=dict(
             exit_status=1,
-            paasta_cluster="fake_cluster,fake_cluster2",
         )
     )
     mock_emit_event = mock_get_metrics.return_value.emit_event

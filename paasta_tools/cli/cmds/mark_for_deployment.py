@@ -583,11 +583,9 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         ret = deploy_process.run()
         return ret
     finally:
-        clusters = list(deploy_process.instance_configs_per_cluster.keys())
         deploy_timer.stop(
             tmp_dimensions={
                 "exit_status": ret,
-                "paasta_cluster": ",".join(clusters),
             }
         )
 
@@ -1912,6 +1910,30 @@ async def wait_for_deployment(
     kube_clusters = system_paasta_config.get_kube_clusters()
     start_time = time.time()
 
+    def record_instance_duration(cluster: str, instance: str, outcome: str) -> None:
+        if not metrics_interface:
+            return
+        try:
+            elapsed = time.time() - start_time
+            cluster_info = kube_clusters.get(cluster, {})
+            instance_timer = metrics_interface.create_timer(
+                "instance_deploy_duration",
+                default_dimensions=dict(
+                    paasta_service=service,
+                    deploy_group=deploy_group,
+                    paasta_cluster=cluster,
+                    paasta_instance=instance,
+                    superregion=cluster_info.get("superregion", "unknown"),
+                    ecosystem=cluster_info.get("ecosystem", "unknown"),
+                    outcome=outcome,
+                ),
+            )
+            instance_timer.record(elapsed)
+        except Exception:
+            log.warning(
+                "Failed to record instance deploy duration metrics", exc_info=True
+            )
+
     with progressbar.ProgressBar(max_value=total_instances) as bar:
         instance_done_futures = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -1958,21 +1980,7 @@ async def wait_for_deployment(
                     instance_done_futures, timeout=timeout
                 ):
                     cluster, instance = await coro
-                    if metrics_interface:
-                        elapsed = time.time() - start_time
-                        cluster_info = kube_clusters.get(cluster, {})
-                        instance_timer = metrics_interface.create_timer(
-                            "instance_deploy_duration",
-                            default_dimensions=dict(
-                                paasta_service=service,
-                                deploy_group=deploy_group,
-                                paasta_cluster=cluster,
-                                paasta_instance=instance,
-                                superregion=cluster_info.get("superregion", "unknown"),
-                                ecosystem=cluster_info.get("ecosystem", "unknown"),
-                            ),
-                        )
-                        instance_timer.record(elapsed)
+                    record_instance_duration(cluster, instance, "success")
                     finished_instances += 1
                     bar.update(finished_instances)
                     if progress is not None:
@@ -1980,6 +1988,9 @@ async def wait_for_deployment(
                         remaining_instances[cluster].remove(instance)
                         progress.waiting_on = remaining_instances
             except asyncio.TimeoutError:
+                for cluster, instances in remaining_instances.items():
+                    for instance in instances:
+                        record_instance_duration(cluster, instance, "timeout")
                 _log(
                     service=service,
                     component="deploy",
@@ -1994,6 +2005,9 @@ async def wait_for_deployment(
                 )
                 raise TimeoutError
             except asyncio.CancelledError:
+                for cluster, instances in remaining_instances.items():
+                    for instance in instances:
+                        record_instance_duration(cluster, instance, "cancelled")
                 # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
                 for coro in instance_done_futures:
                     coro.cancel()
