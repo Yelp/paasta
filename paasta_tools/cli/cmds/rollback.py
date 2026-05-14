@@ -23,7 +23,6 @@ from typing import Tuple
 from humanize import naturaltime
 
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
-from paasta_tools.cli.cmds.mark_for_deployment import get_authors_to_be_notified
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.cli.utils import extract_tags
@@ -247,36 +246,32 @@ def list_previous_versions(
 def notify_rollback_slack(
     service: str,
     deploy_group: str,
-    git_url: str,
     rolled_back_from: DeploymentVersion,
     new_version: DeploymentVersion,
     deploy_info: Dict[str, Any],
 ) -> None:
-    slack_client = get_slack_client()
-    channels = deploy_info.get("slack_channels", [])
+    try:
+        slack_client = get_slack_client()
+        channels = deploy_info.get("slack_channels", [])
 
-    authors = get_authors_to_be_notified(
-        git_url=git_url,
-        from_sha=new_version.sha,  # rollback target (old good SHA)
-        to_sha=rolled_back_from.sha,  # the bad SHA being rolled back
-        authors=None,
-    )
+        # TODO(PAASTA-16927): we don't have a way of getting the authors for a range of commits
+        # from within paasta, but ideally we'd add the author list to the deploy channel's message
+        # (and potentially DM them to let them know their changes have been rolled back by @<rollback_user>
+        # and will likely be reverted soon)
+        rollback_user = get_username()
+        message = (
+            f":rewind: *Rollback* of `{service}` in `{deploy_group}` by <@{rollback_user}>\n"
+            f"Rolled back from `{rolled_back_from.sha[:8]}` to `{new_version.sha[:8]}`\n"
+            f":warning: The rolled-back commits must also be reverted in Git, "
+            f"or they will be redeployed on the next push."
+        )
 
-    rollback_user = get_username()
-    message = (
-        f":rewind: *Rollback* of `{service}` in `{deploy_group}` by <@{rollback_user}>\n"
-        f"Rolled back from `{rolled_back_from.sha[:8]}` to `{new_version.sha[:8]}`\n"
-        f"{authors}\n"
-        f":warning: The rolled-back commits must also be reverted in Git, "
-        f"or they will be redeployed on the next push."
-    )
+        if channels:
+            slack_client.post(channels=channels, message=message)
 
-    if channels:
-        slack_client.post(channels=channels, message=message)
-
-    # NICE TO HAVE: we DM all the authors but ticket below is a blocker
-    # TODO: PAASTA-16927: support getting authors for services on GHE has to be fixed first
-    slack_client.post_single(channel=f"@{rollback_user}", message=message)
+        slack_client.post_single(channel=f"@{rollback_user}", message=message)
+    except Exception:
+        print("Warning: Failed to send rollback Slack notification")
 
 
 def paasta_rollback(args: argparse.Namespace) -> int:
@@ -376,7 +371,6 @@ def paasta_rollback(args: argparse.Namespace) -> int:
             notify_rollback_slack(
                 service=service,
                 deploy_group=deploy_group,
-                git_url=git_url,
                 rolled_back_from=rolled_back_from,
                 new_version=new_version,
                 deploy_info=deploy_info,

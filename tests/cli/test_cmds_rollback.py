@@ -26,6 +26,7 @@ from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import RollbackTypes
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
@@ -45,6 +46,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "fake_deploy_group1"]
@@ -96,6 +98,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         assert call_kwargs["service"] == fake_args.service
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
@@ -115,6 +118,7 @@ def test_paasta_rollback_mark_for_deployment_with_image(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(
         [
@@ -182,6 +186,7 @@ def test_paasta_rollback_mark_for_deployment_with_image(
         assert call_kwargs["service"] == fake_args.service
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
@@ -201,6 +206,7 @@ def test_paasta_rollback_with_force(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(
         [
@@ -260,6 +266,7 @@ def test_paasta_rollback_with_force(
         assert call_kwargs["service"] == fake_args.service
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
@@ -277,6 +284,7 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
     mock_list_deploy_groups,
     mock_log_audit,
     mock_get_currently_deployed_version,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(["rollback", "-s", "fakeservice", "-k", "abcd" * 10])
 
@@ -325,6 +333,7 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
         assert call_kwargs["service"] == fake_args.service
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
@@ -344,6 +353,7 @@ def test_paasta_rollback_mark_for_deployment_all_deploy_groups_arg(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-a"]
@@ -484,6 +494,7 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
     assert not mock_log_audit.called
 
 
+@patch("paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
@@ -503,6 +514,7 @@ def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
+    mock_notify_rollback_slack,
 ):
     fake_args, _ = parse_args(
         [
@@ -800,7 +812,9 @@ def test_create_rollback_tag_called_after_rollback():
         return_value=old_version,
     ), patch(
         "paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True
-    ) as mock_create_rollback_tag:
+    ) as mock_create_rollback_tag, patch(
+        "paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True
+    ):
         assert paasta_rollback(fake_args) == 0
 
         mock_create_rollback_tag.assert_called_once_with(
@@ -852,7 +866,9 @@ def test_create_rollback_tag_not_called_when_same_version():
         return_value=DeploymentVersion(sha=commit, image_version=None),
     ), patch(
         "paasta_tools.cli.cmds.rollback.create_rollback_tag", autospec=True
-    ) as mock_create_rollback_tag:
+    ) as mock_create_rollback_tag, patch(
+        "paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True
+    ):
         paasta_rollback(fake_args)
 
         assert not mock_create_rollback_tag.called
