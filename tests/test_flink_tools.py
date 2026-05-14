@@ -382,6 +382,24 @@ class TestGetFlinkPoolFromFlinkDeploymentConfig:
         )
         assert flink_deployment_config.get_pool() == "flink-spot"
 
+    @pytest.mark.parametrize(
+        "config_dict,expected_pool",
+        [
+            ({"pool": "flink-spot-ebs", "spot": True}, "flink-spot-ebs"),
+            ({"pool": "flink-spot-ebs", "spot": False}, "flink-spot-ebs"),
+            ({"pool": "flink-spot-ebs"}, "flink-spot-ebs"),
+        ],
+    )
+    def test_explicit_pool_takes_precedence(self, config_dict, expected_pool):
+        flink_deployment_config = FlinkDeploymentConfig(
+            service="test_service",
+            cluster="test_cluster",
+            instance="test_instance",
+            config_dict=FlinkDeploymentConfigDict(config_dict),
+            branch_dict=None,
+        )
+        assert flink_deployment_config.get_pool() == expected_pool
+
 
 @pytest.fixture
 def flink_instance_config():
