@@ -1,3 +1,11 @@
+paasta-tools (1.50.6) jammy; urgency=medium
+
+  * 1.50.6 tagged with 'make release'
+    Commit: Merge pull request #4303 from Yelp/sidtuladhar/PAASTA-18861
+    Add SL2 Grafana dashboard link to paasta status output
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 14 May 2026 03:48:41 -0700
+
 paasta-tools (1.50.5) jammy; urgency=medium
 
   * 1.50.5 tagged with 'make release'
