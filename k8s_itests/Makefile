@@ -39,7 +39,9 @@ ifeq (,$(wildcard ./kind))
 endif
 
 .create_cluster: kind
-	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG) --image $(KIND_NODE_IMAGE)
+	sed 's|PAASTA_CHECKOUT_DIR|$(CWD)/..|g' $(KIND_CONFIG) > $(KIND_CONFIG).rendered
+	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG).rendered --kubeconfig $(KUBECONFIG) --image $(KIND_NODE_IMAGE)
+	rm -f $(KIND_CONFIG).rendered
 	touch .create_cluster
 
 itest: .create_cluster

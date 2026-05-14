@@ -1,0 +1,17 @@
+main:
+  namespace: paasta
+  cmd: ["/usr/local/bin/flink-operator", "--stderrthreshold=INFO", "--logtostderr"]
+  cpus: 0.5
+  mem: 512
+  instances: 1
+  bounce_method: downthenup
+  deploy_group: eks-devc
+  service_account_name: flink-operator
+  extra_volumes:
+  - {containerPath: /nail/etc, hostPath: /nail/etc, mode: RO}
+  - {containerPath: /etc/paasta, hostPath: /etc/paasta, mode: RO}
+  - {containerPath: /nail/etc/services, hostPath: /nail/etc/services, mode: RO}
+  env:
+    WATCH_NAMESPACE: paasta-flinks
+    OPERATOR_NAME: flink-operator
+    EKS: "False"
