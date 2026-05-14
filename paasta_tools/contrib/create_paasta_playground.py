@@ -6,7 +6,11 @@ import subprocess
 from render_template import render_values
 
 from paasta_tools.cli.utils import pick_random_port
+from paasta_tools.generate_authenticating_services import (
+    enumerate_authenticating_services,
+)
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import write_yaml_configuration_file
 
 
 def main():
@@ -48,6 +52,15 @@ def main():
         values=values_path,
         overwrite=False,
     )
+
+    # authenticating.yaml lives at the soa_dir root (not in a service dir).
+    # The flink-operator reads it to configure default volumes.
+    authenticating_path = os.path.join("soa_config_playground", "authenticating.yaml")
+    if not os.path.exists(authenticating_path):
+        write_yaml_configuration_file(
+            filename=authenticating_path,
+            configuration=enumerate_authenticating_services(),
+        )
 
 
 def ensure_running_local_zookeeper(user: str, zookeeper_port: int) -> None:

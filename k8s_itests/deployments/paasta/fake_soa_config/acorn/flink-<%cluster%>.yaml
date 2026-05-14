@@ -1,0 +1,13 @@
+main:
+  job_type: stateful
+  service_type: application
+  deploy_group: pnw-devc.main_noneks
+  spot: true
+  jobmanager:
+    cpus: 0.5
+    mem: 1024
+  taskmanager:
+    cpus: 0.5
+    mem: 1024
+    slots: 2
+    instances: 2
