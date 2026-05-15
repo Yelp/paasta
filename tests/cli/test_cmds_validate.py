@@ -46,6 +46,7 @@ from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
+from paasta_tools.cli.cmds.validate import validate_flink_monitoring_team
 from paasta_tools.cli.cmds.validate import validate_smartstack
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
@@ -1841,3 +1842,114 @@ def test_get_etc_services_entry_malformed_line():
     ):
         result = _get_etc_services_entry(20000)
         assert result == "my-service.main"
+
+
+def test_validate_flink_monitoring_team_no_flink_files():
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        return_value=[],
+        autospec=True,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is True
+
+
+def test_validate_flink_monitoring_team_valid():
+    mock_config = {
+        "my_instance": {
+            "jobs": {
+                "my_job": {
+                    "monitoring": {"team": "streamhouse", "page": False},
+                }
+            }
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
+        return_value={"pages_slack_channel": "#streamhouse"},
+        autospec=True,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is True
+
+
+def test_validate_flink_monitoring_team_invalid_team():
+    mock_config = {
+        "my_instance": {
+            "jobs": {
+                "my_job": {
+                    "monitoring": {"team": "dre-analytics", "page": False},
+                }
+            }
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
+        return_value={},
+        autospec=True,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is False
+
+
+def test_validate_flink_monitoring_team_missing_team():
+    mock_config = {
+        "my_instance": {
+            "jobs": {
+                "my_job": {
+                    "monitoring": {"page": False},
+                }
+            }
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is False
+
+
+def test_validate_flink_monitoring_team_missing_monitoring():
+    mock_config = {
+        "my_instance": {
+            "jobs": {
+                "my_job": {},
+            }
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is False
