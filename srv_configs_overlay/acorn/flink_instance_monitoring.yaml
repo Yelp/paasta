@@ -3,7 +3,7 @@ cpu_usage_tm_alert:
         runbook: "https://y.yelpcorp.com/rb-flink-cpu-usage"
         jira_labels: flink_prometheus_alert
         jira_projects: FLINKAUTO
-        page: true
+        page: false
         period: 1h
         threshold: 95
 cpu_usage_jm_alert:
@@ -19,6 +19,6 @@ cpu_usage_supervisor_alert:
         runbook: "https://y.yelpcorp.com/rb-flink-cpu-usage"
         jira_labels: flink_prometheus_alert
         jira_projects: FLINKAUTO
-        page: true
+        page: false
         period: 1h
         threshold: 95
