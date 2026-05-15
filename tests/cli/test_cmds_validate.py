@@ -1867,10 +1867,7 @@ def test_validate_flink_monitoring_team_valid():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch(
-        "builtins.open",
-        mock.mock_open(read_data=""),
-    ), mock.patch(
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ), mock.patch(
@@ -1895,10 +1892,7 @@ def test_validate_flink_monitoring_team_invalid_team():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch(
-        "builtins.open",
-        mock.mock_open(read_data=""),
-    ), mock.patch(
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ), mock.patch(
@@ -1923,10 +1917,7 @@ def test_validate_flink_monitoring_team_missing_team():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch(
-        "builtins.open",
-        mock.mock_open(read_data=""),
-    ), mock.patch(
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ):
@@ -1945,10 +1936,7 @@ def test_validate_flink_monitoring_team_missing_monitoring():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch(
-        "builtins.open",
-        mock.mock_open(read_data=""),
-    ), mock.patch(
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ):
