@@ -12,6 +12,8 @@ nodes:
         containerPath: /nail/etc
       - hostPath: /nail/srv
         containerPath: /nail/srv
+      - hostPath: PAASTA_CHECKOUT_DIR/srv_configs_overlay/acorn
+        containerPath: /nail/srv/configs/acorn
       - hostPath: PAASTA_CHECKOUT_DIR/etc_paasta_playground
         containerPath: /etc/paasta
       - hostPath: PAASTA_CHECKOUT_DIR/soa_config_playground

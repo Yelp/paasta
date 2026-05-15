@@ -1,0 +1,24 @@
+cpu_usage_tm_alert:
+        team: streaming-infrastructure
+        runbook: "https://y.yelpcorp.com/rb-flink-cpu-usage"
+        jira_labels: flink_prometheus_alert
+        jira_projects: FLINKAUTO
+        page: true
+        period: 1h
+        threshold: 95
+cpu_usage_jm_alert:
+        team: streaming-infrastructure
+        runbook: "https://y.yelpcorp.com/rb-flink-cpu-usage"
+        jira_labels: flink_prometheus_alert
+        jira_projects: FLINKAUTO
+        page: false
+        period: 1h
+        threshold: 0
+cpu_usage_supervisor_alert:
+        team: streaming-infrastructure
+        runbook: "https://y.yelpcorp.com/rb-flink-cpu-usage"
+        jira_labels: flink_prometheus_alert
+        jira_projects: FLINKAUTO
+        page: true
+        period: 1h
+        threshold: 95
