@@ -1144,7 +1144,7 @@ def _check_proxy_port_in_use(service: str, namespace: str, port: int) -> bool:
 
 
 def _check_advertise_discover(
-    smartstack_data: dict[str, Any]
+    smartstack_data: dict[str, Any],
 ) -> None:  # XXX: we should use a TypedDict here
     """Need to ensure a few properties about smartstack files
     1) discover is a member of advertise
