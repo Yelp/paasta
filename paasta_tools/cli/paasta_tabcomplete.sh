@@ -21,3 +21,5 @@ fi
 # http://argcomplete.readthedocs.io/en/latest/index.html#synopsis
 # This comes from the paasta-tools system package
 eval "$(/opt/venvs/paasta-tools/bin/register-python-argcomplete /opt/venvs/paasta-tools/bin/paasta)"
+_paasta_complete() { local script=/opt/venvs/paasta-tools/bin/paasta; _python_argcomplete "$@"; }
+compdef _paasta_complete paasta
