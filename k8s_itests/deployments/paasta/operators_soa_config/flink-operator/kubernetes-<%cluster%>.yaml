@@ -13,3 +13,4 @@ main:
     WATCH_NAMESPACE: paasta-flinks
     OPERATOR_NAME: flink-operator
     EKS: "False"
+    IS_LOCAL_CLUSTER: "true"
