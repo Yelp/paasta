@@ -347,6 +347,169 @@ The `yelp-streamhouse-playground-dev-us-west-2` bucket has:
 If the SQL job references a Paimon source on an inaccessible bucket, the job will
 submit successfully but fail at runtime with `AmazonS3Exception: Forbidden`.
 
+## Replicating Real k2p -> Streamhouse Queries Pipelines
+
+The playground can run real migration patterns (k2p -> sq) locally using the
+`streamhouse-data-hydration` IAM role, which has access to both source Paimon
+warehouses and a writable S3 bucket for checkpoints/sink.
+
+### IAM Role Setup
+
+The `data-streams` role (from `aws-okta`) cannot access service-specific Paimon
+source buckets. To read from real Paimon tables, assume a service-specific role:
+
+```bash
+# Store creds in a file (avoid printing secrets in terminal)
+aws --profile dev sts assume-role \
+  --role-arn arn:aws:iam::528741615426:role/streamhouse-data-hydration \
+  --role-session-name playground-test \
+  --duration-seconds 3600 \
+  --output json > /tmp/playground-creds.json
+
+# Inject into playground config
+python3 -c "
+import yaml, json
+with open('/tmp/playground-creds.json') as f:
+    cred_json = json.load(f)
+creds = {
+    'AWS_ACCESS_KEY_ID': cred_json['Credentials']['AccessKeyId'],
+    'AWS_SECRET_ACCESS_KEY': cred_json['Credentials']['SecretAccessKey'],
+    'AWS_SESSION_TOKEN': cred_json['Credentials']['SessionToken'],
+    'AWS_DEFAULT_REGION': 'us-west-2',
+    'IS_FLINKV2_ENABLED': 'true',
+}
+config_path = 'soa_config_playground/streamhouse_queries/flink-kind-\$USER-k8s-test.yaml'
+with open(config_path) as f:
+    config = yaml.safe_load(f)
+config['canary']['env'] = creds
+with open(config_path, 'w') as f:
+    yaml.dump(config, f, default_flow_style=False)
+print(f'Updated. Expires: {cred_json[\"Credentials\"][\"Expiration\"]}')
+"
+make setup-kubernetes-cr
+```
+
+### What `streamhouse-data-hydration` Role Can Access
+
+| Bucket | Access | Use for |
+|--------|--------|---------|
+| `streamhouse-mysql-yelp-video-contribution-dev` | Read | Paimon source tables |
+| `yelp-streamhouse-data-hydration-dev-us-west-2` | Read/Write | Checkpoints, savepoints, Paimon sink |
+| `yelp-streamhouse-plugins-dev-us-west-2` | Read | UDF plugin downloads |
+
+### Example: data_hydration Canary (Verified Working)
+
+This replicates the real `data_hydration_biz_video_like_v1_clone_for_canary` job
+reading from Paimon source tables with a stateful JOIN and Python UDF:
+
+```yaml
+canary:
+  app_type: streamhouse
+  job_type: testing
+  service_type: application
+  checkpoint_path: s3://yelp-streamhouse-data-hydration-dev-us-west-2/playground-checkpoints/$USER/checkpoints/
+  savepoint_path: s3://yelp-streamhouse-data-hydration-dev-us-west-2/playground-checkpoints/$USER/savepoints/
+  always_allow_non_restored_state: true
+  udf_plugin_name: canary_noop
+  udf_plugin_version: 1.0.0
+  flink_supervisor:
+    cpus: 1
+    disk: 4096
+    mem: 4096
+  jobs:
+    playground_data_hydration_canary:
+      sql: |
+        SET 'execution.runtime-mode' = 'streaming';
+        CREATE TEMPORARY SYSTEM FUNCTION canary_noop AS 'canary_noop_pyudf.canary_noop' LANGUAGE PYTHON;
+        CREATE CATALOG paimon_source WITH (
+            'type' = 'paimon',
+            'warehouse' = 's3://streamhouse-mysql-yelp-video-contribution-dev/warehouse_v1'
+        );
+        CREATE CATALOG paimon_sink WITH (
+            'type' = 'paimon',
+            'warehouse' = 's3://yelp-streamhouse-data-hydration-dev-us-west-2/playground-checkpoints/$USER/warehouse'
+        );
+        CREATE DATABASE IF NOT EXISTS paimon_sink.playground;
+        CREATE TABLE IF NOT EXISTS paimon_sink.playground.biz_video_like_join (
+            id INT, video_id INT, business_id INT,
+            __internal__op_ts BIGINT, dt VARCHAR,
+            PRIMARY KEY (`business_id`, `dt`) NOT ENFORCED
+        ) WITH ('sequence.field' = '__internal__op_ts');
+        INSERT INTO paimon_sink.playground.biz_video_like_join
+        SELECT
+            COALESCE(bvl.id, 0) AS id,
+            COALESCE(bvl.video_id, 0) AS video_id,
+            COALESCE(bv.business_id, 0) AS business_id,
+            GREATEST(bvl.__internal__op_ts, bv.__internal__op_ts) AS __internal__op_ts,
+            canary_noop(date_format(TO_TIMESTAMP_LTZ(bvl.time_created, 0), 'yyyy-MM-dd')) AS dt
+        FROM paimon_source.yelp_video_contribution.biz_video_like /*+ OPTIONS('consumer-id' = 'flink.streamhouse_queries.canary.playground_data_hydration_canary.local') */ bvl
+        INNER JOIN paimon_source.yelp_video_contribution.biz_video /*+ OPTIONS('consumer-id' = 'flink.streamhouse_queries.canary.playground_data_hydration_canary.local') */ bv
+        ON bvl.video_id = bv.id;
+```
+
+### Isolation Measures
+
+| Concern | Mitigation |
+|---------|-----------|
+| Consumer offset interference | `.local` suffix on consumer-id (separate Paimon consumer progress) |
+| Sink writes to prod tables | Sink uses isolated path (`/playground-checkpoints/$USER/warehouse`) |
+| Job name clash | Unique name `playground_data_hydration_canary` |
+| DynamoDB writes | `job_type: testing` bypasses DynamoDB entirely |
+| Checkpoints on shared bucket | Path-isolated under `$USER` prefix |
+
+### Adapting for Other Migrations
+
+To test a different migration locally, transform the generated config:
+
+| Real config | Playground substitute |
+|---|---|
+| `'metastore' = 'jdbc'` | Remove (use filesystem catalog) |
+| `'warehouse' = 's3://streamhouse-mysql-...'` | Keep if role has read access, or swap to playground path |
+| `consumer-id = 'flink...job'` | Append `.local` suffix |
+| Checkpoint/savepoint paths | Use bucket the assumed role can write to |
+| `job_type: stateful` | `job_type: testing` |
+| Job name | Prefix with `playground_` |
+
+### Choosing the Right IAM Role
+
+| Migration source | Role to assume | ARN |
+|---|---|---|
+| yelp_video_contribution | `streamhouse-data-hydration` | `arn:aws:iam::528741615426:role/streamhouse-data-hydration` |
+| Other services | Check `yelpsoa-configs/<service>/flinkeks-pnw-devc.yaml` for `iam_role` field |
+
+## Accessing the Flink UI
+
+The Flink UI runs inside the JobManager pod. To access it from a browser:
+
+**Step 1: Port-forward on the devbox** (run in a separate terminal):
+
+```bash
+# Find the JM service name
+KUBECONFIG=./k8s_itests/kubeconfig kubectl get svc -n paasta-flinks
+# Port-forward (service name includes config hash)
+KUBECONFIG=./k8s_itests/kubeconfig kubectl port-forward -n paasta-flinks svc/<jm-service-name> 8081:8081
+```
+
+**Step 2: SSH tunnel from your local machine:**
+
+```bash
+ssh -L 8081:localhost:8081 devbox-$USER-main
+```
+
+Then open http://localhost:8081 in your browser.
+
+**Troubleshooting "Connection refused":** The port-forward must be running first. If
+the service name changed (new config hash after CR reconcile), re-run `kubectl get svc`
+to find the new name.
+
+**CLI alternative (no browser needed):**
+
+```bash
+# From the supervisor pod, curl the JM REST API directly
+KUBECONFIG=./k8s_itests/kubeconfig kubectl exec -n paasta-flinks <supervisor-pod> -- \
+  curl -s http://<jm-service>.paasta-flinks.svc.cluster.local:8081/jobs
+```
+
 ## Devbox Restart Recovery
 
 Kind clusters don't survive devbox reboots. Recovery steps:
