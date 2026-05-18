@@ -47,6 +47,8 @@ from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
 from paasta_tools.utils import parse_timestamp
 
+DEFAULT_SLACK_CHANNEL = "#deploy"
+
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
@@ -268,6 +270,8 @@ def notify_rollback_slack(
 
         if channels:
             slack_client.post(channels=channels, message=message)
+        else:
+            slack_client.post(channels=[DEFAULT_SLACK_CHANNEL], message=message)
 
         slack_client.post_single(channel=f"@{rollback_user}", message=message)
     except Exception:
