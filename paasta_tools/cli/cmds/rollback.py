@@ -254,7 +254,7 @@ def notify_rollback_slack(
 ) -> None:
     try:
         slack_client = get_slack_client()
-        channels = deploy_info.get("slack_channels", [])
+        channels = deploy_info.get("slack_channels", [DEFAULT_SLACK_CHANNEL])
 
         # TODO(PAASTA-16927): we don't have a way of getting the authors for a range of commits
         # from within paasta, but ideally we'd add the author list to the deploy channel's message
@@ -270,8 +270,6 @@ def notify_rollback_slack(
 
         if channels:
             slack_client.post(channels=channels, message=message)
-        else:
-            slack_client.post(channels=[DEFAULT_SLACK_CHANNEL], message=message)
 
         slack_client.post_single(channel=f"@{rollback_user}", message=message)
     except Exception:
