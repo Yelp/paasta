@@ -236,7 +236,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_instance_configs.return_value = {"fake_cluster": [], "fake_cluster2": []}
     mock_mark_for_deployment.return_value = 0
 
-    def do_wait_for_deployment_side_effect(self, target_commit, target_image_version):
+    def do_wait_for_deployment_side_effect(
+        self, target_commit, target_image_version, reason="deploy"
+    ):
         if (
             target_commit == FakeArgs.commit
             and target_image_version == FakeArgs.image_version
@@ -278,9 +280,11 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff", "deploy"
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha", None)
+    mock_do_wait_for_deployment.assert_any_call(
+        mock.ANY, "old-sha", None, "user_initiated_rollback"
+    )
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback

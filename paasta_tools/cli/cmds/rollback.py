@@ -31,6 +31,7 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.remote_git import create_rollback_tag
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -334,6 +335,15 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         # rollback than we care about if the underlying machinery was successfully able to complete the request
         if rolled_back_from != new_version:
             performed_rollback = True
+            metrics = metrics_lib.get_metrics_interface("paasta.mark_for_deployment")
+            metrics.create_counter(
+                "rollback_count",
+                default_dimensions=dict(
+                    paasta_service=service,
+                    deploy_group=deploy_group,
+                    rollback_type="cli_rollback",
+                ),
+            ).count()
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
                 "rolled_back_to": str(new_version),

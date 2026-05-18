@@ -545,7 +545,14 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             old_version=str(old_deployment_version),
             new_version=str(deployment_version),
             deploy_timeout=args.timeout,
-            wait_for_deployment=args.block,  # always True
+            wait_for_deployment=args.block,
+            # atm, we'll only ever actually emit this with a
+            # value of True, but this might change in the
+            # future as we update how paasta handles
+            # "redeploying" to an unhealthy deploy group
+            # with --wait-for-deployment
+            # (or even just to start getting metrics for the
+            # non-wait-for-deployment case :p)
         ),
     )
 
@@ -685,6 +692,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
+        self.deploy_reason = "deploy"
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
@@ -1139,7 +1147,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.commit, self.image_version),
+                args=(self.commit, self.image_version, "deploy"),
                 daemon=True,
             )
             thread.start()
@@ -1193,7 +1201,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.old_git_sha, self.old_image_version),
+                args=(self.old_git_sha, self.old_image_version, self.deploy_reason),
                 daemon=True,
             )
             thread.start()
@@ -1226,7 +1234,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     @to_blocking
     async def do_wait_for_deployment(
-        self, target_commit: str, target_image_version: Optional[str] = None
+        self,
+        target_commit: str,
+        target_image_version: Optional[str] = None,
+        reason: str = "deploy",
     ) -> None:
         try:
             target_version = DeploymentVersion(
@@ -1248,6 +1259,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     time_before_first_diagnosis=self.time_before_first_diagnosis,
                     notify_fn=self.ping_authors,
                     metrics_interface=self.metrics_interface,
+                    reason=reason,
                 )
             )
             self.wait_for_deployment_tasks[target_version] = wait_for_deployment_task
@@ -1421,18 +1433,21 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         }
 
     def log_slo_rollback(self) -> None:
+        self.deploy_reason = RollbackTypes.AUTOMATIC_SLO_ROLLBACK.value
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
     def log_metric_rollback(self) -> None:
+        self.deploy_reason = RollbackTypes.AUTOMATIC_METRIC_ROLLBACK.value
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
     def log_user_rollback(self) -> None:
+        self.deploy_reason = RollbackTypes.USER_INITIATED_ROLLBACK.value
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.USER_INITIATED_ROLLBACK
         )
@@ -1454,6 +1469,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             default_dimensions=dict(
                 paasta_service=self.service,
                 deploy_group=self.deploy_group,
+                rollback_type=rollback_details.get("rollback_type", "unknown"),
             ),
         ).count()
         _log_audit(
@@ -1847,6 +1863,39 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
     return instance_configs_per_cluster
 
 
+def _record_instance_duration(
+    metrics_interface: Optional[metrics_lib.BaseMetrics],
+    kube_cluster: Dict[str, Any],
+    service: str,
+    deploy_group: str,
+    cluster: str,
+    instance: str,
+    elapsed: float,
+    outcome: str,
+    reason: str = "deploy",
+) -> None:
+    if not metrics_interface:
+        return
+    try:
+        cluster_info = kube_cluster.get(cluster, {})
+        instance_timer = metrics_interface.create_timer(
+            "instance_deploy_duration",
+            default_dimensions=dict(
+                paasta_service=service,
+                deploy_group=deploy_group,
+                paasta_cluster=cluster,
+                paasta_instance=instance,
+                superregion=cluster_info.get("superregion", "unknown"),
+                ecosystem=cluster_info.get("ecosystem", "unknown"),
+                outcome=outcome,
+                reason=reason,
+            ),
+        )
+        instance_timer.record(elapsed)
+    except Exception:
+        log.warning("Failed to record instance deploy duration metrics", exc_info=True)
+
+
 async def wait_for_deployment(
     service: str,
     deploy_group: str,
@@ -1863,6 +1912,7 @@ async def wait_for_deployment(
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
     metrics_interface: Optional[metrics_lib.BaseMetrics] = None,
+    reason: str = "deploy",
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
         instance_configs_per_cluster = (
@@ -1910,30 +1960,6 @@ async def wait_for_deployment(
     kube_clusters = system_paasta_config.get_kube_clusters()
     start_time = time.time()
 
-    def record_instance_duration(cluster: str, instance: str, outcome: str) -> None:
-        if not metrics_interface:
-            return
-        try:
-            elapsed = time.time() - start_time
-            cluster_info = kube_clusters.get(cluster, {})
-            instance_timer = metrics_interface.create_timer(
-                "instance_deploy_duration",
-                default_dimensions=dict(
-                    paasta_service=service,
-                    deploy_group=deploy_group,
-                    paasta_cluster=cluster,
-                    paasta_instance=instance,
-                    superregion=cluster_info.get("superregion", "unknown"),
-                    ecosystem=cluster_info.get("ecosystem", "unknown"),
-                    outcome=outcome,
-                ),
-            )
-            instance_timer.record(elapsed)
-        except Exception:
-            log.warning(
-                "Failed to record instance deploy duration metrics", exc_info=True
-            )
-
     with progressbar.ProgressBar(max_value=total_instances) as bar:
         instance_done_futures = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -1980,7 +2006,18 @@ async def wait_for_deployment(
                     instance_done_futures, timeout=timeout
                 ):
                     cluster, instance = await coro
-                    record_instance_duration(cluster, instance, "success")
+                    elapsed = time.time() - start_time
+                    _record_instance_duration(
+                        metrics_interface,
+                        kube_clusters,
+                        service,
+                        deploy_group,
+                        cluster,
+                        instance,
+                        elapsed,
+                        "success",
+                        reason,
+                    )
                     finished_instances += 1
                     bar.update(finished_instances)
                     if progress is not None:
@@ -1988,9 +2025,20 @@ async def wait_for_deployment(
                         remaining_instances[cluster].remove(instance)
                         progress.waiting_on = remaining_instances
             except asyncio.TimeoutError:
+                elapsed = time.time() - start_time
                 for cluster, instances in remaining_instances.items():
                     for instance in instances:
-                        record_instance_duration(cluster, instance, "timeout")
+                        _record_instance_duration(
+                            metrics_interface,
+                            kube_clusters,
+                            service,
+                            deploy_group,
+                            cluster,
+                            instance,
+                            elapsed,
+                            "timeout",
+                            reason,
+                        )
                 _log(
                     service=service,
                     component="deploy",
@@ -2005,9 +2053,20 @@ async def wait_for_deployment(
                 )
                 raise TimeoutError
             except asyncio.CancelledError:
+                elapsed = time.time() - start_time
                 for cluster, instances in remaining_instances.items():
                     for instance in instances:
-                        record_instance_duration(cluster, instance, "cancelled")
+                        _record_instance_duration(
+                            metrics_interface,
+                            kube_clusters,
+                            service,
+                            deploy_group,
+                            cluster,
+                            instance,
+                            elapsed,
+                            "cancelled",
+                            reason,
+                        )
                 # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
                 for coro in instance_done_futures:
                     coro.cancel()
