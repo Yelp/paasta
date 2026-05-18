@@ -1,3 +1,13 @@
+paasta-tools (1.50.9) jammy; urgency=medium
+
+  * 1.50.9 tagged with 'make release'
+    Commit: Merge pull request #4311 from
+    Yelp/jfong/system_timer_extra_labels  Add more labels to
+    paasta_secrets_sync timers, and support setting arbitrary dimensions
+    via envvar
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 18 May 2026 11:00:50 -0700
+
 paasta-tools (1.50.8) jammy; urgency=medium
 
   * 1.50.8 tagged with 'make release'
