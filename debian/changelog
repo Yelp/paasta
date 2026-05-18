@@ -1,3 +1,14 @@
+paasta-tools (1.50.8) jammy; urgency=medium
+
+  * 1.50.8 tagged with 'make release'
+    Commit: Add timeout_threshold_ratio to smartstack endpoint schema
+    (#4317)  Allows service owners to set a per-endpoint timeout
+    threshold ratio in monitoring.endpoints[]. Used by per-endpoint
+    timeout alerting to compute individual thresholds instead of a
+    single namespace-level one.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 15 May 2026 13:15:26 -0700
+
 paasta-tools (1.50.7) jammy; urgency=medium
 
   * 1.50.7 tagged with 'make release'
