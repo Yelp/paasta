@@ -1,8 +1,0 @@
-heartbeat_schema_id: 16942
-missing_schema_id: 19584
-duplicate_schema_id: 19585
-group_id: flink.batch.flink_auditor_acorn.local
-bucket: yelp-emr-dev-us-west-2
-send_kew_task_async: false
-send_kew_task_sync: false
-send_kew_task_secure: false
