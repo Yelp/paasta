@@ -166,14 +166,14 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
 
     def get_pool(self) -> Optional[str]:
         """
-        Parses flink_pool from a specific Flink Deployment instance's configuration data, using key 'spot'.
+        Returns the pool a Flink instance is configured to use.
 
-        Args:
-            flink_deployment_config_data: The FlinkDeploymentConfig for a specific Flink yelpsoa instance
-
-        Returns:
-            The flink pool string.
+        If an explicit 'pool' key is set, it takes precedence. Otherwise falls back
+        to the spot-based logic: spot=False -> "flink", else -> "flink-spot".
         """
+        pool = self.config_dict.get("pool", None)
+        if pool is not None:
+            return pool
         spot_config = self.config_dict.get("spot", None)
         if spot_config is False:
             return "flink"

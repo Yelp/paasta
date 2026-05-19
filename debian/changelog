@@ -1,3 +1,48 @@
+paasta-tools (1.50.9) jammy; urgency=medium
+
+  * 1.50.9 tagged with 'make release'
+    Commit: Merge pull request #4311 from
+    Yelp/jfong/system_timer_extra_labels  Add more labels to
+    paasta_secrets_sync timers, and support setting arbitrary dimensions
+    via envvar
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 18 May 2026 11:00:50 -0700
+
+paasta-tools (1.50.8) jammy; urgency=medium
+
+  * 1.50.8 tagged with 'make release'
+    Commit: Add timeout_threshold_ratio to smartstack endpoint schema
+    (#4317)  Allows service owners to set a per-endpoint timeout
+    threshold ratio in monitoring.endpoints[]. Used by per-endpoint
+    timeout alerting to compute individual thresholds instead of a
+    single namespace-level one.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 15 May 2026 13:15:26 -0700
+
+paasta-tools (1.50.7) jammy; urgency=medium
+
+  * 1.50.7 tagged with 'make release'
+    Commit: Merge pull request #4309 from Yelp/u/cuza/paasta-playground-
+    skill  Add PaaSTA Playground Claude Skill
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 14 May 2026 08:17:17 -0700
+
+paasta-tools (1.50.6) jammy; urgency=medium
+
+  * 1.50.6 tagged with 'make release'
+    Commit: Merge pull request #4303 from Yelp/sidtuladhar/PAASTA-18861
+    Add SL2 Grafana dashboard link to paasta status output
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 14 May 2026 03:48:41 -0700
+
+paasta-tools (1.50.5) jammy; urgency=medium
+
+  * 1.50.5 tagged with 'make release'
+    Commit: Merge pull request #4314 from Yelp/u/sidtuladhar/fix-
+    autocomplete  fix: paasta cli autocomplete entrypoint
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Wed, 13 May 2026 03:58:37 -0700
+
 paasta-tools (1.50.4) jammy; urgency=medium
 
   * 1.50.4 tagged with 'make release'

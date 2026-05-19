@@ -95,6 +95,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     replication_threshold: int
     bounce_start_deadline: float
     bounce_margin_factor: float
+    bounce_overprovision_factor: float
     should_ping_for_unhealthy_pods: bool
     weight: int
     unhealthy_pod_eviction_policy: str
@@ -234,6 +235,12 @@ class LongRunningServiceConfig(InstanceConfig):
     # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self) -> str:
         return decompose_job_id(self.get_registrations()[0])[1]
+
+    def get_bounce_overprovision_factor(self) -> float:
+        return self.config_dict.get(
+            "bounce_overprovision_factor",
+            load_system_paasta_config().get_bounce_overprovision_factor(),
+        )
 
     def get_registrations(self) -> List[str]:
         for registration in self.get_invalid_registrations():

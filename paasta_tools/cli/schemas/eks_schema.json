@@ -197,6 +197,13 @@
                 "deploy_group": {
                     "type": "string"
                 },
+                "bounce_overprovision_factor": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 1,
+                    "exclusiveMinimum": false,
+                    "comment": "Fraction of extra instances allowed during a bounce. Defaults to 1.0. Floor set to 0.25"
+                },
                 "autoscaling": {
                     "$ref": "autoscaling_schema.json#autoscaling_params"
                 },

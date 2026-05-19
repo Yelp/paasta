@@ -983,7 +983,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         strategy_type = KUBE_DEPLOY_STATEGY_MAP[bounce_method]
 
         if strategy_type == "RollingUpdate":
-            max_surge = "100%"
+            # k8s expects an absolute number (an integer) or a integer percentage string (e.g., 55%)
+            # and since we don't allow folks to set an absolute number to surge by, we need to protect against someone being
+            # clever and trying to set a surge of something like ".1234" for 12.34% by rounding the input
+            max_surge = f"{int(round(self.get_bounce_overprovision_factor() * 100, ndigits=2))}%"
             if bounce_method == "crossover":
                 max_unavailable = "{}%".format(
                     int((1 - self.get_bounce_margin_factor()) * 100)

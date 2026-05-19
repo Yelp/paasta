@@ -201,6 +201,21 @@ class NoMetrics(BaseMetrics):
         return True
 
 
+def _parse_metric_labels_env() -> Dict[str, str]:
+    """Parse PAASTA_METRICS_LABELS envvar (comma-separated KEY=VALUE pairs) into a dict."""
+    raw = os.environ.get("PAASTA_METRICS_LABELS", "")
+    if not raw:
+        return {}
+    result: Dict[str, str] = {}
+    for token in raw.split(","):
+        token = token.strip()
+        if "=" not in token:
+            continue
+        key, _, value = token.partition("=")
+        result[key.strip()] = value.strip()
+    return result
+
+
 def system_timer(
     name: str = "system_process_duration", dimensions: Dict[str, Any] = {}
 ) -> TimerProtocol:
@@ -220,6 +235,7 @@ def system_timer(
         "parent_pid": parent_pid,
         "pid": pid,
     }
+    default_dimensions.update(_parse_metric_labels_env())
     default_dimensions.update(dimensions)
     return metrics_interface.create_timer(
         name=name, default_dimensions=default_dimensions
