@@ -113,7 +113,7 @@ k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
 
 .PHONY: k8s_fake_cluster
-k8s_fake_cluster: .tox/py310-linux
+k8s_fake_cluster: .tox/py310-linux | etc_paasta_playground soa_config_playground
 	make -C k8s_itests .fake_cluster
 
 .PHONY: k8s_clean
@@ -155,7 +155,7 @@ generate_deployments_for_service: | soa_config_playground .tox/py310-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py310-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
+	find ./soa_config_playground -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | shuf | xargs -n 1 --no-run-if-empty \
 	.tox/py310-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
 
 .PHONY: playground-api
@@ -186,6 +186,7 @@ paasta-secrets-sync: setup-kubernetes-job .vault-token
 define ANNOUNCE_CRONS_BODY
 The following PaaSTA cron jobs will run on an infinite loop using the PaaSTA Playground k8s cluster:
 - setup-kubernetes-job
+- setup-kubernetes-cr
 - cleanup-kubernetes-job
 - paasta-secrets-sync
 - generate_deployments_for_service
@@ -194,12 +195,28 @@ export ANNOUNCE_CRONS_BODY
 .PHONY: paasta-crons
 make paasta-cronjobs:
 	@echo "$$ANNOUNCE_CRONS_BODY"
-	while true; do make paasta-secrets-sync && make cleanup-kubernetes-jobs; sleep 5; done
+	while true; do make paasta-secrets-sync && make cleanup-kubernetes-jobs && make setup-kubernetes-cr; sleep 5; done
 
 .vault-token:
 	export VAULT_ADDR=https://vault-devc.yelpcorp.com:8200 ;\
 	export VAULT_SKIP_VERIFY=true ;\
 	vault login -token-only -method=ldap > .vault-token
+
+.PHONY: setup-kubernetes-cr
+setup-kubernetes-cr:
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	.tox/py310-linux/bin/python -m paasta_tools.setup_kubernetes_cr -d ./soa_config_playground -c kind-${USER}-k8s-test
+
+.PHONY: setup-flink
+setup-flink: setup-kubernetes-job
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	.tox/py310-linux/bin/python -m paasta_tools.setup_kubernetes_crd -d ./soa_config_playground -c kind-${USER}-k8s-test flink-operator;\
+	KUBECONFIG=./k8s_itests/kubeconfig kubectl apply -f k8s_itests/flink/;\
+	.tox/py310-linux/bin/python -m paasta_tools.setup_kubernetes_cr -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: clean-playground
 clean-playground:
