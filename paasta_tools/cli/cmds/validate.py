@@ -71,6 +71,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.monitoring_tools import get_sensu_team_data
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -1143,7 +1144,7 @@ def _check_proxy_port_in_use(service: str, namespace: str, port: int) -> bool:
 
 
 def _check_advertise_discover(
-    smartstack_data: dict[str, Any]
+    smartstack_data: dict[str, Any],
 ) -> None:  # XXX: we should use a TypedDict here
     """Need to ensure a few properties about smartstack files
     1) discover is a member of advertise
@@ -1272,6 +1273,95 @@ def validate_smartstack(service_path: str) -> bool:
     return True
 
 
+def validate_flink_monitoring_team(service_path: str) -> bool:
+    """Check that every Flink job's monitoring.team is a valid Sensu team.
+
+    Reads all flink-*.yaml and flinkeks-*.yaml files in service_path and
+    validates the team field inside each job's monitoring block.
+
+    :param service_path: path to location of configuration files
+    """
+    flink_files = glob(os.path.join(service_path, "flink-*.yaml")) + glob(
+        os.path.join(service_path, "flinkeks-*.yaml")
+    )
+    if not flink_files:
+        return True
+
+    returncode = True
+    for file_path in flink_files:
+        filename = os.path.relpath(file_path, start=os.path.dirname(service_path))
+        try:
+            with open(file_path) as f:
+                config = yaml.safe_load(f)
+        except Exception:
+            continue
+
+        if not isinstance(config, dict):
+            continue
+
+        for instance_name, instance_config in config.items():
+            if not isinstance(instance_config, dict):
+                continue
+
+            jobs = instance_config.get("jobs")
+            if not isinstance(jobs, dict):
+                continue
+
+            for job_name, job_config in jobs.items():
+                if not isinstance(job_config, dict):
+                    continue
+
+                monitoring_raw = job_config.get("monitoring")
+                if monitoring_raw is None:
+                    print(
+                        failure(
+                            f"Missing 'monitoring' block in {filename} "
+                            f"at {instance_name}.jobs.{job_name}",
+                            "",
+                        )
+                    )
+                    returncode = False
+                    continue
+
+                if isinstance(monitoring_raw, str):
+                    try:
+                        monitoring = yaml.safe_load(monitoring_raw)
+                    except Exception:
+                        continue
+                elif isinstance(monitoring_raw, dict):
+                    monitoring = monitoring_raw
+                else:
+                    continue
+
+                if not isinstance(monitoring, dict):
+                    continue
+
+                team = monitoring.get("team")
+                if team is None:
+                    print(
+                        failure(
+                            f"Missing 'team' in {filename} "
+                            f"at {instance_name}.jobs.{job_name}.monitoring",
+                            "",
+                        )
+                    )
+                    returncode = False
+                elif not get_sensu_team_data(team):
+                    print(
+                        failure(
+                            f"Invalid monitoring team '{team}' in {filename} "
+                            f"at {instance_name}.jobs.{job_name}.monitoring.team "
+                            f"— not a valid Sensu team",
+                            "",
+                        )
+                    )
+                    returncode = False
+
+    if returncode:
+        print(success("All Flink job monitoring teams are valid"))
+    return returncode
+
+
 def paasta_validate_soa_configs(
     service: str, service_path: str, verbose: bool = False
 ) -> bool:
@@ -1295,6 +1385,7 @@ def paasta_validate_soa_configs(
         validate_min_max_instances,
         validate_cpu_burst,
         validate_smartstack,
+        validate_flink_monitoring_team,
     ]
 
     # NOTE: we're explicitly passing a list comprehension to all()
