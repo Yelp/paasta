@@ -545,7 +545,6 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             old_version=str(old_deployment_version),
             new_version=str(deployment_version),
             deploy_timeout=args.timeout,
-            wait_for_deployment=args.block,
             # atm, we'll only ever actually emit this with a
             # value of True, but this might change in the
             # future as we update how paasta handles
@@ -553,6 +552,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             # with --wait-for-deployment
             # (or even just to start getting metrics for the
             # non-wait-for-deployment case :p)
+            wait_for_deployment=args.block,
         ),
     )
 
@@ -1466,11 +1466,11 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             )
         self.metrics_interface.create_counter(
             "rollback_count",
-            default_dimensions=dict(
-                paasta_service=self.service,
-                deploy_group=self.deploy_group,
-                rollback_type=rollback_details.get("rollback_type", "unknown"),
-            ),
+            default_dimensions={
+                "paasta_service": self.service,
+                "deploy_group": self.deploy_group,
+                "rollback_type": rollback_details.get("rollback_type", "unknown"),
+            },
         ).count()
         _log_audit(
             action="rollback",
