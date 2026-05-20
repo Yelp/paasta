@@ -27,6 +27,7 @@ from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
@@ -237,7 +238,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_mark_for_deployment.return_value = 0
 
     def do_wait_for_deployment_side_effect(
-        self, target_commit, target_image_version, reason="deploy"
+        self, target_commit, target_image_version, rollback_type=None
     ):
         if (
             target_commit == FakeArgs.commit
@@ -280,10 +281,10 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff", "deploy"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff", None
     )
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "old-sha", None, "user_initiated_rollback"
+        mock.ANY, "old-sha", None, RollbackTypes.USER_INITIATED_ROLLBACK
     )
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above

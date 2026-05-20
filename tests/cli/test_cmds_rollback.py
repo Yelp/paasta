@@ -49,8 +49,8 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_log_audit,
     mock_get_currently_deployed_version,
     mock_create_rollback_tag,
-    mock_get_metrics_interface,
     mock_notify_rollback_slack,
+    mock_get_metrics_interface,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "fake_deploy_group1"]
