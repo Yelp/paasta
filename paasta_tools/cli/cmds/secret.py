@@ -282,7 +282,7 @@ def _add_common_args(
         service_group.set_defaults(shared=False)
 
 
-def add_set_namespaces_subparser(subparsers):
+def add_set_namespaces_subparser(subparsers) -> None:
     parser = subparsers.add_parser(
         "set-namespaces",
         help="update the extra_namespaces field of an existing secret without changing its value",
@@ -295,6 +295,8 @@ def add_set_namespaces_subparser(subparsers):
             "changed JSON file to apply the update."
         ),
     )
+    # NOTE: this sub-command is entirely local, so we don't
+    # need to clutter the help-text with vault nonsense
     _add_common_args(parser, include_vault_args=False)
     parser.add_argument(
         "-n",
@@ -460,7 +462,7 @@ def _update_extra_namespaces(secret_path: str, namespaces: List[str]) -> None:
         f.write("\n")
 
 
-def paasta_secret_set_namespaces(args) -> None:
+def paasta_secret_set_namespaces(args: argparse.Namespace) -> None:
     service = SHARED_SECRET_SERVICE if args.shared else args.service
     soa_dir = os.getcwd()
     secret_path = os.path.join(soa_dir, service, "secrets", f"{args.secret_name}.json")
