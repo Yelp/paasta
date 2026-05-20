@@ -1,3 +1,12 @@
+paasta-tools (1.51.1) jammy; urgency=medium
+
+  * 1.51.1 tagged with 'make release'
+    Commit: Merge pull request #4323 from Yelp/jfong/set-secret-
+    namespaces  AIRFLOW-3: Add a new set-namespaces subcmd to paasta
+    secret
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 May 2026 14:11:18 -0700
+
 paasta-tools (1.51.0) jammy; urgency=medium
 
   * 1.51.0 tagged with 'make release'
