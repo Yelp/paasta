@@ -692,7 +692,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
-        self.deploy_reason = "deploy"
+        self.rollback_type: Optional[RollbackTypes] = None
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
@@ -1147,7 +1147,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.commit, self.image_version, "deploy"),
+                args=(self.commit, self.image_version, None),
                 daemon=True,
             )
             thread.start()
@@ -1201,7 +1201,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.old_git_sha, self.old_image_version, self.deploy_reason),
+                args=(self.old_git_sha, self.old_image_version, self.rollback_type),
                 daemon=True,
             )
             thread.start()
@@ -1237,7 +1237,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self,
         target_commit: str,
         target_image_version: Optional[str] = None,
-        reason: str = "deploy",
+        rollback_type: Optional[RollbackTypes] = None,
     ) -> None:
         try:
             target_version = DeploymentVersion(
@@ -1259,7 +1259,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     time_before_first_diagnosis=self.time_before_first_diagnosis,
                     notify_fn=self.ping_authors,
                     metrics_interface=self.metrics_interface,
-                    reason=reason,
+                    rollback_type=rollback_type,
                 )
             )
             self.wait_for_deployment_tasks[target_version] = wait_for_deployment_task
@@ -1433,21 +1433,21 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         }
 
     def log_slo_rollback(self) -> None:
-        self.deploy_reason = RollbackTypes.AUTOMATIC_SLO_ROLLBACK.value
+        self.rollback_type = RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
     def log_metric_rollback(self) -> None:
-        self.deploy_reason = RollbackTypes.AUTOMATIC_METRIC_ROLLBACK.value
+        self.rollback_type = RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
     def log_user_rollback(self) -> None:
-        self.deploy_reason = RollbackTypes.USER_INITIATED_ROLLBACK.value
+        self.rollback_type = RollbackTypes.USER_INITIATED_ROLLBACK
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.USER_INITIATED_ROLLBACK
         )
@@ -1872,7 +1872,7 @@ def _record_instance_duration(
     instance: str,
     elapsed: float,
     outcome: str,
-    reason: str = "deploy",
+    rollback_type: Optional[RollbackTypes] = None,
 ) -> None:
     if not metrics_interface:
         return
@@ -1888,7 +1888,7 @@ def _record_instance_duration(
                 superregion=cluster_info.get("superregion", "unknown"),
                 ecosystem=cluster_info.get("ecosystem", "unknown"),
                 outcome=outcome,
-                reason=reason,
+                rollback_type=rollback_type.value if rollback_type else None,
             ),
         )
         instance_timer.record(elapsed)
@@ -1912,7 +1912,7 @@ async def wait_for_deployment(
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
     metrics_interface: Optional[metrics_lib.BaseMetrics] = None,
-    reason: str = "deploy",
+    rollback_type: Optional[RollbackTypes] = None,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
         instance_configs_per_cluster = (
@@ -2016,7 +2016,7 @@ async def wait_for_deployment(
                         instance,
                         elapsed,
                         "success",
-                        reason,
+                        rollback_type,
                     )
                     finished_instances += 1
                     bar.update(finished_instances)
@@ -2037,7 +2037,7 @@ async def wait_for_deployment(
                             instance,
                             elapsed,
                             "timeout",
-                            reason,
+                            rollback_type,
                         )
                 _log(
                     service=service,
@@ -2065,7 +2065,7 @@ async def wait_for_deployment(
                             instance,
                             elapsed,
                             "cancelled",
-                            reason,
+                            rollback_type,
                         )
                 # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
                 for coro in instance_done_futures:
