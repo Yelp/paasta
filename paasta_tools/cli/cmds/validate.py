@@ -1311,6 +1311,9 @@ def validate_flink_monitoring_team(service_path: str) -> bool:
                 if not isinstance(job_config, dict):
                     continue
 
+                # Note: this is the job's own monitoring config, defined directly under the job.
+                # It does not inherit any fields from the instance-level or service-level monitoring
+                # and has no relation to them.
                 monitoring_raw = job_config.get("monitoring")
                 if monitoring_raw is None:
                     print(
