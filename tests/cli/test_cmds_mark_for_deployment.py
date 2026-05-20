@@ -27,6 +27,7 @@ from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
@@ -236,7 +237,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_instance_configs.return_value = {"fake_cluster": [], "fake_cluster2": []}
     mock_mark_for_deployment.return_value = 0
 
-    def do_wait_for_deployment_side_effect(self, target_commit, target_image_version):
+    def do_wait_for_deployment_side_effect(
+        self, target_commit, target_image_version, rollback_type=None
+    ):
         if (
             target_commit == FakeArgs.commit
             and target_image_version == FakeArgs.image_version
@@ -278,9 +281,11 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff", None
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha", None)
+    mock_do_wait_for_deployment.assert_any_call(
+        mock.ANY, "old-sha", None, RollbackTypes.USER_INITIATED_ROLLBACK
+    )
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
@@ -305,11 +310,16 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             old_version="old-sha",
             new_version="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             deploy_timeout=600,
+            wait_for_deployment=True,
         ),
     )
     mock_timer = mock_get_metrics.return_value.create_timer.return_value
     mock_timer.start.assert_called_once_with()
-    mock_timer.stop.assert_called_once_with(tmp_dimensions=dict(exit_status=1))
+    mock_timer.stop.assert_called_once_with(
+        tmp_dimensions=dict(
+            exit_status=1,
+        )
+    )
     mock_emit_event = mock_get_metrics.return_value.emit_event
     event_dimensions = dict(
         paasta_service="test_service",
