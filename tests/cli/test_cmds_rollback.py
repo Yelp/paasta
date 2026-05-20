@@ -847,6 +847,7 @@ def test_create_rollback_tag_called_after_rollback():
     ) as mock_create_rollback_tag, patch(
         "paasta_tools.cli.cmds.rollback.metrics_lib.get_metrics_interface",
         autospec=True,
+    ), patch(
         "paasta_tools.cli.cmds.rollback.notify_rollback_slack", autospec=True
     ):
         assert paasta_rollback(fake_args) == 0
