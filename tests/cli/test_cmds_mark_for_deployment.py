@@ -281,7 +281,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff", None
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
     )
     mock_do_wait_for_deployment.assert_any_call(
         mock.ANY, "old-sha", None, RollbackTypes.USER_INITIATED_ROLLBACK
