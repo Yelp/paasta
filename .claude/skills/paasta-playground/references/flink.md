@@ -38,7 +38,7 @@ KUBECONFIG=./k8s_itests/kubeconfig kubectl get pods -n paasta
 | K8s resource created | Deployment                  | Custom Resource (kind: `Flink`)                      |
 | Namespace            | `paastasvc-<service>`       | `paasta-flinks`                                      |
 | Who creates pods     | K8s directly                | Flink operator watches CR → creates JM/TM/Supervisor |
-| Node pool            | `default`                   | `flink-spot` (must label nodes)                      |
+| Node pool            | `default`                   | `flink-spot` (workers 5-6 pre-labeled)               |
 
 ## Production Flow vs Playground
 
@@ -99,13 +99,15 @@ extra_volumes:
 ## Node Pool Labeling
 
 The flink-operator sets `nodeSelector: {"yelp.com/pool": "flink-spot"}` on Flink pods.
-Kind nodes default to `yelp.com/pool: default`, so you need to label some nodes:
+The Kind cluster config (`cluster-devbox.yaml`) pre-labels workers 5-6 with
+`yelp.com/pool: flink-spot` at creation time, so no manual labeling is needed.
+
+If you need more flink-spot nodes (e.g., for higher TM parallelism), label additional
+workers manually:
 
 ```bash
 KUBECONFIG=./k8s_itests/kubeconfig kubectl label node <worker-node> yelp.com/pool=flink-spot --overwrite
 ```
-
-Label at least 2 nodes to allow scheduling of both JM and TM pods.
 
 ## Template Files
 
@@ -180,7 +182,8 @@ Applied by `make setup-flink` automatically.
 | Operator can't find `/etc/paasta`                           | Configs generated after cluster creation (mount is empty)   | `make k8s_clean && make k8s_fake_cluster` (configs must exist first)                             |
 | Operator can't find `deployments.json` for a service        | Service not in `soa_config_playground/`                     | Add service to `operators_soa_config/` templates and regenerate                                       |
 | `open /nail/etc/services/authenticating.yaml: no such file` | Missing global yelpsoa-configs file                         | Regenerate with `create_paasta_playground.py` (runs `generate_authenticating_services`)           |
-| Flink pods stuck `Pending` — node affinity                  | Nodes don't have `yelp.com/pool: flink-spot`                | Label nodes: `kubectl label node <node> yelp.com/pool=flink-spot`                                |
+| Flink pods stuck `Pending` — node affinity                  | Nodes don't have `yelp.com/pool: flink-spot`                | Workers 5-6 are pre-labeled; if more needed: `kubectl label node <node> yelp.com/pool=flink-spot` |
+| `setup_kubernetes_cr` uses wrong soa_dir                    | Was hardcoded to `DEFAULT_SOA_DIR`                          | Fixed; pass `-d` flag to use playground soa_dir                                                  |
 | `'dashboard_links'` KeyError                                | Missing system config file                                  | Already in `fake_etc_paasta/stubs.json`                                                          |
 | Supervisor tries JAR instead of sql-client.sh               | Missing `app_type: streamhouse` in flink config             | Add `app_type: streamhouse` at instance level (see Streamhouse section below)                    |
 | Supervisor pod `Evicted` — ephemeral storage                | SQL client writes logs/temp exceeding 512Mi disk limit      | Set `flink_supervisor.disk: 4096` in flink config                                                |
@@ -469,6 +472,67 @@ To test a different migration locally, transform the generated config:
 | `job_type: stateful` | `job_type: testing` |
 | Job name | Prefix with `playground_` |
 
+### Testing with a Locally-Built UDF (No S3 Upload)
+
+When the UDF hasn't been published to S3 yet, you can inject it into the supervisor
+pod via `kubectl cp`. The supervisor's `download_from_s3()` skips the download if the
+file already exists at `/tmp/{expected_filename}`.
+
+**How it works:**
+
+1. The supervisor reads `udf_plugin_name` + `udf_plugin_version` from the flink config
+2. It constructs the expected local path: `/tmp/streamhouse_plugins-{name}-{version}-{ubuntu_version}.zip`
+3. If the file exists, it skips S3 and uses the local copy
+4. If the file doesn't exist, it tries S3 (and fails with 404 for unpublished UDFs)
+5. On failure, the supervisor retries with exponential backoff
+
+**Steps:**
+
+```bash
+# 1. Use a unique plugin name (append _local) to avoid conflicts
+#    In soa_config_playground/<service>/flink-kind-$USER-k8s-test.yaml:
+#      udf_plugin_name: my_udf_local
+#      udf_plugin_version: 0.0.1
+
+# 2. Deploy the cluster (supervisor will fail initial S3 download -- expected)
+make setup-kubernetes-cr
+
+# 3. Wait for supervisor pod to start
+KUBECONFIG=./k8s_itests/kubeconfig kubectl get pods -n paasta-flinks -w
+
+# 4. Download an existing compatible UDF from S3 (or package your own)
+#    The ZIP must be built for the container's Ubuntu version (check Dockerfile base image)
+aws s3 cp s3://yelp-streamhouse-plugins-dev-us-west-2/streamhouse_plugins-canary_noop-1.0.0-ubuntu_24_04.zip /tmp/my_udf.zip
+
+# 5. Copy into supervisor pod with the exact filename the supervisor expects
+SUPERVISOR_POD=$(KUBECONFIG=./k8s_itests/kubeconfig kubectl get pods -n paasta-flinks -l flink.yelp.com/container-type=supervisor -o jsonpath='{.items[0].metadata.name}')
+KUBECONFIG=./k8s_itests/kubeconfig kubectl cp /tmp/my_udf.zip paasta-flinks/$SUPERVISOR_POD:/tmp/streamhouse_plugins-my_udf_local-0.0.1-ubuntu_24_04.zip
+
+# 6. Supervisor retries automatically -- check logs for success
+KUBECONFIG=./k8s_itests/kubeconfig kubectl logs -n paasta-flinks $SUPERVISOR_POD --tail=10
+# Look for: "Job ... submitted successfully."
+
+# 7. Verify job is running
+KUBECONFIG=./k8s_itests/kubeconfig kubectl exec -n paasta-flinks <jm-pod> -- curl -s http://localhost:8081/jobs
+```
+
+**Expected filename format:** `streamhouse_plugins-{udf_plugin_name}-{udf_plugin_version}-{ubuntu_version}.zip`
+
+Where `ubuntu_version` is determined by the container's OS (check with
+`lsb_release -irs` inside the pod). For `noble_yelp` base images this is `ubuntu_24_04`.
+
+**Packaging your own UDF:** Use `streamhouse_queries/acceptance/test_utils/package_udf.sh`:
+```bash
+cd ~/source/streamhouse_queries
+bash acceptance/test_utils/package_udf.sh path/to/my_udf.py 0.0.1 /tmp/udf_output
+```
+Note: this builds for the local devbox platform (ubuntu_22_04). If the container uses a
+different Ubuntu version, either build inside the container or copy an existing ZIP from
+S3 and replace only the Python source file inside.
+
+**Timing:** The supervisor retries every few seconds with exponential backoff (starting
+at ~5s, max ~60s). The file just needs to be in place before the next retry.
+
 ### Choosing the Right IAM Role
 
 | Migration source | Role to assume | ARN |
@@ -515,10 +579,8 @@ Kind clusters don't survive devbox reboots. Recovery steps:
 
 ```bash
 cd ~/source/paasta
-rm -f k8s_itests/.create_cluster k8s_itests/.fake_cluster
-make setup-flink
-# Then re-run registry creds (if Okta session still valid, this is non-interactive):
-k8s_itests/scripts/set-paasta-registry-credentials.sh $USER-k8s-test
+make k8s_recreate_cluster   # deletes stale cluster + markers, creates fresh
+make setup-flink            # deploys operator, CRD, RBAC, CRs
 # Re-inject AWS creds and reconcile
 make setup-kubernetes-cr
 ```
