@@ -116,6 +116,10 @@ k8s_itests: .paasta/bin/activate
 k8s_fake_cluster: .tox/py310-linux | etc_paasta_playground soa_config_playground
 	make -C k8s_itests .fake_cluster
 
+.PHONY: k8s_recreate_cluster
+k8s_recreate_cluster: .tox/py310-linux | etc_paasta_playground soa_config_playground
+	make -C k8s_itests recreate_cluster
+
 .PHONY: k8s_clean
 k8s_clean: .paasta/bin/activate
 	make -C k8s_itests clean
@@ -151,6 +155,9 @@ etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py310-lin
 	.tox/py310-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
 .PHONY: generate_deployments_for_service
+# TODO: Restore `paasta_tools.cli.cli list -a` once it works without a running API/zookeeper.
+# Currently it fails with KazooTimeoutError in the playground because there's no ZK.
+# Using `find` as a workaround to enumerate services from the filesystem directly.
 generate_deployments_for_service: | soa_config_playground .tox/py310-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
