@@ -49,6 +49,11 @@ from paasta_tools.utils import parse_timestamp
 
 DEFAULT_SLACK_CHANNEL = "#deploy"
 
+REVERT_MESSAGE = (
+    "You must also revert the relevant commits in Git, or they will be redeployed on the next push.\n"
+    "See y/rollback-then-revert for more information."
+)
+
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
@@ -63,12 +68,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         epilog=(
             "This rollback command uses the Git control plane, which requires network "
             "connectivity as well as authorization to the Git repo.\n\n"
-            + PaastaColors.yellow(
-                "WARNING: You MUST manually revert changes in Git and go through the normal push process after using this command.\n"
-            )
-            + PaastaColors.yellow(
-                "WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
-            )
+            + PaastaColors.yellow(REVERT_MESSAGE)
         ),
         # we manually format the epilog to add newlines + give it an attention-grabbing color
         # re: reverting changes in Git post-rollback
@@ -276,6 +276,11 @@ def notify_rollback_slack(
         print("Warning: Failed to send rollback Slack notification")
 
 
+def _get_bounce_poll_command(service: str, deploy_group: str, commit: str) -> str:
+    # NOTE: i'm arbitrarily printing a short SHA here so that this hopefully fits on one-line for everyone regardless of font size used
+    return f"paasta wait-for-deployment --service {service} --deploy-group {deploy_group} --commit {commit[:8]}"
+
+
 def paasta_rollback(args: argparse.Namespace) -> int:
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
@@ -410,16 +415,17 @@ def paasta_rollback(args: argparse.Namespace) -> int:
             )
             returncode = 1
 
+    # let's add some visual separation between the m-f-d output (which we should maybe considering hiding?)
+    # and any additional output we'll add below
+    print()
     if performed_rollback:
+        print(PaastaColors.bold("\nSuccessfully rolled back!"))
         print(
-            PaastaColors.yellow(
-                f"WARNING: You MUST manually revert changes in Git! Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "
-            )
+            f"PaaSTA will bounce instances in {', '.join(deploy_groups)} for you in the background."
         )
-        print(
-            PaastaColors.yellow(
-                "WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
-            )
-        )
+        print("If you'd like to follow along, you can run:")
+        for deploy_group in deploy_groups:
+            print(f"\t{_get_bounce_poll_command(service, deploy_group, commit)}")
+        print("\n" + PaastaColors.yellow(REVERT_MESSAGE))
 
     return returncode
