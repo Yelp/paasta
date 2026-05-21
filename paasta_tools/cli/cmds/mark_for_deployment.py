@@ -694,6 +694,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.warn_pct = warn_pct
         self.mark_for_deployment_return_code = -1
         self.auto_certify_delay = auto_certify_delay
+        self.auto_abandon_delay = auto_abandon_delay
+        self.auto_rollback_delay = auto_rollback_delay
+        self.authors = authors
+        self.polling_interval = polling_interval
+        self.diagnosis_interval = diagnosis_interval
+        self.time_before_first_diagnosis = time_before_first_diagnosis
+        self.metrics_interface = metrics_interface
+        self.rollback_type: Optional[RollbackTypes] = None
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
