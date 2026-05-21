@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+from typing import Any
 from typing import Collection
 from typing import Dict
 from typing import Generator
@@ -33,6 +34,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.remote_git import create_rollback_tag
 from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import PaastaColors
@@ -41,8 +43,11 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
 from paasta_tools.utils import parse_timestamp
+
+DEFAULT_SLACK_CHANNEL = "#deploy"
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -240,6 +245,37 @@ def list_previous_versions(
         )
 
 
+def notify_rollback_slack(
+    service: str,
+    deploy_group: str,
+    rolled_back_from: DeploymentVersion,
+    new_version: DeploymentVersion,
+    deploy_info: Dict[str, Any],
+) -> None:
+    try:
+        slack_client = get_slack_client()
+        channels = deploy_info.get("slack_channels", [DEFAULT_SLACK_CHANNEL])
+
+        # TODO(PAASTA-16927): we don't have a way of getting the authors for a range of commits
+        # from within paasta, but ideally we'd add the author list to the deploy channel's message
+        # (and potentially DM them to let them know their changes have been rolled back by @<rollback_user>
+        # and will likely be reverted soon)
+        rollback_user = get_username()
+        message = (
+            f":rewind: *Rollback* of `{service}` in `{deploy_group}` by <@{rollback_user}>\n"
+            f"Rolled back from `{rolled_back_from.sha[:8]}` to `{new_version.sha[:8]}`\n"
+            f":warning: The rolled-back commits must also be reverted in Git, "
+            f"or they will be redeployed on the next push."
+        )
+
+        if channels:
+            slack_client.post(channels=channels, message=message)
+
+        slack_client.post_single(channel=f"@{rollback_user}", message=message)
+    except Exception:
+        print("Warning: Failed to send rollback Slack notification")
+
+
 def paasta_rollback(args: argparse.Namespace) -> int:
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
@@ -334,6 +370,13 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         # rollback than we care about if the underlying machinery was successfully able to complete the request
         if rolled_back_from != new_version:
             performed_rollback = True
+            notify_rollback_slack(
+                service=service,
+                deploy_group=deploy_group,
+                rolled_back_from=rolled_back_from,
+                new_version=new_version,
+                deploy_info=deploy_info,
+            )
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
                 "rolled_back_to": str(new_version),

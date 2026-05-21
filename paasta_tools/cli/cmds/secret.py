@@ -241,7 +241,11 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
     )
 
 
-def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True):
+def _add_common_args(
+    parser: argparse.ArgumentParser,
+    allow_shared: bool = True,
+    include_vault_args: bool = True,
+):
     # available from any subcommand
     parser.add_argument(
         "-y",
@@ -251,7 +255,8 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         default=DEFAULT_SOA_DIR,
     )
 
-    _add_vault_auth_args(parser)
+    if include_vault_args:
+        _add_vault_auth_args(parser)
 
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
@@ -275,6 +280,47 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         )
     else:
         service_group.set_defaults(shared=False)
+
+
+def add_set_namespaces_subparser(subparsers) -> None:
+    parser = subparsers.add_parser(
+        "set-namespaces",
+        help="update the extra_namespaces field of an existing secret without changing its value",
+        description=(
+            "Replaces the extra_namespaces list on an existing PaaSTA secret JSON file "
+            "without touching the encrypted secret value. No Vault authentication required. "
+            "The supplied list completely replaces any previously set namespaces — include all "
+            "namespaces you want, not just new ones. "
+            "Run from the root of your yelpsoa-configs checkout, then commit and push the "
+            "changed JSON file to apply the update."
+        ),
+    )
+    # NOTE: this sub-command is entirely local, so we don't
+    # need to clutter the help-text with vault nonsense
+    _add_common_args(parser, include_vault_args=False)
+    parser.add_argument(
+        "-n",
+        "--secret-name",
+        type=check_secret_name,
+        required=True,
+        help="The name of the secret to modify (filename without .json extension).",
+    )
+    parser.add_argument(
+        "--extra-namespaces",
+        "--namespaces",
+        required=True,
+        type=lambda v: v.split(",") if v else [],
+        help=(
+            "Comma-separated list of additional Kubernetes namespaces to sync this secret to, "
+            "beyond those derived from PaaSTA instance configs (e.g. 'mwaa,other-ns'). "
+            "If this secret is used by a PaaSTA instance, its namespace is handled automatically "
+            "and does not need to be included here. "
+            "This REPLACES the existing list — include all extra namespaces you want to keep. "
+            "Pass an empty string to remove all extra namespaces."
+        ),
+        metavar="NAMESPACES",
+        dest="extra_namespaces",
+    )
 
 
 def add_subparser(subparsers):
@@ -303,6 +349,7 @@ def add_subparser(subparsers):
     add_decrypt_subparser(secret_subparsers)
     add_update_subparser(secret_subparsers)
     add_run_subparser(secret_subparsers)
+    add_set_namespaces_subparser(secret_subparsers)
 
 
 def secret_name_for_env(secret_name):
@@ -415,7 +462,43 @@ def _update_extra_namespaces(secret_path: str, namespaces: List[str]) -> None:
         f.write("\n")
 
 
+def paasta_secret_set_namespaces(args: argparse.Namespace) -> None:
+    service = SHARED_SECRET_SERVICE if args.shared else args.service
+    soa_dir = os.getcwd()
+    secret_path = os.path.join(soa_dir, service, "secrets", f"{args.secret_name}.json")
+
+    if not os.path.isfile(secret_path):
+        print(
+            f"Secret file not found: {secret_path}\n"
+            "Ensure you are in the root of your yelpsoa-configs checkout "
+            "and the secret already exists (use 'paasta secret add' to create it)."
+        )
+        sys.exit(1)
+
+    _update_extra_namespaces(secret_path, args.extra_namespaces)
+    _log_audit(
+        action="set-namespaces-secret",
+        action_details={
+            "secret_name": args.secret_name,
+            "extra_namespaces": args.extra_namespaces,
+        },
+        service=service,
+    )
+
+    if args.extra_namespaces:
+        print(
+            f"Updated extra_namespaces for '{args.secret_name}': {args.extra_namespaces}"
+        )
+    else:
+        print(f"Cleared extra_namespaces for '{args.secret_name}'.")
+    print(f"Commit and push {secret_path} to apply the update.")
+
+
 def paasta_secret(args):
+    if args.action == "set-namespaces":
+        paasta_secret_set_namespaces(args)
+        return
+
     if args.shared:
         service = SHARED_SECRET_SERVICE
         if not args.clusters:

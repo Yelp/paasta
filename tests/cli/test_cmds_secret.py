@@ -437,3 +437,102 @@ def test_update_extra_namespaces_clear(tmp_path):
 
     data = json.loads(secret_path.read_text())
     assert "extra_namespaces" not in data
+
+
+def test_paasta_secret_set_namespaces_sets(tmp_path):
+    secret_dir = tmp_path / "mysvc" / "secrets"
+    secret_dir.mkdir(parents=True)
+    secret_file = secret_dir / "my-secret.json"
+    secret_file.write_text('{"environments": {}}')
+
+    mock_args = mock.Mock(
+        shared=False,
+        service="mysvc",
+        secret_name="my-secret",
+        extra_namespaces=["mwaa", "other-ns"],
+    )
+    with mock.patch("os.getcwd", return_value=str(tmp_path)), mock.patch(
+        "paasta_tools.cli.cmds.secret._log_audit", autospec=True
+    ) as mock_log_audit:
+        secret.paasta_secret_set_namespaces(mock_args)
+
+    data = json.loads(secret_file.read_text())
+    assert data["extra_namespaces"] == ["mwaa", "other-ns"]
+    mock_log_audit.assert_called_once_with(
+        action="set-namespaces-secret",
+        action_details={
+            "secret_name": "my-secret",
+            "extra_namespaces": ["mwaa", "other-ns"],
+        },
+        service="mysvc",
+    )
+
+
+def test_paasta_secret_set_namespaces_clears(tmp_path):
+    secret_dir = tmp_path / "mysvc" / "secrets"
+    secret_dir.mkdir(parents=True)
+    secret_file = secret_dir / "my-secret.json"
+    secret_file.write_text('{"extra_namespaces": ["old"], "environments": {}}')
+
+    mock_args = mock.Mock(
+        shared=False,
+        service="mysvc",
+        secret_name="my-secret",
+        extra_namespaces=[],
+    )
+    with mock.patch("os.getcwd", return_value=str(tmp_path)), mock.patch(
+        "paasta_tools.cli.cmds.secret._log_audit", autospec=True
+    ):
+        secret.paasta_secret_set_namespaces(mock_args)
+
+    data = json.loads(secret_file.read_text())
+    assert "extra_namespaces" not in data
+
+
+def test_paasta_secret_set_namespaces_missing_file(tmp_path):
+    secret_dir = tmp_path / "mysvc" / "secrets"
+    secret_dir.mkdir(parents=True)
+
+    mock_args = mock.Mock(
+        shared=False,
+        service="mysvc",
+        secret_name="nonexistent",
+        extra_namespaces=["mwaa"],
+    )
+    with mock.patch("os.getcwd", return_value=str(tmp_path)), raises(SystemExit):
+        secret.paasta_secret_set_namespaces(mock_args)
+
+
+def test_paasta_secret_set_namespaces_shared(tmp_path):
+    secret_dir = tmp_path / secret.SHARED_SECRET_SERVICE / "secrets"
+    secret_dir.mkdir(parents=True)
+    secret_file = secret_dir / "shared-sec.json"
+    secret_file.write_text('{"environments": {}}')
+
+    mock_args = mock.Mock(
+        shared=True,
+        service=None,
+        secret_name="shared-sec",
+        extra_namespaces=["mwaa"],
+    )
+    with mock.patch("os.getcwd", return_value=str(tmp_path)), mock.patch(
+        "paasta_tools.cli.cmds.secret._log_audit", autospec=True
+    ) as mock_log_audit:
+        secret.paasta_secret_set_namespaces(mock_args)
+
+    data = json.loads(secret_file.read_text())
+    assert data["extra_namespaces"] == ["mwaa"]
+    mock_log_audit.assert_called_once_with(
+        action="set-namespaces-secret",
+        action_details={"secret_name": "shared-sec", "extra_namespaces": ["mwaa"]},
+        service=secret.SHARED_SECRET_SERVICE,
+    )
+
+
+def test_paasta_secret_dispatches_set_namespaces():
+    with mock.patch(
+        "paasta_tools.cli.cmds.secret.paasta_secret_set_namespaces", autospec=True
+    ) as mock_handler:
+        mock_args = mock.Mock(action="set-namespaces", shared=False, service="mysvc")
+        secret.paasta_secret(mock_args)
+        mock_handler.assert_called_once_with(mock_args)

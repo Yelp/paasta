@@ -185,6 +185,9 @@ def main() -> None:
     timer = metrics_lib.system_timer(
         dimensions=dict(
             cluster=cluster,
+            secret_type=args.secret_type,
+            namespace=args.namespace or "",
+            only_extra_namespaces=args.only_extra_namespaces,
         )
     )
 
