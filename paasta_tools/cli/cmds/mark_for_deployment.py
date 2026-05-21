@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+
 import argparse
 import asyncio
 import concurrent
@@ -28,6 +29,7 @@ import socket
 import sys
 import time
 import traceback
+from enum import Enum
 from threading import Thread
 from typing import Any
 from typing import Callable
@@ -94,6 +96,13 @@ from paasta_tools.utils import get_username
 from paasta_tools.utils import ldap_user_search
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
+
+
+class DeployOutcome(Enum):
+    SUCCESS = "success"
+    TIMEOUT = "timeout"
+    CANCELLED = "cancelled"
+
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
@@ -685,14 +694,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.warn_pct = warn_pct
         self.mark_for_deployment_return_code = -1
         self.auto_certify_delay = auto_certify_delay
-        self.auto_abandon_delay = auto_abandon_delay
-        self.auto_rollback_delay = auto_rollback_delay
-        self.authors = authors
-        self.polling_interval = polling_interval
-        self.diagnosis_interval = diagnosis_interval
-        self.time_before_first_diagnosis = time_before_first_diagnosis
-        self.metrics_interface = metrics_interface
-        self.rollback_type: Optional[RollbackTypes] = None
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
@@ -819,7 +820,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def schedule_paasta_status_reminder(self) -> None:
         def waiting_on_to_status(
-            waiting_on: Mapping[str, Collection[str]]
+            waiting_on: Mapping[str, Collection[str]],
         ) -> List[str]:
             if waiting_on is None:
                 return [
@@ -1147,7 +1148,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.commit, self.image_version, None),
+                args=(self.commit, self.image_version),
                 daemon=True,
             )
             thread.start()
@@ -1201,6 +1202,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
+                # we pass in self.rollback_type to the thread instead of using self.rollback_type directly
+                # this avoids a race condition where self.rollback_type may change after the thread starts
                 args=(self.old_git_sha, self.old_image_version, self.rollback_type),
                 daemon=True,
             )
@@ -1871,7 +1874,7 @@ def _record_instance_duration(
     cluster: str,
     instance: str,
     elapsed: float,
-    outcome: str,
+    deploy_outcome: DeployOutcome,
     rollback_type: Optional[RollbackTypes] = None,
 ) -> None:
     if not metrics_interface:
@@ -1880,16 +1883,16 @@ def _record_instance_duration(
         cluster_info = kube_cluster.get(cluster, {})
         instance_timer = metrics_interface.create_timer(
             "instance_deploy_duration",
-            default_dimensions=dict(
-                paasta_service=service,
-                deploy_group=deploy_group,
-                paasta_cluster=cluster,
-                paasta_instance=instance,
-                superregion=cluster_info.get("superregion", "unknown"),
-                ecosystem=cluster_info.get("ecosystem", "unknown"),
-                outcome=outcome,
-                rollback_type=rollback_type.value if rollback_type else None,
-            ),
+            default_dimensions={
+                "paasta_service": service,
+                "deploy_group": deploy_group,
+                "paasta_cluster": cluster,
+                "paasta_instance": instance,
+                "superregion": cluster_info.get("superregion", "unknown"),
+                "ecosystem": cluster_info.get("ecosystem", "unknown"),
+                "deploy_outcome": deploy_outcome.value,
+                "rollback_type": rollback_type.value if rollback_type else "unknown",
+            },
         )
         instance_timer.record(elapsed)
     except Exception:
@@ -2015,7 +2018,7 @@ async def wait_for_deployment(
                         cluster,
                         instance,
                         elapsed,
-                        "success",
+                        DeployOutcome.SUCCESS,
                         rollback_type,
                     )
                     finished_instances += 1
@@ -2036,7 +2039,7 @@ async def wait_for_deployment(
                             cluster,
                             instance,
                             elapsed,
-                            "timeout",
+                            DeployOutcome.TIMEOUT,
                             rollback_type,
                         )
                 _log(
@@ -2064,7 +2067,7 @@ async def wait_for_deployment(
                             cluster,
                             instance,
                             elapsed,
-                            "cancelled",
+                            DeployOutcome.CANCELLED,
                             rollback_type,
                         )
                 # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
