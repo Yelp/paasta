@@ -419,7 +419,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     # and any additional output we'll add below
     print()
     if performed_rollback:
-        print(PaastaColors.bold("\nSuccessfully rolled back!"))
+        print(PaastaColors.bold("\nSuccessfully initiated rollback!"))
         print(
             f"PaaSTA will bounce instances in {', '.join(deploy_groups)} for you in the background."
         )
