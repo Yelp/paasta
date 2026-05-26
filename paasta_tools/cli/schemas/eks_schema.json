@@ -197,6 +197,11 @@
                 "deploy_group": {
                     "type": "string"
                 },
+                "cost_owner": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                    "maxLength": 63
+                },
                 "bounce_overprovision_factor": {
                     "type": "number",
                     "minimum": 0.25,

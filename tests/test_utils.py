@@ -2075,6 +2075,22 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
+    def test_get_cost_owner(self):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"cost_owner": "compute-infra-batch"},
+            branch_dict=None,
+        )
+        assert fake_conf.get_cost_owner() == "compute-infra-batch"
+
+    def test_get_cost_owner_default(self):
+        fake_conf = utils.InstanceConfig(
+            service="", cluster="", instance="", config_dict={}, branch_dict=None
+        )
+        assert fake_conf.get_cost_owner() is None
+
     def test_get_pool(self):
         pool = "poolname"
         fake_conf = utils.InstanceConfig(
@@ -3021,3 +3037,15 @@ class TestGetDefaultBounceOverprovisionFactor:
             directory="/fake/dir",
         )
         assert config.get_bounce_overprovision_factor() == 1.0
+
+
+def test_SystemPaastaConfig_get_enable_cost_owner_label_default():
+    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
+    assert fake_config.get_enable_cost_owner_label() is False
+
+
+def test_SystemPaastaConfig_get_enable_cost_owner_label_enabled():
+    fake_config = utils.SystemPaastaConfig(
+        {"enable_cost_owner_label": True}, "/some/fake/dir"
+    )
+    assert fake_config.get_enable_cost_owner_label() is True

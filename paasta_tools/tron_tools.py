@@ -828,6 +828,9 @@ class TronJobConfig:
         action_deploy_group = action_dict.setdefault(
             "deploy_group", self.get_deploy_group()
         )
+        job_cost_owner = self.config_dict.get("cost_owner")
+        if job_cost_owner:
+            action_dict.setdefault("cost_owner", job_cost_owner)
         if action_service and action_deploy_group and self.load_deployments:
             try:
                 deployments_json = load_v2_deployments_json(
@@ -1073,6 +1076,11 @@ def format_tron_action_dict(action_config: TronActionConfig):
         }
 
         result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
+
+        if system_paasta_config.get_enable_cost_owner_label():
+            cost_owner = action_config.get_cost_owner()
+            if cost_owner:
+                result["labels"]["yelp.com/cost_owner"] = cost_owner
 
         if (
             action_config.get_iam_role_provider() == "aws"

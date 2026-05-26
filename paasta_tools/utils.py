@@ -358,6 +358,7 @@ class InstanceConfigDict(TypedDict, total=False):
     service: str
     uses_bulkdata: bool
     docker_url: str
+    cost_owner: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -955,6 +956,9 @@ class InstanceConfig:
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on."""
         return self.config_dict.get("role")
+
+    def get_cost_owner(self) -> Optional[str]:
+        return self.config_dict.get("cost_owner")
 
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
@@ -2018,6 +2022,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
+    enable_cost_owner_label: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
     readonly_docker_registry_auth_file: str
@@ -2762,6 +2767,9 @@ class SystemPaastaConfig:
 
     def get_enable_tron_tsc(self) -> bool:
         return self.config_dict.get("enable_tron_tsc", True)
+
+    def get_enable_cost_owner_label(self) -> bool:
+        return self.config_dict.get("enable_cost_owner_label", False)
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)

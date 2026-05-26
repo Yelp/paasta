@@ -1941,3 +1941,100 @@ def test_validate_flink_monitoring_team_missing_monitoring():
         return_value=mock_config,
     ):
         assert validate_flink_monitoring_team("/fake/service/path") is False
+
+
+@pytest.mark.parametrize(
+    "cost_owner,expected,instance_type",
+    [
+        ("data-eng", True, "eks"),
+        ("compute-infra-batch", True, "eks"),
+        ("a", True, "eks"),
+        ("a1b2c3", True, "eks"),
+        # invalid: uppercase
+        ("Data-Eng", False, "eks"),
+        # invalid: starts with hyphen
+        ("-data-eng", False, "eks"),
+        # invalid: ends with hyphen
+        ("data-eng-", False, "eks"),
+        # invalid: contains underscore
+        ("data_eng", False, "eks"),
+        # invalid: exceeds 63 characters
+        ("a" * 64, False, "eks"),
+        # valid: exactly 63 characters
+        ("a" * 63, True, "eks"),
+    ],
+)
+def test_cost_owner_schema_validation_eks(cost_owner, expected, instance_type, capsys):
+    instance_content = f"""
+test_instance:
+  cost_owner: {cost_owner}
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = instance_content
+        assert validate_schema("unused_service_path.yaml", instance_type) == expected
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        output, _ = capsys.readouterr()
+        assert expected_output in output
+
+
+@pytest.mark.parametrize(
+    "cost_owner,expected",
+    [
+        ("data-eng", True),
+        ("compute-infra-batch", True),
+        # invalid: uppercase
+        ("Data-Eng", False),
+        # invalid: starts with hyphen
+        ("-data-eng", False),
+        # invalid: exceeds 63 characters
+        ("a" * 64, False),
+    ],
+)
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_cost_owner_schema_validation_tron_job(
+    mock_get_file_contents, cost_owner, expected, capsys
+):
+    tron_content = f"""
+test_job:
+  node: batch_box
+  schedule: "daily 04:00:00"
+  cost_owner: {cost_owner}
+  actions:
+    first:
+      command: echo hello world
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert validate_schema("unused_service_path.yaml", "tron") == expected
+    expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+    output, _ = capsys.readouterr()
+    assert expected_output in output
+
+
+@pytest.mark.parametrize(
+    "cost_owner,expected",
+    [
+        ("ml-team", True),
+        # invalid: uppercase
+        ("ML-Team", False),
+    ],
+)
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_cost_owner_schema_validation_tron_action(
+    mock_get_file_contents, cost_owner, expected, capsys
+):
+    tron_content = f"""
+test_job:
+  node: batch_box
+  schedule: "daily 04:00:00"
+  actions:
+    first:
+      command: echo hello world
+      cost_owner: {cost_owner}
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert validate_schema("unused_service_path.yaml", "tron") == expected
+    expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+    output, _ = capsys.readouterr()
+    assert expected_output in output

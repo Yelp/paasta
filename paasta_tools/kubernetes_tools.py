@@ -385,6 +385,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
+        "yelp.com/cost_owner": str,
         "paasta.yelp.com/managed": str,
         "elbv2.k8s.aws/pod-readiness-gate-inject": str,
     },
@@ -2496,6 +2497,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
+
+        if system_paasta_config.get_enable_cost_owner_label():
+            cost_owner = self.get_cost_owner()
+            if cost_owner:
+                labels["yelp.com/cost_owner"] = cost_owner
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
