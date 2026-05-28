@@ -1276,7 +1276,7 @@ Various PaaSTA utilities look at the following keys from service.yaml
  * ``description``
  * ``external_link``
  * ``docker_registry`` This is optional. Set this to override the `system-wide docker registry <system_configs.html#configuration-options>`_, and specify an alternate docker registry for your service.
- * ``cost_owner`` A string identifying the team responsible for the cost of this service. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost attribution. Must match the pattern ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`` and be at most 63 characters. Can be overridden per-instance in EKS configs or per-job/action in Tron configs.
+ * ``cost_owner`` A string identifying the team responsible for the cost of this service. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost attribution. Must match the pattern ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`` and be at most 63 characters. Can be overridden per-instance in instance configs or per-job/action in Tron configs.
 
 Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------
