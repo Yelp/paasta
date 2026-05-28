@@ -1970,9 +1970,10 @@ test_instance:
   cost_owner: {cost_owner}
 """
     with patch(
-        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+        "paasta_tools.cli.cmds.validate.get_file_contents",
+        return_value=instance_content,
+        autospec=True
     ) as mock_get_file_contents:
-        mock_get_file_contents.return_value = instance_content
         assert validate_schema("unused_service_path.yaml", instance_type) == expected
         expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
         output, _ = capsys.readouterr()
