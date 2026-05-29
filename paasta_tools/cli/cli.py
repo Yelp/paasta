@@ -128,6 +128,7 @@ PAASTA_SUBCOMMANDS = {
     "stop": "start_stop_restart",
     "restart": "start_stop_restart",
     "status": "status",
+    "tui": "tui",
     "validate": "validate",
     "wait-for-deployment": "wait_for_deployment",
 }
