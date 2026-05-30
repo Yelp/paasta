@@ -13,6 +13,7 @@ from textual.widgets import Static
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.data.models import ClusterInfo
 from paasta_tools.cli.cmds.tui.screens.instances import InstancesScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
 from paasta_tools.monitoring_tools import get_runbook
@@ -101,7 +102,7 @@ class ClusterScreen(Screen):
         )
         return table
 
-    def _populate(self, clusters: list, header: Table) -> None:
+    def _populate(self, clusters: list[ClusterInfo], header: Table) -> None:
         self.query_one(LoadingIndicator).display = False
         self.query_one("#service-info-block", Static).update(header)
         table = self.query_one(FilterableTable)

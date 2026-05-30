@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from textual import work
@@ -12,6 +13,7 @@ from textual.widgets import LoadingIndicator
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.data.models import InstanceInfo
 from paasta_tools.cli.cmds.tui.screens.describe import DescribeScreen
 from paasta_tools.cli.cmds.tui.screens.logs import LogsScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
@@ -90,8 +92,6 @@ class InstancesScreen(Screen):
         table.query_one("DataTable").focus()
 
     def _load_statuses(self, names: list[str], worker) -> None:
-        from concurrent.futures import ThreadPoolExecutor
-
         client = self._fetcher._get_client_for_cluster(self._cluster)
         if client is None:
             return
@@ -109,7 +109,7 @@ class InstancesScreen(Screen):
                 if result is not None and not worker.is_cancelled:
                     self.app.call_from_thread(self._update_row, result)
 
-    def _update_row(self, inst) -> None:
+    def _update_row(self, inst: InstanceInfo) -> None:
         table = self.query_one(FilterableTable)
         color = STATE_COLORS.get(inst.state, "white")
         state_display = f"[{color}]{inst.state}[/{color}]"

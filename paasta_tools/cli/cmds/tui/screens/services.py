@@ -11,6 +11,7 @@ from textual.widgets import LoadingIndicator
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.data.models import ServiceInfo
 from paasta_tools.cli.cmds.tui.screens.clusters import ClusterScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
 from paasta_tools.monitoring_tools import monitoring_defaults
@@ -57,7 +58,7 @@ class ServicesScreen(Screen):
         if not worker.is_cancelled:
             self.app.call_from_thread(self._populate_table, services)
 
-    def _populate_table(self, services: list) -> None:
+    def _populate_table(self, services: list[ServiceInfo]) -> None:
         self.query_one(LoadingIndicator).display = False
         table = self.query_one(FilterableTable)
         table.display = True
