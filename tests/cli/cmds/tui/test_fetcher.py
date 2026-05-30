@@ -3,14 +3,20 @@ from unittest import mock
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
 from paasta_tools.cli.cmds.tui.data.models import ClusterInfo
 from paasta_tools.cli.cmds.tui.data.models import InstanceInfo
-from paasta_tools.cli.cmds.tui.data.models import ServiceInfo
 
 
 @mock.patch("os.path.isdir", autospec=True, return_value=True)
 @mock.patch(
+    "paasta_tools.cli.cmds.tui.data.fetcher.read_service_configuration", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.tui.data.fetcher.get_runbook", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.tui.data.fetcher.get_team", autospec=True)
+@mock.patch(
     "paasta_tools.cli.cmds.tui.data.fetcher.paasta_list_services", autospec=True
 )
-def test_get_all_services(mock_list_services, mock_isdir):
+def test_get_all_services(
+    mock_list_services, mock_get_team, mock_get_runbook, mock_read_config, mock_isdir
+):
     mock_list_services.return_value = [
         "zservice",
         "aservice",
@@ -18,13 +24,19 @@ def test_get_all_services(mock_list_services, mock_isdir):
         "_internal",
         "mservice",
     ]
+    mock_read_config.return_value = {
+        "description": "A service",
+        "external_link": "http://x",
+    }
+    mock_get_team.return_value = "myteam"
+    mock_get_runbook.return_value = "y/rb"
     fetcher = PaastaDataFetcher(system_config=mock.MagicMock())
     services = fetcher.get_all_services()
-    assert services == [
-        ServiceInfo(name="aservice"),
-        ServiceInfo(name="mservice"),
-        ServiceInfo(name="zservice"),
-    ]
+    assert len(services) == 3
+    assert services[0].name == "aservice"
+    assert services[0].description == "A service"
+    assert services[0].team == "myteam"
+    assert services[0].runbook == "y/rb"
 
 
 @mock.patch(

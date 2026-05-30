@@ -50,7 +50,7 @@ class FilterableTable(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("", id="filter-status")
         yield Input(placeholder="Type to filter...", id="filter-input")
-        yield DataTable(cursor_type="row")
+        yield DataTable(cursor_type="row", zebra_stripes=True)
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)

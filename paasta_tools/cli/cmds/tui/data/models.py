@@ -10,6 +10,11 @@ class ClusterInfo:
 @dataclass(frozen=True)
 class ServiceInfo:
     name: str
+    description: str
+    team: str
+    runbook: str
+    external_link: str
+    git_repo: str
 
 
 @dataclass(frozen=True)

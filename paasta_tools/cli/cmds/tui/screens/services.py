@@ -13,6 +13,7 @@ from textual.worker import get_current_worker
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
 from paasta_tools.cli.cmds.tui.screens.clusters import ClusterScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
+from paasta_tools.monitoring_tools import monitoring_defaults
 
 if TYPE_CHECKING:
     from paasta_tools.cli.cmds.tui.app import PaastaApp
@@ -31,7 +32,13 @@ class ServicesScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LoadingIndicator()
-        yield FilterableTable("Service", id="services-table")
+        yield FilterableTable(
+            "Service",
+            "Description",
+            "Team",
+            "Runbook",
+            id="services-table",
+        )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -54,7 +61,25 @@ class ServicesScreen(Screen):
         self.query_one(LoadingIndicator).display = False
         table = self.query_one(FilterableTable)
         table.display = True
-        table.set_rows([(s.name,) for s in services])
+
+        def cap(val: str | None, limit: int = 25) -> str:
+            if not val:
+                return ""
+            return val[:limit] + "..." if len(val) > limit else val
+
+        table.set_rows(
+            [
+                (
+                    s.name,
+                    cap(s.description, 50),
+                    cap(s.team, 30),
+                    cap(s.runbook, 30)
+                    if s.runbook and s.runbook != monitoring_defaults("runbook")
+                    else "",
+                )
+                for s in services
+            ]
+        )
         table.query_one("DataTable").focus()
 
     def _show_error(self, error: str) -> None:

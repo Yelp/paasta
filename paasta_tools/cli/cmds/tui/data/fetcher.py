@@ -5,11 +5,14 @@ from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.cmds.tui.data.models import ClusterInfo
 from paasta_tools.cli.cmds.tui.data.models import InstanceInfo
 from paasta_tools.cli.cmds.tui.data.models import ServiceInfo
+from paasta_tools.monitoring_tools import get_runbook
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import list_clusters as paasta_list_clusters
 from paasta_tools.utils import list_services as paasta_list_services
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import read_service_configuration
 
 
 class PaastaDataFetcher:
@@ -24,13 +27,29 @@ class PaastaDataFetcher:
 
     def get_all_services(self) -> list[ServiceInfo]:
         soa_dir = DEFAULT_SOA_DIR
-        services = [
+        names = [
             name
             for name in paasta_list_services(soa_dir=soa_dir)
             if not name.startswith((".", "_"))
             and os.path.isdir(os.path.join(soa_dir, name))
         ]
-        return [ServiceInfo(name=name) for name in sorted(services)]
+        results = []
+        for name in sorted(names):
+            try:
+                config = read_service_configuration(name, soa_dir)
+            except Exception:
+                config = {}
+            results.append(
+                ServiceInfo(
+                    name=name,
+                    description=config.get("description", ""),
+                    team=get_team(service=name, overrides={}, soa_dir=soa_dir),
+                    runbook=get_runbook(service=name, overrides={}, soa_dir=soa_dir),
+                    external_link=config.get("external_link", ""),
+                    git_repo=config.get("git_url", ""),
+                )
+            )
+        return results
 
     def get_clusters_for_service(self, service: str) -> list[ClusterInfo]:
         endpoints = self.system_config.get_api_endpoints()

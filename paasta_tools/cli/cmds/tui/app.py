@@ -32,6 +32,8 @@ class PaastaApp(App):
     }
     FilterableTable {
         height: 1fr;
+        border: round $primary;
+        padding: 0 1;
     }
     """
 
