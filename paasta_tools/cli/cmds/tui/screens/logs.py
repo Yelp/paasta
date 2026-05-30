@@ -9,10 +9,10 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Footer
-from textual.widgets import RichLog
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.widgets.searchable_log import SearchableLog
 
 if TYPE_CHECKING:
     from paasta_tools.cli.cmds.tui.app import PaastaApp
@@ -22,12 +22,6 @@ class LogsScreen(Screen):
     BINDINGS = [
         Binding("escape", "go_back", "Back"),
         Binding("q", "quit", "Quit"),
-        Binding("j", "scroll_down", "Down", show=False),
-        Binding("k", "scroll_up", "Up", show=False),
-        Binding("g", "scroll_top", "Top", show=False),
-        Binding("G", "scroll_bottom", "Bottom", show=False, key_display="shift+g"),
-        Binding("d", "scroll_half_down", show=False),
-        Binding("u", "scroll_half_up", show=False),
     ]
 
     def __init__(
@@ -45,7 +39,7 @@ class LogsScreen(Screen):
         self._process: subprocess.Popen | None = None
 
     def compose(self) -> ComposeResult:
-        yield RichLog(highlight=False, markup=False, wrap=True, id="logs-output")
+        yield SearchableLog(id="logs-view")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -80,30 +74,7 @@ class LogsScreen(Screen):
             self._process = None
 
     def _append_line(self, line: str) -> None:
-        log = self.query_one(RichLog)
-        log.write(Text.from_ansi(line))
-
-    def action_scroll_down(self) -> None:
-        self.query_one(RichLog).scroll_relative(y=1)
-
-    def action_scroll_up(self) -> None:
-        self.query_one(RichLog).scroll_relative(y=-1)
-
-    def action_scroll_top(self) -> None:
-        self.query_one(RichLog).scroll_home()
-
-    def action_scroll_bottom(self) -> None:
-        self.query_one(RichLog).scroll_end()
-
-    def action_scroll_half_down(self) -> None:
-        self.query_one(RichLog).scroll_relative(
-            y=self.query_one(RichLog).size.height // 2
-        )
-
-    def action_scroll_half_up(self) -> None:
-        self.query_one(RichLog).scroll_relative(
-            y=-(self.query_one(RichLog).size.height // 2)
-        )
+        self.query_one(SearchableLog).write_line(Text.from_ansi(line))
 
     def action_go_back(self) -> None:
         if self._process:
