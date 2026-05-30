@@ -3,12 +3,13 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
-from paasta_tools.cli.cmds.tui.screens.clusters import ClusterScreen
+from paasta_tools.cli.cmds.tui.screens.services import ServicesScreen
 from paasta_tools.cli.cmds.tui.widgets.breadcrumb import Breadcrumb
 
 
 class PaastaApp(App):
     TITLE = "PaaSTA TUI"
+    theme = "textual-dark"
     CSS = """
     Screen {
         layout: vertical;
@@ -50,5 +51,5 @@ class PaastaApp(App):
         return self.query_one(Breadcrumb)
 
     def on_mount(self) -> None:
-        self.breadcrumb.push("Clusters")
-        self.push_screen(ClusterScreen(self._fetcher))
+        self.breadcrumb.push("Services")
+        self.push_screen(ServicesScreen(self._fetcher))

@@ -43,6 +43,8 @@ class FilterableTable(Vertical):
             "open_filter",
         ):
             return False
+        if not self._filtering and action == "close_filter":
+            return False
         return True
 
     def compose(self) -> ComposeResult:
@@ -107,8 +109,6 @@ class FilterableTable(Vertical):
             self.query_one("#filter-status", Static).display = False
             self._apply_filter()
             self.query_one(DataTable).focus()
-        else:
-            self.screen.dismiss()
 
     @on(Input.Submitted, "#filter-input")
     def on_filter_submitted(self, event: Input.Submitted) -> None:

@@ -11,6 +11,7 @@ from textual.widgets import LoadingIndicator
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.screens.clusters import ClusterScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
 
 if TYPE_CHECKING:
@@ -19,16 +20,14 @@ if TYPE_CHECKING:
 
 class ServicesScreen(Screen):
     BINDINGS = [
-        Binding("escape", "go_back", "Back"),
         Binding("q", "quit", "Quit"),
         Binding("r", "refresh", "Refresh"),
         Binding("question_mark", "help", "Help"),
     ]
 
-    def __init__(self, fetcher: PaastaDataFetcher, cluster: str) -> None:
+    def __init__(self, fetcher: PaastaDataFetcher) -> None:
         super().__init__()
         self._fetcher = fetcher
-        self._cluster = cluster
 
     def compose(self) -> ComposeResult:
         yield LoadingIndicator()
@@ -43,7 +42,7 @@ class ServicesScreen(Screen):
     def load_services(self) -> None:
         worker = get_current_worker()
         try:
-            services = self._fetcher.get_services(self._cluster)
+            services = self._fetcher.get_all_services()
         except Exception as e:
             if not worker.is_cancelled:
                 self.app.call_from_thread(self._show_error, str(e))
@@ -62,10 +61,13 @@ class ServicesScreen(Screen):
         self.query_one(LoadingIndicator).display = False
         self.notify(f"Error loading services: {error}", severity="error")
 
-    def action_go_back(self) -> None:
+    def on_filterable_table_row_selected(
+        self, event: FilterableTable.RowSelected
+    ) -> None:
+        service_name = event.row_key
         app: PaastaApp = self.app  # type: ignore[assignment]
-        app.breadcrumb.pop()
-        app.pop_screen()
+        app.breadcrumb.push(service_name)
+        app.push_screen(ClusterScreen(self._fetcher, service_name))
 
     def action_refresh(self) -> None:
         self.query_one(LoadingIndicator).display = True
@@ -74,6 +76,6 @@ class ServicesScreen(Screen):
 
     def action_help(self) -> None:
         self.notify(
-            "Enter: select | /: filter | Esc: back | r: refresh | q: quit",
+            "Enter: select | /: filter | r: refresh | q: quit",
             timeout=5,
         )

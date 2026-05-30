@@ -11,6 +11,7 @@ from textual.widgets import LoadingIndicator
 from textual.worker import get_current_worker
 
 from paasta_tools.cli.cmds.tui.data.fetcher import PaastaDataFetcher
+from paasta_tools.cli.cmds.tui.screens.instances import InstancesScreen
 from paasta_tools.cli.cmds.tui.widgets.filterable_table import FilterableTable
 
 if TYPE_CHECKING:
@@ -19,14 +20,16 @@ if TYPE_CHECKING:
 
 class ClusterScreen(Screen):
     BINDINGS = [
+        Binding("escape", "go_back", "Back"),
         Binding("q", "quit", "Quit"),
         Binding("r", "refresh", "Refresh"),
         Binding("question_mark", "help", "Help"),
     ]
 
-    def __init__(self, fetcher: PaastaDataFetcher) -> None:
+    def __init__(self, fetcher: PaastaDataFetcher, service: str) -> None:
         super().__init__()
         self._fetcher = fetcher
+        self._service = service
 
     def compose(self) -> ComposeResult:
         yield LoadingIndicator()
@@ -41,7 +44,7 @@ class ClusterScreen(Screen):
     def load_clusters(self) -> None:
         worker = get_current_worker()
         try:
-            clusters = self._fetcher.get_clusters()
+            clusters = self._fetcher.get_clusters_for_service(self._service)
         except Exception as e:
             if not worker.is_cancelled:
                 self.app.call_from_thread(self._show_error, str(e))
@@ -63,12 +66,15 @@ class ClusterScreen(Screen):
     def on_filterable_table_row_selected(
         self, event: FilterableTable.RowSelected
     ) -> None:
-        from paasta_tools.cli.cmds.tui.screens.services import ServicesScreen
-
         cluster_name = event.row_key
         app: PaastaApp = self.app  # type: ignore[assignment]
         app.breadcrumb.push(cluster_name)
-        app.push_screen(ServicesScreen(self._fetcher, cluster_name))
+        app.push_screen(InstancesScreen(self._fetcher, cluster_name, self._service))
+
+    def action_go_back(self) -> None:
+        app: PaastaApp = self.app  # type: ignore[assignment]
+        app.breadcrumb.pop()
+        app.pop_screen()
 
     def action_refresh(self) -> None:
         self.query_one(LoadingIndicator).display = True

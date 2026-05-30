@@ -18,18 +18,18 @@ class Breadcrumb(Static):
 
     def push(self, label: str) -> None:
         self._parts.append(label)
-        self._render()
+        self._refresh_label()
 
     def pop(self) -> None:
         if self._parts:
             self._parts.pop()
-        self._render()
+        self._refresh_label()
 
     def reset(self) -> None:
         self._parts.clear()
-        self._render()
+        self._refresh_label()
 
-    def _render(self) -> None:
+    def _refresh_label(self) -> None:
         if self._parts:
             self.update(" > ".join(self._parts))
         else:
