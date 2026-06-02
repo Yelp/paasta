@@ -98,6 +98,7 @@ from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
+from kubernetes.client import V1PriorityClass
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ReplicaSet
@@ -457,6 +458,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     datastore_credentials: DatastoreCredentialsConfig
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
+    preemptible: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -632,6 +634,7 @@ class KubeClient:
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
+        self.scheduling = kube_client.SchedulingV1Api(self.api_client)
 
         self.request = self.api_client.request
         # This function is used by the k8s client to serialize OpenAPI objects
@@ -2323,6 +2326,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def should_enable_aws_lb_readiness_gate(self) -> bool:
         return self.config_dict.get("enable_aws_lb_readiness_gate", False)
 
+    def is_preemptible(self) -> bool:
+        return self.config_dict.get("preemptible", False)
+
+    def get_preemptible_priority_class_name(self) -> str:
+        return f"preemptible--{get_kubernetes_app_name(self.get_service(), self.get_instance())}"
+
     def get_pod_template_spec(
         self,
         git_sha: str,
@@ -2381,6 +2390,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
+
+        if self.is_preemptible():
+            pod_spec_kwargs[
+                "priority_class_name"
+            ] = self.get_preemptible_priority_class_name()
+
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
         node_affinity = self.get_node_affinity(
@@ -4528,6 +4543,45 @@ def ensure_service_account(
             kube_client.rbac.create_namespaced_role_binding(
                 namespace=namespace, body=role_binding
             )
+
+
+def ensure_priority_class(
+    name: str,
+    value: int,
+    preemption_policy: str,
+    kube_client: KubeClient,
+) -> None:
+    priority_class = V1PriorityClass(
+        metadata=V1ObjectMeta(name=name),
+        value=value,
+        preemption_policy=preemption_policy,
+        global_default=False,
+    )
+    try:
+        existing = kube_client.scheduling.read_priority_class(name=name)
+    except ApiException as e:
+        if e.status == 404:
+            existing = None
+        else:
+            raise
+
+    if existing is None:
+        try:
+            kube_client.scheduling.create_priority_class(body=priority_class)
+            log.info(f"Created PriorityClass {name}")
+        except ApiException as e:
+            if e.status == 409:
+                log.warning(
+                    f"Got HTTP 409 when creating PriorityClass {name}; it must already exist. Continuing."
+                )
+            else:
+                raise
+    elif existing.value != value or existing.preemption_policy != preemption_policy:
+        kube_client.scheduling.delete_priority_class(name=name)
+        kube_client.scheduling.create_priority_class(body=priority_class)
+        log.info(f"Recreated PriorityClass {name} (value is immutable)")
+    else:
+        log.debug(f"PriorityClass {name} is up to date")
 
 
 def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:

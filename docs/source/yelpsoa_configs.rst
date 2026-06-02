@@ -645,6 +645,10 @@ instance MAY have:
   * ``enable_aws_lb_readiness_gate``: A boolean indicating whether to enable injecting AWS Load Balancer readiness gates for this instance. Defaults to ``false``.
     This is only applicable to a very small subset of services at Yelp - please chat with #paasta before enabling this.
 
+  * ``preemptible``: A boolean indicating whether this instance should run at low priority and be freely evictable.
+    Defaults to ``false``. When ``true``, a PriorityClass with value -1000 and ``preemptionPolicy: PreemptLowerPriority``
+    is created, and the PodDisruptionBudget is set to ``maxUnavailable: 100%`` so the pods can always be evicted.
+
   * ``iam_role``: The IAM role to be used by this service. If not specified, no IAM role will be used for Pod Identity.
 
   * ``boto_keys``: A list of boto_cfg keys to be made available in the container's environment. Use of this option is discouraged in favor of using IAM roles, but it is still necessary for some legacy services.

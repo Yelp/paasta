@@ -859,6 +859,10 @@
                 "enable_aws_lb_readiness_gate": {
                     "type": "boolean"
                 },
+                "preemptible": {
+                    "type": "boolean",
+                    "default": false
+                },
                 "lifecycle": {
                     "type": "object",
                     "properties": {

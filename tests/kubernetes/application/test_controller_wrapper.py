@@ -331,3 +331,87 @@ def test_job_wrapper_deep_delete():
         "mock_namespace",
         body=V1DeleteOptions(propagation_policy="Foreground"),
     )
+    mock_client.scheduling.delete_priority_class.assert_called_once_with(
+        name="preemptible--mock_job",
+        body=V1DeleteOptions(),
+    )
+
+
+def test_ensure_pod_disruption_budget_preemptible(
+    mock_pdr_for_service_instance,
+    mock_load_system_paasta_config,
+):
+    mock_req_pdr = mock.Mock()
+    mock_pdr_for_service_instance.return_value = mock_req_pdr
+
+    mock_client = mock.MagicMock()
+    mock_client.policy.read_namespaced_pod_disruption_budget.side_effect = ApiException(
+        status=404
+    )
+
+    app = mock.MagicMock()
+    app.soa_config.is_preemptible.return_value = True
+    app.soa_config.config_dict = {"preemptible": True}
+    Application.ensure_pod_disruption_budget(
+        self=app, kube_client=mock_client, namespace="paasta"
+    )
+    mock_pdr_for_service_instance.assert_called_once_with(
+        service=app.kube_deployment.service,
+        instance=app.kube_deployment.instance,
+        max_unavailable="100%",
+        namespace="paasta",
+        unhealthy_pod_eviction_policy=mock_load_system_paasta_config.return_value.get_unhealthy_pod_eviction_policy.return_value,
+    )
+
+
+@mock.patch(
+    "paasta_tools.kubernetes.application.controller_wrappers.ensure_priority_class",
+    autospec=True,
+)
+def test_ensure_preemptible_priority_class_when_preemptible(mock_ensure_pc):
+    mock_client = mock.MagicMock()
+    app = mock.MagicMock()
+    app.soa_config.is_preemptible.return_value = True
+    app.soa_config.get_preemptible_priority_class_name.return_value = (
+        "preemptible--fake--service-fake--instance"
+    )
+    Application.ensure_preemptible_priority_class(self=app, kube_client=mock_client)
+    mock_ensure_pc.assert_called_once_with(
+        name="preemptible--fake--service-fake--instance",
+        value=-1000,
+        preemption_policy="PreemptLowerPriority",
+        kube_client=mock_client,
+    )
+
+
+@mock.patch(
+    "paasta_tools.kubernetes.application.controller_wrappers.ensure_priority_class",
+    autospec=True,
+)
+def test_ensure_preemptible_priority_class_when_not_preemptible(mock_ensure_pc):
+    mock_client = mock.MagicMock()
+    app = mock.MagicMock()
+    app.soa_config.is_preemptible.return_value = False
+    Application.ensure_preemptible_priority_class(self=app, kube_client=mock_client)
+    mock_ensure_pc.assert_not_called()
+    app.delete_priority_class.assert_called_once_with(mock_client)
+
+
+def test_delete_priority_class_success():
+    mock_client = mock.MagicMock()
+    app = mock.MagicMock()
+    app.item.metadata.name = "fake--service-fake--instance"
+    Application.delete_priority_class(self=app, kube_client=mock_client)
+    mock_client.scheduling.delete_priority_class.assert_called_once_with(
+        name="preemptible--fake--service-fake--instance",
+        body=V1DeleteOptions(),
+    )
+
+
+def test_delete_priority_class_not_found():
+    mock_client = mock.MagicMock()
+    mock_client.scheduling.delete_priority_class.side_effect = ApiException(status=404)
+    app = mock.MagicMock()
+    app.item.metadata.name = "fake--service-fake--instance"
+    Application.delete_priority_class(self=app, kube_client=mock_client)
+    app.logging.debug.assert_called_once()

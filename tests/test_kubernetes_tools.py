@@ -107,6 +107,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace_limits
+from paasta_tools.kubernetes_tools import ensure_priority_class
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
@@ -4242,6 +4243,107 @@ def test_create_pod_disruption_budget():
     create_pod_disruption_budget(mock_client, mock_pdr, mock_namespace)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
         namespace="paasta", body=mock_pdr
+    )
+
+
+def test_ensure_priority_class_creates_when_not_exists():
+    mock_client = mock.Mock()
+    mock_client.scheduling.read_priority_class.side_effect = ApiException(status=404)
+    ensure_priority_class(
+        name="preemptible--my--service-my--instance",
+        value=-1000,
+        preemption_policy="PreemptLowerPriority",
+        kube_client=mock_client,
+    )
+    mock_client.scheduling.create_priority_class.assert_called_once()
+    body = mock_client.scheduling.create_priority_class.call_args[1]["body"]
+    assert body.metadata.name == "preemptible--my--service-my--instance"
+    assert body.value == -1000
+    assert body.preemption_policy == "PreemptLowerPriority"
+    assert body.global_default is False
+
+
+def test_ensure_priority_class_recreates_when_value_differs():
+    mock_client = mock.Mock()
+    existing = mock.Mock()
+    existing.value = -500
+    existing.preemption_policy = "PreemptLowerPriority"
+    mock_client.scheduling.read_priority_class.return_value = existing
+    ensure_priority_class(
+        name="preemptible--my--service-my--instance",
+        value=-1000,
+        preemption_policy="PreemptLowerPriority",
+        kube_client=mock_client,
+    )
+    mock_client.scheduling.delete_priority_class.assert_called_once_with(
+        name="preemptible--my--service-my--instance"
+    )
+    mock_client.scheduling.create_priority_class.assert_called_once()
+    body = mock_client.scheduling.create_priority_class.call_args[1]["body"]
+    assert body.value == -1000
+
+
+def test_ensure_priority_class_handles_409_on_create():
+    mock_client = mock.Mock()
+    mock_client.scheduling.read_priority_class.side_effect = ApiException(status=404)
+    mock_client.scheduling.create_priority_class.side_effect = ApiException(status=409)
+    ensure_priority_class(
+        name="preemptible--my--service-my--instance",
+        value=-1000,
+        preemption_policy="PreemptLowerPriority",
+        kube_client=mock_client,
+    )
+
+
+def test_ensure_priority_class_noop_when_up_to_date():
+    mock_client = mock.Mock()
+    existing = mock.Mock()
+    existing.value = -1000
+    existing.preemption_policy = "PreemptLowerPriority"
+    mock_client.scheduling.read_priority_class.return_value = existing
+    ensure_priority_class(
+        name="preemptible--my--service-my--instance",
+        value=-1000,
+        preemption_policy="PreemptLowerPriority",
+        kube_client=mock_client,
+    )
+    mock_client.scheduling.create_priority_class.assert_not_called()
+    mock_client.scheduling.patch_priority_class.assert_not_called()
+
+
+def test_is_preemptible_default():
+    config = KubernetesDeploymentConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={},
+        branch_dict=None,
+    )
+    assert config.is_preemptible() is False
+
+
+def test_is_preemptible_true():
+    config = KubernetesDeploymentConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={"preemptible": True},
+        branch_dict=None,
+    )
+    assert config.is_preemptible() is True
+
+
+def test_get_preemptible_priority_class_name():
+    config = KubernetesDeploymentConfig(
+        service="my_service",
+        cluster="cluster",
+        instance="my_instance",
+        config_dict={},
+        branch_dict=None,
+    )
+    assert (
+        config.get_preemptible_priority_class_name()
+        == "preemptible--my--service-my--instance"
     )
 
 

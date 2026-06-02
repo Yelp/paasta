@@ -21,6 +21,7 @@ from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import ensure_priority_class
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -131,6 +132,7 @@ class Application(ABC):
         :param kube_client:
         """
         self.ensure_service_account(kube_client)
+        self.ensure_preemptible_priority_class(kube_client)
 
     def ensure_service_account(self, kube_client: KubeClient) -> None:
         """
@@ -143,6 +145,32 @@ class Application(ABC):
                 namespace=self.soa_config.get_namespace(),
                 kube_client=kube_client,
             )
+
+    def ensure_preemptible_priority_class(self, kube_client: KubeClient) -> None:
+        if self.soa_config.is_preemptible():
+            ensure_priority_class(
+                name=self.soa_config.get_preemptible_priority_class_name(),
+                value=-1000,
+                preemption_policy="PreemptLowerPriority",
+                kube_client=kube_client,
+            )
+        else:
+            self.delete_priority_class(kube_client)
+
+    def delete_priority_class(self, kube_client: KubeClient) -> None:
+        name = f"preemptible--{self.item.metadata.name}"
+        try:
+            kube_client.scheduling.delete_priority_class(
+                name=name,
+                body=V1DeleteOptions(),
+            )
+        except ApiException as e:
+            if e.status == 404:
+                self.logging.debug(f"not deleting nonexistent priorityclass/{name}")
+            else:
+                raise
+        else:
+            self.logging.info(f"deleted priorityclass/{name}")
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
@@ -176,7 +204,9 @@ class Application(ABC):
 
         system_paasta_config = load_system_paasta_config()
 
-        if "bounce_margin_factor" in self.soa_config.config_dict:
+        if self.soa_config.is_preemptible():
+            max_unavailable = "100%"
+        elif "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (
                 f"{int((1 - self.soa_config.get_bounce_margin_factor()) * 100)}%"
             )
@@ -283,6 +313,7 @@ class DeploymentWrapper(Application):
             )
         self.delete_pod_disruption_budget(kube_client)
         self.delete_horizontal_pod_autoscaler(kube_client)
+        self.delete_priority_class(kube_client)
 
     def get_existing_app(self, kube_client: KubeClient):
         return kube_client.deployments.read_namespaced_deployment(
@@ -433,6 +464,7 @@ class StatefulSetWrapper(Application):
                 )
             )
         self.delete_pod_disruption_budget(kube_client)
+        self.delete_priority_class(kube_client)
 
     def create(self, kube_client: KubeClient):
         create_stateful_set(
@@ -487,6 +519,7 @@ class JobWrapper(Application):
                     self.item.metadata.namespace,
                 )
             )
+        self.delete_priority_class(kube_client)
 
     def create(self, kube_client: KubeClient):
         """Create and start Kubernetes Job"""
