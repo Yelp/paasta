@@ -461,7 +461,7 @@ def create_instance_uwsgi_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-            {ready_pods} - max_over_time(count({load_per_instance}) by (kube_deployment)[30s:]),
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -545,7 +545,7 @@ def create_instance_uwsgi_v2_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-            {ready_pods} - max_over_time(count({load_per_instance}) by (kube_deployment)[30s:]),
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -617,7 +617,7 @@ def create_instance_worker_load_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - max_over_time(count({load_per_instance}) by (kube_deployment)[30s:]),
+        {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -777,7 +777,7 @@ def create_instance_piscina_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - max_over_time(count({load_per_instance}) by (kube_deployment)[30s:]),
+        {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -877,7 +877,7 @@ def create_instance_gunicorn_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - max_over_time(count({load_per_instance}) by (kube_deployment)[30s:]),
+        {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
