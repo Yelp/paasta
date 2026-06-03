@@ -6118,6 +6118,10 @@ def test_delete_pod_by_name_no_pods():
 
 class TestCostOwnerLabel:
     @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         autospec=True,
     )
@@ -6150,6 +6154,7 @@ class TestCostOwnerLabel:
         mock_get_volumes,
         mock_get_kubernetes_containers,
         mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = False
@@ -6163,6 +6168,7 @@ class TestCostOwnerLabel:
         mock_system_paasta_config.get_pod_defaults.return_value = {}
         mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
         mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
         deployment = KubernetesDeploymentConfig(
             service="myservice",
@@ -6179,6 +6185,10 @@ class TestCostOwnerLabel:
         )
         assert ret.metadata.labels["yelp.com/cost_owner"] == "compute-infra-batch"
 
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         autospec=True,
@@ -6212,6 +6222,7 @@ class TestCostOwnerLabel:
         mock_get_volumes,
         mock_get_kubernetes_containers,
         mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = False
@@ -6225,6 +6236,7 @@ class TestCostOwnerLabel:
         mock_system_paasta_config.get_pod_defaults.return_value = {}
         mock_system_paasta_config.get_enable_cost_owner_label.return_value = False
         mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
         deployment = KubernetesDeploymentConfig(
             service="myservice",
@@ -6241,6 +6253,10 @@ class TestCostOwnerLabel:
         )
         assert "yelp.com/cost_owner" not in ret.metadata.labels
 
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config",
         autospec=True,
@@ -6274,6 +6290,7 @@ class TestCostOwnerLabel:
         mock_get_volumes,
         mock_get_kubernetes_containers,
         mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = False
@@ -6287,6 +6304,7 @@ class TestCostOwnerLabel:
         mock_system_paasta_config.get_pod_defaults.return_value = {}
         mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
         mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
         deployment = KubernetesDeploymentConfig(
             service="myservice",
