@@ -65,7 +65,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD_V2
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -239,14 +238,6 @@ def create_instance_scaling_rule(
         )
     if metrics_provider_config["type"] == METRICS_PROVIDER_WORKER_LOAD:
         return create_instance_worker_load_scaling_rule(
-            service,
-            instance_config,
-            metrics_provider_config,
-            paasta_cluster,
-            metric_name,
-        )
-    if metrics_provider_config["type"] == METRICS_PROVIDER_WORKER_LOAD_V2:
-        return create_instance_worker_load_v2_scaling_rule(
             service,
             instance_config,
             metrics_provider_config,
@@ -598,18 +589,30 @@ def create_instance_worker_load_scaling_rule(
     # This makes sure that desired_instances includes load from all namespaces.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
 
-    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
-    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
-    # deployment.
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
+    if paasta_cluster.endswith("-devc"):
+        ksm_filter_terms = f"kubernetes_cluster='{paasta_cluster}'"
+        ready_pods = f"""
+            sum by (kube_deployment) (
+                label_replace(label_replace(label_replace(
+                    kube_pod_status_ready{{condition="true",{ksm_filter_terms}}}
+                    * on (pod, kubernetes_cluster, namespace) group_left (label_paasta_yelp_com_instance, label_paasta_yelp_com_service)
+                    kube_pod_labels{{label_paasta_yelp_com_service="{service}",label_paasta_yelp_com_instance="{instance}",{ksm_filter_terms}}}
+                    * on (label_paasta_yelp_com_instance, label_paasta_yelp_com_service, kubernetes_cluster, namespace) group_left (deployment)
+                    kube_deployment_labels{{label_paasta_yelp_com_instance!="",label_paasta_yelp_com_service!="",namespace=~"(paasta|paastasvc-.*)",{ksm_filter_terms}}},
+                    "paasta_instance", "$1", "label_paasta_yelp_com_instance", "(.*)"),
+                    "paasta_service", "$1", "label_paasta_yelp_com_service", "(.*)"),
+                    "kube_deployment", "$1", "deployment", "(.*)"))
+        """
+    else:
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
     load_per_instance = f"""
         avg(
             worker_busy{{{worker_filter_terms}}}
@@ -618,75 +621,6 @@ def create_instance_worker_load_scaling_rule(
     missing_instances = f"""
         clamp_min(
         {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
-        )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
-    total_load_smoothed = f"""
-        avg_over_time(
-            (
-                {total_load}
-            )[{moving_average_window}s:]
-        )
-    """
-
-    return {
-        "name": {"as": metric_name},
-        "seriesQuery": f"worker_busy{{{worker_filter_terms}}}",
-        "resources": {"template": "kube_<<.Resource>>"},
-        "metricsQuery": _minify_promql(total_load_smoothed),
-    }
-
-
-def create_instance_worker_load_v2_scaling_rule(
-    service: str,
-    instance_config: KubernetesDeploymentConfig,
-    metrics_provider_config: MetricsProviderDict,
-    paasta_cluster: str,
-    metric_name: str,
-) -> PrometheusAdapterRule:
-    """
-    Creates a Prometheus adapter rule using raw KSM metrics instead of a recording rule
-    for pod readiness. This eliminates timing mismatches between the recording rule and
-    raw worker_busy metrics that can cause phantom load during scale-down.
-    """
-    instance = instance_config.instance
-    moving_average_window = metrics_provider_config.get(
-        "moving_average_window_seconds",
-        DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-    )
-
-    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    ksm_filter_terms = f"kubernetes_cluster='{paasta_cluster}'"
-
-    ready_pods = f"""
-        sum by (kube_deployment) (
-            label_replace(label_replace(label_replace(
-                kube_pod_status_ready{{condition="true",{ksm_filter_terms}}}
-                * on (pod, kubernetes_cluster, namespace) group_left (label_paasta_yelp_com_instance, label_paasta_yelp_com_service)
-                kube_pod_labels{{label_paasta_yelp_com_service="{service}",label_paasta_yelp_com_instance="{instance}",{ksm_filter_terms}}}
-                * on (label_paasta_yelp_com_instance, label_paasta_yelp_com_service, kubernetes_cluster, namespace) group_left (deployment)
-                kube_deployment_labels{{label_paasta_yelp_com_instance!="",label_paasta_yelp_com_service!="",namespace=~"(paasta|paastasvc-.*)",{ksm_filter_terms}}},
-                "paasta_instance", "$1", "label_paasta_yelp_com_instance", "(.*)"),
-                "paasta_service", "$1", "label_paasta_yelp_com_service", "(.*)"),
-                "kube_deployment", "$1", "deployment", "(.*)"))
-    """
-    load_per_instance = f"""
-        avg(
-            worker_busy{{{worker_filter_terms}}}
-        ) by (kube_pod, kube_deployment)
-    """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
