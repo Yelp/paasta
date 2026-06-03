@@ -28,6 +28,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
             "dockercfg_location": "/mock/dockercfg",
             "spark_k8s_role": "spark",
             "enable_tron_tsc": True,
+            "enable_cost_owner_label": True,
         }
     ),
     "/mock/system/configs",
@@ -2290,6 +2291,8 @@ fake_job:
 
 
 class TestCostOwnerLabel:
+    # autospec=None is used here because we're passing a pre-configured Mock as the
+    # new value rather than letting patch create one with autospec constraints.
     @pytest.fixture(autouse=True)
     def mock_read_monitoring_config(self):
         with mock.patch(
@@ -2358,61 +2361,42 @@ class TestCostOwnerLabel:
         actions = job_config.get_actions()
         assert actions[0].get_cost_owner() == "ml-team"
 
-    def test_cost_owner_label_in_format_tron_action_dict_when_enabled(self):
-        action_dict = {
-            "command": "echo hello",
-            "service": "my_service",
-            "deploy_group": "prod",
-            "executor": "paasta",
-            "cost_owner": "data-eng",
-        }
-        branch_dict = {
-            "docker_image": "my_service:paasta-123abcde",
-            "git_sha": "aabbcc44",
-            "desired_state": "start",
-            "force_bounce": None,
-        }
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            config_dict=action_dict,
-            branch_dict=branch_dict,
+    @mock.patch(
+        "paasta_tools.tron_tools.read_service_configuration",
+        autospec=True,
+        return_value={"cost_owner": "platform-eng"},
+    )
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    )
+    def test_cost_owner_inherited_from_service_yaml(
+        self, mock_load_system_paasta_config, mock_read_service_config
+    ):
+        job_config = tron_tools.TronJobConfig(
+            name="my_job",
+            config_dict={
+                "node": "paasta",
+                "schedule": "daily 04:00:00",
+                "service": "my_service",
+                "deploy_group": "prod",
+                "monitoring": {"team": "noop"},
+                "actions": {
+                    "do_something": {
+                        "command": "echo hello",
+                    },
+                },
+            },
             cluster="test-cluster",
+            load_deployments=False,
+            soa_dir="/mock/soa",
         )
-        mock_system_config = utils.SystemPaastaConfig(
-            utils.SystemPaastaConfigDict(
-                {
-                    "docker_registry": "mock_registry",
-                    "volumes": [],
-                    "dockercfg_location": "/mock/dockercfg",
-                    "enable_cost_owner_label": True,
-                    "enable_tron_tsc": True,
-                }
-            ),
-            "/mock/system/configs",
-        )
-        with mock.patch.object(
-            action_config,
-            "get_docker_registry",
-            return_value="docker-registry.com:400",
-        ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config",
-            autospec=True,
-            return_value=mock_system_config,
-        ), mock.patch(
-            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
-            autospec=True,
-            return_value=[],
-        ):
-            result = tron_tools.format_tron_action_dict(action_config)
+        actions = job_config.get_actions()
+        assert actions[0].get_cost_owner() == "platform-eng"
+        mock_read_service_config.assert_called_with("my_service", soa_dir="/mock/soa")
 
-        assert result["labels"]["yelp.com/cost_owner"] == "data-eng"
-
-    def test_cost_owner_label_absent_when_gate_disabled(self):
+    def test_cost_owner_label_in_format_tron_action_dict(self):
         action_dict = {
             "command": "echo hello",
             "service": "my_service",
@@ -2452,6 +2436,60 @@ class TestCostOwnerLabel:
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
+        assert result["labels"]["yelp.com/cost_owner"] == "data-eng"
+
+    def test_cost_owner_label_absent_when_gate_disabled(self):
+        mock_system_config_disabled = utils.SystemPaastaConfig(
+            utils.SystemPaastaConfigDict(
+                {
+                    "docker_registry": "mock_registry",
+                    "volumes": [],
+                    "dockercfg_location": "/mock/dockercfg",
+                    "enable_cost_owner_label": False,
+                    "enable_tron_tsc": True,
+                }
+            ),
+            "/mock/system/configs",
+        )
+        action_dict = {
+            "command": "echo hello",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "paasta",
+            "cost_owner": "data-eng",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+        with mock.patch.object(
+            action_config,
+            "get_docker_registry",
+            return_value="docker-registry.com:400",
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=mock_system_config_disabled,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
+
         assert "yelp.com/cost_owner" not in result["labels"]
 
     def test_cost_owner_label_absent_when_not_configured(self):
@@ -2474,18 +2512,6 @@ class TestCostOwnerLabel:
             branch_dict=branch_dict,
             cluster="test-cluster",
         )
-        mock_system_config = utils.SystemPaastaConfig(
-            utils.SystemPaastaConfigDict(
-                {
-                    "docker_registry": "mock_registry",
-                    "volumes": [],
-                    "dockercfg_location": "/mock/dockercfg",
-                    "enable_cost_owner_label": True,
-                    "enable_tron_tsc": True,
-                }
-            ),
-            "/mock/system/configs",
-        )
         with mock.patch.object(
             action_config,
             "get_docker_registry",
@@ -2497,7 +2523,7 @@ class TestCostOwnerLabel:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
-            return_value=mock_system_config,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ), mock.patch(
             "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
             autospec=True,

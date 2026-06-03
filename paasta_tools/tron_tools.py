@@ -28,6 +28,7 @@ from typing import cast
 
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
+from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import SparkConfBuilder
 from service_configuration_lib.spark_config import get_total_driver_memory_mb
@@ -829,6 +830,11 @@ class TronJobConfig:
             "deploy_group", self.get_deploy_group()
         )
         job_cost_owner = self.config_dict.get("cost_owner")
+        if not job_cost_owner and self.get_service():
+            service_config = read_service_configuration(
+                self.get_service(), soa_dir=self.soa_dir
+            )
+            job_cost_owner = service_config.get("cost_owner")
         if job_cost_owner:
             action_dict.setdefault("cost_owner", job_cost_owner)
         if action_service and action_deploy_group and self.load_deployments:
