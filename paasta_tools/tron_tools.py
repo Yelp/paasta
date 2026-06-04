@@ -732,6 +732,9 @@ class TronActionConfig(InstanceConfig):
         return projected_volumes if projected_volumes else None
 
 
+_cached_read_service_configuration = time_cache(ttl=5)(read_service_configuration)
+
+
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
@@ -824,17 +827,21 @@ class TronJobConfig:
     def get_expected_runtime(self):
         return self.config_dict.get("expected_runtime")
 
+    def get_cost_owner(self) -> Optional[str]:
+        cost_owner = self.config_dict.get("cost_owner")
+        if not cost_owner and self.get_service():
+            service_config = _cached_read_service_configuration(
+                self.get_service(), soa_dir=self.soa_dir
+            )
+            cost_owner = service_config.get("cost_owner")
+        return cost_owner
+
     def _get_action_config(self, action_name, action_dict) -> TronActionConfig:
         action_service = action_dict.setdefault("service", self.get_service())
         action_deploy_group = action_dict.setdefault(
             "deploy_group", self.get_deploy_group()
         )
-        job_cost_owner = self.config_dict.get("cost_owner")
-        if not job_cost_owner and self.get_service():
-            service_config = read_service_configuration(
-                self.get_service(), soa_dir=self.soa_dir
-            )
-            job_cost_owner = service_config.get("cost_owner")
+        job_cost_owner = self.get_cost_owner()
         if job_cost_owner:
             action_dict.setdefault("cost_owner", job_cost_owner)
         if action_service and action_deploy_group and self.load_deployments:

@@ -2291,16 +2291,14 @@ fake_job:
 
 
 class TestCostOwnerLabel:
-    # autospec=None is used here because we're passing a pre-configured Mock as the
-    # new value rather than letting patch create one with autospec constraints.
     @pytest.fixture(autouse=True)
     def mock_read_monitoring_config(self):
         with mock.patch(
             "paasta_tools.monitoring_tools.read_monitoring_config",
-            mock.Mock(return_value={"team": "default_team"}),
-            autospec=None,
-        ) as f:
-            yield f
+            return_value={"team": "default_team"},
+            autospec=True,
+        ):
+            yield
 
     @mock.patch(
         "paasta_tools.tron_tools.load_system_paasta_config",
@@ -2362,7 +2360,7 @@ class TestCostOwnerLabel:
         assert actions[0].get_cost_owner() == "ml-team"
 
     @mock.patch(
-        "paasta_tools.tron_tools.read_service_configuration",
+        "paasta_tools.tron_tools._cached_read_service_configuration",
         autospec=True,
         return_value={"cost_owner": "platform-eng"},
     )
