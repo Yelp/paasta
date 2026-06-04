@@ -125,14 +125,7 @@ class InstancesScreen(Screen):
             inst.git_sha,
             error_display,
         )
-        rows = list(table._all_rows)
-        for i, row in enumerate(rows):
-            if row[0] == inst.name:
-                rows[i] = new_row
-                break
-        else:
-            rows.append(new_row)
-        table.set_rows(rows)
+        table.update_row(inst.name, new_row)
 
     def _show_error(self, error: str) -> None:
         self.query_one(LoadingIndicator).display = False

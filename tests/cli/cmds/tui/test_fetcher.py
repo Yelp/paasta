@@ -125,6 +125,30 @@ def test_get_instances_bouncing(mock_get_client):
 @mock.patch(
     "paasta_tools.cli.cmds.tui.data.fetcher.get_paasta_oapi_client", autospec=True
 )
+def test_get_instances_flink_none_git_sha(mock_get_client):
+    mock_client = mock.MagicMock()
+    mock_client.service.list_instances.return_value = {"instances": ["flink-job"]}
+    mock_client.service.status_instance.return_value = {
+        "flink": {"status": "running"},
+        "desired_state": "start",
+        "git_sha": None,
+    }
+    mock_get_client.return_value = mock_client
+
+    mock_config = mock.MagicMock()
+    fetcher = PaastaDataFetcher(system_config=mock_config)
+    instances = fetcher.get_instances("prod", "myservice")
+
+    assert len(instances) == 1
+    assert instances[0].name == "flink-job"
+    assert instances[0].instance_type == "flink"
+    assert instances[0].git_sha == ""
+    assert instances[0].state == "start"
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.tui.data.fetcher.get_paasta_oapi_client", autospec=True
+)
 def test_get_instances_with_error(mock_get_client):
     mock_client = mock.MagicMock()
     mock_client.service.list_instances.return_value = {"instances": ["web"]}

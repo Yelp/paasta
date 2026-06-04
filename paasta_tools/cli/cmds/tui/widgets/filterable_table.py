@@ -6,9 +6,16 @@ from textual.message import Message
 from textual.widgets import DataTable
 from textual.widgets import Input
 from textual.widgets import Static
+from textual.widgets._data_table import ColumnKey
 
 
 class FilterableTable(Vertical):
+    DEFAULT_CSS = """
+    FilterableTable DataTable {
+        height: 1fr;
+    }
+    """
+
     BINDINGS = [
         Binding("slash", "open_filter", "Filter", show=True),
         Binding("escape", "close_filter", "Back", show=False),
@@ -31,6 +38,7 @@ class FilterableTable(Vertical):
     ) -> None:
         super().__init__(id=id)
         self._columns = columns
+        self._column_keys: list[ColumnKey] = []
         self._all_rows: list[tuple[str, ...]] = []
         self._filtering = False
 
@@ -54,7 +62,7 @@ class FilterableTable(Vertical):
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
-        table.add_columns(*self._columns)
+        self._column_keys = table.add_columns(*self._columns)
         filter_input = self.query_one("#filter-input", Input)
         filter_input.display = False
         self.query_one("#filter-status", Static).display = False
@@ -62,6 +70,24 @@ class FilterableTable(Vertical):
     def set_rows(self, rows: list[tuple[str, ...]]) -> None:
         self._all_rows = rows
         self._apply_filter()
+
+    def update_row(self, row_key: str, values: tuple[str, ...]) -> None:
+        for i, row in enumerate(self._all_rows):
+            if row[0] == row_key:
+                self._all_rows[i] = values
+                break
+        else:
+            self._all_rows.append(values)
+            return
+        table = self.query_one(DataTable)
+        if row_key in table._row_locations:
+            for col_key, val in zip(self._column_keys[1:], values[1:]):
+                table.update_cell(row_key, col_key, val, update_width=True)
+        else:
+            filter_input = self.query_one("#filter-input", Input)
+            filter_text = filter_input.value.lower()
+            if not filter_text or any(filter_text in cell.lower() for cell in values):
+                table.add_row(*values, key=row_key)
 
     def _apply_filter(self) -> None:
         table = self.query_one(DataTable)

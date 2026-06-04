@@ -151,7 +151,7 @@ class PaastaDataFetcher:
                 state=raw_state,
                 ready=0,
                 desired=0,
-                git_sha=status.get("git_sha", "")[:8],
+                git_sha=(status.get("git_sha") or "")[:8],
                 num_versions=0,
                 error="",
             )
