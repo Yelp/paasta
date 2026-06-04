@@ -1,3 +1,18 @@
+paasta-tools (1.51.3) jammy; urgency=medium
+
+  * 1.51.3 tagged with 'make release'
+    Commit: Improve `paasta rollback` output (#4325)  This generally
+    does 4 things: * Adds some much needed spacing between messages :p *
+    Makes it very explict that the rollback succeeded     * + makes it
+    clear that the rollback will happen in the background * Provides a
+    way to check if the rollback is done (we should maybe just   do this
+    automatically in the future) * Makes the Git revert reminder match
+    internal messaging  I will probably obviate the wait-for-deployment
+    messaging by having `paasta rollback` automatically do that for you
+    ...but for now i wanted to keep this to just small text tweaks :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Jun 2026 09:34:29 -0700
+
 paasta-tools (1.51.2) jammy; urgency=medium
 
   * 1.51.2 tagged with 'make release'
