@@ -28,7 +28,6 @@ from typing import cast
 
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
-from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import SparkConfBuilder
 from service_configuration_lib.spark_config import get_total_driver_memory_mb
@@ -77,6 +76,7 @@ from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TronSecretVolume
+from paasta_tools.utils import cached_read_service_configuration
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -732,9 +732,6 @@ class TronActionConfig(InstanceConfig):
         return projected_volumes if projected_volumes else None
 
 
-_cached_read_service_configuration = time_cache(ttl=5)(read_service_configuration)
-
-
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
@@ -830,7 +827,7 @@ class TronJobConfig:
     def get_cost_owner(self) -> Optional[str]:
         cost_owner = self.config_dict.get("cost_owner")
         if not cost_owner and self.get_service():
-            service_config = _cached_read_service_configuration(
+            service_config = cached_read_service_configuration(
                 self.get_service(), soa_dir=self.soa_dir
             )
             cost_owner = service_config.get("cost_owner")

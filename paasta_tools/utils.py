@@ -230,6 +230,10 @@ class time_cache:
         return cache
 
 
+# Avoid re-reading service.yaml when multiple callers need it in quick succession.
+cached_read_service_configuration = time_cache(ttl=5)(read_service_configuration)
+
+
 _SortDictsT = TypeVar("_SortDictsT", bound=Mapping)
 
 

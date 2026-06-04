@@ -2360,7 +2360,7 @@ class TestCostOwnerLabel:
         assert actions[0].get_cost_owner() == "ml-team"
 
     @mock.patch(
-        "paasta_tools.tron_tools._cached_read_service_configuration",
+        "paasta_tools.tron_tools.cached_read_service_configuration",
         autospec=True,
         return_value={"cost_owner": "platform-eng"},
     )
