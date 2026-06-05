@@ -179,6 +179,107 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 
 
 @patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.check_if_instance_is_done",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
+def test_paasta_mark_for_deployment_succeeds_when_already_deployed_and_healthy(
+    mock_list_remote_refs,
+    mock_load_system_paasta_config,
+    mock_list_deploy_groups,
+    mock_get_currently_deployed_version,
+    mock_validate_service_name,
+    mock_get_instance_configs,
+    mock_check_if_instance_is_done,
+):
+    """When version already matches and all instances are healthy, return 0 early
+    without entering the state machine."""
+
+    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+
+    mock_instance_config = mock.Mock()
+    mock_instance_config.get_instance.return_value = "main"
+    mock_get_instance_configs.return_value = {"fake_cluster": [mock_instance_config]}
+    mock_check_if_instance_is_done.return_value = True
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        FakeArgs.commit, FakeArgs.image_version
+    )
+
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
+    assert ret == 0
+    mock_check_if_instance_is_done.assert_called_once_with(
+        service="test_service",
+        instance="main",
+        cluster="fake_cluster",
+        version=DeploymentVersion(FakeArgs.commit, FakeArgs.image_version),
+        instance_config=mock_instance_config,
+    )
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.check_if_instance_is_done",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
+def test_paasta_mark_for_deployment_fails_when_already_deployed_and_unhealthy(
+    mock_list_remote_refs,
+    mock_load_system_paasta_config,
+    mock_list_deploy_groups,
+    mock_get_currently_deployed_version,
+    mock_validate_service_name,
+    mock_get_instance_configs,
+    mock_check_if_instance_is_done,
+):
+    """When version already matches but instances are NOT healthy, return 1 to
+    block the pipeline from proceeding to the next deploy group."""
+
+    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+
+    mock_instance_config = mock.Mock()
+    mock_instance_config.get_instance.return_value = "main"
+    mock_get_instance_configs.return_value = {"fake_cluster": [mock_instance_config]}
+    mock_check_if_instance_is_done.return_value = False
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        FakeArgs.commit, FakeArgs.image_version
+    )
+
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
+    assert ret == 1
+
+
+@patch(
     "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.run_timeout",
     new=1.0,
     autospec=False,

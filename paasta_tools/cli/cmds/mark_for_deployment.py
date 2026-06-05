@@ -496,14 +496,45 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     deployment_version = DeploymentVersion(commit, args.image_version)
 
     old_deployment_version = get_currently_deployed_version(
-        service=service, deploy_group=deploy_group
+        service=service, deploy_group=deploy_group, soa_dir=args.soa_dir
     )
     if deployment_version == old_deployment_version:
         print(
-            "Warning: The image asked to be deployed already matches what is set to be deployed:"
+            "Warning: The image asked to be deployed already matches "
+            f"what is set to be deployed in deploy group {deploy_group}:"
         )
-        print(deployment_version)
-        print("Continuing anyway.")
+        print(f"  {deployment_version}")
+        print("Checking if all instances are healthy before proceeding...")
+        instance_configs_per_cluster = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, args.soa_dir
+            )
+        )
+        instance_health = [
+            check_if_instance_is_done(
+                service=service,
+                instance=instance_config.get_instance(),
+                cluster=cluster,
+                version=deployment_version,
+                instance_config=instance_config,
+            )
+            for cluster, instance_configs in instance_configs_per_cluster.items()
+            for instance_config in instance_configs
+        ]
+        all_healthy = all(instance_health)
+        if all_healthy:
+            print(
+                "All instances are healthy at this version. "
+                "Safe to proceed to the next deploy group."
+            )
+            return 0
+        else:
+            print(
+                "Error: Not all instances are healthy for this version. "
+                "A previous deploy may have failed or timed out. "
+                "Not safe to proceed to the next deploy group."
+            )
+            return 1
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(
