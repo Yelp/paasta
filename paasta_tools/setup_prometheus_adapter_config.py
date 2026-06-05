@@ -68,6 +68,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -589,7 +590,10 @@ def create_instance_worker_load_scaling_rule(
     # This makes sure that desired_instances includes load from all namespaces.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
 
-    if paasta_cluster.endswith("-devc"):
+    paasta_system_config = load_system_paasta_config()
+    use_raw_metric = paasta_system_config.get_use_raw_metric()
+
+    if use_raw_metric:
         ksm_filter_terms = f"kubernetes_cluster='{paasta_cluster}'"
         ready_pods = f"""
             sum by (kube_deployment) (

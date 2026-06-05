@@ -2016,6 +2016,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     uses_bulkdata_default: bool
+    use_raw_metric: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     default_spark_iam_user: str
@@ -2819,6 +2820,9 @@ class SystemPaastaConfig:
         Defaults to IfHealthyBudget
         """
         return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
+
+    def get_use_raw_metric(self) -> bool:
+        return self.config_dict.get("use_raw_metric", False)
 
 
 def _run(
