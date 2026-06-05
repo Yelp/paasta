@@ -76,6 +76,7 @@ from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TronSecretVolume
+from paasta_tools.utils import cached_read_service_configuration
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -823,11 +824,23 @@ class TronJobConfig:
     def get_expected_runtime(self):
         return self.config_dict.get("expected_runtime")
 
+    def get_cost_owner(self) -> Optional[str]:
+        cost_owner = self.config_dict.get("cost_owner")
+        if not cost_owner and self.get_service():
+            service_config = cached_read_service_configuration(
+                self.get_service(), soa_dir=self.soa_dir
+            )
+            cost_owner = service_config.get("cost_owner")
+        return cost_owner
+
     def _get_action_config(self, action_name, action_dict) -> TronActionConfig:
         action_service = action_dict.setdefault("service", self.get_service())
         action_deploy_group = action_dict.setdefault(
             "deploy_group", self.get_deploy_group()
         )
+        job_cost_owner = self.get_cost_owner()
+        if job_cost_owner:
+            action_dict.setdefault("cost_owner", job_cost_owner)
         if action_service and action_deploy_group and self.load_deployments:
             try:
                 deployments_json = load_v2_deployments_json(
@@ -1073,6 +1086,11 @@ def format_tron_action_dict(action_config: TronActionConfig):
         }
 
         result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
+
+        if system_paasta_config.get_enable_cost_owner_label():
+            cost_owner = action_config.get_cost_owner()
+            if cost_owner:
+                result["labels"]["yelp.com/cost_owner"] = cost_owner
 
         if (
             action_config.get_iam_role_provider() == "aws"
