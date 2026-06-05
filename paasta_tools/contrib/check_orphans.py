@@ -213,25 +213,57 @@ def get_instance_data(
     return zk_instance_data_filtered, nerve_instance_data
 
 
+def exceeds_percentage_threshold(
+    count: int,
+    service: str,
+    zk_count_by_service: Dict[str, int],
+    threshold: float,
+) -> bool:
+    """Return True if count/total >= threshold%, logging when suppressed."""
+    total = zk_count_by_service[service]
+    ratio = count / total * 100
+    if ratio >= threshold:
+        return True
+    logger.info(
+        f"Ignoring {count} issue(s) for {service} "
+        f"({ratio:.1f}% < {threshold}% threshold, "
+        f"{total} total ZK registrations)"
+    )
+    return False
+
+
 def check_orphans(
     zk_instance_data: Set[InstanceTuple],
     nerve_instance_data: Set[InstanceTuple],
     check_orphans: bool,
     check_collisions: bool,
+    percentage_threshold: float = 0.0,
 ) -> ExitCode:
 
+    zk_count_by_service: Dict[str, int] = defaultdict(int)
+    if percentage_threshold > 0:
+        for inst in zk_instance_data:
+            zk_count_by_service[inst.service] += 1
+
     if check_collisions:
-        # collisions
         instance_by_addr: DefaultDict[Tuple[str, int], Set[str]] = defaultdict(set)
         for nerve_inst in nerve_instance_data:
             instance_by_addr[(nerve_inst.host, nerve_inst.port)].add(nerve_inst.service)
-        collisions: List[str] = []
+
+        collisions_by_service: DefaultDict[str, List[str]] = defaultdict(list)
         for zk_inst in zk_instance_data:
             nerve_services = instance_by_addr[(zk_inst.host, zk_inst.port)]
             if len(nerve_services) >= 1 and zk_inst.service not in nerve_services:
-                collisions.append(
+                collisions_by_service[zk_inst.service].append(
                     f"[{zk_inst.host}:{zk_inst.port}] {zk_inst.service} collides with {nerve_services}"
                 )
+
+        collisions: List[str] = []
+        for svc, svc_collisions in collisions_by_service.items():
+            if percentage_threshold == 0 or exceeds_percentage_threshold(
+                len(svc_collisions), svc, zk_count_by_service, percentage_threshold
+            ):
+                collisions.extend(svc_collisions)
 
         if collisions:
             logger.warning("Collisions found! Traffic is being misrouted!")
@@ -241,8 +273,20 @@ def check_orphans(
             logger.info(
                 f"No collisions found out of {len(zk_instance_data)} service registrations seen."
             )
+
     if check_orphans:
-        orphans = zk_instance_data - nerve_instance_data
+        all_orphans = zk_instance_data - nerve_instance_data
+
+        orphans_by_service: DefaultDict[str, List[InstanceTuple]] = defaultdict(list)
+        for orphan in all_orphans:
+            orphans_by_service[orphan.service].append(orphan)
+
+        orphans: Set[InstanceTuple] = set()
+        for svc, svc_orphans in orphans_by_service.items():
+            if percentage_threshold == 0 or exceeds_percentage_threshold(
+                len(svc_orphans), svc, zk_count_by_service, percentage_threshold
+            ):
+                orphans.update(svc_orphans)
 
         # groupby host
         orphans_by_host: DefaultDict[str, List[Tuple[int, str]]] = defaultdict(list)
@@ -284,6 +328,17 @@ def main() -> ExitCode:
         action="store_true",
         help="Skip checking orphans",
     )
+    parser.add_argument(
+        "--percentage-threshold",
+        default=0.0,
+        type=float,
+        metavar="PCT",
+        help=(
+            "Only alert on orphans/collisions for a service if the affected registrations "
+            "represent at least PCT%% of that service's total ZK registrations. "
+            "0 (default) disables the threshold and alerts on any issue."
+        ),
+    )
     args = parser.parse_args()
 
     if args.no_check_collisions and args.no_check_orphans:
@@ -299,6 +354,7 @@ def main() -> ExitCode:
         nerve_instance_data,
         check_orphans=not args.no_check_orphans,
         check_collisions=not args.no_check_collisions,
+        percentage_threshold=args.percentage_threshold,
     )
 
 
