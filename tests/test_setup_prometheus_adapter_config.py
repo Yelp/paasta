@@ -170,7 +170,14 @@ def test_create_instance_uwsgi_v2_scaling_rule() -> None:
     assert rule["name"]["as"].endswith("-uwsgi-v2-prom")
 
 
-def test_create_instance_worker_load_scaling_rule() -> None:
+@mock.patch(
+    "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+    autospec=True,
+    return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+)
+def test_create_instance_worker_load_scaling_rule(
+    mock_load_system_paasta_config: mock.Mock,
+) -> None:
     service_name = "test_service"
     instance_config = mock.Mock(instance="test_instance")
     metrics_provider_config = MetricsProviderDict(
@@ -380,7 +387,13 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
         ),
     ],
 )
+@mock.patch(
+    "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+    autospec=True,
+    return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+)
 def test_get_rules_for_service_instance(
+    mock_load_system_paasta_config: mock.Mock,
     instance_config: KubernetesDeploymentConfig,
     expected_rules: int,
 ) -> None:
