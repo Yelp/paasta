@@ -1,3 +1,13 @@
+paasta-tools (1.52.0) jammy; urgency=medium
+
+  * 1.52.0 tagged with 'make release'
+    Commit: Merge pull request #4326 from Yelp/u/sids/CLOUD-1216  add
+    yelp.com/cost_owner label, default value specified in service.yaml
+    with instance level overriding possible for paasta instances and
+    tron jobs
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 09 Jun 2026 11:36:29 -0700
+
 paasta-tools (1.51.3) jammy; urgency=medium
 
   * 1.51.3 tagged with 'make release'
