@@ -36,7 +36,11 @@ def write_file(dst, name, src, values):
             new.write(replace(old.read(), values))
 
 
-def render(src, dst, values={}, exclude={}, overwrite=True):
+def render(src, dst, values=None, exclude=None, overwrite=True):
+    if values is None:
+        values = {}
+    if exclude is None:
+        exclude = set()
     if os.path.isfile(src):
         render_file(src, dst, values, overwrite)
         return
@@ -47,11 +51,7 @@ def render(src, dst, values={}, exclude={}, overwrite=True):
             render_file(f.path, dst, values, overwrite)
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
-            try:
-                os.makedirs(new_dst, exist_ok=True)
-            except OSError as e:
-                if e.errno != os.errno.EEXIST:
-                    raise
+            os.makedirs(new_dst, exist_ok=True)
             render(f.path, new_dst, values, exclude, overwrite)
 
 
