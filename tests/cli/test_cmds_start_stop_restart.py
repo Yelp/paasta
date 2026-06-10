@@ -661,8 +661,12 @@ def test_error_if_no_deploy_permissions(
     assert not mock_issue_state_change_for_service.called
 
 
-@mock.patch("choice.basicterm.BasicTermBinaryChoice", autospec=True)
-@mock.patch("choice.Binary", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
+)
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
@@ -676,8 +680,8 @@ class TestRestartCmd:
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_load_system_paasta_config,
+        mock_get_paasta_oapi_client,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -699,9 +703,9 @@ class TestRestartCmd:
                 None,
             ),
         ]
-        mock_paasta_start.return_value = 1
-        mock_binary_choice.ask.return_value = True
-        mock_binary.return_value = mock_binary_choice
+        mock_paasta_start.return_value = 0
+        mock_client = mock.Mock()
+        mock_get_paasta_oapi_client.return_value = mock_client
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance,cas_instance -d /soa/dir".split(
@@ -709,19 +713,22 @@ class TestRestartCmd:
             )
         )
         ret = args.command(args)
-        out, _ = capfd.readouterr()
 
-        assert ret == 1
+        mock_client.service.instance_set_state.assert_called_once_with(
+            service="service",
+            instance="flink_instance",
+            desired_state="restart",
+        )
         assert mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" in out
+        assert ret == 0
 
     def test_only_non_flink_instances(
         self,
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_load_system_paasta_config,
+        mock_get_paasta_oapi_client,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -742,19 +749,18 @@ class TestRestartCmd:
             "restart -s service -c cluster -i cas_instance -d /soa/dir".split(" ")
         )
         ret = args.command(args)
-        out, _ = capfd.readouterr()
 
         assert ret == 1
         assert mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" not in out
+        assert not mock_get_paasta_oapi_client.called
 
     def test_only_flink_instances(
         self,
         mock_apply_args_filters,
         mock_get_instance_config,
         mock_paasta_start,
-        mock_binary,
-        mock_binary_choice,
+        mock_load_system_paasta_config,
+        mock_get_paasta_oapi_client,
         capfd,
     ):
         mock_apply_args_filters.return_value = {
@@ -769,6 +775,8 @@ class TestRestartCmd:
                 None,
             ),
         ]
+        mock_client = mock.Mock()
+        mock_get_paasta_oapi_client.return_value = mock_client
 
         args, _ = parse_args(
             "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
@@ -776,9 +784,14 @@ class TestRestartCmd:
         ret = args.command(args)
         out, _ = capfd.readouterr()
 
-        assert ret == 1
+        assert ret == 0
         assert not mock_paasta_start.called
-        assert "paasta restart is currently unsupported for Flink instances" in out
+        mock_client.service.instance_set_state.assert_called_once_with(
+            service="service",
+            instance="flink_instance",
+            desired_state="restart",
+        )
+        assert "Flink operator" in out
 
 
 @pytest.mark.parametrize("force_flag", [False, True])
