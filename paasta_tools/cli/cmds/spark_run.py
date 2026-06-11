@@ -537,6 +537,7 @@ def get_docker_run_cmd(
     cmd.append(f"--cpus={docker_cpu_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
+    cmd.append(f"--hostname={socket.getfqdn()}")
 
     non_interactive_cmd = ["spark-submit", "history-server"]
     if not any(c in docker_cmd for c in non_interactive_cmd):
