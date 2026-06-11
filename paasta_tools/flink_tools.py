@@ -88,6 +88,7 @@ class JobCounts(TypedDict):
 
 class FlinkJobDetailsDict(TypedDict):
     state: str
+    desired_state: Optional[str]
     pod_counts: PodCounts
     job_counts: Optional[JobCounts]
     taskmanagers: Optional[int]
@@ -482,13 +483,16 @@ def format_flink_instance_header(
 
     if verbose:
         output.append(
-            f"    Flink version: {details['version']} {details['version_revision']}"
+            f"    Flink:      {details['version']} {details['version_revision']}"
         )
     else:
-        output.append(f"    Flink version: {details['version']}")
+        output.append(f"    Flink:      {details['version']}")
 
     if details.get("dashboard_url"):
-        output.append(f"    URL: {details['dashboard_url']}/")
+        url = f"{details['dashboard_url']}/"
+        output.append(
+            f"    Dashboard:  {PaastaColors.terminal_link(url, 'y/flink-dashboard')}"
+        )
 
     return output
 
@@ -503,35 +507,54 @@ def format_flink_udf_info(config: FlinkDeploymentConfig) -> List[str]:
 
 
 def format_flink_instance_metadata(
-    details: FlinkInstanceDetails, service: str
+    details: FlinkInstanceDetails, service: str, ecosystem: str
 ) -> List[str]:
-    """Format verbose instance metadata (repo links, pool, owner, runbook)."""
+    """Format verbose instance metadata (repo links, pool, owner, runbook, configs)."""
     output: List[str] = []
-    output.append(f"    Repo(git): https://github.yelpcorp.com/services/{service}")
+    output.append("    Links:")
+    git_url = f"https://github.yelpcorp.com/services/{service}"
+    sg_url = f"https://sourcegraph.yelpcorp.com/services/{service}"
     output.append(
-        f"    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/{service}"
+        f"      Repo:       {PaastaColors.terminal_link(git_url, 'y/github')}"
+        f" | {PaastaColors.terminal_link(sg_url, 'sourcegraph')}"
     )
     if details.get("pool"):
-        output.append(f"    Flink Pool: {details['pool']}")
+        output.append(f"      Pool:       {details['pool']}")
     if details.get("team"):
-        output.append(f"    Owner: {details['team']}")
+        output.append(f"      Owner:      {details['team']}")
     if details.get("runbook"):
-        output.append(f"    Flink Runbook: {details['runbook']}")
+        output.append(f"      Runbook:    {details['runbook']}")
+    yelpsoa_url = (
+        f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+    )
+    srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+    output.append(
+        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, 'y/yelpsoa')}"
+        f" | {PaastaColors.terminal_link(srv_url, 'y/srv-configs')}"
+    )
     return output
 
 
 def format_flink_config_links(service: str, ecosystem: str) -> List[str]:
-    """Format configuration repository links."""
+    """Format configuration repository links.
+
+    Deprecated: use format_flink_instance_metadata which now includes config links.
+    Kept for backwards compatibility.
+    """
+    yelpsoa_url = (
+        f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
+    )
+    srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
     return [
-        f"    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}",
-        f"    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}",
+        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, 'y/yelpsoa')}"
+        f" | {PaastaColors.terminal_link(srv_url, 'y/srv-configs')}",
     ]
 
 
 def format_flink_log_commands(service: str, instance: str, cluster: str) -> List[str]:
     """Format paasta logs commands."""
     return [
-        "    Flink Log Commands:",
+        "    Logs:",
         f"      Service:     paasta logs -a 1h -c {cluster} -s {service} -i {instance}",
         f"      Taskmanager: paasta logs -a 1h -c {cluster} -s {service} -i {instance}.TASKMANAGER",
         f"      Jobmanager:  paasta logs -a 1h -c {cluster} -s {service} -i {instance}.JOBMANAGER",
@@ -542,19 +565,24 @@ def format_flink_log_commands(service: str, instance: str, cluster: str) -> List
 def format_flink_monitoring_links(
     service: str, instance: str, ecosystem: str, cluster: str
 ) -> List[str]:
-    """Format Grafana and cost monitoring links."""
+    """Format Grafana and cost monitoring links as OSC 8 terminal hyperlinks."""
+    job_url = f"https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
+    container_url = f"https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+    jvm_url = f"https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
+    cost_url = f"https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters"
     return [
-        "    Flink Monitoring:",
-        f"      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now",
-        f"      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
-        f"      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now",
-        f"      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters",
+        "    Monitoring:",
+        f"      Job Metrics:       {PaastaColors.terminal_link(job_url, 'y/flink-job-metrics')}",
+        f"      Container Metrics: {PaastaColors.terminal_link(container_url, 'y/flink-container-metrics')}",
+        f"      JVM Metrics:       {PaastaColors.terminal_link(jvm_url, 'y/flink-jvm-metrics')}",
+        f"      Cost:              {PaastaColors.terminal_link(cost_url, 'y/flink-on-paasta-cost')}",
     ]
 
 
 def collect_flink_job_details(
     status: FlinkClusterStatusDict,
     overview: Optional[FlinkClusterOverview],
+    desired_state: Optional[str] = None,
 ) -> FlinkJobDetailsDict:
     """Collect job, pod, and resource information from status and overview."""
     pod_running_count = 0
@@ -602,6 +630,7 @@ def collect_flink_job_details(
 
     return {
         "state": status["state"],
+        "desired_state": desired_state,
         "pod_counts": pod_counts,
         "job_counts": job_counts,
         "taskmanagers": taskmanagers,
@@ -616,6 +645,7 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
     output: List[str] = []
 
     state = job_details["state"]
+    desired_state = job_details.get("desired_state")
     pod_counts = job_details["pod_counts"]
     job_counts = job_details.get("job_counts")
     taskmanagers = job_details.get("taskmanagers")
@@ -623,7 +653,10 @@ def format_flink_state_and_pods(job_details: FlinkJobDetailsDict) -> List[str]:
     slots_total = job_details.get("slots_total")
 
     color = PaastaColors.green if state == "running" else PaastaColors.yellow
-    output.append(f"    State: {color(state.title())}")
+    state_str = color(state.title())
+    if desired_state and desired_state != state and desired_state != "start":
+        state_str += f" ({PaastaColors.yellow(f'desired: {desired_state}')})"
+    output.append(f"    State: {state_str}")
 
     formatted_evictions = (
         PaastaColors.red(f"{pod_counts['evicted']}")
