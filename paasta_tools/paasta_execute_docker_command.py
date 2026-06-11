@@ -69,20 +69,31 @@ def time_limit(seconds):  # From http://stackoverflow.com/a/601168/1576438
 
 def execute_in_container(docker_client, container_id, cmd, timeout):
     container_info = docker_client.inspect_container(container_id)
+    exec_id = None
     if (
         container_info["ExecIDs"]
         and len(container_info["ExecIDs"]) > 0
         and not is_using_unprivileged_containers()
     ):
         for possible_exec_id in container_info["ExecIDs"]:
-            exec_info = docker_client.exec_inspect(possible_exec_id)["ProcessConfig"]
-            if exec_info["entrypoint"] == "/bin/sh" and exec_info["arguments"] == [
-                "-c",
-                cmd,
-            ]:
+            inspect_result = docker_client.exec_inspect(possible_exec_id)
+            exec_info = inspect_result["ProcessConfig"]
+            print(
+                inspect_result["Running"],
+                exec_info["entrypoint"],
+                exec_info["arguments"],
+            )
+            if (
+                not inspect_result.get("Running")
+                and exec_info["entrypoint"] == "/bin/sh"
+                and exec_info["arguments"] == ["-c", cmd]
+            ):
                 exec_id = possible_exec_id
                 break
-    else:
+    if exec_id is None:
+        print(
+            f"Creating new exec instance in container {container_id} with command '{cmd}'."
+        )
         exec_id = docker_client.exec_create(container_id, ["/bin/sh", "-c", cmd])["Id"]
     output = docker_client.exec_start(exec_id, stream=False)
     return_code = docker_client.exec_inspect(exec_id)["ExitCode"]
