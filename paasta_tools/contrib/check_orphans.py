@@ -34,8 +34,8 @@ DEFAULT_NERVE_XINETD_PORT = 8735
 
 class ExitCode(Enum):
     OK = 0
-    ORPHANS = 1
-    COLLISIONS = 2
+    WARNING = 1
+    CRITICAL = 2
     UNKNOWN = 3
 
 
@@ -232,6 +232,20 @@ def exceeds_percentage_threshold(
     return False
 
 
+def _filter_by_threshold(
+    items_by_service: Dict[str, List],
+    zk_count_by_service: Dict[str, int],
+    percentage_threshold: float,
+) -> List:
+    result = []
+    for svc, svc_items in items_by_service.items():
+        if percentage_threshold == 0 or exceeds_percentage_threshold(
+            len(svc_items), svc, zk_count_by_service, percentage_threshold
+        ):
+            result.extend(svc_items)
+    return result
+
+
 def check_orphans(
     zk_instance_data: Set[InstanceTuple],
     nerve_instance_data: Set[InstanceTuple],
@@ -258,17 +272,14 @@ def check_orphans(
                     f"[{zk_inst.host}:{zk_inst.port}] {zk_inst.service} collides with {nerve_services}"
                 )
 
-        collisions: List[str] = []
-        for svc, svc_collisions in collisions_by_service.items():
-            if percentage_threshold == 0 or exceeds_percentage_threshold(
-                len(svc_collisions), svc, zk_count_by_service, percentage_threshold
-            ):
-                collisions.extend(svc_collisions)
+        collisions: List[str] = _filter_by_threshold(
+            collisions_by_service, zk_count_by_service, percentage_threshold
+        )
 
         if collisions:
             logger.warning("Collisions found! Traffic is being misrouted!")
             print("\n".join(collisions))
-            return ExitCode.COLLISIONS
+            return ExitCode.CRITICAL
         else:
             logger.info(
                 f"No collisions found out of {len(zk_instance_data)} service registrations seen."
@@ -281,22 +292,35 @@ def check_orphans(
         for orphan in all_orphans:
             orphans_by_service[orphan.service].append(orphan)
 
-        orphans: Set[InstanceTuple] = set()
+        orphans_critical: Set[InstanceTuple] = set()
+        orphans_warning: Set[InstanceTuple] = set()
         for svc, svc_orphans in orphans_by_service.items():
-            if percentage_threshold == 0 or exceeds_percentage_threshold(
+            if percentage_threshold > 0 and exceeds_percentage_threshold(
                 len(svc_orphans), svc, zk_count_by_service, percentage_threshold
             ):
-                orphans.update(svc_orphans)
+                orphans_critical.update(svc_orphans)
+            else:
+                orphans_warning.update(svc_orphans)
+
+        orphans = orphans_critical | orphans_warning
 
         # groupby host
         orphans_by_host: DefaultDict[str, List[Tuple[int, str]]] = defaultdict(list)
         for orphan in orphans:
             orphans_by_host[orphan.host].append((orphan.port, orphan.service))
 
-        if orphans:
-            logger.warning("{} orphans found".format(len(orphans)))
+        if orphans_critical:
+            logger.critical(
+                "{} critical orphans found (exceeded percentage threshold)".format(
+                    len(orphans_critical)
+                )
+            )
             print(dict(orphans_by_host))
-            return ExitCode.ORPHANS
+            return ExitCode.CRITICAL
+        if orphans_warning:
+            logger.warning("{} orphans found".format(len(orphans_warning)))
+            print(dict(orphans_by_host))
+            return ExitCode.WARNING
         else:
             logger.info(
                 f"No orphans found out of {len(zk_instance_data)} service registrations seen."
