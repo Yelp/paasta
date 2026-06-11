@@ -591,7 +591,7 @@ def create_instance_worker_load_scaling_rule(
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
 
     paasta_system_config = load_system_paasta_config()
-    use_raw_metric = paasta_system_config.get_use_raw_metric()
+    use_raw_metric = paasta_system_config.get_use_raw_metric_for_hpa()
 
     if use_raw_metric:
         ksm_filter_terms = f"kubernetes_cluster='{paasta_cluster}'"
@@ -624,7 +624,7 @@ def create_instance_worker_load_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -715,7 +715,7 @@ def create_instance_piscina_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
@@ -815,7 +815,7 @@ def create_instance_gunicorn_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-        {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
