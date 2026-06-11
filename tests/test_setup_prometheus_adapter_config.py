@@ -182,13 +182,18 @@ def test_create_instance_worker_load_scaling_rule() -> None:
     )
     paasta_cluster = "test_cluster"
     metric_name = "test_service-test_instance-worker-load-prom"
-    rule = create_instance_worker_load_scaling_rule(
-        service=service_name,
-        instance_config=instance_config,
-        metrics_provider_config=metrics_provider_config,
-        paasta_cluster=paasta_cluster,
-        metric_name=metric_name,
-    )
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        rule = create_instance_worker_load_scaling_rule(
+            service=service_name,
+            instance_config=instance_config,
+            metrics_provider_config=metrics_provider_config,
+            paasta_cluster=paasta_cluster,
+            metric_name=metric_name,
+        )
 
     # we test that the format of the dictionary is as expected with mypy
     # and we don't want to test the full contents of the retval since then
@@ -384,16 +389,21 @@ def test_get_rules_for_service_instance(
     instance_config: KubernetesDeploymentConfig,
     expected_rules: int,
 ) -> None:
-    assert (
-        len(
-            get_rules_for_service_instance(
-                service_name="service",
-                instance_config=instance_config,
-                paasta_cluster="cluster",
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        assert (
+            len(
+                get_rules_for_service_instance(
+                    service_name="service",
+                    instance_config=instance_config,
+                    paasta_cluster="cluster",
+                )
             )
+            == expected_rules
         )
-        == expected_rules
-    )
 
 
 @pytest.mark.parametrize(

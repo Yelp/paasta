@@ -68,6 +68,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -589,18 +590,42 @@ def create_instance_worker_load_scaling_rule(
     # This makes sure that desired_instances includes load from all namespaces.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
 
-    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
-    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
-    # deployment.
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+    paasta_system_config = load_system_paasta_config()
+    use_raw_metric = paasta_system_config.get_use_raw_metric_for_hpa()
+
+    if use_raw_metric:
+        ksm_filter_terms = f"paasta_cluster='{paasta_cluster}'"
+        raw_ready_pods = f"""
+            sum by (kube_deployment) (
+                label_replace(label_replace(label_replace(
+                    kube_pod_status_ready{{condition="true",{ksm_filter_terms}}}
+                    * on (pod, paasta_cluster, namespace) group_left (label_paasta_yelp_com_instance, label_paasta_yelp_com_service)
+                    kube_pod_labels{{label_paasta_yelp_com_service="{service}",label_paasta_yelp_com_instance="{instance}",{ksm_filter_terms}}}
+                    * on (label_paasta_yelp_com_instance, label_paasta_yelp_com_service, paasta_cluster, namespace) group_left (deployment)
+                    kube_deployment_labels{{label_paasta_yelp_com_instance!="",label_paasta_yelp_com_service!="",namespace=~"(paasta|paastasvc-.*)",{ksm_filter_terms}}},
+                    "paasta_instance", "$1", "label_paasta_yelp_com_instance", "(.*)"),
+                    "paasta_service", "$1", "label_paasta_yelp_com_service", "(.*)"),
+                    "kube_deployment", "$1", "deployment", "(.*)"))
+        """
+        ready_pods = f"""
+            (
+                {raw_ready_pods} >= 0
+                or
+                max_over_time(
+                    ({raw_ready_pods})[{DEFAULT_EXTRAPOLATION_TIME}s:]
+                )
             )
-        ) by (kube_deployment))
-    """
+        """
+    else:
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
     load_per_instance = f"""
         avg(
             worker_busy{{{worker_filter_terms}}}
