@@ -1,3 +1,15 @@
+paasta-tools (1.52.1) jammy; urgency=medium
+
+  * 1.52.1 tagged with 'make release'
+    Commit: Added --hostname to docker run command for spark-run (#4331)
+    For spark-run to work properly on yelp"s internal dev-boxes,
+    hostname needs to be fqdn instead of short name By adding --hostname
+    to docker run command, spark.driver.host gets the fqdn instead of
+    the short name and fixes the error ``` Caused by:
+    java.net.UnknownHostException: ```
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 11 Jun 2026 06:37:56 -0700
+
 paasta-tools (1.52.0) jammy; urgency=medium
 
   * 1.52.0 tagged with 'make release'
