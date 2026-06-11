@@ -2822,7 +2822,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
 
     def get_use_raw_metric_for_hpa(self) -> bool:
-        return self.config_dict.get("use_raw_metric_for_hpa", True)
+        return self.config_dict.get("use_raw_metric_for_hpa", False)
 
 
 def _run(
