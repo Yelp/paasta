@@ -309,8 +309,8 @@ def paasta_start_or_stop(args, desired_state):
                         print_kubernetes_message(desired_state)
                         kubernetes_message_printed = True
 
-                    # For git-tag-based services, "restart" is just "start" with
-                    # a new force_bounce timestamp — deployd only knows start/stop.
+                    # "restart" is just "start" with
+                    # a new force_bounce timestamp — paasta only knows start/stop and will restart since force_bounce has changed
                     git_desired_state = (
                         "start" if desired_state == "restart" else desired_state
                     )
