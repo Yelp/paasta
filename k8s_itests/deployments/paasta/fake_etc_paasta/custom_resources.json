@@ -1,0 +1,13 @@
+{
+    "kubernetes_custom_resources": [
+        {
+            "file_prefix": "flink",
+            "group": "yelp.com",
+            "version": "v1alpha1",
+            "kube_kind": {
+                "singular": "Flink",
+                "plural": "flinks"
+            }
+        }
+    ]
+}

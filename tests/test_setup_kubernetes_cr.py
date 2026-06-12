@@ -275,6 +275,7 @@ def test_setup_custom_resources():
                     version="v1",
                     group="yelp.com",
                     crd=mock_crd,
+                    soa_dir="/nail/etc/services",
                 ),
                 mock.call(
                     kube_client=mock_client,
@@ -287,6 +288,7 @@ def test_setup_custom_resources():
                     version="v1",
                     group="yelp.com",
                     crd=mock_crd,
+                    soa_dir="/nail/etc/services",
                 ),
             ]
         )
