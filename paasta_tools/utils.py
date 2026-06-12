@@ -1200,6 +1200,13 @@ class PaastaColors:
     def default(text: str) -> str:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
+    @staticmethod
+    def terminal_link(url: str, label: str) -> str:
+        """Format an OSC 8 terminal hyperlink (clickable in supported terminals)."""
+        if os.getenv("NO_COLOR", "0") == "1":
+            return f"{label} ({url})"
+        return f"\033]8;;{url}\033\\{label}\033]8;;\033\\"
+
 
 LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
     [
