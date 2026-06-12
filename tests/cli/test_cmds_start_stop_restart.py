@@ -16,12 +16,8 @@ from unittest import mock
 import pytest
 
 from paasta_tools import remote_git
-from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
-from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfigDict
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import start_stop_restart
-from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
@@ -662,136 +658,22 @@ def test_error_if_no_deploy_permissions(
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop", autospec=True
 )
 class TestRestartCmd:
-    def test_flink_and_non_flink_instances(
+    def test_delegates_to_start_or_stop(
         self,
-        mock_apply_args_filters,
-        mock_get_instance_config,
-        mock_paasta_start,
-        mock_load_system_paasta_config,
-        mock_get_paasta_oapi_client,
-        capfd,
+        mock_paasta_start_or_stop,
     ):
-        mock_apply_args_filters.return_value = {
-            "cluster": {"service": {"flink_instance": None, "cas_instance": None}}
-        }
-        mock_get_instance_config.side_effect = [
-            FlinkDeploymentConfig(
-                "service",
-                "cluster",
-                "flink_instance",
-                FlinkDeploymentConfigDict(),
-                None,
-            ),
-            CassandraClusterDeploymentConfig(
-                "service",
-                "cluster",
-                "cas_instance",
-                CassandraClusterDeploymentConfigDict(),
-                None,
-            ),
-        ]
-        mock_paasta_start.return_value = 0
-        mock_client = mock.Mock()
-        mock_get_paasta_oapi_client.return_value = mock_client
+        mock_paasta_start_or_stop.return_value = 0
 
         args, _ = parse_args(
-            "restart -s service -c cluster -i flink_instance,cas_instance -d /soa/dir".split(
-                " "
-            )
+            "restart -s service -c cluster -i instance -d /soa/dir".split(" ")
         )
         ret = args.command(args)
 
-        mock_client.service.instance_set_state.assert_called_once_with(
-            service="service",
-            instance="flink_instance",
-            desired_state="restart",
-        )
-        assert mock_paasta_start.called
+        mock_paasta_start_or_stop.assert_called_once_with(args, "restart")
         assert ret == 0
-
-    def test_only_non_flink_instances(
-        self,
-        mock_apply_args_filters,
-        mock_get_instance_config,
-        mock_paasta_start,
-        mock_load_system_paasta_config,
-        mock_get_paasta_oapi_client,
-        capfd,
-    ):
-        mock_apply_args_filters.return_value = {
-            "cluster": {"service": {"cas_instance": None}}
-        }
-        mock_get_instance_config.side_effect = [
-            CassandraClusterDeploymentConfig(
-                "service",
-                "cluster",
-                "cas_instance",
-                CassandraClusterDeploymentConfigDict(),
-                None,
-            ),
-        ]
-        mock_paasta_start.return_value = 1
-
-        args, _ = parse_args(
-            "restart -s service -c cluster -i cas_instance -d /soa/dir".split(" ")
-        )
-        ret = args.command(args)
-
-        assert ret == 1
-        assert mock_paasta_start.called
-        assert not mock_get_paasta_oapi_client.called
-
-    def test_only_flink_instances(
-        self,
-        mock_apply_args_filters,
-        mock_get_instance_config,
-        mock_paasta_start,
-        mock_load_system_paasta_config,
-        mock_get_paasta_oapi_client,
-        capfd,
-    ):
-        mock_apply_args_filters.return_value = {
-            "cluster": {"service": {"flink_instance": None}}
-        }
-        mock_get_instance_config.side_effect = [
-            FlinkDeploymentConfig(
-                "service",
-                "cluster",
-                "flink_instance",
-                FlinkDeploymentConfigDict(),
-                None,
-            ),
-        ]
-        mock_client = mock.Mock()
-        mock_get_paasta_oapi_client.return_value = mock_client
-
-        args, _ = parse_args(
-            "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
-        )
-        ret = args.command(args)
-        out, _ = capfd.readouterr()
-
-        assert ret == 0
-        assert not mock_paasta_start.called
-        mock_client.service.instance_set_state.assert_called_once_with(
-            service="service",
-            instance="flink_instance",
-            desired_state="restart",
-        )
-        assert "Flink operator" in out
 
 
 @pytest.mark.parametrize("force_flag", [False, True])

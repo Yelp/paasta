@@ -181,6 +181,11 @@ def print_flink_message(desired_state):
             "'Stop' will put Flink cluster in stopping mode, it may"
             "take some time before shutdown is completed."
         )
+    elif desired_state == "restart":
+        print(
+            "'Restart' will tell the Flink operator to stop and start the cluster. "
+            "This may take some time to complete."
+        )
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
@@ -304,10 +309,15 @@ def paasta_start_or_stop(args, desired_state):
                         print_kubernetes_message(desired_state)
                         kubernetes_message_printed = True
 
+                    # For git-tag-based services, "restart" is just "start" with
+                    # a new force_bounce timestamp — deployd only knows start/stop.
+                    git_desired_state = (
+                        "start" if desired_state == "restart" else desired_state
+                    )
                     issue_state_change_for_service(
                         service_config=service_config,
                         force_bounce=force_bounce,
-                        desired_state=desired_state,
+                        desired_state=git_desired_state,
                     )
 
     return_val = 0
@@ -340,7 +350,7 @@ def paasta_start_or_stop(args, desired_state):
                 )
             except client.api_error as exc:
                 print(exc.reason)
-                return exc.status
+                return 1
 
             return_val = 0
 
@@ -361,61 +371,7 @@ def paasta_restart(args):
     if args.replica:
         return paasta_restart_replica(args)
 
-    pargs = apply_args_filters(args)
-    soa_dir = args.soa_dir
-
-    affected_flinks = []
-    affected_non_flinks = []
-    for cluster, service_instances in pargs.items():
-        for service, instances in service_instances.items():
-            for instance in instances.keys():
-                service_config = get_instance_config(
-                    service=service,
-                    cluster=cluster,
-                    instance=instance,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-                if isinstance(service_config, FlinkDeploymentConfig):
-                    affected_flinks.append(service_config)
-                else:
-                    affected_non_flinks.append(service_config)
-
-    if affected_flinks:
-        system_paasta_config = load_system_paasta_config()
-        for service_config in affected_flinks:
-            cluster = service_config.cluster
-            service = service_config.service
-            instance = service_config.instance
-            is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
-
-            client = get_paasta_oapi_client(
-                cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
-                system_paasta_config=system_paasta_config,
-            )
-            if not client:
-                print("Cannot get a paasta-api client")
-                return 1
-
-            try:
-                client.service.instance_set_state(
-                    service=service,
-                    instance=instance,
-                    desired_state="restart",
-                )
-            except client.api_error as exc:
-                print(exc.reason)
-                return exc.status
-
-        print(
-            "'Restart' will tell the Flink operator to stop and start the cluster. "
-            "This may take some time to complete."
-        )
-
-    if affected_non_flinks:
-        return paasta_start(args)
-
-    return 0
+    return paasta_start_or_stop(args, "restart")
 
 
 PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(

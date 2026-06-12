@@ -535,22 +535,6 @@ def format_flink_instance_metadata(
     return output
 
 
-def format_flink_config_links(service: str, ecosystem: str) -> List[str]:
-    """Format configuration repository links.
-
-    Deprecated: use format_flink_instance_metadata which now includes config links.
-    Kept for backwards compatibility.
-    """
-    yelpsoa_url = (
-        f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
-    )
-    srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
-    return [
-        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, 'y/yelpsoa')}"
-        f" | {PaastaColors.terminal_link(srv_url, 'y/srv-configs')}",
-    ]
-
-
 def format_flink_log_commands(service: str, instance: str, cluster: str) -> List[str]:
     """Format paasta logs commands."""
     return [

@@ -61,6 +61,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkInstanceDetails
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -825,7 +826,7 @@ def _print_flink_status_from_job_manager(
     # Initialize all vars upfront; populated only when cluster is running
     dashboard_url = None
     overview = None
-    instance_details: Optional[flink_tools.FlinkInstanceDetails] = None
+    instance_details: Optional[FlinkInstanceDetails] = None
     jobs: List[FlinkJobDetails] = []
     job_ids: List[str] = []
     checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]] = {}
