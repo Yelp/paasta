@@ -18,6 +18,7 @@ import pytest
 import paasta_tools.flink_tools as flink_tools
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
+from paasta_tools.utils import PaastaColors
 
 
 def test_get_flink_ingress_url_root():
@@ -466,7 +467,7 @@ class TestFormatFlinkInstanceHeader:
             "runbook": "test_runbook",
         }
         result = flink_tools.format_flink_instance_header(details, verbose=False)
-        assert "    Flink version: 1.13.5" in result
+        assert "    Flink:      1.13.5" in result
         assert "0ff28a7" not in "\n".join(result)
         assert "Config SHA" not in "\n".join(result)
 
@@ -481,11 +482,11 @@ class TestFormatFlinkInstanceHeader:
             "runbook": "test_runbook",
         }
         result = flink_tools.format_flink_instance_header(details, verbose=True)
-        assert "    Flink version: 1.13.5 0ff28a7" in result
-        assert "    URL: http://flink.k8s.test.paasta:31080/app/" in result
+        assert "    Flink:      1.13.5 0ff28a7" in result
+        assert "Dashboard" in "\n".join(result)
+        assert "http://flink.k8s.test.paasta:31080/app/" in "\n".join(result)
 
     def test_no_dashboard_url(self):
-        # Dashboard URL line is omitted when annotation is absent
         details = {
             "config_sha": "00000",
             "version": "1.13.5",
@@ -496,7 +497,7 @@ class TestFormatFlinkInstanceHeader:
             "runbook": "test_runbook",
         }
         result = flink_tools.format_flink_instance_header(details, verbose=True)
-        assert "URL" not in "\n".join(result)
+        assert "Dashboard" not in "\n".join(result)
 
 
 class TestFormatFlinkInstanceMetadata:
@@ -510,36 +511,24 @@ class TestFormatFlinkInstanceMetadata:
             "team": "test_team",
             "runbook": "test_runbook",
         }
-        result = flink_tools.format_flink_instance_metadata(details, "test_service")
-        assert (
-            "    Repo(git): https://github.yelpcorp.com/services/test_service" in result
+        result = flink_tools.format_flink_instance_metadata(
+            details, "test_service", "devc"
         )
-        assert (
-            "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/test_service"
-            in result
-        )
-        assert "    Flink Pool: flink" in result
-        assert "    Owner: test_team" in result
-        assert "    Flink Runbook: test_runbook" in result
-
-
-class TestFormatFlinkConfigLinks:
-    def test_output(self):
-        result = flink_tools.format_flink_config_links("my_service", "devc")
-        assert (
-            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/my_service"
-            in result
-        )
-        assert (
-            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/my_service"
-            in result
-        )
+        joined = "\n".join(result)
+        assert "    Links:" in result
+        assert "github.yelpcorp.com/services/test_service" in joined
+        assert "sourcegraph.yelpcorp.com/services/test_service" in joined
+        assert "flink" in joined
+        assert "test_team" in joined
+        assert "test_runbook" in joined
+        assert "yelpsoa-configs/tree/master/test_service" in joined
+        assert "srv-configs/tree/master/ecosystem/devc/test_service" in joined
 
 
 class TestFormatFlinkLogCommands:
     def test_output(self):
         result = flink_tools.format_flink_log_commands("my_service", "main", "pnw-devc")
-        assert result[0] == "    Flink Log Commands:"
+        assert result[0] == "    Logs:"
         assert "paasta logs -a 1h -c pnw-devc -s my_service -i main" in result[1]
         assert ".TASKMANAGER" in result[2]
         assert ".JOBMANAGER" in result[3]
@@ -551,11 +540,14 @@ class TestFormatFlinkMonitoringLinks:
         result = flink_tools.format_flink_monitoring_links(
             "my_service", "main", "devc", "pnw-devc"
         )
-        assert result[0] == "    Flink Monitoring:"
-        assert "var-service=my_service" in result[1]
-        assert "var-instance=main" in result[1]
-        assert "uswest2-devc" in result[1]
-        assert "pnw-devc" in result[4]  # Flink Cost link uses cluster name
+        assert result[0] == "    Monitoring:"
+        joined = "\n".join(result)
+        assert "var-service=my_service" in joined
+        assert "var-instance=main" in joined
+        assert "uswest2-devc" in joined
+        assert "pnw-devc" in joined
+        assert "grafana" in joined
+        assert "cloudzero" in joined
 
 
 class TestCollectFlinkJobDetails:
@@ -649,13 +641,11 @@ class TestFormatFlinkStateAndPods:
         return defaults
 
     def test_running_state(self):
-        from paasta_tools.utils import PaastaColors
 
         result = flink_tools.format_flink_state_and_pods(self._make_details())
         assert f"    State: {PaastaColors.green('Running')}" in result
 
     def test_stopped_state_is_yellow(self):
-        from paasta_tools.utils import PaastaColors
 
         result = flink_tools.format_flink_state_and_pods(
             self._make_details(state="stopped")
@@ -670,7 +660,6 @@ class TestFormatFlinkStateAndPods:
         assert "2 total" in pods_line
 
     def test_evicted_pods_red(self):
-        from paasta_tools.utils import PaastaColors
 
         details = self._make_details(
             pod_counts={"running": 1, "evicted": 2, "other": 0, "total": 3}
@@ -702,6 +691,29 @@ class TestFormatFlinkStateAndPods:
         slots_line = next(line for line in result if "taskmanagers" in line)
         assert "1 taskmanagers" in slots_line
         assert "2/8 slots available" in slots_line
+
+    def test_restart_desired_state_shown(self):
+
+        result = flink_tools.format_flink_state_and_pods(
+            self._make_details(desired_state="restart")
+        )
+        state_line = next(line for line in result if "State:" in line)
+        assert "desired: restart" in state_line
+        assert PaastaColors.yellow("desired: restart") in state_line
+
+    def test_start_desired_state_not_shown(self):
+        result = flink_tools.format_flink_state_and_pods(
+            self._make_details(desired_state="start")
+        )
+        state_line = next(line for line in result if "State:" in line)
+        assert "desired" not in state_line
+
+    def test_stop_desired_state_shown(self):
+        result = flink_tools.format_flink_state_and_pods(
+            self._make_details(desired_state="stop")
+        )
+        state_line = next(line for line in result if "State:" in line)
+        assert "desired: stop" in state_line
 
 
 @mock.patch("paasta_tools.flink_tools.shutil.get_terminal_size")
@@ -759,7 +771,6 @@ class TestFormatFlinkJobsTable:
         assert "job3" in output_text
 
     def test_failed_job_state(self, mock_terminal_size):
-        from paasta_tools.utils import PaastaColors
 
         mock_terminal_size.return_value = mock.Mock(columns=120)
         job = self._make_job({"state": "FAILED"})
