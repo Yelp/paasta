@@ -1,3 +1,11 @@
+paasta-tools (1.53.0) jammy; urgency=medium
+
+  * 1.53.0 tagged with 'make release'
+    Commit: Merge pull request #4330 from tub/u-tobyc-flink-restart-
+    support  Support paasta restart for Flink instances
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 15 Jun 2026 06:51:52 -0700
+
 paasta-tools (1.52.1) jammy; urgency=medium
 
   * 1.52.1 tagged with 'make release'
