@@ -593,28 +593,38 @@ def create_instance_worker_load_scaling_rule(
     paasta_system_config = load_system_paasta_config()
     use_raw_metric = paasta_system_config.get_use_raw_metric_for_hpa()
 
+    load_per_instance = f"""
+        avg(
+            worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
     if use_raw_metric:
-        ksm_filter_terms = f"paasta_cluster='{paasta_cluster}'"
-        raw_ready_pods = f"""
-            sum by (kube_deployment) (
-                label_replace(label_replace(label_replace(
-                    kube_pod_status_ready{{condition="true",{ksm_filter_terms}}}
-                    * on (pod, paasta_cluster, namespace) group_left (label_paasta_yelp_com_instance, label_paasta_yelp_com_service)
-                    kube_pod_labels{{label_paasta_yelp_com_service="{service}",label_paasta_yelp_com_instance="{instance}",{ksm_filter_terms}}}
-                    * on (label_paasta_yelp_com_instance, label_paasta_yelp_com_service, paasta_cluster, namespace) group_left (deployment)
-                    kube_deployment_labels{{label_paasta_yelp_com_instance!="",label_paasta_yelp_com_service!="",namespace=~"(paasta|paastasvc-.*)",{ksm_filter_terms}}},
-                    "paasta_instance", "$1", "label_paasta_yelp_com_instance", "(.*)"),
-                    "paasta_service", "$1", "label_paasta_yelp_com_service", "(.*)"),
-                    "kube_deployment", "$1", "deployment", "(.*)"))
+        replicas_filter_terms = (
+            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
+        )
+        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='{service}',label_paasta_yelp_com_instance='{instance}'"
+        missing_instances = f"""
+            (clamp_min(
+                label_replace(
+                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                    * on (deployment)
+                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                    "kube_deployment", "$1", "deployment", "(.*)")
+                - on (kube_deployment)
+                count by (kube_deployment) (
+                    workers{{{worker_filter_terms}}}
+                ),
+                0
+            ) or on() vector(0))
         """
-        ready_pods = f"""
-            (
-                {raw_ready_pods} >= 0
-                or
-                max_over_time(
-                    ({raw_ready_pods})[{DEFAULT_EXTRAPOLATION_TIME}s:]
-                )
-            )
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            + ignoring(kube_deployment) group_left()
+            {missing_instances}
+        )
         """
     else:
         ready_pods = f"""
@@ -626,26 +636,21 @@ def create_instance_worker_load_scaling_rule(
                 )
             ) by (kube_deployment))
         """
-    load_per_instance = f"""
-        avg(
-            worker_busy{{{worker_filter_terms}}}
-        ) by (kube_pod, kube_deployment)
-    """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
+        missing_instances = f"""
+            clamp_min(
+                {ready_pods} - count({load_per_instance}) by (kube_deployment),
+                0
+            )
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            +
+            {missing_instances}
         )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
+        """
     total_load_smoothed = f"""
         avg_over_time(
             (
