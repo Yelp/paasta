@@ -202,6 +202,124 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     )
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
+def test_paasta_mark_for_deployment_returns_0_when_already_deployed_and_no_wait(
+    mock_list_remote_refs,
+    mock_load_system_paasta_config,
+    mock_list_deploy_groups,
+    mock_get_currently_deployed_version,
+    mock_validate_service_name,
+):
+    """When version already matches and --wait-for-deployment is not set (block=False),
+    return 0 immediately without polling."""
+    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        FakeArgs.commit, FakeArgs.image_version
+    )
+
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
+    assert ret == 0
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.run_timeout",
+    new=1.0,
+    autospec=False,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+@patch("paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True)
+@patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
+def test_paasta_mark_for_deployment_enters_polling_when_already_deployed_and_wait(
+    mock_list_remote_refs,
+    mock_get_metrics,
+    mock_load_system_paasta_config,
+    mock_list_deploy_groups,
+    mock_get_currently_deployed_version,
+    mock_do_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_validate_service_name,
+    mock_get_slack_client,
+    mock__log_audit,
+    mock_get_instance_configs,
+    mock_periodically_update_slack,
+):
+    """When version already matches and --wait-for-deployment IS set (block=True),
+    enter the state machine and poll until healthy."""
+
+    class FakeArgsBlock(FakeArgs):
+        block = True
+        timeout = 600
+        warn = 80
+        polling_interval = 15
+        diagnosis_interval = 15
+        time_before_first_diagnosis = 15
+        auto_rollback = False
+        auto_certify_delay = None
+        auto_abandon_delay = None
+        auto_rollback_delay = None
+
+    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
+    mock_get_instance_configs.return_value = {"fake_cluster": []}
+    mock_mark_for_deployment.return_value = 0
+
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        FakeArgs.commit, FakeArgs.image_version
+    )
+
+    def do_wait_side_effect(self, target_commit, target_image_version):
+        self.trigger("deploy_finished")
+
+    mock_do_wait_for_deployment.side_effect = do_wait_side_effect
+
+    ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgsBlock)
+    assert ret == 0
+    mock_mark_for_deployment.assert_called_once_with(
+        service="test_service",
+        deploy_group="test_deploy_group",
+        commit=FakeArgs.commit,
+        git_url="git://false.repo/services/test_services",
+        image_version="extrastuff",
+    )
+    mock_do_wait_for_deployment.assert_called_once_with(
+        mock.ANY, FakeArgs.commit, FakeArgs.image_version
+    )
+
+
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.run_timeout",
     new=1.0,

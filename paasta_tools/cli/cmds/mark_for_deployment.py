@@ -500,10 +500,17 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     )
     if deployment_version == old_deployment_version:
         print(
-            "Warning: The image asked to be deployed already matches what is set to be deployed:"
+            "Warning: The image asked to be deployed already matches "
+            f"what is set to be deployed in deploy group {deploy_group}:"
         )
-        print(deployment_version)
-        print("Continuing anyway.")
+        print(f"  {deployment_version}")
+        if not args.block:
+            print("Proceeding without waiting (--wait-for-deployment not set).")
+            return 0
+        print(
+            "Will wait for all instances to be healthy before proceeding "
+            "(--wait-for-deployment is set)."
+        )
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(
