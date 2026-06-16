@@ -322,7 +322,7 @@ def test_format_custom_resource():
                 "annotations": {
                     "yelp.com/desired_state": "running",
                     "paasta.yelp.com/desired_state": "running",
-                    "paasta.yelp.com/dashboard_base_url": "http://flink.k8s.mycluster.paasta:31080/",
+                    "paasta.yelp.com/dashboard_base_url": "http://flink.eks.mycluster.paasta:31080/",
                 },
             },
             "spec": {"dummy": "conf"},

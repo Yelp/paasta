@@ -23,8 +23,8 @@ from paasta_tools.utils import PaastaColors
 
 def test_get_flink_ingress_url_root():
     assert (
-        flink_tools.get_flink_ingress_url_root("mycluster", False)
-        == "http://flink.k8s.mycluster.paasta:31080/"
+        flink_tools.get_flink_ingress_url_root("mycluster")
+        == "http://flink.eks.mycluster.paasta:31080/"
     )
 
 
@@ -299,9 +299,9 @@ def test_get_flink_jobmanager_overview():
     ) as mock_dashboard_get:
         cluster = "mycluster"
         cr_name = "kurupt--fm-7c7b459d59"
-        overview = flink_tools.get_flink_jobmanager_overview(cr_name, cluster, False)
+        overview = flink_tools.get_flink_jobmanager_overview(cr_name, cluster)
         mock_dashboard_get.assert_called_once_with(
-            cr_name=cr_name, cluster=cluster, path="overview", is_eks=False
+            cr_name=cr_name, cluster=cluster, path="overview"
         )
         assert overview == {
             "taskmanagers": 10,
@@ -516,13 +516,12 @@ class TestFormatFlinkInstanceMetadata:
         )
         joined = "\n".join(result)
         assert "    Links:" in result
-        assert "github.yelpcorp.com/services/test_service" in joined
-        assert "sourcegraph.yelpcorp.com/services/test_service" in joined
+        assert "y/service-sg/test_service" in joined
         assert "flink" in joined
         assert "test_team" in joined
         assert "test_runbook" in joined
-        assert "yelpsoa-configs/tree/master/test_service" in joined
-        assert "srv-configs/tree/master/ecosystem/devc/test_service" in joined
+        assert "y/service-yelpsoa/test_service" in joined
+        assert "y/service-srv/devc/test_service" in joined
 
 
 class TestFormatFlinkLogCommands:
@@ -546,8 +545,8 @@ class TestFormatFlinkMonitoringLinks:
         assert "var-instance=main" in joined
         assert "uswest2-devc" in joined
         assert "pnw-devc" in joined
-        assert "grafana" in joined
-        assert "cloudzero" in joined
+        assert "y/flink-job-metrics" in joined
+        assert "y/flink-cost-dashboard" in joined
 
 
 class TestCollectFlinkJobDetails:
