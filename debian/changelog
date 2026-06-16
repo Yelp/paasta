@@ -1,3 +1,12 @@
+paasta-tools (1.53.2) jammy; urgency=medium
+
+  * 1.53.2 tagged with 'make release'
+    Commit: Merge pull request #4333 from Yelp/u/sidtuladhar/fix-raw-
+    metric-hpa-key-mismatch  fix: align system config key with puppet
+    variable name for raw HPA metric
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 16 Jun 2026 10:43:31 -0700
+
 paasta-tools (1.53.1) jammy; urgency=medium
 
   * 1.53.1 tagged with 'make release'
