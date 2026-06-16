@@ -30,6 +30,7 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_worker_load_scaling_rule,
 )
+from paasta_tools.setup_prometheus_adapter_config import get_rules_for_nrtsearch_gpu
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 
 
@@ -485,3 +486,71 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_custom_resources():
         "metricsQuery": "foo",
         "seriesQuery": "bar",
     }
+
+
+def test_get_rules_for_nrtsearch_gpu(tmp_path):
+    """Test that nrtsearch CRD manifests with targetGpuUtilization generate adapter rules."""
+    nrtsearch_dir = tmp_path / "nrtsearch"
+    nrtsearch_dir.mkdir()
+    crd_file = nrtsearch_dir / "nrtsearchserviceeks-pnw-prod.yaml"
+    crd_file.write_text(
+        """
+my-cluster:
+  serverSets:
+  - name: indexing
+    primary: true
+    count: 1
+  - name: search
+    primary: false
+    autoscaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCpuUtilization: 80
+      targetGpuUtilization: 70
+      stabilizationWindow: 600
+"""
+    )
+
+    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+
+    assert len(rules) == 1
+    rule = rules[0]
+    assert rule["name"]["as"] == "my-cluster-replica-dep-arbitrary_promql-prom"
+    assert "DCGM_FI_DEV_GPU_UTIL" in rule["metricsQuery"]
+    assert "/ 70" in rule["metricsQuery"]
+    assert "my-cluster-replica-dep" in rule["seriesQuery"]
+    assert "pnw-prod" in rule["seriesQuery"]
+    assert rule["resources"] == {
+        "overrides": {
+            "namespace": {"resource": "namespace"},
+            "deployment": {"group": "apps", "resource": "deployments"},
+        },
+    }
+
+
+def test_get_rules_for_nrtsearch_gpu_no_file(tmp_path):
+    """Test that missing CRD file returns empty rules."""
+    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+    assert rules == []
+
+
+def test_get_rules_for_nrtsearch_gpu_no_gpu_config(tmp_path):
+    """Test that clusters without targetGpuUtilization are skipped."""
+    nrtsearch_dir = tmp_path / "nrtsearch"
+    nrtsearch_dir.mkdir()
+    crd_file = nrtsearch_dir / "nrtsearchserviceeks-pnw-prod.yaml"
+    crd_file.write_text(
+        """
+my-cluster:
+  serverSets:
+  - name: search
+    primary: false
+    autoscaling:
+      minInstances: 2
+      maxInstances: 10
+      targetCpuUtilization: 80
+"""
+    )
+
+    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+    assert rules == []
