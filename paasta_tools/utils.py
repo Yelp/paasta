@@ -1960,6 +1960,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_default_time_before_first_diagnosis: float
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
     enable_crashloop_auto_rollback: bool
+    min_consecutive_crashes_for_rollback: int
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2657,6 +2658,9 @@ class SystemPaastaConfig:
 
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
+
+    def get_min_consecutive_crashes_for_rollback(self) -> int:
+        return self.config_dict.get("min_consecutive_crashes_for_rollback", 2)
 
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")

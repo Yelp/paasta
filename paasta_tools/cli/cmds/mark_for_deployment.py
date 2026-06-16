@@ -110,7 +110,6 @@ DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
-MIN_CONSECUTIVE_CRASHES_FOR_ROLLBACK = 2
 
 
 log = logging.getLogger(__name__)
@@ -710,8 +709,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             service, deploy_group, soa_dir
         )
 
+        system_paasta_config = load_system_paasta_config()
         self.crashloop_auto_rollback_enabled = (
-            load_system_paasta_config().get_enable_crashloop_auto_rollback()
+            system_paasta_config.get_enable_crashloop_auto_rollback()
+        )
+        self.min_consecutive_crashes_for_rollback = (
+            system_paasta_config.get_min_consecutive_crashes_for_rollback()
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
@@ -1524,8 +1527,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def any_crashloop_failing(self) -> bool:
         return any(
-            # XXX: make this configurable in deploy.yaml?
-            count >= MIN_CONSECUTIVE_CRASHES_FOR_ROLLBACK
+            # XXX: make this configureable in deploy.yaml?
+            count >= self.min_consecutive_crashes_for_rollback
             for count in self._crashloop_checks_by_instance.values()
         )
 
