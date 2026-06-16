@@ -1524,7 +1524,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def any_crashloop_failing(self) -> bool:
         return any(
-            # XXX: make this configureable in deploy.yaml?
+            # XXX: make this configurable in deploy.yaml?
             count >= MIN_CONSECUTIVE_CRASHES_FOR_ROLLBACK
             for count in self._crashloop_checks_by_instance.values()
         )
