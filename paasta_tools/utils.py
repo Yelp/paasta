@@ -2031,7 +2031,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     uses_bulkdata_default: bool
-    use_raw_metric_for_hpa: bool
+    raw_metric_for_hpa_enabled: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     enable_cost_owner_label: bool
@@ -2841,7 +2841,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
 
     def get_use_raw_metric_for_hpa(self) -> bool:
-        return self.config_dict.get("use_raw_metric_for_hpa", False)
+        return self.config_dict.get("raw_metric_for_hpa_enabled", False)
 
 
 def _run(
