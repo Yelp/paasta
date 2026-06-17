@@ -509,21 +509,19 @@ def format_flink_instance_metadata(
     """Format verbose instance metadata (repo links, pool, owner, runbook, configs)."""
     output: List[str] = []
     output.append("    Links:")
-    sg_url = f"y/service-sg/{service}"
-    output.append(
-        f"      Code:       {PaastaColors.terminal_link('http://'+sg_url, sg_url)}"
-    )
+    sg_url = f"http://y/service-sg/{service}"
+    output.append(f"      Code:       {PaastaColors.terminal_link(sg_url, sg_url)}")
     if details.get("pool"):
         output.append(f"      Pool:       {details['pool']}")
     if details.get("team"):
         output.append(f"      Owner:      {details['team']}")
     if details.get("runbook"):
         output.append(f"      Runbook:    {details['runbook']}")
-    yelpsoa_url = f"y/service-yelpsoa/{service}"
-    srv_url = f"y/service-srv/{ecosystem}/{service}"
+    yelpsoa_url = f"http://y/service-yelpsoa/{service}"
+    srv_url = f"http://y/service-srv/{ecosystem}/{service}"
     output.append(
-        f"      Configs:    {PaastaColors.terminal_link('http://'+yelpsoa_url, yelpsoa_url)}"
-        f" | {PaastaColors.terminal_link('http://'+srv_url, srv_url)}"
+        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, yelpsoa_url)}"
+        f" | {PaastaColors.terminal_link(srv_url, srv_url)}"
     )
     return output
 
@@ -543,16 +541,16 @@ def format_flink_monitoring_links(
     service: str, instance: str, ecosystem: str, cluster: str
 ) -> List[str]:
     """Format Grafana and cost monitoring links as OSC 8 terminal hyperlinks."""
-    job_url = f"y/flink-job-metrics/?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
-    container_url = f"y/flink-container-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
-    jvm_url = f"y/flink-jvm-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
-    cost_url = f"y/flink-cost-dashboard/?Kube%20Paasta%20Cluster={cluster}&Instance%20Name={instance}&Service%20Name={service}"
+    job_url = f"http://y/flink-job-metrics/?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    container_url = f"http://y/flink-container-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    jvm_url = f"http://y/flink-jvm-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    cost_url = f"http://y/flink-cost-dashboard/?Kube%20Paasta%20Cluster={cluster}&Instance%20Name={instance}&Service%20Name={service}"
     return [
         "    Monitoring:",
-        f"      Job Metrics:       {PaastaColors.terminal_link('http://'+job_url, job_url)}",
-        f"      Container Metrics: {PaastaColors.terminal_link('http://'+container_url, container_url)}",
-        f"      JVM Metrics:       {PaastaColors.terminal_link('http://'+jvm_url, jvm_url)}",
-        f"      Cost:              {PaastaColors.terminal_link('http://'+cost_url, cost_url)}",
+        f"      Job Metrics:       {PaastaColors.terminal_link(job_url, job_url)}",
+        f"      Container Metrics: {PaastaColors.terminal_link(container_url, container_url)}",
+        f"      JVM Metrics:       {PaastaColors.terminal_link(jvm_url, jvm_url)}",
+        f"      Cost:              {PaastaColors.terminal_link(cost_url, cost_url)}",
     ]
 
 

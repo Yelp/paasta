@@ -14,6 +14,7 @@
 from unittest import mock
 
 import pytest
+from kubernetes.client.rest import ApiException as KubeApiException
 
 import paasta_tools.flink_tools as flink_tools
 from paasta_tools.flink_tools import FlinkDeploymentConfig
@@ -293,8 +294,6 @@ def test_curl_flink_endpoint_get_job_checkpoints(
 
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
 def test_curl_flink_endpoint_kube_api_exception(mock_get_cr):
-    from kubernetes.client.rest import ApiException as KubeApiException
-
     mock_get_cr.side_effect = KubeApiException(status=503, reason="Service Unavailable")
 
     with pytest.raises(ValueError, match="failed HTTP request to flink API"):
