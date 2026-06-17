@@ -380,16 +380,10 @@ class TronActionConfig(InstanceConfig):
                 else stringified_spark_args["spark.app.name"]
             )
 
-        # TODO(MLCOMPUTE-1220): Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
-        if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
-            log.info(
-                f"Replacing spark.kubernetes.executor.podTemplateFile="
-                f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
-                f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
-            )
-        spark_conf[
-            "spark.kubernetes.executor.podTemplateFile"
-        ] = spark_tools.SPARK_DNS_POD_TEMPLATE
+        spark_conf.setdefault(
+            "spark.kubernetes.executor.podTemplateFile",
+            spark_tools.SPARK_DNS_POD_TEMPLATE,
+        )
 
         spark_conf.update(
             {
