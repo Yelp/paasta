@@ -484,8 +484,7 @@ def format_flink_instance_header(
 
     if details.get("dashboard_url"):
         url = f"{details['dashboard_url']}/"
-        text = url if verbose else "y/flink-dashboard"
-        output.append(f"    Dashboard:  {PaastaColors.terminal_link(url, text)}")
+        output.append(f"    Dashboard:  {PaastaColors.terminal_link(url, url)}")
 
     return output
 
