@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 import humanize
 import requests
 import service_configuration_lib
+from kubernetes.client.rest import ApiException as KubeApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.api import settings
@@ -324,7 +325,11 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         raise ValueError(f"JSON decoding error from flink API: {e}")
     except ConnectionError as e:
         raise ValueError(f"failed HTTP request to flink API: {e}")
-    except ApiException as e:
+    except KeyError as e:
+        raise ValueError(
+            f"missing expected field on Flink CR {cr_id.get('name', cr_id)}: {e}"
+        )
+    except (ApiException, KubeApiException) as e:
         raise ValueError(f"failed HTTP request to flink API: {e}")
 
 

@@ -291,6 +291,29 @@ def test_curl_flink_endpoint_get_job_checkpoints(
     }
 
 
+@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
+def test_curl_flink_endpoint_kube_api_exception(mock_get_cr):
+    from kubernetes.client.rest import ApiException as KubeApiException
+
+    mock_get_cr.side_effect = KubeApiException(status=503, reason="Service Unavailable")
+
+    with pytest.raises(ValueError, match="failed HTTP request to flink API"):
+        flink_tools.curl_flink_endpoint(flink_tools.cr_id("kurupt", "main"), "config")
+
+
+@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
+def test_curl_flink_endpoint_missing_annotation(mock_get_cr):
+    mock_get_cr.return_value = {
+        "metadata": {
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {},
+        }
+    }
+
+    with pytest.raises(ValueError, match="missing expected field on Flink CR"):
+        flink_tools.curl_flink_endpoint(flink_tools.cr_id("kurupt", "main"), "config")
+
+
 def test_get_flink_jobmanager_overview():
     with mock.patch(
         "paasta_tools.flink_tools._dashboard_get",
