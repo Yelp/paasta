@@ -1,3 +1,15 @@
+paasta-tools (1.53.3) jammy; urgency=medium
+
+  * 1.53.3 tagged with 'make release'
+    Commit: Stop overriding user-specified podTemplateFile in Tron Spark
+    jobs (#4336)  Use setdefault instead of unconditionally overwriting,
+    so users who explicitly set
+    spark.kubernetes.executor.podTemplateFile keep their value while the
+    DNS pod template remains the default.  Co-authored-by: Claude Opus
+    4.7 <noreply@anthropic.com>
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Jun 2026 08:07:06 -0700
+
 paasta-tools (1.53.2) jammy; urgency=medium
 
   * 1.53.2 tagged with 'make release'
