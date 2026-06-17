@@ -144,3 +144,39 @@ As an example the following deploy.yaml will execute steps ``security-check`` & 
    - step: prod.canary
      trigger_next_step_manually: true
    - step: prod.non_canary
+
+Crashloop auto-rollback
+------------------------
+
+When ``wait_for_deployment`` is active, PaaSTA can automatically roll back if the new
+version is persistently crashlooping (or OOMing - anything that restarts the underlying Pods).
+This is configured per deploy_group in deploy.yaml:
+
+* ``enable_crashloop_auto_rollback`` (boolean, optional): Enable or disable crashloop
+  detection for this step.
+  NOTE: this feature may be enabled or disabled at the PaaSTA cluster-level: this value overrides that state
+
+* ``min_restarts_for_crashloop_rollback`` (integer, optional): Number of container restarts
+  per replica before considering it crashlooping. (default: 2).
+
+* ``crashloop_rollback_percentage_threshold`` (float 0-1, optional): Fraction of replicas
+  that must be crashlooping to trigger the rollback.
+  (default: 1.0, i.e., all replicas must be crashlooping).
+
+Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack.
+
+A replica recovering does not cancel the rollback under the assumption that if we've had had enough repeated restarts
+across all replicas, something is fundamentally unsafe with the new deployment.
+
+.. sourcecode:: yaml
+
+   # deploy.yaml
+   ---
+   pipeline:
+   - step: prod.canary
+     trigger_next_step_manually: true
+     enable_crashloop_auto_rollback: true
+     min_restarts_for_crashloop_rollback: 3
+     crashloop_rollback_percentage_threshold: 0.8
+   - step: prod.non_canary
+     enable_crashloop_auto_rollback: true

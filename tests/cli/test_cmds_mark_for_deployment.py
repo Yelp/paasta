@@ -1118,7 +1118,6 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
     ):
         if target_commit == "commit":
             self.on_crashloop_detected("cluster1", "instance1", True)
-            self.on_crashloop_detected("cluster1", "instance1", True)
         # this case handles the automatic rollback so that we don't loop forever :p
         else:
             self.trigger("deploy_finished")
@@ -1164,10 +1163,10 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
         assert "start_rollback" in mfdp.state_history
 
 
-def test_MarkForDeployProcess_crashloop_stopped_cancels_countdown(
+def test_MarkForDeployProcess_crashloop_recovery_does_not_cancel(
     mock_periodically_update_slack,
 ):
-    """When crashloops resolve before the countdown, the cancel trigger fires."""
+    """Once crashlooping is detected, recovery does not cancel the rollback countdown."""
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
@@ -1190,26 +1189,23 @@ def test_MarkForDeployProcess_crashloop_stopped_cancels_countdown(
             authors=None,
         )
 
+    mfdp.state = "deploying"
     mfdp.trigger_history.clear()
 
-    # First detection — not enough to trigger
-    mfdp.on_crashloop_detected("cluster1", "instance1", True)
-    assert "crashloops_started_failing" not in mfdp.trigger_history
-
-    # Second consecutive detection — triggers
     mfdp.on_crashloop_detected("cluster1", "instance1", True)
     assert "crashloops_started_failing" in mfdp.trigger_history
 
     mfdp.trigger_history.clear()
+    # Recovery reported — should NOT cancel
     mfdp.on_crashloop_detected("cluster1", "instance1", False)
-    assert "crashloops_stopped_failing" in mfdp.trigger_history
-    assert not mfdp.any_crashloop_failing()
+    assert "crashloops_stopped_failing" not in mfdp.trigger_history
+    assert mfdp.any_crashloop_failing()
 
 
 def test_on_crashloop_detected_multi_instance_aggregation(
     mock_periodically_update_slack,
 ):
-    """Only fires trigger on first crashlooping instance, and only stops when all recover."""
+    """Only fires trigger on first crashlooping instance; recovery never clears."""
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
@@ -1232,33 +1228,29 @@ def test_on_crashloop_detected_multi_instance_aggregation(
             authors=None,
         )
 
+    mfdp.state = "deploying"
     mfdp.trigger_history.clear()
 
-    # inst1: first detection — not yet triggered
-    mfdp.on_crashloop_detected("cluster1", "inst1", True)
-    assert "crashloops_started_failing" not in mfdp.trigger_history
-
-    # inst1: second consecutive detection — triggers
+    # inst1: first detection — triggers immediately
     mfdp.on_crashloop_detected("cluster1", "inst1", True)
     assert "crashloops_started_failing" in mfdp.trigger_history
 
     mfdp.trigger_history.clear()
-    # inst2: first detection — already failing so no new trigger
-    mfdp.on_crashloop_detected("cluster1", "inst2", True)
+    # inst2: also crashlooping — already failing so no new trigger
     mfdp.on_crashloop_detected("cluster1", "inst2", True)
     assert "crashloops_started_failing" not in mfdp.trigger_history
 
     mfdp.trigger_history.clear()
-    # inst1 recovers, but inst2 still failing
+    # inst1 reports recovery — still failing (no recovery logic)
     mfdp.on_crashloop_detected("cluster1", "inst1", False)
     assert "crashloops_stopped_failing" not in mfdp.trigger_history
     assert mfdp.any_crashloop_failing()
 
     mfdp.trigger_history.clear()
-    # inst2 recovers — all clear
+    # inst2 reports recovery — still failing (no recovery logic)
     mfdp.on_crashloop_detected("cluster1", "inst2", False)
-    assert "crashloops_stopped_failing" in mfdp.trigger_history
-    assert not mfdp.any_crashloop_failing()
+    assert "crashloops_stopped_failing" not in mfdp.trigger_history
+    assert mfdp.any_crashloop_failing()
 
 
 def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
@@ -1279,7 +1271,7 @@ def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
         autospec=True,
         return_value=mock_config,
     ):
-        mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        mfdp = WrappedMarkForDeploymentProcess(
             service="service",
             deploy_info={"pipeline": []},
             deploy_group="deploy_group",
@@ -1300,77 +1292,86 @@ def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
     assert mfdp.crashloop_auto_rollback_enabled is False
 
 
-def test_all_pods_crashlooping_returns_true_when_all_crash():
+def test_pods_above_crashloop_threshold_all_crashing():
+    current_counts = {"pod1": 3, "pod2": 4}
+    baseline_counts = {"pod1": 1, "pod2": 1}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is True
+    )
+
+
+def test_pods_above_crashloop_threshold_no_increase():
+    current_counts = {"pod1": 2, "pod2": 2}
+    baseline_counts = {"pod1": 2, "pod2": 2}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_below_min_restarts():
+    current_counts = {"pod1": 1, "pod2": 1}
+    baseline_counts = {"pod1": 0, "pod2": 0}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_percentage():
+    current_counts = {"pod1": 3, "pod2": 3, "pod3": 0}
+    baseline_counts = {"pod1": 1, "pod2": 1, "pod3": 0}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2, percentage_threshold=0.5
+        )
+        is True
+    )
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2, percentage_threshold=1.0
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_new_pods():
+    current_counts = {"pod1": 3, "pod_new": 3}
+    baseline_counts = {"pod1": 1}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is True
+    )
+
+
+def test_get_pod_restart_counts_ignores_old_version():
     version = DeploymentVersion(sha="abc123", image_version=None)
-    pod1 = MagicMock(spec=KubernetesPodV2)
-    pod2 = MagicMock(spec=KubernetesPodV2)
-
-    version_status = MagicMock()
-    version_status.git_sha = "abc123"
-    version_status.image_version = None
-    version_status.pods = [pod1, pod2]
-
-    status = MagicMock()
-    status.kubernetes_v2.versions = [version_status]
-
-    with patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.recent_container_restart",
-        autospec=True,
-        return_value=True,
-    ), patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.get_main_container",
-        autospec=True,
-    ):
-        assert mark_for_deployment.all_pods_crashlooping(version, status) is True
-
-
-def test_all_pods_crashlooping_returns_false_when_healthy():
-    version = DeploymentVersion(sha="abc123", image_version=None)
-    pod_healthy = MagicMock(spec=KubernetesPodV2)
-
-    version_status = MagicMock()
-    version_status.git_sha = "abc123"
-    version_status.image_version = None
-    version_status.pods = [pod_healthy]
-
-    status = MagicMock()
-    status.kubernetes_v2.versions = [version_status]
-
-    with patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.recent_container_restart",
-        autospec=True,
-        return_value=False,
-    ), patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.get_main_container",
-        autospec=True,
-    ):
-        assert mark_for_deployment.all_pods_crashlooping(version, status) is False
-
-
-def test_all_pods_crashlooping_ignores_old_version():
-    version = DeploymentVersion(sha="abc123", image_version=None)
-    pod_crashlooping = MagicMock(spec=KubernetesPodV2)
 
     old_version_status = MagicMock()
     old_version_status.git_sha = "old_sha"
     old_version_status.image_version = None
-    old_version_status.pods = [pod_crashlooping]
+    old_version_status.pods = [MagicMock(spec=KubernetesPodV2)]
 
     status = MagicMock()
     status.kubernetes_v2.versions = [old_version_status]
 
     with patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.recent_container_restart",
-        autospec=True,
-        return_value=True,
-    ), patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_main_container",
         autospec=True,
     ):
-        assert mark_for_deployment.all_pods_crashlooping(version, status) is False
+        assert mark_for_deployment.get_pod_restart_counts(version, status) == {}
 
 
-def test_diagnose_why_instance_is_stuck_returns_crashloop_status():
+def test_diagnose_why_instance_is_stuck_returns_restart_counts():
     mock_api = MagicMock()
     mock_status = MagicMock()
     mock_status.kubernetes_v2.versions = []
@@ -1389,9 +1390,9 @@ def test_diagnose_why_instance_is_stuck_returns_crashloop_status():
         autospec=True,
         return_value="cluster1",
     ), patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.all_pods_crashlooping",
+        "paasta_tools.cli.cmds.mark_for_deployment.get_pod_restart_counts",
         autospec=True,
-        return_value=True,
+        return_value={"pod1": 3, "pod2": 4},
     ):
         result = mark_for_deployment.diagnose_why_instance_is_stuck(
             service="service",
@@ -1403,7 +1404,7 @@ def test_diagnose_why_instance_is_stuck_returns_crashloop_status():
             notify_fn=None,
         )
 
-    assert result is True
+    assert result == {"pod1": 3, "pod2": 4}
 
 
 def test_log_crashloop_rollback():
