@@ -3042,18 +3042,17 @@ class TestPrintFlinkStatus:
         assert get_flink_job_name(job_details_obj) in joined
 
         # Links section
-        assert "github.yelpcorp.com/services/fake_service" in joined
-        assert "sourcegraph.yelpcorp.com/services/fake_service" in joined
+        assert "y/service-sg/fake_service" in joined
         assert "fake_owner" in joined
         assert "fake_runbook_url" in joined
-        assert "yelpsoa-configs/tree/master/fake_service" in joined
-        assert "srv-configs/tree/master/ecosystem/devc/fake_service" in joined
+        assert "y/service-yelpsoa/fake_service" in joined
+        assert "y/service-srv/devc/fake_service" in joined
 
         # Monitoring links
-        assert "flink-metrics" in joined
-        assert "flink-container-metrics" in joined
-        assert "flink-jvm-metrics" in joined
-        assert "cloudzero" in joined
+        assert "y/flink-job-metrics/" in joined
+        assert "y/flink-container-metrics" in joined
+        assert "y/flink-jvm-metrics" in joined
+        assert "y/flink-cost-dashboard/" in joined
         assert "var-service=fake_service" in joined
 
         # Log commands
