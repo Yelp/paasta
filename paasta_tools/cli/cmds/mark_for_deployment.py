@@ -1534,6 +1534,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         was_any = self.any_crashloop_failing()
         self._crashlooping_instances.add(key)
 
+        # Only fire on the first instance that reports crashlooping — if multiple instances
+        # are in the deploy group, subsequent True reports won't re-trigger (preventing the
+        # rollback countdown from restarting multiple times).
         if not was_any:
             self.trigger("crashloops_started_failing")
 
