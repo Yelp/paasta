@@ -976,7 +976,7 @@ def get_rules_for_nrtsearch_gpu(
             instance_name = "primary" if is_primary else "replica"
             deployment_name = f"{cluster_name}-{instance_name}-dep"
             namespace = "paastasvc-nrtsearch"
-            metric_name = f"{deployment_name}-arbitrary_promql-prom"
+            metric_name = f"{deployment_name}-gpu-prom"
 
             metrics_query = f"""
                 label_replace(
@@ -989,12 +989,10 @@ def get_rules_for_nrtsearch_gpu(
                                 kube_pod_labels{{
                                     label_paasta_yelp_com_service='nrtsearch',
                                     label_yelp_com_paasta_instance='{instance_name}',
-                                    label_nrtsearch_yelp_com_nrtsearch_cluster='{cluster_name}',
-                                    namespace='{namespace}',
                                     paasta_cluster='{paasta_cluster}'
                                 }}
                             )
-                        ) / {target_gpu_utilization},
+                        ),
                         'deployment',
                         '{deployment_name}',
                         '',

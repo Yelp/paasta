@@ -515,9 +515,9 @@ my-cluster:
 
     assert len(rules) == 1
     rule = rules[0]
-    assert rule["name"]["as"] == "my-cluster-replica-dep-arbitrary_promql-prom"
+    assert rule["name"]["as"] == "my-cluster-replica-dep-gpu-prom"
     assert "DCGM_FI_DEV_GPU_UTIL" in rule["metricsQuery"]
-    assert "/ 70" in rule["metricsQuery"]
+    assert "/ 70" not in rule["metricsQuery"]
     assert "my-cluster-replica-dep" in rule["seriesQuery"]
     assert "pnw-prod" in rule["seriesQuery"]
     assert rule["resources"] == {
