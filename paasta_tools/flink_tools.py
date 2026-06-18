@@ -27,6 +27,7 @@ from urllib.parse import urlparse
 import humanize
 import requests
 import service_configuration_lib
+from kubernetes.client.rest import ApiException as KubeApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.api import settings
@@ -248,15 +249,12 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_flink_ingress_url_root(cluster: str, is_eks: bool) -> str:
-    if is_eks:
-        return f"http://flink.eks.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
-    else:
-        return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
+def get_flink_ingress_url_root(cluster: str) -> str:
+    return f"http://flink.eks.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
 
 
-def _dashboard_get(cr_name: str, cluster: str, path: str, is_eks: bool) -> str:
-    root = get_flink_ingress_url_root(cluster, is_eks)
+def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
+    root = get_flink_ingress_url_root(cluster)
     url = f"{root}{cr_name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
@@ -291,8 +289,7 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
 def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     metadata = cr["metadata"]
     cluster = metadata["labels"][paasta_prefixed("cluster")]
-    is_eks = metadata["labels"].get("paasta.yelp.com/eks", "False")
-    base_url = get_flink_ingress_url_root(cluster, is_eks == "True")
+    base_url = get_flink_ingress_url_root(cluster)
 
     # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
     _, _, service_cr_name, *_ = urlparse(
@@ -328,15 +325,17 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         raise ValueError(f"JSON decoding error from flink API: {e}")
     except ConnectionError as e:
         raise ValueError(f"failed HTTP request to flink API: {e}")
-    except ApiException as e:
+    except KeyError as e:
+        raise ValueError(
+            f"missing expected field on Flink CR {cr_id.get('name', cr_id)}: {e}"
+        )
+    except (ApiException, KubeApiException) as e:
         raise ValueError(f"failed HTTP request to flink API: {e}")
 
 
-def get_flink_jobmanager_overview(
-    cr_name: str, cluster: str, is_eks: bool
-) -> Mapping[str, Any]:
+def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
     try:
-        response = _dashboard_get(cr_name, cluster, "overview", is_eks)
+        response = _dashboard_get(cr_name, cluster, "overview")
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url
@@ -490,9 +489,7 @@ def format_flink_instance_header(
 
     if details.get("dashboard_url"):
         url = f"{details['dashboard_url']}/"
-        output.append(
-            f"    Dashboard:  {PaastaColors.terminal_link(url, 'y/flink-dashboard')}"
-        )
+        output.append(f"    Dashboard:  {PaastaColors.terminal_link(url, url)}")
 
     return output
 
@@ -512,25 +509,19 @@ def format_flink_instance_metadata(
     """Format verbose instance metadata (repo links, pool, owner, runbook, configs)."""
     output: List[str] = []
     output.append("    Links:")
-    git_url = f"https://github.yelpcorp.com/services/{service}"
-    sg_url = f"https://sourcegraph.yelpcorp.com/services/{service}"
-    output.append(
-        f"      Repo:       {PaastaColors.terminal_link(git_url, 'y/github')}"
-        f" | {PaastaColors.terminal_link(sg_url, 'sourcegraph')}"
-    )
+    sg_url = f"http://y/service-sg/{service}"
+    output.append(f"      Code:       {PaastaColors.terminal_link(sg_url, sg_url)}")
     if details.get("pool"):
         output.append(f"      Pool:       {details['pool']}")
     if details.get("team"):
         output.append(f"      Owner:      {details['team']}")
     if details.get("runbook"):
         output.append(f"      Runbook:    {details['runbook']}")
-    yelpsoa_url = (
-        f"https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/{service}"
-    )
-    srv_url = f"https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/{ecosystem}/{service}"
+    yelpsoa_url = f"http://y/service-yelpsoa/{service}"
+    srv_url = f"http://y/service-srv/{ecosystem}/{service}"
     output.append(
-        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, 'y/yelpsoa')}"
-        f" | {PaastaColors.terminal_link(srv_url, 'y/srv-configs')}"
+        f"      Configs:    {PaastaColors.terminal_link(yelpsoa_url, yelpsoa_url)}"
+        f" | {PaastaColors.terminal_link(srv_url, srv_url)}"
     )
     return output
 
@@ -550,16 +541,16 @@ def format_flink_monitoring_links(
     service: str, instance: str, ecosystem: str, cluster: str
 ) -> List[str]:
     """Format Grafana and cost monitoring links as OSC 8 terminal hyperlinks."""
-    job_url = f"https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&var-job=All&from=now-24h&to=now"
-    container_url = f"https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
-    jvm_url = f"https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}&from=now-24h&to=now"
-    cost_url = f"https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster={cluster}&costcontext%3APaasta%20Instance={instance}&costcontext%3APaasta%20Service={service}&showRightFlyout=filters"
+    job_url = f"http://y/flink-job-metrics/?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    container_url = f"http://y/flink-container-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    jvm_url = f"http://y/flink-jvm-metrics?var-region=uswest2-{ecosystem}&var-service={service}&var-instance={instance}"
+    cost_url = f"http://y/flink-cost-dashboard/?Kube%20Paasta%20Cluster={cluster}&Instance%20Name={instance}&Service%20Name={service}"
     return [
         "    Monitoring:",
-        f"      Job Metrics:       {PaastaColors.terminal_link(job_url, 'y/flink-job-metrics')}",
-        f"      Container Metrics: {PaastaColors.terminal_link(container_url, 'y/flink-container-metrics')}",
-        f"      JVM Metrics:       {PaastaColors.terminal_link(jvm_url, 'y/flink-jvm-metrics')}",
-        f"      Cost:              {PaastaColors.terminal_link(cost_url, 'y/flink-on-paasta-cost')}",
+        f"      Job Metrics:       {PaastaColors.terminal_link(job_url, job_url)}",
+        f"      Container Metrics: {PaastaColors.terminal_link(container_url, container_url)}",
+        f"      JVM Metrics:       {PaastaColors.terminal_link(jvm_url, jvm_url)}",
+        f"      Cost:              {PaastaColors.terminal_link(cost_url, cost_url)}",
     ]
 
 
