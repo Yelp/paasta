@@ -1,3 +1,58 @@
+paasta-tools (1.54.0) jammy; urgency=medium
+
+  * 1.54.0 tagged with 'make release'
+    Commit: Automatically rollback after persistent crashlooping (#4328)
+    If we"re crashing consistently, something has probably gone wrong
+    and we don"t want to keep trying to deploy in the interest of not
+    wasting compute on broken code :)  (and also, so that we don"t leave
+    a timebomb after the deployment times out if no one is watching:
+    should this happen, the next deployment would skip the broken deploy
+    group and impact prod)  To enable this, I"m piggybacking off of our
+    existing code for diagnosing stuck/slow bounces: after
+    `time_before_first_diagnosis` seconds, we start checking pod restart
+    counts. If all pods have: 1. `restart_count >=
+    min_restarts_for_crashloop_rollback` (new config option, default:
+    2), AND 2. `restart_count > baseline` (i.e., at least one new
+    restart since we started watching)  ...then we immediately trigger
+    the autorollback sequence  The baseline comparison prevents false
+    positives from pods that crashed at startup but recovered — we only
+    roll back if crashes are happening during the diagnosis loop  Once
+    triggered, the only way to exit the autorollback state is to click
+    the Slack buttons in the deploy thread: it"s not exactly obvious
+    when/if a Pod has recovered for things like OOMKills as those might
+    take a couple minutes but still be prevalent enough to prevent a
+    deployment from completing (and also: if your code crashed N times
+    already during this deployment, it"s broken :p)  NOTE: The tests are
+    all `claude`-authored (which is great "cause mocking some of the
+    paasta api bits would have been kinda annoying by hand atm :p)  that
+    said, I"ve also done some manual testing in the paasta playground to
+    ensure that the tests aren"t providing me a false sense of security:
+    (note: `cb9e0385` is a "good" SHA and an actual commit in the
+    compute-infra-test-service repo, and `c1413ea9` only exists on my
+    devbox and is an image that always runs `exit 1`)  With crashloop
+    rollback enabled in deploy.yaml and default diagnosis parameters
+    (5min delay, 60s interval) when marking c1413ea9:  ``` Would update
+    the slack thread with: Marked `c1413ea9` for prod.main. Would update
+    the slack thread with: Will automatically roll back in 30 seconds,
+    (at 14:15:42)! Click "Disable auto rollbacks :close_eyes_monkey:" to
+    cancel this! Would update the slack thread with: Time"s up, will now
+    automatically roll back. Would update the slack thread with: Marked
+    `cb9e0385` for prod.main. ```  Total time from deploy to rollback:
+    ~6.5 minutes (300s first diagnosis delay + 60s second probe + 30s
+    countdown).  With crashloop rollback disabled, diagnosis parameters
+    tuned down so that i didn"t have to wait so long, and the m-f-d
+    wrapped with a `timeout 90`: none of the rollback messages showed up
+    and the command was killed after 90 seconds, but i still saw the
+    diagnosis output show up   NOTE2: I"ve refactored this quite a bit
+    from the initial version after a conversation with rofe made me
+    realize there were some edge cases I hadn"t considered earlier
+    (spurred on by a question about whether or not this would catch
+    OOMKills and rollback on "em) :p ...which also made me go ahead and
+    add deploy.yaml configs/toggles for things since this is more
+    opinionated now
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Jun 2026 11:59:56 -0700
+
 paasta-tools (1.53.4) jammy; urgency=medium
 
   * 1.53.4 tagged with 'make release'
