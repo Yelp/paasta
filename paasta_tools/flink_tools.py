@@ -116,11 +116,6 @@ class FlinkInstanceDetails(TypedDict):
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
     spot: bool
-    # When True, pin this Flink's pods to instance-store (local NVMe) nodes.
-    # When False/unset, pods may run on instance-store or EBS-backed nodes,
-    # letting Karpenter cost-optimize across both within a shared pool. Passed
-    # through to the Flink CR spec and enforced by the flink-operator as a node
-    # affinity on karpenter.k8s.aws/instance-local-nvme; see STREAMAPP-15217.
     requireSSD: bool
     udf_plugin_name: str
     udf_plugin_version: str
