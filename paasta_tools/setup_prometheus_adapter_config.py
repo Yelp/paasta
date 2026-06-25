@@ -68,7 +68,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -590,67 +589,39 @@ def create_instance_worker_load_scaling_rule(
     # This makes sure that desired_instances includes load from all namespaces.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
 
-    paasta_system_config = load_system_paasta_config()
-    use_raw_metric = paasta_system_config.get_use_raw_metric_for_hpa()
-
     load_per_instance = f"""
         avg(
             worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
-    if use_raw_metric:
-        replicas_filter_terms = (
-            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
-        )
-        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='{service}',label_paasta_yelp_com_instance='{instance}'"
-        missing_instances = f"""
-            (clamp_min(
-                label_replace(
-                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
-                    * on (deployment)
-                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
-                    "kube_deployment", "$1", "deployment", "(.*)")
-                - on (kube_deployment)
-                count by (kube_deployment) (
-                    workers{{{worker_filter_terms}}}
-                ),
-                0
-            ) or on() vector(0))
-        """
-        total_load = f"""
-        (
-            sum(
-                {load_per_instance}
-            ) by (kube_deployment)
-            + ignoring(kube_deployment) group_left()
-            {missing_instances}
-        )
-        """
-    else:
-        ready_pods = f"""
-            (sum(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-                or
-                max_over_time(
-                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-                )
-            ) by (kube_deployment))
-        """
-        missing_instances = f"""
-            clamp_min(
-                {ready_pods} - count({load_per_instance}) by (kube_deployment),
-                0
-            )
-        """
-        total_load = f"""
-        (
-            sum(
-                {load_per_instance}
-            ) by (kube_deployment)
-            +
-            {missing_instances}
-        )
-        """
+    replicas_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
+    )
+    deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='{service}',label_paasta_yelp_com_instance='{instance}'"
+    missing_instances = f"""
+        (clamp_min(
+            label_replace(
+                kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                * on (deployment)
+                kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                "kube_deployment", "$1", "deployment", "(.*)")
+            - on (kube_deployment)
+            count by (kube_deployment) (
+                workers{{{worker_filter_terms}}}
+            ),
+            0
+        ) or on() vector(0))
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        + ignoring(kube_deployment) group_left()
+        {missing_instances}
+    )
+    """
+
     total_load_smoothed = f"""
         avg_over_time(
             (
