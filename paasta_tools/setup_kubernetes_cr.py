@@ -257,7 +257,7 @@ def get_dashboard_base_url(kind: str, cluster: str, is_eks: bool) -> Optional[st
     if kind.lower() == "flink":
         flink_link = dashboard_links.get(cluster, {}).get("Flink")
         if flink_link is None:
-            flink_link = get_flink_ingress_url_root(cluster, is_eks)
+            flink_link = get_flink_ingress_url_root(cluster)
         if flink_link[-1:] != "/":
             flink_link += "/"
         return flink_link

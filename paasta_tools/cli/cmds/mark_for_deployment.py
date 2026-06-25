@@ -496,7 +496,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     deployment_version = DeploymentVersion(commit, args.image_version)
 
     old_deployment_version = get_currently_deployed_version(
-        service=service, deploy_group=deploy_group
+        service=service, deploy_group=deploy_group, soa_dir=args.soa_dir
     )
     if deployment_version == old_deployment_version:
         print(
@@ -708,8 +708,26 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             service, deploy_group, soa_dir
         )
 
+        system_paasta_config = load_system_paasta_config()
+        self.crashloop_auto_rollback_enabled = self._get_deploy_group_config(
+            "enable_crashloop_auto_rollback",
+            system_paasta_config.get_enable_crashloop_auto_rollback(),
+        )
+        self.min_restarts_for_crashloop_rollback = self._get_deploy_group_config(
+            "min_restarts_for_crashloop_rollback",
+            system_paasta_config.get_min_restarts_for_crashloop_rollback(),
+        )
+        self.crashloop_rollback_percentage_threshold = self._get_deploy_group_config(
+            "crashloop_rollback_percentage_threshold",
+            system_paasta_config.get_crashloop_rollback_percentage_threshold(),
+        )
+
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
+
+        # Track which instances are currently crashlooping (by (cluster, instance) key).
+        # We trigger rollback as soon as any instance reports all pods crashlooping.
+        self._crashlooping_instances: Set[Tuple[str, str]] = set()
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -988,6 +1006,17 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "before": self.log_metric_rollback,
             }
             yield {
+                "source": self.rollforward_states,
+                "dest": "start_rollback",
+                "trigger": "rollback_crashloop_failure",
+                "before": self.log_crashloop_rollback,
+            }
+            yield {
+                "source": self.rollback_states,
+                "dest": None,
+                "trigger": "rollback_crashloop_failure",
+            }
+            yield {
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
@@ -1074,6 +1103,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "trigger": "metrics_stopped_failing",
             "before": functools.partial(
                 self.cancel_auto_rollback_countdown, "rollback_metric_failure"
+            ),
+        }
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "crashloops_started_failing",
+            "unless": [self.already_rolling_back],
+            "before": functools.partial(
+                self.start_auto_rollback_countdown, "rollback_crashloop_failure"
             ),
         }
         yield {
@@ -1271,6 +1309,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     notify_fn=self.ping_authors,
                     metrics_interface=self.metrics_interface,
                     rollback_type=rollback_type,
+                    # NOTE: we pass this as an arg 'cause wait_for_deployment() is not an instance method and therefore
+                    # doesn't have access to on_crashloop_detected()
+                    # ...and we can't easily make wait_for_deployment() an instance method 'cause we reuse that in places
+                    # where we don't want a MarkForDeploymentProcess (e.g., the `wait-for-deployment` CLI :p)
+                    crashloop_fn=self.on_crashloop_detected
+                    if self.crashloop_auto_rollback_enabled
+                    else None,
+                    min_restarts_for_crashloop_rollback=self.min_restarts_for_crashloop_rollback,
+                    crashloop_rollback_percentage_threshold=self.crashloop_rollback_percentage_threshold,
                 )
             )
             self.wait_for_deployment_tasks[target_version] = wait_for_deployment_task
@@ -1320,6 +1367,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         elif self.any_metric_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
                 "Because a rollback-triggering metric for this service is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+            )
+        elif self.any_crashloop_failing():
+            self.ping_authors(
+                "Because the new deployment has replicas that are repeatedly crashing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1433,6 +1484,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.deploy_info, self.deploy_group, notify_type
         )
 
+    def _get_deploy_group_config(self, key: str, default: Any) -> Any:
+        for step in self.deploy_info.get("pipeline", []):
+            if step.get("step", "") == self.deploy_group:
+                return step.get(key, default)
+        return default
+
     def __build_rollback_audit_details(
         self, rollback_type: RollbackTypes
     ) -> Dict[str, str]:
@@ -1456,6 +1513,32 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
+
+    def log_crashloop_rollback(self) -> None:
+        self.rollback_type = RollbackTypes.AUTOMATIC_CRASHLOOP_ROLLBACK
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_CRASHLOOP_ROLLBACK
+        )
+        self._log_rollback(rollback_details)
+
+    def any_crashloop_failing(self) -> bool:
+        return len(self._crashlooping_instances) > 0
+
+    def on_crashloop_detected(
+        self, cluster: str, instance: str, is_crashlooping: bool
+    ) -> None:
+        if not is_crashlooping:
+            return
+
+        key = (cluster, instance)
+        was_any = self.any_crashloop_failing()
+        self._crashlooping_instances.add(key)
+
+        # Only fire on the first instance that reports crashlooping — if multiple instances
+        # are in the deploy group, subsequent True reports won't re-trigger (preventing the
+        # rollback countdown from restarting multiple times).
+        if not was_any:
+            self.trigger("crashloops_started_failing")
 
     def log_user_rollback(self) -> None:
         self.rollback_type = RollbackTypes.USER_INITIATED_ROLLBACK
@@ -1502,6 +1585,9 @@ async def wait_until_instance_is_done(
     time_before_first_diagnosis: float,
     should_ping_for_unhealthy_pods: bool,
     notify_fn: Optional[Callable[[str], None]] = None,
+    crashloop_fn: Optional[Callable[[str, str, bool], None]] = None,
+    min_restarts_for_crashloop_rollback: int = 2,
+    crashloop_rollback_percentage_threshold: float = 1.0,
 ) -> Tuple[str, str]:
     loop = asyncio.get_running_loop()
     diagnosis_task = asyncio.create_task(
@@ -1516,6 +1602,9 @@ async def wait_until_instance_is_done(
             time_before_first_diagnosis,
             should_ping_for_unhealthy_pods,
             notify_fn,
+            crashloop_fn,
+            min_restarts_for_crashloop_rollback,
+            crashloop_rollback_percentage_threshold,
         )
     )
     try:
@@ -1550,12 +1639,20 @@ async def periodically_diagnose_instance(
     time_before_first_diagnosis: float,
     should_ping_for_unhealthy_pods: bool,
     notify_fn: Optional[Callable[[str], None]] = None,
+    crashloop_fn: Optional[Callable[[str, str, bool], None]] = None,
+    min_restarts_for_crashloop_rollback: int = 2,
+    crashloop_rollback_percentage_threshold: float = 1.0,
 ) -> None:
     await asyncio.sleep(time_before_first_diagnosis)
     loop = asyncio.get_running_loop()
+    # None means "first probe hasn't happened yet" — we can't use an empty dict because
+    # that would make every pod look like it increased from 0, triggering on the first probe.
+    baseline_restart_counts: Optional[Dict[str, int]] = None
     while True:
         try:
-            await loop.run_in_executor(
+            # XXX: might be worth extracting the status call so that we don't have to return a value from here
+            # to prevent making multiple potentially expensive status calls
+            restart_counts = await loop.run_in_executor(
                 executor,
                 functools.partial(
                     diagnose_why_instance_is_stuck,
@@ -1568,6 +1665,20 @@ async def periodically_diagnose_instance(
                     notify_fn,
                 ),
             )
+            # i am sorry, but it was either pass through a callback function or do some funky global shenanigans
+            # to be able to store some state here :(
+            if crashloop_fn and restart_counts is not None:
+                if baseline_restart_counts is None:
+                    baseline_restart_counts = restart_counts
+                else:
+                    is_crashlooping = pods_above_crashloop_threshold(
+                        restart_counts,
+                        baseline_restart_counts,
+                        min_restarts=min_restarts_for_crashloop_rollback,
+                        percentage_threshold=crashloop_rollback_percentage_threshold,
+                    )
+                    # NOTE: this should always be the on_crashloop_detected() function from MarkForDeploymentProcess
+                    crashloop_fn(cluster, instance, is_crashlooping)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -1584,7 +1695,12 @@ def diagnose_why_instance_is_stuck(
     instance_config: LongRunningServiceConfig,
     should_ping_for_unhealthy_pods: bool,
     notify_fn: Optional[Callable[[str], None]] = None,
-) -> None:
+) -> Optional[Dict[str, int]]:
+    """
+    Periodically check instance health state. Returns:
+    * None: unable to talk to the PaaSTA API
+    * Dict[str, int]: pod_name → restart_count for pods of the target version
+    """
     api = client.get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(
             cluster=cluster,
@@ -1604,7 +1720,7 @@ def diagnose_why_instance_is_stuck(
             "Error getting service status from PaaSTA API for "
             f"{cluster}: {e.status} {e.reason}"
         )
-        return
+        return None
 
     print(f"  Status for {service}.{instance} in {cluster}:")
     for active_version in status.kubernetes_v2.versions:
@@ -1630,6 +1746,8 @@ def diagnose_why_instance_is_stuck(
         maybe_ping_for_unhealthy_pods(
             service, instance, cluster, version, status, notify_fn
         )
+
+    return get_pod_restart_counts(version, status)
 
 
 already_pinged = False
@@ -1665,6 +1783,41 @@ def maybe_ping_for_unhealthy_pods(
 
 def should_ping_for_pod(pod: KubernetesPodV2) -> bool:
     return recent_container_restart(get_main_container(pod))
+
+
+def get_pod_restart_counts(
+    version: DeploymentVersion,
+    status: InstanceStatusKubernetesV2,
+) -> Dict[str, int]:
+    pods = [
+        pod
+        for v in status.kubernetes_v2.versions
+        if v.git_sha == version.sha and v.image_version == version.image_version
+        for pod in v.pods
+    ]
+    result: Dict[str, int] = {}
+    for pod in pods:
+        container = get_main_container(pod)
+        if container is not None:
+            result[pod.name] = container.restart_count
+    return result
+
+
+def pods_above_crashloop_threshold(
+    current_counts: Dict[str, int],
+    baseline_counts: Dict[str, int],
+    min_restarts: int = 2,
+    percentage_threshold: float = 1.0,
+) -> bool:
+    if not current_counts:
+        return False
+
+    crashlooping_count = sum(
+        1
+        for pod_name, count in current_counts.items()
+        if count >= min_restarts and count > baseline_counts.get(pod_name, 0)
+    )
+    return (crashlooping_count / len(current_counts)) >= percentage_threshold
 
 
 def ping_for_pods(
@@ -1924,6 +2077,9 @@ async def wait_for_deployment(
     notify_fn: Optional[Callable[[str], None]] = None,
     metrics_interface: Optional[metrics_lib.BaseMetrics] = None,
     rollback_type: Optional[RollbackTypes] = None,
+    crashloop_fn: Optional[Callable[[str, str, bool], None]] = None,
+    min_restarts_for_crashloop_rollback: int = 2,
+    crashloop_rollback_percentage_threshold: float = 1.0,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
         instance_configs_per_cluster = (
@@ -1992,6 +2148,9 @@ async def wait_for_deployment(
                                     system_paasta_config.get_mark_for_deployment_should_ping_for_unhealthy_pods()
                                 ),
                                 notify_fn=notify_fn,
+                                crashloop_fn=crashloop_fn,
+                                min_restarts_for_crashloop_rollback=min_restarts_for_crashloop_rollback,
+                                crashloop_rollback_percentage_threshold=crashloop_rollback_percentage_threshold,
                             ),
                         )
                     )

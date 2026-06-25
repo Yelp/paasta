@@ -190,6 +190,7 @@ CAPS_DROP = [
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
+    AUTOMATIC_CRASHLOOP_ROLLBACK = "automatic_crashloop_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
@@ -228,6 +229,10 @@ class time_cache:
             return self.configs[key]["data"]
 
         return cache
+
+
+# Avoid re-reading service.yaml when multiple callers need it in quick succession.
+cached_read_service_configuration = time_cache(ttl=5)(read_service_configuration)
 
 
 _SortDictsT = TypeVar("_SortDictsT", bound=Mapping)
@@ -358,6 +363,7 @@ class InstanceConfigDict(TypedDict, total=False):
     service: str
     uses_bulkdata: bool
     docker_url: str
+    cost_owner: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -956,6 +962,9 @@ class InstanceConfig:
         """Which mesos role of nodes this job should run on."""
         return self.config_dict.get("role")
 
+    def get_cost_owner(self) -> Optional[str]:
+        return self.config_dict.get("cost_owner")
+
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
@@ -1191,6 +1200,13 @@ class PaastaColors:
     @staticmethod
     def default(text: str) -> str:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
+
+    @staticmethod
+    def terminal_link(url: str, label: str) -> str:
+        """Format an OSC 8 terminal hyperlink (clickable in supported terminals)."""
+        if os.getenv("NO_COLOR", "0") == "1":
+            return f"{label} ({url})"
+        return f"\033]8;;{url}\033\\{label}\033]8;;\033\\"
 
 
 LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
@@ -1958,6 +1974,9 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
+    enable_crashloop_auto_rollback: bool
+    min_restarts_for_crashloop_rollback: int
+    crashloop_rollback_percentage_threshold: float
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2018,6 +2037,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
+    enable_cost_owner_label: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
     readonly_docker_registry_auth_file: str
@@ -2653,6 +2673,15 @@ class SystemPaastaConfig:
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
+    def get_enable_crashloop_auto_rollback(self) -> bool:
+        return self.config_dict.get("enable_crashloop_auto_rollback", False)
+
+    def get_min_restarts_for_crashloop_rollback(self) -> int:
+        return self.config_dict.get("min_restarts_for_crashloop_rollback", 2)
+
+    def get_crashloop_rollback_percentage_threshold(self) -> float:
+        return self.config_dict.get("crashloop_rollback_percentage_threshold", 1.0)
+
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
@@ -2762,6 +2791,9 @@ class SystemPaastaConfig:
 
     def get_enable_tron_tsc(self) -> bool:
         return self.config_dict.get("enable_tron_tsc", True)
+
+    def get_enable_cost_owner_label(self) -> bool:
+        return self.config_dict.get("enable_cost_owner_label", False)
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)

@@ -1,3 +1,140 @@
+paasta-tools (1.54.0) jammy; urgency=medium
+
+  * 1.54.0 tagged with 'make release'
+    Commit: Automatically rollback after persistent crashlooping (#4328)
+    If we"re crashing consistently, something has probably gone wrong
+    and we don"t want to keep trying to deploy in the interest of not
+    wasting compute on broken code :)  (and also, so that we don"t leave
+    a timebomb after the deployment times out if no one is watching:
+    should this happen, the next deployment would skip the broken deploy
+    group and impact prod)  To enable this, I"m piggybacking off of our
+    existing code for diagnosing stuck/slow bounces: after
+    `time_before_first_diagnosis` seconds, we start checking pod restart
+    counts. If all pods have: 1. `restart_count >=
+    min_restarts_for_crashloop_rollback` (new config option, default:
+    2), AND 2. `restart_count > baseline` (i.e., at least one new
+    restart since we started watching)  ...then we immediately trigger
+    the autorollback sequence  The baseline comparison prevents false
+    positives from pods that crashed at startup but recovered — we only
+    roll back if crashes are happening during the diagnosis loop  Once
+    triggered, the only way to exit the autorollback state is to click
+    the Slack buttons in the deploy thread: it"s not exactly obvious
+    when/if a Pod has recovered for things like OOMKills as those might
+    take a couple minutes but still be prevalent enough to prevent a
+    deployment from completing (and also: if your code crashed N times
+    already during this deployment, it"s broken :p)  NOTE: The tests are
+    all `claude`-authored (which is great "cause mocking some of the
+    paasta api bits would have been kinda annoying by hand atm :p)  that
+    said, I"ve also done some manual testing in the paasta playground to
+    ensure that the tests aren"t providing me a false sense of security:
+    (note: `cb9e0385` is a "good" SHA and an actual commit in the
+    compute-infra-test-service repo, and `c1413ea9` only exists on my
+    devbox and is an image that always runs `exit 1`)  With crashloop
+    rollback enabled in deploy.yaml and default diagnosis parameters
+    (5min delay, 60s interval) when marking c1413ea9:  ``` Would update
+    the slack thread with: Marked `c1413ea9` for prod.main. Would update
+    the slack thread with: Will automatically roll back in 30 seconds,
+    (at 14:15:42)! Click "Disable auto rollbacks :close_eyes_monkey:" to
+    cancel this! Would update the slack thread with: Time"s up, will now
+    automatically roll back. Would update the slack thread with: Marked
+    `cb9e0385` for prod.main. ```  Total time from deploy to rollback:
+    ~6.5 minutes (300s first diagnosis delay + 60s second probe + 30s
+    countdown).  With crashloop rollback disabled, diagnosis parameters
+    tuned down so that i didn"t have to wait so long, and the m-f-d
+    wrapped with a `timeout 90`: none of the rollback messages showed up
+    and the command was killed after 90 seconds, but i still saw the
+    diagnosis output show up   NOTE2: I"ve refactored this quite a bit
+    from the initial version after a conversation with rofe made me
+    realize there were some edge cases I hadn"t considered earlier
+    (spurred on by a question about whether or not this would catch
+    OOMKills and rollback on "em) :p ...which also made me go ahead and
+    add deploy.yaml configs/toggles for things since this is more
+    opinionated now
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Jun 2026 11:59:56 -0700
+
+paasta-tools (1.53.4) jammy; urgency=medium
+
+  * 1.53.4 tagged with 'make release'
+    Commit: Merge pull request #4334 from Yelp/flink-y-links  Flink: add
+    y/ links and remove dead is_eks branching
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 18 Jun 2026 06:54:42 -0700
+
+paasta-tools (1.53.3) jammy; urgency=medium
+
+  * 1.53.3 tagged with 'make release'
+    Commit: Stop overriding user-specified podTemplateFile in Tron Spark
+    jobs (#4336)  Use setdefault instead of unconditionally overwriting,
+    so users who explicitly set
+    spark.kubernetes.executor.podTemplateFile keep their value while the
+    DNS pod template remains the default.  Co-authored-by: Claude Opus
+    4.7 <noreply@anthropic.com>
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Jun 2026 08:07:06 -0700
+
+paasta-tools (1.53.2) jammy; urgency=medium
+
+  * 1.53.2 tagged with 'make release'
+    Commit: Merge pull request #4333 from Yelp/u/sidtuladhar/fix-raw-
+    metric-hpa-key-mismatch  fix: align system config key with puppet
+    variable name for raw HPA metric
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 16 Jun 2026 10:43:31 -0700
+
+paasta-tools (1.53.1) jammy; urgency=medium
+
+  * 1.53.1 tagged with 'make release'
+    Commit: Merge pull request #4329 from Yelp/u/sidtuladhar/PAASTA-
+    18886/hpa-fix  feat: use raw metrics over recording rule rollout
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 16 Jun 2026 06:18:54 -0700
+
+paasta-tools (1.53.0) jammy; urgency=medium
+
+  * 1.53.0 tagged with 'make release'
+    Commit: Merge pull request #4330 from tub/u-tobyc-flink-restart-
+    support  Support paasta restart for Flink instances
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 15 Jun 2026 06:51:52 -0700
+
+paasta-tools (1.52.1) jammy; urgency=medium
+
+  * 1.52.1 tagged with 'make release'
+    Commit: Added --hostname to docker run command for spark-run (#4331)
+    For spark-run to work properly on yelp"s internal dev-boxes,
+    hostname needs to be fqdn instead of short name By adding --hostname
+    to docker run command, spark.driver.host gets the fqdn instead of
+    the short name and fixes the error ``` Caused by:
+    java.net.UnknownHostException: ```
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 11 Jun 2026 06:37:56 -0700
+
+paasta-tools (1.52.0) jammy; urgency=medium
+
+  * 1.52.0 tagged with 'make release'
+    Commit: Merge pull request #4326 from Yelp/u/sids/CLOUD-1216  add
+    yelp.com/cost_owner label, default value specified in service.yaml
+    with instance level overriding possible for paasta instances and
+    tron jobs
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 09 Jun 2026 11:36:29 -0700
+
+paasta-tools (1.51.3) jammy; urgency=medium
+
+  * 1.51.3 tagged with 'make release'
+    Commit: Improve `paasta rollback` output (#4325)  This generally
+    does 4 things: * Adds some much needed spacing between messages :p *
+    Makes it very explict that the rollback succeeded     * + makes it
+    clear that the rollback will happen in the background * Provides a
+    way to check if the rollback is done (we should maybe just   do this
+    automatically in the future) * Makes the Git revert reminder match
+    internal messaging  I will probably obviate the wait-for-deployment
+    messaging by having `paasta rollback` automatically do that for you
+    ...but for now i wanted to keep this to just small text tweaks :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Jun 2026 09:34:29 -0700
+
 paasta-tools (1.51.2) jammy; urgency=medium
 
   * 1.51.2 tagged with 'make release'

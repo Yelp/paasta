@@ -64,7 +64,6 @@ def check_under_registered_taskmanagers(
     instance_config: FlinkDeploymentConfig,
     expected_count: int,
     cr_name: str,
-    is_eks: bool,
 ) -> Tuple[bool, str, str]:
     """Check if not enough taskmanagers have been registered to the jobmanager and
     returns both the result of the check in the form of a boolean and a human-readable
@@ -74,7 +73,7 @@ def check_under_registered_taskmanagers(
     if cr_name != "":
         try:
             overview = flink_tools.get_flink_jobmanager_overview(
-                cr_name, instance_config.cluster, is_eks
+                cr_name, instance_config.cluster
             )
             num_reported = overview.get("taskmanagers", 0)
             crit_threshold = instance_config.get_replication_crit_percentage()
@@ -171,7 +170,6 @@ def check_flink_service_health(
             instance_config=instance_config,
             expected_count=taskmanagers_expected_cnt,
             cr_name=service_cr_name,
-            is_eks=isinstance(instance_config, flinkeks_tools.FlinkEksDeploymentConfig),
         ),
     ]
     output = ", ".join([r[1] for r in results])
