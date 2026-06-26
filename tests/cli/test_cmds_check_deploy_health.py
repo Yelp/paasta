@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from paasta_tools.cli.cmds import check_deploy_health
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import DeploymentVersion
 
 
@@ -29,7 +30,7 @@ def test_check_deploy_health_all_healthy(
     mock_check_done,
 ):
     mock_get_version.return_value = DeploymentVersion(sha="abc123", image_version="v1")
-    mock_instance_config = mock.Mock()
+    mock_instance_config = mock.Mock(spec=LongRunningServiceConfig)
     mock_instance_config.get_instance.return_value = "main"
     mock_get_instance_configs.return_value = {"cluster1": [mock_instance_config]}
     mock_check_done.return_value = True
@@ -73,9 +74,9 @@ def test_check_deploy_health_unhealthy(
     mock_check_done,
 ):
     mock_get_version.return_value = DeploymentVersion(sha="abc123", image_version="v1")
-    mock_config_1 = mock.Mock()
+    mock_config_1 = mock.Mock(spec=LongRunningServiceConfig)
     mock_config_1.get_instance.return_value = "main"
-    mock_config_2 = mock.Mock()
+    mock_config_2 = mock.Mock(spec=LongRunningServiceConfig)
     mock_config_2.get_instance.return_value = "canary"
     mock_get_instance_configs.return_value = {
         "cluster1": [mock_config_1, mock_config_2]
