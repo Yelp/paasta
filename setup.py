@@ -44,6 +44,9 @@ setup(
     include_package_data=True,
     python_requires=">=3.10.0",
     install_requires=get_install_requires(),
+    extras_require={
+        "tui": ["textual>=8.0.0"],
+    },
     scripts=[
         "paasta_tools/apply_external_resources.py",
         "paasta_tools/check_autoscaler_max_instances.py",

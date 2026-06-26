@@ -778,13 +778,11 @@ test_job:
     conditions:
         signalfx: []
         prometheus: []
-        splunk: []
     """,
         """\
     conditions:
         signalfx: []
         prometheus: []
-        splunk: []
     rollback_window_s: 1000
     check_interval_s: 10
     enable_slo_rollback: false
@@ -793,26 +791,24 @@ test_job:
         """\
     conditions:
         signalfx: []
-        splunk: []
     """,
         """\
     conditions:
-        splunk:
-            - query: "some fun splunk query here"
+        prometheus:
+            - query: "up{service='myservice'}"
+              upper_bound: null
+              lower_bound: 1
+    """,
+        """\
+    conditions:
+        signalfx:
+            - query: "some signalflow query"
               upper_bound: 100
-              lower_bound: null
     """,
         """\
     conditions:
-        splunk:
-            - query: "some fun splunk query here"
-              upper_bound: 100
-    """,
-        """\
-    conditions:
-        splunk:
-            - query: "some fun splunk query here"
-              query_type: results
+        signalfx:
+            - query: "some signalflow query"
               upper_bound: 100
               dry_run: true
     """,
@@ -841,20 +837,14 @@ def test_rollback_validate_schema(mock_content, capsys):
         "conditions: []",
         """\
         conditions:
-            splunk:
+            prometheus:
                 - upper_bound: 100
         """,
         """\
         conditions:
-            splunk:
+            prometheus:
                 - query: testing...
                   upper_bound: "100"
-        """,
-        """\
-        conditions:
-            splunk:
-                - query: testing...
-                  query_type: "100"
         """,
         """\
         conditions:
@@ -865,10 +855,15 @@ def test_rollback_validate_schema(mock_content, capsys):
         """\
     conditions:
         splarnk:
-            - query: "some fun splunk query here"
-              query_type: results
+            - query: "some query here"
               upper_bound: 100
               dry_run: true
+    """,
+        """\
+    conditions:
+        splunk:
+            - query: "splunk is no longer valid"
+              upper_bound: 100
     """,
     ),
 )
