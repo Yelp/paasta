@@ -724,9 +724,17 @@ def format_flink_jobs_table(
     if checkpoint_data is None:
         checkpoint_data = {}
 
+    # Some job details can be empty objects when the jobs list is stale.
+    # Keep only entries with fields required to render job rows.
+    jobs_with_display_fields = [
+        job for job in jobs if job.get("name") and job.get("start_time")
+    ]
+
     # Avoid cutting job name — use max length of actual job names
-    if jobs:
-        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
+    if jobs_with_display_fields:
+        max_job_name_length = max(
+            [len(get_flink_job_name(job)) for job in jobs_with_display_fields]
+        )
     else:
         max_job_name_length = 10
 
@@ -750,10 +758,7 @@ def format_flink_jobs_table(
     unique_jobs = (
         sorted(job_list, key=lambda j: -j["start_time"])[0]  # type: ignore
         for _, job_list in groupby(
-            sorted(
-                (j for j in jobs if j.get("name") and j.get("start_time")),
-                key=lambda j: j["name"],
-            ),
+            sorted(jobs_with_display_fields, key=lambda j: j["name"]),
             lambda j: j["name"],
         )
     )
