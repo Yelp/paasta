@@ -17,11 +17,11 @@ from paasta_tools.utils import list_services
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser = subparsers.add_parser(
         "check-deploy-health",
-        help="Check if all instances in a deploy group are healthy at a version",
+        help="Check if all instances in a deploy group are healthy at the deployed version",
         description=(
             "Checks whether all instances in a deploy group are running and "
-            "healthy at the currently deployed version. Exit code 0 means healthy, "
-            "1 means unhealthy."
+            "healthy at the currently deployed version. "
+            "Exit 0 = healthy, 1 = unhealthy, 2 = error."
         ),
     )
     parser.add_argument(
@@ -62,33 +62,30 @@ def paasta_check_deploy_health(args: argparse.Namespace) -> int:
     )
     if not version:
         print(
-            f"ERROR: No version currently deployed for {service} in {deploy_group}",
+            f"ERROR: No version deployed for {service}/{deploy_group}",
             file=sys.stderr,
         )
         return 2
 
     try:
-        instance_configs_per_cluster = (
+        configs_by_cluster = (
             get_instance_configs_for_service_in_deploy_group_all_clusters(
                 service, deploy_group, soa_dir
             )
         )
     except NoSuchCluster:
         print(
-            f"ERROR: A cluster for {service} is not in paasta-api endpoints config",
+            f"ERROR: Cluster for {service} not in paasta-api endpoints config",
             file=sys.stderr,
         )
         return 2
 
-    instance_configs = [
-        (cluster, instance_config)
-        for cluster, configs in instance_configs_per_cluster.items()
-        for instance_config in configs
+    instances = [
+        (cluster, ic) for cluster, ics in configs_by_cluster.items() for ic in ics
     ]
-
-    if not instance_configs:
+    if not instances:
         print(
-            f"ERROR: No instance configs found for {service} in deploy group {deploy_group}",
+            f"ERROR: No instances found for {service}/{deploy_group}",
             file=sys.stderr,
         )
         return 2
@@ -96,24 +93,20 @@ def paasta_check_deploy_health(args: argparse.Namespace) -> int:
     all_healthy = all(
         check_if_instance_is_done(
             service=service,
-            instance=instance_config.get_instance(),
+            instance=ic.get_instance(),
             cluster=cluster,
             version=version,
-            instance_config=instance_config,
+            instance_config=ic,
         )
-        for cluster, instance_config in instance_configs
+        for cluster, ic in instances
     )
 
     if all_healthy:
-        print(
-            f"HEALTHY: All instances of {service} in {deploy_group} are healthy "
-            f"at {version}"
-        )
+        print(f"HEALTHY: {service}/{deploy_group} at {version}")
         return 0
-    else:
-        print(
-            f"UNHEALTHY: Not all instances of {service} in {deploy_group} are "
-            f"healthy at {version}",
-            file=sys.stderr,
-        )
-        return 1
+
+    print(
+        f"UNHEALTHY: Not all instances of {service}/{deploy_group} are healthy",
+        file=sys.stderr,
+    )
+    return 1

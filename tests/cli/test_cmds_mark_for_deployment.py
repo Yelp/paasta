@@ -203,6 +203,7 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
     autospec=True,
@@ -217,14 +218,16 @@ def test_paasta_mark_for_deployment_returns_0_when_already_deployed_and_no_wait(
     mock_load_system_paasta_config,
     mock_list_deploy_groups,
     mock_get_currently_deployed_version,
+    mock_mark_for_deployment,
     mock_validate_service_name,
 ):
     """When version already matches and --wait-for-deployment is not set (block=False),
-    return 0 immediately without polling."""
+    write the git tag (idempotent) and return 0 without polling."""
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
     mock_load_system_paasta_config.return_value = config_mock
+    mock_mark_for_deployment.return_value = 0
 
     mock_get_currently_deployed_version.return_value = DeploymentVersion(
         FakeArgs.commit, FakeArgs.image_version
@@ -232,6 +235,13 @@ def test_paasta_mark_for_deployment_returns_0_when_already_deployed_and_no_wait(
 
     ret = mark_for_deployment.paasta_mark_for_deployment(FakeArgs)
     assert ret == 0
+    mock_mark_for_deployment.assert_called_once_with(
+        service="test_service",
+        deploy_group="test_deploy_group",
+        commit=FakeArgs.commit,
+        git_url="git://false.repo/services/test_services",
+        image_version="extrastuff",
+    )
 
 
 @patch(
