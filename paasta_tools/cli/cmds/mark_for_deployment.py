@@ -512,7 +512,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
                 print("Failed to write deploy tag", file=sys.stderr)
                 return ret
             return 0
-        print("Waiting for instances to be healthy (--wait-for-deployment).")
+        print("Waiting for instances to be healthy (--wait-for-deployment/wait_for_deployment: true is set).")
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(
