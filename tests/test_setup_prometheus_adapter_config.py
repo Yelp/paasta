@@ -11,6 +11,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.nrtsearchserviceeks_tools import NrtsearchServiceEksDeploymentConfig
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_active_requests_scaling_rule,
@@ -30,7 +31,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_worker_load_scaling_rule,
 )
-from paasta_tools.nrtsearchserviceeks_tools import NrtsearchServiceEksDeploymentConfig
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 
 
