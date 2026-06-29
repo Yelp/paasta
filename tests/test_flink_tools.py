@@ -821,6 +821,20 @@ class TestFormatFlinkJobsTable:
         output_text = "\n".join(result)
         assert "None" not in output_text
 
+    def test_skips_jobs_missing_required_display_fields(self, mock_terminal_size):
+        mock_terminal_size.return_value = mock.Mock(columns=120)
+        empty_job = {}
+        malformed_job = {"jid": "bad123", "name": "beam.main.bad_job"}
+        valid_job = self._make_job({"jid": "good123", "name": "beam.main.good_job"})
+        result = flink_tools.format_flink_jobs_table(
+            [empty_job, malformed_job, valid_job], "http://dashboard", 0
+        )
+        output_text = "\n".join(result)
+        rendered_job_lines = [line for line in result if "job" in line]
+        assert len(rendered_job_lines) == 1
+        assert "good_job" in output_text
+        assert "bad_job" not in output_text
+
 
 class TestFormatFlinkUdfInfo:
     def _make_config(self, extra_config: dict) -> FlinkDeploymentConfig:

@@ -1,3 +1,11 @@
+paasta-tools (1.54.1) jammy; urgency=medium
+
+  * 1.54.1 tagged with 'make release'
+    Commit: Merge pull request #4340 from Yelp/u/sidtuladhar/PAASTA-
+    18886/hpa-fix  chore: cleanup rollout flag
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 25 Jun 2026 07:33:54 -0700
+
 paasta-tools (1.54.0) jammy; urgency=medium
 
   * 1.54.0 tagged with 'make release'
