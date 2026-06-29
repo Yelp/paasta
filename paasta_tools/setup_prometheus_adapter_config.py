@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 from typing import cast
 
 import ruamel.yaml as yaml
@@ -65,6 +66,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.nrtsearchserviceeks_tools import NrtsearchServiceEksDeploymentConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -88,6 +90,7 @@ DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PER
 K8S_INSTANCE_TYPE_CLASSES = (
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
+    NrtsearchServiceEksDeploymentConfig,
 )
 
 
@@ -204,7 +207,9 @@ def _minify_promql(query: str) -> str:
 
 def create_instance_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> Optional[PrometheusAdapterRule]:
@@ -284,7 +289,9 @@ def create_instance_scaling_rule(
 
 def create_instance_active_requests_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -394,7 +401,9 @@ def create_instance_active_requests_scaling_rule(
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -496,7 +505,9 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_uwsgi_v2_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -567,7 +578,9 @@ def create_instance_uwsgi_v2_scaling_rule(
 
 def create_instance_worker_load_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -640,7 +653,9 @@ def create_instance_worker_load_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -737,7 +752,9 @@ def create_instance_piscina_scaling_rule(
 
 def create_instance_gunicorn_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -845,7 +862,9 @@ DEFAULT_ARBITRARY_PROMQL_RESOURCES: PrometheusAdapterResourceConfig = {
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -903,7 +922,9 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     paasta_cluster: str,
 ) -> List[PrometheusAdapterRule]:
     """
@@ -964,6 +985,16 @@ def create_prometheus_adapter_config(
             )
         }
     )
+    services.update(
+        {
+            service_name
+            for service_name, _ in get_services_for_cluster(
+                cluster=paasta_cluster,
+                instance_type="nrtsearchserviceeks",
+                soa_dir=str(soa_dir),
+            )
+        }
+    )
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
@@ -976,7 +1007,13 @@ def create_prometheus_adapter_config(
                 rules.extend(
                     get_rules_for_service_instance(
                         service_name=service_name,
-                        instance_config=instance_config,
+                        instance_config=cast(
+                            Union[
+                                KubernetesDeploymentConfig,
+                                NrtsearchServiceEksDeploymentConfig,
+                            ],
+                            instance_config,
+                        ),
                         paasta_cluster=paasta_cluster,
                     )
                 )
