@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 from typing import cast
 
 import ruamel.yaml as yaml
@@ -65,6 +66,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.nrtsearchserviceeks_tools import NrtsearchServiceEksDeploymentConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -88,6 +90,7 @@ DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PER
 K8S_INSTANCE_TYPE_CLASSES = (
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
+    NrtsearchServiceEksDeploymentConfig,
 )
 
 
@@ -204,7 +207,9 @@ def _minify_promql(query: str) -> str:
 
 def create_instance_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> Optional[PrometheusAdapterRule]:
@@ -845,7 +850,9 @@ DEFAULT_ARBITRARY_PROMQL_RESOURCES: PrometheusAdapterResourceConfig = {
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -903,7 +910,9 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     paasta_cluster: str,
 ) -> List[PrometheusAdapterRule]:
     """
@@ -931,104 +940,6 @@ def get_rules_for_service_instance(
         )
         if rule is not None:
             rules.append(rule)
-
-    return rules
-
-
-def get_rules_for_nrtsearch_gpu(
-    paasta_cluster: str, soa_dir: Path
-) -> List[PrometheusAdapterRule]:
-    """
-    Reads nrtsearch CRD manifests from yelpsoa-configs and generates
-    prometheus-adapter rules for any serverSet with targetGpuUtilization
-    configured.
-
-    The nrtsearch-operator manages its own HPA (not through PaaSTA's
-    autoscaling framework), so we need to generate adapter rules by
-    reading the CRD manifests directly.
-    """
-    rules: List[PrometheusAdapterRule] = []
-    nrtsearch_crd_file = (
-        soa_dir / "nrtsearch" / f"nrtsearchserviceeks-{paasta_cluster}.yaml"
-    )
-
-    if not nrtsearch_crd_file.exists():
-        log.debug(f"No nrtsearch CRD file found at {nrtsearch_crd_file}")
-        return rules
-
-    with open(nrtsearch_crd_file) as f:
-        crd_configs = yaml.safe_load(f)
-
-    if not crd_configs:
-        return rules
-
-    for cluster_name, cluster_config in crd_configs.items():
-        server_sets = cluster_config.get("serverSets", [])
-        for server_set in server_sets:
-            autoscaling = server_set.get("autoscaling")
-            if not autoscaling:
-                continue
-            target_gpu_utilization = autoscaling.get("targetGpuUtilization", 0)
-            if target_gpu_utilization <= 0:
-                continue
-
-            is_primary = server_set.get("primary", False)
-            instance_name = "primary" if is_primary else "replica"
-            deployment_name = f"{cluster_name}-{instance_name}-dep"
-            namespace = "paastasvc-nrtsearch"
-            metric_name = f"{deployment_name}-gpu-prom"
-
-            metrics_query = f"""
-                label_replace(
-                    label_replace(
-                        avg(
-                            DCGM_FI_DEV_GPU_UTIL
-                                * on(kube_pod, kube_namespace)
-                                group_left()
-                            (
-                                kube_pod_labels{{
-                                    label_paasta_yelp_com_service='nrtsearch',
-                                    label_yelp_com_paasta_instance='{instance_name}',
-                                    paasta_cluster='{paasta_cluster}'
-                                }}
-                            )
-                        ),
-                        'deployment',
-                        '{deployment_name}',
-                        '',
-                        ''
-                    ),
-                    'namespace',
-                    '{namespace}',
-                    '',
-                    ''
-                )
-            """
-
-            series_query = f"""
-                kube_deployment_labels{{
-                    deployment='{deployment_name}',
-                    paasta_cluster='{paasta_cluster}',
-                    namespace='{namespace}'
-                }}
-            """
-
-            rules.append(
-                {
-                    "name": {"as": metric_name},
-                    "seriesQuery": _minify_promql(series_query),
-                    "metricsQuery": _minify_promql(metrics_query),
-                    "resources": cast(
-                        PrometheusAdapterResourceConfig,
-                        DEFAULT_ARBITRARY_PROMQL_RESOURCES,
-                    ),
-                }
-            )
-            log.info(
-                f"Generated GPU autoscaling rule for nrtsearch "
-                f"cluster={cluster_name} instance={instance_name} "
-                f"targetGpuUtilization={target_gpu_utilization}"
-            )
 
     return rules
 
@@ -1062,6 +973,16 @@ def create_prometheus_adapter_config(
             )
         }
     )
+    services.update(
+        {
+            service_name
+            for service_name, _ in get_services_for_cluster(
+                cluster=paasta_cluster,
+                instance_type="nrtsearchserviceeks",
+                soa_dir=str(soa_dir),
+            )
+        }
+    )
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
@@ -1078,9 +999,6 @@ def create_prometheus_adapter_config(
                         paasta_cluster=paasta_cluster,
                     )
                 )
-
-    # Generate rules for nrtsearch GPU autoscaling from CRD manifests
-    rules.extend(get_rules_for_nrtsearch_gpu(paasta_cluster, soa_dir))
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps

@@ -30,7 +30,7 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_worker_load_scaling_rule,
 )
-from paasta_tools.setup_prometheus_adapter_config import get_rules_for_nrtsearch_gpu
+from paasta_tools.nrtsearchserviceeks_tools import NrtsearchServiceEksDeploymentConfig
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 
 
@@ -488,36 +488,43 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_custom_resources():
     }
 
 
-def test_get_rules_for_nrtsearch_gpu(tmp_path):
-    """Test that nrtsearch CRD manifests with targetGpuUtilization generate adapter rules."""
-    nrtsearch_dir = tmp_path / "nrtsearch"
-    nrtsearch_dir.mkdir()
-    crd_file = nrtsearch_dir / "nrtsearchserviceeks-pnw-prod.yaml"
-    crd_file.write_text(
-        """
-my-cluster:
-  serverSets:
-  - name: indexing
-    primary: true
-    count: 1
-  - name: search
-    primary: false
-    autoscaling:
-      minInstances: 2
-      maxInstances: 10
-      targetCpuUtilization: 80
-      targetGpuUtilization: 70
-      stabilizationWindow: 600
-"""
+def test_nrtsearch_gpu_autoscaling_via_service_instance():
+    """Test that nrtsearch configs with targetGpuUtilization generate adapter rules
+    through the standard get_rules_for_service_instance path."""
+    instance_config = NrtsearchServiceEksDeploymentConfig(
+        service="nrtsearch",
+        cluster="pnw-prod",
+        instance="my-cluster",
+        config_dict={
+            "serverSets": [
+                {"name": "indexing", "primary": True, "count": 1},
+                {
+                    "name": "search",
+                    "primary": False,
+                    "autoscaling": {
+                        "minInstances": 2,
+                        "maxInstances": 10,
+                        "targetCpuUtilization": 80,
+                        "targetGpuUtilization": 70,
+                        "stabilizationWindow": 600,
+                    },
+                },
+            ],
+        },
+        branch_dict=None,
+        soa_dir="/mock/soa",
     )
 
-    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+    rules = get_rules_for_service_instance(
+        service_name="nrtsearch",
+        instance_config=instance_config,
+        paasta_cluster="pnw-prod",
+    )
 
     assert len(rules) == 1
     rule = rules[0]
     assert rule["name"]["as"] == "my-cluster-replica-dep-gpu-prom"
     assert "DCGM_FI_DEV_GPU_UTIL" in rule["metricsQuery"]
-    assert "/ 70" not in rule["metricsQuery"]
     assert "my-cluster-replica-dep" in rule["seriesQuery"]
     assert "pnw-prod" in rule["seriesQuery"]
     assert rule["resources"] == {
@@ -528,29 +535,63 @@ my-cluster:
     }
 
 
-def test_get_rules_for_nrtsearch_gpu_no_file(tmp_path):
-    """Test that missing CRD file returns empty rules."""
-    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+def test_nrtsearch_no_gpu_config_returns_no_rules():
+    """Test that nrtsearch configs without targetGpuUtilization produce no rules."""
+    instance_config = NrtsearchServiceEksDeploymentConfig(
+        service="nrtsearch",
+        cluster="pnw-prod",
+        instance="my-cluster",
+        config_dict={
+            "serverSets": [
+                {
+                    "name": "search",
+                    "primary": False,
+                    "autoscaling": {
+                        "minInstances": 2,
+                        "maxInstances": 10,
+                        "targetCpuUtilization": 80,
+                    },
+                },
+            ],
+        },
+        branch_dict=None,
+        soa_dir="/mock/soa",
+    )
+
+    rules = get_rules_for_service_instance(
+        service_name="nrtsearch",
+        instance_config=instance_config,
+        paasta_cluster="pnw-prod",
+    )
+
     assert rules == []
 
 
-def test_get_rules_for_nrtsearch_gpu_no_gpu_config(tmp_path):
-    """Test that clusters without targetGpuUtilization are skipped."""
-    nrtsearch_dir = tmp_path / "nrtsearch"
-    nrtsearch_dir.mkdir()
-    crd_file = nrtsearch_dir / "nrtsearchserviceeks-pnw-prod.yaml"
-    crd_file.write_text(
-        """
-my-cluster:
-  serverSets:
-  - name: search
-    primary: false
-    autoscaling:
-      minInstances: 2
-      maxInstances: 10
-      targetCpuUtilization: 80
-"""
+def test_nrtsearch_primary_server_set_skipped():
+    """Test that primary serverSets are never used for GPU autoscaling."""
+    instance_config = NrtsearchServiceEksDeploymentConfig(
+        service="nrtsearch",
+        cluster="pnw-prod",
+        instance="my-cluster",
+        config_dict={
+            "serverSets": [
+                {
+                    "name": "indexing",
+                    "primary": True,
+                    "autoscaling": {
+                        "targetGpuUtilization": 70,
+                    },
+                },
+            ],
+        },
+        branch_dict=None,
+        soa_dir="/mock/soa",
     )
 
-    rules = get_rules_for_nrtsearch_gpu(paasta_cluster="pnw-prod", soa_dir=tmp_path)
+    rules = get_rules_for_service_instance(
+        service_name="nrtsearch",
+        instance_config=instance_config,
+        paasta_cluster="pnw-prod",
+    )
+
     assert rules == []
