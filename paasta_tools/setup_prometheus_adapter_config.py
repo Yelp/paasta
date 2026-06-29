@@ -289,7 +289,9 @@ def create_instance_scaling_rule(
 
 def create_instance_active_requests_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -399,7 +401,9 @@ def create_instance_active_requests_scaling_rule(
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -501,7 +505,9 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_uwsgi_v2_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -572,7 +578,9 @@ def create_instance_uwsgi_v2_scaling_rule(
 
 def create_instance_worker_load_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -645,7 +653,9 @@ def create_instance_worker_load_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -742,7 +752,9 @@ def create_instance_piscina_scaling_rule(
 
 def create_instance_gunicorn_scaling_rule(
     service: str,
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[
+        KubernetesDeploymentConfig, NrtsearchServiceEksDeploymentConfig
+    ],
     metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
     metric_name: str,
@@ -995,7 +1007,13 @@ def create_prometheus_adapter_config(
                 rules.extend(
                     get_rules_for_service_instance(
                         service_name=service_name,
-                        instance_config=instance_config,
+                        instance_config=cast(
+                            Union[
+                                KubernetesDeploymentConfig,
+                                NrtsearchServiceEksDeploymentConfig,
+                            ],
+                            instance_config,
+                        ),
                         paasta_cluster=paasta_cluster,
                     )
                 )
