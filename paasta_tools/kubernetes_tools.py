@@ -139,6 +139,9 @@ from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import run_sync
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -823,6 +826,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def namespace_custom_prometheus_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
+    @staticmethod
+    def shared_prometheus_metric_name(
+        metric_name: str, moving_average_window: int
+    ) -> str:
+        return f"{metric_name}-prom-{moving_average_window}"
+
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
     ) -> Optional[V2MetricSpec]:
@@ -830,6 +839,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
+        use_shared_rules = (
+            load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
+        )
+        shared_providers = {
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_UWSGI_V2,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_WORKER_LOAD,
+            METRICS_PROVIDER_GUNICORN,
+        }
+        if use_shared_rules and provider["type"] in shared_providers:
+            window = provider.get(
+                "moving_average_window_seconds",
+                DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+            )
+            prometheus_hpa_metric_name = self.shared_prometheus_metric_name(
+                provider["type"], window
+            )
+            metric_selector: Optional[V1LabelSelector] = V1LabelSelector(
+                match_labels={
+                    "paasta_cluster": self.cluster,
+                    "paasta_service": self.service,
+                    "paasta_instance": self.instance,
+                    "kube_deployment": self.get_sanitised_deployment_name(),
+                }
+            )
+        else:
+            metric_selector = None
 
         if provider["type"] in {METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY}:
             return V2MetricSpec(
@@ -851,7 +888,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
-                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
@@ -895,7 +935,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
-                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
