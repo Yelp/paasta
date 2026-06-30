@@ -116,6 +116,7 @@ class FlinkInstanceDetails(TypedDict):
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
     spot: bool
+    require_ssd: bool
     udf_plugin_name: str
     udf_plugin_version: str
 
