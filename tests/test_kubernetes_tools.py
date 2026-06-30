@@ -308,6 +308,15 @@ class TestKubernetesDeploymentConfig:
         ) as m:
             yield m
 
+    @pytest.fixture(autouse=True)
+    def mock_load_system_paasta_config(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+        ) as m:
+            m.return_value.get_use_prometheus_adapter_shared_rules.return_value = False
+            yield m
+
     def setup_method(self, method):
         mock_config_dict = KubernetesDeploymentConfigDict(
             bounce_method="crossover",

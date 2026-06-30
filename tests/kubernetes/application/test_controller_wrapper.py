@@ -28,6 +28,16 @@ def mock_load_system_paasta_config():
         yield mock_load_system_paasta_config
 
 
+@pytest.fixture(autouse=True)
+def mock_kubernetes_tools_load_system_paasta_config():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    ) as m:
+        m.return_value.get_use_prometheus_adapter_shared_rules.return_value = False
+        yield m
+
+
 @pytest.mark.parametrize("bounce_margin_factor_set", [True, False])
 def test_ensure_pod_disruption_budget_create(
     bounce_margin_factor_set,
