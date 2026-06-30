@@ -34,6 +34,7 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.kubernetes_tools import TEMPLATEABLE_PROVIDERS
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
@@ -903,14 +904,6 @@ def create_instance_arbitrary_promql_scaling_rule(
         ),
     }
 
-
-TEMPLATEABLE_PROVIDERS = {
-    METRICS_PROVIDER_WORKER_LOAD,
-    METRICS_PROVIDER_UWSGI_V2,
-    METRICS_PROVIDER_UWSGI,
-    METRICS_PROVIDER_PISCINA,
-    METRICS_PROVIDER_GUNICORN,
-}
 
 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER = {
     METRICS_PROVIDER_WORKER_LOAD: DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,

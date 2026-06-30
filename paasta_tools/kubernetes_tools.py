@@ -239,6 +239,14 @@ PROJECTED_SA_TOKEN_PATH = "token"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
 
+TEMPLATEABLE_PROVIDERS = {
+    METRICS_PROVIDER_UWSGI,
+    METRICS_PROVIDER_UWSGI_V2,
+    METRICS_PROVIDER_PISCINA,
+    METRICS_PROVIDER_WORKER_LOAD,
+    METRICS_PROVIDER_GUNICORN,
+}
+
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -843,14 +851,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        shared_providers = {
-            METRICS_PROVIDER_UWSGI,
-            METRICS_PROVIDER_UWSGI_V2,
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_WORKER_LOAD,
-            METRICS_PROVIDER_GUNICORN,
-        }
-        if use_shared_rules and provider["type"] in shared_providers:
+        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
