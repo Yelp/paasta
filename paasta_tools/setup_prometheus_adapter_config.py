@@ -40,6 +40,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
+from paasta_tools.kubernetes_tools import get_prometheus_metric_name
 from paasta_tools.long_running_service_tools import ALL_METRICS_PROVIDERS
 from paasta_tools.long_running_service_tools import (
     DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -49,6 +50,9 @@ from paasta_tools.long_running_service_tools import (
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER,
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -905,20 +909,13 @@ def create_instance_arbitrary_promql_scaling_rule(
     }
 
 
-DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER = {
-    METRICS_PROVIDER_WORKER_LOAD: DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-    METRICS_PROVIDER_UWSGI_V2: DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-    METRICS_PROVIDER_UWSGI: DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-    METRICS_PROVIDER_PISCINA: DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-    METRICS_PROVIDER_GUNICORN: DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-}
-
-
 def create_shared_worker_load_scaling_rule(
     paasta_cluster: str,
     moving_average_window: int,
 ) -> PrometheusAdapterRule:
-    metric_name = f"{METRICS_PROVIDER_WORKER_LOAD}-prom-{moving_average_window}"
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_WORKER_LOAD, moving_average_window
+    )
     worker_filter_terms = "<<.LabelMatchers>>"
 
     load_per_instance = f"""
@@ -972,7 +969,9 @@ def create_shared_uwsgi_v2_scaling_rule(
     paasta_cluster: str,
     moving_average_window: int,
 ) -> PrometheusAdapterRule:
-    metric_name = f"{METRICS_PROVIDER_UWSGI_V2}-prom-{moving_average_window}"
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_UWSGI_V2, moving_average_window
+    )
     worker_filter_terms = "<<.LabelMatchers>>"
 
     ready_pods = f"""
@@ -1023,7 +1022,9 @@ def create_shared_uwsgi_scaling_rule(
     paasta_cluster: str,
     moving_average_window: int,
 ) -> PrometheusAdapterRule:
-    metric_name = f"{METRICS_PROVIDER_UWSGI}-prom-{moving_average_window}"
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_UWSGI, moving_average_window
+    )
     worker_filter_terms = "<<.LabelMatchers>>"
     # replica_filter_terms uses <<.LabelMatchers>> too since kube_deployment is in the HPA selector
     replica_filter_terms = "<<.LabelMatchers>>"
@@ -1088,7 +1089,9 @@ def create_shared_piscina_scaling_rule(
     paasta_cluster: str,
     moving_average_window: int,
 ) -> PrometheusAdapterRule:
-    metric_name = f"{METRICS_PROVIDER_PISCINA}-prom-{moving_average_window}"
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_PISCINA, moving_average_window
+    )
     worker_filter_terms = "<<.LabelMatchers>>"
     replica_filter_terms = "<<.LabelMatchers>>"
 
@@ -1155,7 +1158,9 @@ def create_shared_gunicorn_scaling_rule(
     paasta_cluster: str,
     moving_average_window: int,
 ) -> PrometheusAdapterRule:
-    metric_name = f"{METRICS_PROVIDER_GUNICORN}-prom-{moving_average_window}"
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_GUNICORN, moving_average_window
+    )
     worker_filter_terms = "<<.LabelMatchers>>"
     replica_filter_terms = "<<.LabelMatchers>>"
 

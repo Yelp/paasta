@@ -140,7 +140,7 @@ from paasta_tools.async_utils import run_sync
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import (
-    DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+    DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER,
 )
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
@@ -246,6 +246,10 @@ TEMPLATEABLE_PROVIDERS = {
     METRICS_PROVIDER_WORKER_LOAD,
     METRICS_PROVIDER_GUNICORN,
 }
+
+
+def get_prometheus_metric_name(metric_name: str, moving_average_window: int) -> str:
+    return f"{metric_name}-prom-{moving_average_window}"
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -834,12 +838,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def namespace_custom_prometheus_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
-    @staticmethod
-    def shared_prometheus_metric_name(
-        metric_name: str, moving_average_window: int
-    ) -> str:
-        return f"{metric_name}-prom-{moving_average_window}"
-
     def get_autoscaling_provider_spec(
         self,
         name: str,
@@ -854,9 +852,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
-                DEFAULT_WORKER_LOAD_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
             )
-            prometheus_hpa_metric_name = self.shared_prometheus_metric_name(
+            prometheus_hpa_metric_name = get_prometheus_metric_name(
                 provider["type"], window
             )
             metric_selector: Optional[V1LabelSelector] = V1LabelSelector(

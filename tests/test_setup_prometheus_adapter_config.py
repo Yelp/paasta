@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -49,6 +50,7 @@ from paasta_tools.setup_prometheus_adapter_config import (
     create_shared_worker_load_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
+from paasta_tools.utils import SystemPaastaConfig
 
 LABEL_MATCHERS = "<<.LabelMatchers>>"
 
@@ -410,74 +412,34 @@ def test_get_rules_for_service_instance(
     )
 
 
-def test_create_shared_worker_load_scaling_rule() -> None:
+@pytest.mark.parametrize(
+    "rule_func,expected_series_metric,expected_name_prefix",
+    [
+        (create_shared_worker_load_scaling_rule, "worker_busy", "worker-load-prom"),
+        (create_shared_uwsgi_v2_scaling_rule, "uwsgi_worker_busy", "uwsgi-v2-prom"),
+        (create_shared_uwsgi_scaling_rule, "uwsgi_worker_busy", "uwsgi-prom"),
+        (
+            create_shared_piscina_scaling_rule,
+            "piscina_pool_utilization",
+            "piscina-prom",
+        ),
+        (create_shared_gunicorn_scaling_rule, "gunicorn_worker_busy", "gunicorn-prom"),
+    ],
+)
+def test_create_shared_scaling_rule(
+    rule_func, expected_series_metric, expected_name_prefix
+) -> None:
     paasta_cluster = "test_cluster"
     moving_average_window = 20120302
-    rule = create_shared_worker_load_scaling_rule(paasta_cluster, moving_average_window)
+
+    rule = rule_func(paasta_cluster, moving_average_window)
 
     assert LABEL_MATCHERS in rule["metricsQuery"]
     assert str(moving_average_window) in rule["metricsQuery"]
     assert paasta_cluster in rule["seriesQuery"]
-    assert "worker_busy" in rule["seriesQuery"]
-    assert "worker_busy" in rule["metricsQuery"]
-    assert rule["name"]["as"] == f"worker-load-prom-{moving_average_window}"
-    # no hardcoded service/instance
-    assert "paasta_service=" not in rule["metricsQuery"]
-    assert "paasta_instance=" not in rule["metricsQuery"]
-
-
-def test_create_shared_uwsgi_v2_scaling_rule() -> None:
-    paasta_cluster = "test_cluster"
-    moving_average_window = 20120302
-    rule = create_shared_uwsgi_v2_scaling_rule(paasta_cluster, moving_average_window)
-
-    assert LABEL_MATCHERS in rule["metricsQuery"]
-    assert str(moving_average_window) in rule["metricsQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    assert "uwsgi_worker_busy" in rule["seriesQuery"]
-    assert rule["name"]["as"] == f"uwsgi-v2-prom-{moving_average_window}"
-    assert "paasta_service=" not in rule["metricsQuery"]
-    assert "paasta_instance=" not in rule["metricsQuery"]
-
-
-def test_create_shared_uwsgi_scaling_rule() -> None:
-    paasta_cluster = "test_cluster"
-    moving_average_window = 20120302
-    rule = create_shared_uwsgi_scaling_rule(paasta_cluster, moving_average_window)
-
-    assert LABEL_MATCHERS in rule["metricsQuery"]
-    assert str(moving_average_window) in rule["metricsQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    assert "uwsgi_worker_busy" in rule["seriesQuery"]
-    assert rule["name"]["as"] == f"uwsgi-prom-{moving_average_window}"
-    assert "paasta_service=" not in rule["metricsQuery"]
-    assert "paasta_instance=" not in rule["metricsQuery"]
-
-
-def test_create_shared_piscina_scaling_rule() -> None:
-    paasta_cluster = "test_cluster"
-    moving_average_window = 20120302
-    rule = create_shared_piscina_scaling_rule(paasta_cluster, moving_average_window)
-
-    assert LABEL_MATCHERS in rule["metricsQuery"]
-    assert str(moving_average_window) in rule["metricsQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    assert "piscina_pool_utilization" in rule["seriesQuery"]
-    assert rule["name"]["as"] == f"piscina-prom-{moving_average_window}"
-    assert "paasta_service=" not in rule["metricsQuery"]
-    assert "paasta_instance=" not in rule["metricsQuery"]
-
-
-def test_create_shared_gunicorn_scaling_rule() -> None:
-    paasta_cluster = "test_cluster"
-    moving_average_window = 20120302
-    rule = create_shared_gunicorn_scaling_rule(paasta_cluster, moving_average_window)
-
-    assert LABEL_MATCHERS in rule["metricsQuery"]
-    assert str(moving_average_window) in rule["metricsQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    assert "gunicorn_worker_busy" in rule["seriesQuery"]
-    assert rule["name"]["as"] == f"gunicorn-prom-{moving_average_window}"
+    assert expected_series_metric in rule["seriesQuery"]
+    assert rule["name"]["as"] == f"{expected_name_prefix}-{moving_average_window}"
+    # if service/instance are provided, we're not compressing the amount of output :p
     assert "paasta_service=" not in rule["metricsQuery"]
     assert "paasta_instance=" not in rule["metricsQuery"]
 
@@ -485,52 +447,47 @@ def test_create_shared_gunicorn_scaling_rule() -> None:
 def _make_instance_config(
     provider_type: str, window: int, service: str = "svc", instance: str = "inst"
 ) -> mock.Mock:
-    return mock.Mock(
-        instance=instance,
-        get_namespace=mock.Mock(return_value="paastasvc-test"),
-        get_registrations=mock.Mock(return_value=[]),
-        namespace_custom_prometheus_metric_name=mock.Mock(
-            return_value=f"{service}-{instance}-{provider_type}-prom"
-        ),
-        get_autoscaling_metrics_provider=mock.Mock(
-            side_effect=lambda x: (
-                {
-                    "type": provider_type,
-                    "setpoint": 0.5,
-                    "moving_average_window_seconds": window,
-                }
-                if x == provider_type
-                else None
-            )
-        ),
+    m = mock.Mock(spec=KubernetesDeploymentConfig)
+    m.instance = instance
+    m.get_namespace.return_value = "paastasvc-test"
+    m.get_registrations.return_value = []
+    m.namespace_custom_prometheus_metric_name.return_value = (
+        f"{service}-{instance}-{provider_type}-prom"
     )
+    m.get_autoscaling_metrics_provider.side_effect = lambda x: (
+        {
+            "type": provider_type,
+            "setpoint": 0.5,
+            "moving_average_window_seconds": window,
+        }
+        if x == provider_type
+        else None
+    )
+    return m
 
 
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-    autospec=True,
-    return_value=mock.Mock(get_use_prometheus_adapter_shared_rules=lambda: True),
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
-    autospec=True,
-    return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
-    autospec=True,
-)
-def test_create_prometheus_adapter_config_shared_rules(
-    mock_loader_cls: mock.Mock,
-    mock_get_services: mock.Mock,
-    mock_system_config: mock.Mock,
-) -> None:
+def test_create_prometheus_adapter_config_shared_rules() -> None:
     # Two services both using worker-load with the same window → should collapse to 1 shared rule
-    mock_loader_cls.return_value.instance_configs.return_value = [
-        _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
-    ]
-    config = create_prometheus_adapter_config("test_cluster", mock.Mock())
-    rules = config["rules"]
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            spec=SystemPaastaConfig,
+            get_use_prometheus_adapter_shared_rules=lambda: True,
+        ),
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
+        autospec=True,
+        return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_loader_cls:
+        mock_loader_cls.return_value.instance_configs.return_value = [
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
+        ]
+        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
+        rules = config["rules"]
 
     # Only 1 shared rule for worker-load-1800, not 2 per-instance rules
     worker_load_rules = [r for r in rules if "worker-load-prom" in r["name"]["as"]]
@@ -539,31 +496,29 @@ def test_create_prometheus_adapter_config_shared_rules(
     assert LABEL_MATCHERS in worker_load_rules[0]["metricsQuery"]
 
 
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-    autospec=True,
-    return_value=mock.Mock(get_use_prometheus_adapter_shared_rules=lambda: True),
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
-    autospec=True,
-    return_value=[("svc_a", "inst1")],
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
-    autospec=True,
-)
-def test_create_prometheus_adapter_config_shared_rules_multiple_windows(
-    mock_loader_cls: mock.Mock,
-    mock_get_services: mock.Mock,
-    mock_system_config: mock.Mock,
-) -> None:
+def test_create_prometheus_adapter_config_shared_rules_multiple_windows() -> None:
     # Two instances with different windows → 2 shared rules
-    mock_loader_cls.return_value.instance_configs.return_value = [
-        _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
-        _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 300),
-    ]
-    config = create_prometheus_adapter_config("test_cluster", mock.Mock())
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            spec=SystemPaastaConfig,
+            get_use_prometheus_adapter_shared_rules=lambda: True,
+        ),
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
+        autospec=True,
+        return_value=[("svc_a", "inst1")],
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_loader_cls:
+        mock_loader_cls.return_value.instance_configs.return_value = [
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 300),
+        ]
+        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
+
     worker_load_rules = [
         r for r in config["rules"] if "worker-load-prom" in r["name"]["as"]
     ]
@@ -572,31 +527,28 @@ def test_create_prometheus_adapter_config_shared_rules_multiple_windows(
     assert names == {"worker-load-prom-1800", "worker-load-prom-300"}
 
 
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-    autospec=True,
-    return_value=mock.Mock(get_use_prometheus_adapter_shared_rules=lambda: False),
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
-    autospec=True,
-    return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
-)
-@mock.patch(
-    "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
-    autospec=True,
-)
-def test_create_prometheus_adapter_config_flag_off(
-    mock_loader_cls: mock.Mock,
-    mock_get_services: mock.Mock,
-    mock_system_config: mock.Mock,
-) -> None:
+def test_create_prometheus_adapter_config_flag_off() -> None:
     # Flag off → old per-instance rules, no shared rules
-    mock_loader_cls.return_value.instance_configs.return_value = [
-        _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
-    ]
-    config = create_prometheus_adapter_config("test_cluster", mock.Mock())
-    rules = config["rules"]
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            spec=SystemPaastaConfig,
+            get_use_prometheus_adapter_shared_rules=lambda: False,
+        ),
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
+        autospec=True,
+        return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_loader_cls:
+        mock_loader_cls.return_value.instance_configs.return_value = [
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
+        ]
+        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
+        rules = config["rules"]
 
     # 2 per-instance rules (one per service), no shared rule
     assert all(LABEL_MATCHERS not in r["metricsQuery"] for r in rules)

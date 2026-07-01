@@ -171,6 +171,7 @@ from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 from paasta_tools.utils import TopologySpreadConstraintDict
 
 # Expected pre-stop command for smartstack services waiting for connections on port 8888
@@ -310,11 +311,15 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.fixture(autouse=True)
     def mock_load_system_paasta_config(self):
+        config = SystemPaastaConfig(
+            SystemPaastaConfigDict({"use_prometheus_adapter_shared_rules": False}),
+            "/mock/system/configs",
+        )
         with mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config",
             autospec=True,
+            return_value=config,
         ) as m:
-            m.return_value.get_use_prometheus_adapter_shared_rules.return_value = False
             yield m
 
     def setup_method(self, method):
