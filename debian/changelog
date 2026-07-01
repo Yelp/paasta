@@ -1,3 +1,12 @@
+paasta-tools (1.55.0) jammy; urgency=medium
+
+  * 1.55.0 tagged with 'make release'
+    Commit: Merge pull request #4338 from Yelp/u/nathanleigh/STREAMAPP-
+    15217/flink-requireSSD  STREAMAPP-15217: Add requireSSD to
+    FlinkDeploymentConfigDict
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 01 Jul 2026 13:19:52 -0700
+
 paasta-tools (1.54.1) jammy; urgency=medium
 
   * 1.54.1 tagged with 'make release'
