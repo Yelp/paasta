@@ -1,3 +1,11 @@
+paasta-tools (1.55.2) jammy; urgency=medium
+
+  * 1.55.2 tagged with 'make release'
+    Commit: Merge pull request #4341 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  feat: shared prometheus adapter rules
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Fri, 03 Jul 2026 02:30:21 -0700
+
 paasta-tools (1.55.1) jammy; urgency=medium
 
   * 1.55.1 tagged with 'make release'
