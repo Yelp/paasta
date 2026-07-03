@@ -171,6 +171,7 @@ from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 from paasta_tools.utils import TopologySpreadConstraintDict
 
 # Expected pre-stop command for smartstack services waiting for connections on port 8888
@@ -305,6 +306,19 @@ class TestKubernetesDeploymentConfig:
         with mock.patch(
             "paasta_tools.kubernetes_tools.kube_config.load_kube_config",
             autospec=True,
+        ) as m:
+            yield m
+
+    @pytest.fixture(autouse=True)
+    def mock_load_system_paasta_config(self):
+        config = SystemPaastaConfig(
+            SystemPaastaConfigDict({"use_prometheus_adapter_shared_rules": False}),
+            "/mock/system/configs",
+        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=config,
         ) as m:
             yield m
 
@@ -2922,7 +2936,8 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
+            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_prometheus(
@@ -3006,7 +3021,8 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
+            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_v2_prometheus(
@@ -3093,6 +3109,9 @@ class TestKubernetesDeploymentConfig:
     def test_get_autoscaling_metric_spec_worker_load_prometheus(
         self, fake_system_paasta_config
     ):
+        fake_system_paasta_config.return_value.get_use_prometheus_adapter_shared_rules.return_value = (
+            False
+        )
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
@@ -3171,7 +3190,8 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
+            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_gunicorn_prometheus(

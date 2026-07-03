@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Set
+from typing import Tuple
 from typing import cast
 
 import ruamel.yaml as yaml
@@ -32,11 +34,13 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.kubernetes_tools import TEMPLATEABLE_PROVIDERS
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
+from paasta_tools.kubernetes_tools import get_prometheus_metric_name
 from paasta_tools.long_running_service_tools import ALL_METRICS_PROVIDERS
 from paasta_tools.long_running_service_tools import (
     DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -46,6 +50,9 @@ from paasta_tools.long_running_service_tools import (
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER,
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -68,6 +75,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -901,10 +909,351 @@ def create_instance_arbitrary_promql_scaling_rule(
     }
 
 
+def create_shared_worker_load_scaling_rule(
+    paasta_cluster: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_WORKER_LOAD, moving_average_window
+    )
+    worker_filter_terms = "<<.LabelMatchers>>"
+
+    load_per_instance = f"""
+        avg(
+            worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    replicas_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
+    )
+    deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .Labels \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .Labels \"paasta_instance\">>'"
+    missing_instances = f"""
+        (clamp_min(
+            label_replace(
+                kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                * on (deployment)
+                kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                "kube_deployment", "$1", "deployment", "(.*)")
+            - on (kube_deployment)
+            count by (kube_deployment) (
+                workers{{{worker_filter_terms}}}
+            ),
+            0
+        ) or on() vector(0))
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        + ignoring(kube_deployment) group_left()
+        {missing_instances}
+    )
+    """
+    total_load_smoothed = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"worker_busy{{paasta_cluster='{paasta_cluster}'}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(total_load_smoothed),
+    }
+
+
+def create_shared_uwsgi_v2_scaling_rule(
+    paasta_cluster: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_UWSGI_V2, moving_average_window
+    )
+    worker_filter_terms = "<<.LabelMatchers>>"
+
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        avg(
+            uwsgi_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    total_load_smoothed = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"uwsgi_worker_busy{{paasta_cluster='{paasta_cluster}'}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(total_load_smoothed),
+    }
+
+
+def create_shared_uwsgi_scaling_rule(
+    paasta_cluster: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_UWSGI, moving_average_window
+    )
+    worker_filter_terms = "<<.LabelMatchers>>"
+    # replica_filter_terms uses <<.LabelMatchers>> too since kube_deployment is in the HPA selector
+    replica_filter_terms = "<<.LabelMatchers>>"
+
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    ready_pods_namespaced = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{replica_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        avg(
+            uwsgi_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {ready_pods_namespaced}
+    """
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"uwsgi_worker_busy{{paasta_cluster='{paasta_cluster}'}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def create_shared_piscina_scaling_rule(
+    paasta_cluster: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_PISCINA, moving_average_window
+    )
+    worker_filter_terms = "<<.LabelMatchers>>"
+    replica_filter_terms = "<<.LabelMatchers>>"
+
+    current_replicas = f"""
+        sum(
+            label_join(
+                (
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                    or
+                    max_over_time(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                    )
+                ),
+                "kube_deployment", "", "deployment"
+            )
+        ) by (kube_deployment)
+    """
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        (piscina_pool_utilization{{{worker_filter_terms}}})
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {current_replicas}
+    """
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"piscina_pool_utilization{{paasta_cluster='{paasta_cluster}'}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def create_shared_gunicorn_scaling_rule(
+    paasta_cluster: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    metric_name = get_prometheus_metric_name(
+        METRICS_PROVIDER_GUNICORN, moving_average_window
+    )
+    worker_filter_terms = "<<.LabelMatchers>>"
+    replica_filter_terms = "<<.LabelMatchers>>"
+
+    current_replicas = f"""
+        sum(
+            label_join(
+                (
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                    or
+                    max_over_time(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                    )
+                ),
+                "kube_deployment", "", "deployment"
+            )
+        ) by (kube_deployment)
+    """
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        avg(
+            gunicorn_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {total_load}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {current_replicas}
+    """
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"gunicorn_worker_busy{{paasta_cluster='{paasta_cluster}'}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def create_shared_scaling_rule(
+    paasta_cluster: str,
+    provider_type: str,
+    moving_average_window: int,
+) -> PrometheusAdapterRule:
+    if provider_type == METRICS_PROVIDER_WORKER_LOAD:
+        return create_shared_worker_load_scaling_rule(
+            paasta_cluster, moving_average_window
+        )
+    if provider_type == METRICS_PROVIDER_UWSGI_V2:
+        return create_shared_uwsgi_v2_scaling_rule(
+            paasta_cluster, moving_average_window
+        )
+    if provider_type == METRICS_PROVIDER_UWSGI:
+        return create_shared_uwsgi_scaling_rule(paasta_cluster, moving_average_window)
+    if provider_type == METRICS_PROVIDER_PISCINA:
+        return create_shared_piscina_scaling_rule(paasta_cluster, moving_average_window)
+    if provider_type == METRICS_PROVIDER_GUNICORN:
+        return create_shared_gunicorn_scaling_rule(
+            paasta_cluster, moving_average_window
+        )
+    raise ValueError(f"unknown templateable provider type: {provider_type}")
+
+
 def get_rules_for_service_instance(
     service_name: str,
     instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
+    skip_providers: Optional[Set[str]] = None,
 ) -> List[PrometheusAdapterRule]:
     """
     Returns a list of Prometheus Adapter rules for a given service instance. For now, this
@@ -914,6 +1263,8 @@ def get_rules_for_service_instance(
     rules: List[PrometheusAdapterRule] = []
 
     for metrics_provider_type in ALL_METRICS_PROVIDERS:
+        if skip_providers and metrics_provider_type in skip_providers:
+            continue
         metrics_provider_config = instance_config.get_autoscaling_metrics_provider(
             metrics_provider_type
         )
@@ -944,6 +1295,10 @@ def create_prometheus_adapter_config(
     Currently supports the following metrics providers:
         * uwsgi
     """
+    use_shared_rules = (
+        load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
+    )
+
     rules: List[PrometheusAdapterRule] = []
     # get_services_for_cluster() returns a list of (service, instance) tuples, but this
     # is not great for us: if we were to iterate over that we'd end up getting duplicates
@@ -964,6 +1319,11 @@ def create_prometheus_adapter_config(
             )
         }
     )
+
+    # when shared rules are enabled, collect unique (provider_type, window) combos for
+    # templateable providers instead of emitting one rule per instance.
+    seen_combos: Set[Tuple[str, int]] = set()
+
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
@@ -973,13 +1333,44 @@ def create_prometheus_adapter_config(
                 cluster=paasta_cluster,
                 instance_type_class=instance_type_class,
             ):
-                rules.extend(
-                    get_rules_for_service_instance(
-                        service_name=service_name,
-                        instance_config=instance_config,
-                        paasta_cluster=paasta_cluster,
+                if use_shared_rules:
+                    for provider_type in TEMPLATEABLE_PROVIDERS:
+                        provider_config = (
+                            instance_config.get_autoscaling_metrics_provider(
+                                provider_type
+                            )
+                        )
+                        if provider_config is not None:
+                            window = provider_config.get(
+                                "moving_average_window_seconds",
+                                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[
+                                    provider_type
+                                ],
+                            )
+                            seen_combos.add((provider_type, window))
+                    # still emit per-instance rules for non-templateable providers
+                    rules.extend(
+                        get_rules_for_service_instance(
+                            service_name=service_name,
+                            instance_config=instance_config,
+                            paasta_cluster=paasta_cluster,
+                            skip_providers=TEMPLATEABLE_PROVIDERS,
+                        )
                     )
-                )
+                else:
+                    rules.extend(
+                        get_rules_for_service_instance(
+                            service_name=service_name,
+                            instance_config=instance_config,
+                            paasta_cluster=paasta_cluster,
+                        )
+                    )
+
+    if use_shared_rules:
+        for provider_type, window in seen_combos:
+            rules.append(
+                create_shared_scaling_rule(paasta_cluster, provider_type, window)
+            )
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps

@@ -8,6 +8,8 @@ from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import JobWrapper
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 
 
 @pytest.fixture
@@ -26,6 +28,20 @@ def mock_load_system_paasta_config():
         autospec=True,
     ) as mock_load_system_paasta_config:
         yield mock_load_system_paasta_config
+
+
+@pytest.fixture(autouse=True)
+def mock_kubernetes_tools_load_system_paasta_config():
+    config = SystemPaastaConfig(
+        SystemPaastaConfigDict({"use_prometheus_adapter_shared_rules": False}),
+        "/mock/system/configs",
+    )
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=config,
+    ) as m:
+        yield m
 
 
 @pytest.mark.parametrize("bounce_margin_factor_set", [True, False])
