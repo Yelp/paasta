@@ -105,6 +105,13 @@
                 "enable_automated_redeploys": {
                     "type": "boolean"
                 },
+                "alertmanager_rollback": {
+                    "type": "boolean"
+                },
+                "alertmanager_poll_interval_s": {
+                    "type": "integer",
+                    "minimum": 30
+                },
                 "enable_crashloop_auto_rollback": {
                     "type": "boolean"
                 },
