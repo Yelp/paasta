@@ -926,7 +926,7 @@ def create_shared_worker_load_scaling_rule(
     replicas_filter_terms = (
         f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
     )
-    deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .Labels \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .Labels \"paasta_instance\">>'"
+    deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .LabelValuesByName \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .LabelValuesByName \"paasta_instance\">>'"
     missing_instances = f"""
         (clamp_min(
             label_replace(
