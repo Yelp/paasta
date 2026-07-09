@@ -1775,7 +1775,7 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig(
             service="", instance="", cluster="", config_dict={}, branch_dict=None
         )
-        assert fake_conf.get_disk() == 1024
+        assert fake_conf.get_disk() == 4096
 
     def test_get_gpus_in_config(self):
         fake_conf = utils.InstanceConfig(
@@ -1873,7 +1873,7 @@ class TestInstanceConfig:
             "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
             "PAASTA_DOCKER_IMAGE": "",
             "PAASTA_RESOURCE_CPUS": "1",
-            "PAASTA_RESOURCE_DISK": "1024",
+            "PAASTA_RESOURCE_DISK": "4096",
             "PAASTA_RESOURCE_MEM": "4096",
             "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
         }
@@ -1906,7 +1906,7 @@ class TestInstanceConfig:
                 "PAASTA_DOCKER_IMAGE": "something",
                 "PAASTA_IMAGE_VERSION": "extrastuff",
                 "PAASTA_RESOURCE_CPUS": "1",
-                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_DISK": "4096",
                 "PAASTA_RESOURCE_MEM": "4096",
                 "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
             }
@@ -1926,7 +1926,7 @@ class TestInstanceConfig:
             "PAASTA_DEPLOY_GROUP": "None",
             "PAASTA_DOCKER_IMAGE": "",
             "PAASTA_RESOURCE_CPUS": "1",
-            "PAASTA_RESOURCE_DISK": "1024",
+            "PAASTA_RESOURCE_DISK": "4096",
             "PAASTA_RESOURCE_MEM": "4096",
             "AWS_SDK_UA_APP_ID": "fake_service.fake_instance",
         }
@@ -1963,7 +1963,7 @@ class TestInstanceConfig:
                 "PAASTA_DOCKER_IMAGE": "something",
                 "PAASTA_MONITORING_TEAM": "generic_team",
                 "PAASTA_RESOURCE_CPUS": "1",
-                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_DISK": "4096",
                 "PAASTA_RESOURCE_MEM": "4096",
                 "PAASTA_GIT_SHA": "somethin",
                 "AWS_SDK_UA_APP_ID": ".",
