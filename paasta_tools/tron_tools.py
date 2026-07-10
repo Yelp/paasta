@@ -312,11 +312,11 @@ class TronActionConfig(InstanceConfig):
         return super().get_mem()
 
     def get_disk(self, default: float = 4096) -> float:
-        # Make default disk size for Spark pod 4gb because 1gb was too low
+        # Make default disk size 4gb for non-spark Tron actions
         if self.action_spark_config and "disk" not in self.config_dict:
             return spark_tools.SPARK_DRIVER_DEFAULT_DISK_MB
         # we fall back to this default if there's no Spark config
-        return super().get_disk()
+        return super().get_disk(default=4096)
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()

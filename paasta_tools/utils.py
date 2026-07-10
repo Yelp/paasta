@@ -634,12 +634,12 @@ class InstanceConfig:
     def get_docker_init(self) -> Iterable[DockerParameter]:
         return [{"key": "init", "value": "true"}]
 
-    def get_disk(self, default: float = 4096) -> float:
+    def get_disk(self, default: float = 1024) -> float:
         """Gets the amount of disk space in MiB required from the service's configuration.
 
-        Defaults to 4096 (4GiB) if no value is specified in the config.
+        Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 4096 MiB if not specified
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified
         """
         disk = self.config_dict.get("disk", default)
         return disk
