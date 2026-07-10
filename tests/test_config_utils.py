@@ -5,6 +5,7 @@ import pytest
 
 import paasta_tools.config_utils as config_utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.config_utils import _resource_value_to_mib
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
@@ -383,3 +384,63 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
                 },
             }
         }
+
+
+@pytest.mark.parametrize(
+    "value,expected_mib",
+    [
+        (512, 512.0),
+        (1024.0, 1024.0),
+        ("1Gi", 1024.0),
+        ("2Gi", 2048.0),
+        ("512Mi", 512.0),
+        ("1024Mi", 1024.0),
+        ("1Ki", 1.0 / 1024),
+    ],
+)
+def test_resource_value_to_mib(value, expected_mib):
+    assert _resource_value_to_mib(value) == pytest.approx(expected_mib)
+
+
+def test_resource_value_to_mib_invalid():
+    with pytest.raises(ValueError):
+        _resource_value_to_mib("4GB")
+
+
+def test_auto_config_updater_merge_recommendations_limits_gi_strings(updater):
+    service = "foo"
+    conf_file = "cassandracluster-norcal-devc"
+    instance = "activity-feed"
+    autotune_data = {instance: {"cpus": 1.5, "mem": "2Gi", "disk": "5Gi"}}
+    user_data = {
+        instance: {
+            "autotune_limits": {
+                "cpus": {"min": 1},
+                "mem": {"min": "4Gi"},
+                "disk": {"max": "10Gi"},
+            }
+        }
+    }
+    recs = {
+        (service, conf_file): {
+            instance: {"mem": "2Gi", "disk": "5Gi", "cpus": 0.5},
+        }
+    }
+
+    with mock.patch.object(
+        updater,
+        "get_existing_configs",
+        autospec=True,
+        side_effect=[autotune_data, user_data, {}],
+    ):
+        result = updater.merge_recommendations(recs)
+
+    assert result == {
+        (service, conf_file): {
+            instance: {
+                "mem": "4Gi",
+                "disk": "5Gi",
+                "cpus": 1,
+            }
+        }
+    }
