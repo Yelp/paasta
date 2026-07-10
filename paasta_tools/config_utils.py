@@ -9,6 +9,7 @@ from typing import List
 from typing import Optional
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import ruamel.yaml as yaml
 
@@ -21,7 +22,7 @@ log = logging.getLogger(__name__)
 _RESOURCE_UNIT_TO_MIB = {"Gi": 1024.0, "Mi": 1.0, "Ki": 1.0 / 1024}
 
 
-def _resource_value_to_mib(value: Any) -> float:
+def _resource_value_to_mib(value: Union[int, float, str]) -> float:
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str):
@@ -313,18 +314,15 @@ class AutoConfigUpdater:
 
             # otherwise, we can do some pretty rote clamping of resource values
             elif unclamped_resource_value is not None:
-                if min_value and _resource_value_to_mib(
-                    unclamped_resource_value
-                ) < _resource_value_to_mib(min_value):
+                unclamped_mib = _resource_value_to_mib(unclamped_resource_value)
+                if min_value and unclamped_mib < _resource_value_to_mib(min_value):
                     log.debug(
                         f"{limit_type} autotune config under configured limit ({min_value}), using autotune limit lower bound."
                     )
                     clamped_recomendation[limit_type] = min_value
-                if max_value and _resource_value_to_mib(
-                    unclamped_resource_value
-                ) > _resource_value_to_mib(max_value):
+                if max_value and unclamped_mib > _resource_value_to_mib(max_value):
                     log.debug(
-                        f"{limit_type} autotune config over configured limit ({min_value}), using autotune limit upper bound."
+                        f"{limit_type} autotune config over configured limit ({max_value}), using autotune limit upper bound."
                     )
                     clamped_recomendation[limit_type] = max_value
             else:
