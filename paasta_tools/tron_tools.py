@@ -316,7 +316,7 @@ class TronActionConfig(InstanceConfig):
         if self.action_spark_config and "disk" not in self.config_dict:
             return spark_tools.SPARK_DRIVER_DEFAULT_DISK_MB
         # we fall back to this default if there's no Spark config
-        return super().get_disk(default=4096)
+        return super().get_disk(default=default)
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()
