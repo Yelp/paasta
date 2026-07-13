@@ -468,7 +468,7 @@ def add_subparser(subparsers):
         dest="vault_auth_method",
         required=False,
         default="token",
-        choices=["token", "ldap"],
+        choices=["token", "okta"],
     )
     list_parser.add_argument(
         "--vault-token-file",
