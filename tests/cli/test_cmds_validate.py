@@ -80,7 +80,7 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_monitoring_file", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
 def test_paasta_validate_calls_everything(
     mock_validate_monitoring_file,
     mock_validate_service_name,
