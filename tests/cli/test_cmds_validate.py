@@ -43,6 +43,7 @@ from paasta_tools.cli.cmds.validate import validate_cpu_burst
 from paasta_tools.cli.cmds.validate import validate_flink_monitoring_team
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
+from paasta_tools.cli.cmds.validate import validate_monitoring_file
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
@@ -79,7 +80,9 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_monitoring_file", autospec=True)
 def test_paasta_validate_calls_everything(
+    mock_validate_monitoring_file,
     mock_validate_service_name,
     mock_validate_smartstack,
     mock_validate_secrets,
@@ -106,6 +109,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_min_max_instances.return_value = True
     mock_validate_smartstack.return_value = True
     mock_validate_service_name.return_value = True
+    mock_validate_monitoring_file.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
@@ -122,6 +126,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_cpu_burst.called
     assert mock_validate_smartstack.called
     assert mock_validate_service_name.called
+    assert mock_validate_monitoring_file.called
 
 
 @patch(
@@ -2041,3 +2046,14 @@ test_job:
         expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
         output, _ = capsys.readouterr()
         assert expected_output in output
+
+
+def test_validate_monitoring_file_exists(tmp_path):
+    (tmp_path / "monitoring.yaml").write_text("team: my-team\n")
+    assert validate_monitoring_file(str(tmp_path)) is True
+
+
+def test_validate_monitoring_file_missing(tmp_path, capsys):
+    assert validate_monitoring_file(str(tmp_path)) is False
+    output, _ = capsys.readouterr()
+    assert "No monitoring.yaml found" in output
