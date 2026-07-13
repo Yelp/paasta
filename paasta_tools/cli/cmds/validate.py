@@ -1365,6 +1365,24 @@ def validate_flink_monitoring_team(service_path: str) -> bool:
     return returncode
 
 
+def validate_monitoring_file(service_path: str) -> bool:
+    """Check that a monitoring.yaml file exists in the service directory."""
+
+    returncode = True
+    monitoring_path = os.path.join(service_path, "monitoring.yaml")
+    if not os.path.isfile(monitoring_path):
+        print(
+            failure(
+                f"No monitoring.yaml found in {service_path}. Every service must have a monitoring.yaml.",
+                "",
+            )
+        )
+        returncode = False
+    if returncode:
+        print(success("Service has a monitoring.yaml file"))
+    return returncode
+
+
 def paasta_validate_soa_configs(
     service: str, service_path: str, verbose: bool = False
 ) -> bool:
@@ -1389,6 +1407,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
+        validate_monitoring_file,
     ]
 
     # NOTE: we're explicitly passing a list comprehension to all()
