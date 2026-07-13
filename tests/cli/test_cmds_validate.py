@@ -30,6 +30,7 @@ from paasta_tools.cli.cmds.validate import _check_smartstack_proxied_through
 from paasta_tools.cli.cmds.validate import _check_smartstack_valid_proxy
 from paasta_tools.cli.cmds.validate import _get_etc_services
 from paasta_tools.cli.cmds.validate import _get_etc_services_entry
+from paasta_tools.cli.cmds.validate import check_monitoring_file_exists
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
@@ -43,7 +44,6 @@ from paasta_tools.cli.cmds.validate import validate_cpu_burst
 from paasta_tools.cli.cmds.validate import validate_flink_monitoring_team
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
-from paasta_tools.cli.cmds.validate import validate_monitoring_file
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
@@ -2048,12 +2048,12 @@ test_job:
         assert expected_output in output
 
 
-def test_validate_monitoring_file_exists(tmp_path):
+def test_check_monitoring_file_exists_success(tmp_path):
     (tmp_path / "monitoring.yaml").write_text("team: my-team\n")
-    assert validate_monitoring_file(str(tmp_path)) is True
+    assert check_monitoring_file_exists(str(tmp_path)) is True
 
 
-def test_validate_monitoring_file_missing(tmp_path, capsys):
-    assert validate_monitoring_file(str(tmp_path)) is False
+def test_check_monitoring_file_missing(tmp_path, capsys):
+    assert check_monitoring_file_exists(str(tmp_path)) is False
     output, _ = capsys.readouterr()
     assert "No monitoring.yaml found" in output

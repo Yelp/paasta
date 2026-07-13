@@ -1365,7 +1365,7 @@ def validate_flink_monitoring_team(service_path: str) -> bool:
     return returncode
 
 
-def validate_monitoring_file(service_path: str) -> bool:
+def check_monitoring_file_exists(service_path: str) -> bool:
     """Check that a monitoring.yaml file exists in the service directory."""
 
     returncode = True
@@ -1407,7 +1407,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
-        validate_monitoring_file,
+        check_monitoring_file_exists,
     ]
 
     # NOTE: we're explicitly passing a list comprehension to all()
