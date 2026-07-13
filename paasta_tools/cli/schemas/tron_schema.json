@@ -78,8 +78,7 @@
                     "type": "number",
                     "minimum": 0,
                     "default": 4096,
-                    "exclusiveMinimum": true,
-                    "$comment": "Setting default to 4096MiB to non-spark Tron actions"
+                    "exclusiveMinimum": true
                 },
                 "constraints": {
                     "type": "array",
