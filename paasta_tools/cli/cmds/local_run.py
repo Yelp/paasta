@@ -68,7 +68,6 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
-from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -502,6 +501,14 @@ def add_subparser(subparsers):
         default=decrypt_by_default,
     )
     list_parser.add_argument(
+        "--secrets-from-kube",
+        help="Read secrets directly from Kubernetes API",
+        dest="secrets_from_kube",
+        required=False,
+        action="store_true",
+        default=False,
+    )
+    list_parser.add_argument(
         "--assume-role-aws-account",
         "--aws-account",
         "-a",
@@ -884,6 +891,7 @@ def run_docker_container(
     assume_role_aws_account: Optional[str] = None,
     use_service_auth_token: bool = False,
     use_sso_service_auth_token: bool = False,
+    secrets_from_kube: bool = False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -910,7 +918,7 @@ def run_docker_container(
     secret_volumes = {}  # type: ignore
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service
-        if is_secrets_for_teams_enabled(service, soa_dir):
+        if secrets_from_kube:
             try:
                 cluster = instance_config.cluster
                 # Clusters that have both an EKS and non-EKS pair use
@@ -1329,6 +1337,7 @@ def configure_and_run_docker_container(
         use_okta_role=args.use_okta_role,
         use_service_auth_token=args.use_service_auth_token,
         use_sso_service_auth_token=args.use_sso_service_auth_token,
+        secrets_from_kube=args.secrets_from_kube,
     )
 
 
