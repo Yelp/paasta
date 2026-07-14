@@ -1,3 +1,14 @@
+paasta-tools (1.57.0) jammy; urgency=medium
+
+  * 1.57.0 tagged with 'make release'
+    Commit: Default `paasta secret` to token auth again (#4351)  Looks
+    like this is having some unforeseen impacts in CI - some services
+    use `paasta secret run` to run `ycp` or `pytest` with secrets, and
+    that"s failing to auth since there"s no human to type in their
+    password :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 14 Jul 2026 11:52:12 -0700
+
 paasta-tools (1.56.0) jammy; urgency=medium
 
   * 1.56.0 tagged with 'make release'
