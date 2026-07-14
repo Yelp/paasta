@@ -40,7 +40,6 @@ from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import atomic_file_write
-from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -102,6 +101,13 @@ def add_decrypt_subparser(subparsers):
         ),
     ).completer = lazy_choices_completer(list_clusters)
 
+    secret_parser_decrypt.add_argument(
+        "--from-kube",
+        required=False,
+        action="store_true",
+        help="Read secrets directly from Kubernetes API",
+    )
+
 
 def _validate_single_cluster(arg: str) -> str:
     if len(arg.split(",")) > 1:
@@ -154,6 +160,13 @@ def add_run_subparser(subparsers):
             "The command to run with the specified PaaSTA secrets. "
             "If not given, starts an interactive bash shell."
         ),
+    )
+
+    secret_parser_run.add_argument(
+        "--from-kube",
+        required=False,
+        action="store_true",
+        help="Read secrets directly from Kubernetes API",
     )
 
 
@@ -507,10 +520,8 @@ def paasta_secret(args):
     else:
         service = args.service
 
-    # Check if "decrypt" and "secrets_for_teams" first to avoid vault auth
-    if args.action == "decrypt" and is_secrets_for_teams_enabled(
-        service, args.yelpsoa_config_root
-    ):
+    # Check if "decrypt" and "from_kube" first to avoid vault auth
+    if args.action == "decrypt" and args.from_kube:
         clusters = (
             args.clusters.split(",")
             if args.clusters
@@ -621,7 +632,7 @@ def paasta_secret(args):
         )
         environment = instance_config.get_env()
 
-        if is_secrets_for_teams_enabled(service, args.yelpsoa_config_root):
+        if args.from_kube:
             cluster = instance_config.cluster
             kube_context = cluster if cluster.startswith("eks-") else f"eks-{cluster}"
             kube_client = KubeClient(
