@@ -741,8 +741,7 @@ Each Tron **action** of a job MAY specify the following:
 
   * Anything from :ref:`General Placement Options <general-placement-options>`
 
-  * ``disk``: Same as Common Settings, but defaults to 4096 MB for Tron Actions.
-     Spark Actions still use the Spark driver disk default when disk is omitted.
+  * ``disk``: Same as `Common Settings`, but defaults to 4096 MB for non-Spark Actions (Spark Actions use a default of 5120 MB instead).
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
