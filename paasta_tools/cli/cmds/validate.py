@@ -1370,6 +1370,10 @@ def check_monitoring_file_exists(service_path: str) -> bool:
 
     returncode = True
 
+    # NOTE: not all directories in soaconfigs are actually services
+    # so we use the presence of a service.yaml to disambiguate
+    # (e.g., `_shared/`, various mysql_*/, etc are top-level directories,
+    # but not actually services)
     if not os.path.exists(os.path.join(service_path, "service.yaml")):
         return returncode
 
