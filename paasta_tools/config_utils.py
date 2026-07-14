@@ -9,7 +9,6 @@ from typing import List
 from typing import Optional
 from typing import Set
 from typing import Tuple
-from typing import Union
 
 import ruamel.yaml as yaml
 
@@ -22,13 +21,15 @@ log = logging.getLogger(__name__)
 _RESOURCE_UNIT_TO_MIB = {"Gi": 1024.0, "Mi": 1.0, "Ki": 1.0 / 1024}
 
 
-def _resource_value_to_mib(value: Union[int, float, str]) -> float:
+def _resource_value_to_mib(value: int | float | str) -> float:
+    """Normalize a resource value to MiB for comparison. For numeric types
+    (e.g. cpus as float), this is a passthrough cast to float."""
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str):
         for suffix, factor in _RESOURCE_UNIT_TO_MIB.items():
             if value.endswith(suffix):
-                return float(value[: -len(suffix)]) * factor
+                return float(value.removesuffix(suffix)) * factor
     raise ValueError(f"Cannot parse resource value: {value!r}")
 
 
