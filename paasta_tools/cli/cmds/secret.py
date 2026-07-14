@@ -241,7 +241,7 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
         type=str,
         dest="vault_auth_method",
         required=False,
-        default="okta",
+        default="token",
         choices=["token", "okta"],
     )
     parser.add_argument(
