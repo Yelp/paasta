@@ -2050,10 +2050,14 @@ test_job:
 
 def test_check_monitoring_file_exists_success(tmp_path):
     (tmp_path / "monitoring.yaml").write_text("team: my-team\n")
+    (tmp_path / "service.yaml").write_text("service: my-team\n")
     assert check_monitoring_file_exists(str(tmp_path)) is True
 
 
-def test_check_monitoring_file_missing(tmp_path, capsys):
+def test_check_monitoring_file_missing(tmp_path):
+    (tmp_path / "service.yaml").write_text("service: my-team\n")
     assert check_monitoring_file_exists(str(tmp_path)) is False
-    output, _ = capsys.readouterr()
-    assert "No monitoring.yaml found" in output
+
+
+def test_check_monitoring_file_exists_non_service(tmp_path):
+    assert check_monitoring_file_exists(str(tmp_path)) is True

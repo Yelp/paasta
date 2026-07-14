@@ -1369,12 +1369,15 @@ def check_monitoring_file_exists(service_path: str) -> bool:
     """Check that a monitoring.yaml file exists in the service directory."""
 
     returncode = True
-    monitoring_path = os.path.join(service_path, "monitoring.yaml")
-    if not os.path.isfile(monitoring_path):
+
+    if not os.path.exists(os.path.join(service_path, "service.yaml")):
+        return returncode
+
+    if not os.path.exists(os.path.join(service_path, "monitoring.yaml")):
         print(
             failure(
-                f"No monitoring.yaml found in {service_path}. Every service must have a monitoring.yaml.",
-                "",
+                f"No monitoring.yaml found in {service_path}. Every service must have a monitoring.yaml so that PaaSTA can route alerts to the right place.",
+                "https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#monitoring-yaml",
             )
         )
         returncode = False
