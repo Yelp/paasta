@@ -224,11 +224,11 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
 def _add_vault_auth_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--vault-auth-method",
-        help="Override how we auth with vault, defaults to token if not present",
+        help="Override how we auth with vault, defaults to Okta if not present",
         type=str,
         dest="vault_auth_method",
         required=False,
-        default="token",
+        default="okta",
         choices=["token", "okta"],
     )
     parser.add_argument(
