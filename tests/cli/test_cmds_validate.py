@@ -30,6 +30,7 @@ from paasta_tools.cli.cmds.validate import _check_smartstack_proxied_through
 from paasta_tools.cli.cmds.validate import _check_smartstack_valid_proxy
 from paasta_tools.cli.cmds.validate import _get_etc_services
 from paasta_tools.cli.cmds.validate import _get_etc_services_entry
+from paasta_tools.cli.cmds.validate import check_monitoring_file_exists
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
@@ -79,7 +80,9 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
 def test_paasta_validate_calls_everything(
+    mock_validate_monitoring_file,
     mock_validate_service_name,
     mock_validate_smartstack,
     mock_validate_secrets,
@@ -106,6 +109,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_min_max_instances.return_value = True
     mock_validate_smartstack.return_value = True
     mock_validate_service_name.return_value = True
+    mock_validate_monitoring_file.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
@@ -122,6 +126,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_cpu_burst.called
     assert mock_validate_smartstack.called
     assert mock_validate_service_name.called
+    assert mock_validate_monitoring_file.called
 
 
 @patch(
@@ -2041,3 +2046,18 @@ test_job:
         expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
         output, _ = capsys.readouterr()
         assert expected_output in output
+
+
+def test_check_monitoring_file_exists_success(tmp_path):
+    (tmp_path / "monitoring.yaml").write_text("team: my-team\n")
+    (tmp_path / "service.yaml").write_text("service: my-team\n")
+    assert check_monitoring_file_exists(str(tmp_path)) is True
+
+
+def test_check_monitoring_file_missing(tmp_path):
+    (tmp_path / "service.yaml").write_text("service: my-team\n")
+    assert check_monitoring_file_exists(str(tmp_path)) is False
+
+
+def test_check_monitoring_file_exists_non_service(tmp_path):
+    assert check_monitoring_file_exists(str(tmp_path)) is True
