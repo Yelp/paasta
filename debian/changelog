@@ -1,3 +1,12 @@
+paasta-tools (1.58.0) jammy; urgency=medium
+
+  * 1.58.0 tagged with 'make release'
+    Commit: PAASTA-17879: Ensure a monitoring.yaml file for all services
+    (#4349)  Add a check to paasta validate to ensure a monitoring.yaml
+    file exists for all services
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Jul 2026 11:48:26 -0700
+
 paasta-tools (1.57.1) jammy; urgency=medium
 
   * 1.57.1 tagged with 'make release'
