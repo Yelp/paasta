@@ -5,7 +5,7 @@ import pytest
 
 import paasta_tools.config_utils as config_utils
 from paasta_tools import yaml_tools as yaml
-from paasta_tools.config_utils import _resource_value_to_mib
+from paasta_tools.config_utils import _normalize_resource_value
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
@@ -387,24 +387,29 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
 
 
 @pytest.mark.parametrize(
-    "value,expected_mib",
+    "value,resource_type,expected",
     [
-        (512, 512.0),
-        (1024.0, 1024.0),
-        ("1Gi", 1024.0),
-        ("2Gi", 2048.0),
-        ("512Mi", 512.0),
-        ("1024Mi", 1024.0),
-        ("1Ki", 1.0 / 1024),
+        (512, "cpu", 512.0),
+        (1024.0, "cpu", 1024.0),
+        ("1Gi", "mem", 1024.0),
+        ("2Gi", "mem", 2048.0),
+        ("512Mi", "mem", 512.0),
+        ("1024Mi", "disk", 1024.0),
+        ("1Ki", "disk", 1.0 / 1024),
     ],
 )
-def test_resource_value_to_mib(value, expected_mib):
-    assert _resource_value_to_mib(value) == pytest.approx(expected_mib)
+def test_normalize_resource_value(value, resource_type, expected):
+    assert _normalize_resource_value(value, resource_type) == pytest.approx(expected)
 
 
-def test_resource_value_to_mib_invalid():
+def test_normalize_resource_value_invalid_suffix():
     with pytest.raises(ValueError):
-        _resource_value_to_mib("4GB")
+        _normalize_resource_value("4GB", "mem")
+
+
+def test_normalize_resource_value_string_cpu_raises():
+    with pytest.raises(ValueError):
+        _normalize_resource_value("1Gi", "cpu")
 
 
 def test_auto_config_updater_merge_recommendations_limits_gi_strings(updater):
