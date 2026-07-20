@@ -3335,6 +3335,42 @@ class TestKubernetesDeploymentConfig:
         expected_res = None
         assert expected_res == return_value
 
+    def test_get_autoscaling_provider_spec_long_deployment_name_skips_shared_rules(
+        self,
+    ):
+        long_instance = "gondola-biz-owner-account-all-locations-performance"
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
+                            "setpoint": 0.5,
+                            "moving_average_window_seconds": 1800,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="server_side_rendering",
+            cluster="cluster",
+            instance=long_instance,
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        spec = mock_config.get_autoscaling_provider_spec(
+            name="fake_name",
+            namespace="paasta",
+            provider=config_dict["autoscaling"]["metrics_providers"][0],
+            use_shared_rules=True,
+        )
+        # Should fall back to per-instance metric name (no label selector)
+        assert spec.object.metric.selector is None
+        assert long_instance in spec.object.metric.name
+
     @pytest.mark.parametrize(
         "target_type,expected_target_type,expected_target_field",
         [
