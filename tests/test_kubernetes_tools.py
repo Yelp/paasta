@@ -3335,7 +3335,7 @@ class TestKubernetesDeploymentConfig:
         expected_res = None
         assert expected_res == return_value
 
-    def test_get_autoscaling_provider_spec_long_deployment_name_skips_shared_rules(
+    def test_get_autoscaling_provider_spec_shared_rules_no_kube_deployment_in_selector(
         self,
     ):
         long_instance = "gondola-biz-owner-account-all-locations-performance"
@@ -3367,9 +3367,10 @@ class TestKubernetesDeploymentConfig:
             provider=config_dict["autoscaling"]["metrics_providers"][0],
             use_shared_rules=True,
         )
-        # Should fall back to per-instance metric name (no label selector)
-        assert spec.object.metric.selector is None
-        assert long_instance in spec.object.metric.name
+        # Should use shared metric name with selector, but no kube_deployment in matchLabels
+        assert spec.object.metric.selector is not None
+        assert "kube_deployment" not in spec.object.metric.selector.match_labels
+        assert spec.object.metric.name == "worker-load-prom-1800"
 
     @pytest.mark.parametrize(
         "target_type,expected_target_type,expected_target_field",

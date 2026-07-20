@@ -559,41 +559,6 @@ def test_create_prometheus_adapter_config_flag_off() -> None:
     assert not any(r["name"]["as"] == "worker-load-prom-1800" for r in rules)
 
 
-def test_create_prometheus_adapter_config_shared_rules_long_deployment_name() -> None:
-    # Services with deployment names > 63 chars should fall back to per-instance rules
-    long_instance = "gondola-biz-owner-account-all-locations-performance"
-    long_service = "server_side_rendering"
-    with mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-        autospec=True,
-        return_value=mock.Mock(
-            spec=SystemPaastaConfig,
-            get_use_prometheus_adapter_shared_rules=lambda: True,
-        ),
-    ), mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
-        autospec=True,
-        return_value=[(long_service, long_instance)],
-    ), mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_loader_cls:
-        mock_loader_cls.return_value.instance_configs.return_value = [
-            _make_instance_config(
-                METRICS_PROVIDER_WORKER_LOAD,
-                1800,
-                service=long_service,
-                instance=long_instance,
-            ),
-        ]
-        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
-        rules = config["rules"]
-
-    # Should get a per-instance rule, NOT a shared rule
-    assert not any(r["name"]["as"] == "worker-load-prom-1800" for r in rules)
-    assert any(long_service in r["name"]["as"] for r in rules)
-
-
 @pytest.mark.parametrize(
     "query,expected",
     [

@@ -849,12 +849,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        deployment_name = self.get_sanitised_deployment_name()
-        if (
-            use_shared_rules
-            and provider["type"] in TEMPLATEABLE_PROVIDERS
-            and len(deployment_name) <= 63
-        ):
+        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
@@ -867,7 +862,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta_cluster": self.cluster,
                     "paasta_service": self.service,
                     "paasta_instance": self.instance,
-                    "kube_deployment": deployment_name,
                 }
             )
         else:

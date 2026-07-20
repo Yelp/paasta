@@ -1333,42 +1333,29 @@ def create_prometheus_adapter_config(
                 instance_type_class=instance_type_class,
             ):
                 if use_shared_rules:
-                    deployment_name = get_kubernetes_app_name(
-                        service=service_name,
-                        instance=instance_config.instance,
-                    )
-                    if len(deployment_name) > 63:
-                        rules.extend(
-                            get_rules_for_service_instance(
-                                service_name=service_name,
-                                instance_config=instance_config,
-                                paasta_cluster=paasta_cluster,
+                    for provider_type in TEMPLATEABLE_PROVIDERS:
+                        provider_config = (
+                            instance_config.get_autoscaling_metrics_provider(
+                                provider_type
                             )
                         )
-                    else:
-                        for provider_type in TEMPLATEABLE_PROVIDERS:
-                            provider_config = (
-                                instance_config.get_autoscaling_metrics_provider(
+                        if provider_config is not None:
+                            window = provider_config.get(
+                                "moving_average_window_seconds",
+                                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[
                                     provider_type
-                                )
+                                ],
                             )
-                            if provider_config is not None:
-                                window = provider_config.get(
-                                    "moving_average_window_seconds",
-                                    DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[
-                                        provider_type
-                                    ],
-                                )
-                                seen_combos.add((provider_type, window))
-                        # still emit per-instance rules for non-templateable providers
-                        rules.extend(
-                            get_rules_for_service_instance(
-                                service_name=service_name,
-                                instance_config=instance_config,
-                                paasta_cluster=paasta_cluster,
-                                skip_providers=TEMPLATEABLE_PROVIDERS,
-                            )
+                            seen_combos.add((provider_type, window))
+                    # still emit per-instance rules for non-templateable providers
+                    rules.extend(
+                        get_rules_for_service_instance(
+                            service_name=service_name,
+                            instance_config=instance_config,
+                            paasta_cluster=paasta_cluster,
+                            skip_providers=TEMPLATEABLE_PROVIDERS,
                         )
+                    )
                 else:
                     rules.extend(
                         get_rules_for_service_instance(
