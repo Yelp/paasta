@@ -972,7 +972,7 @@ def create_shared_uwsgi_v2_scaling_rule(
     metric_name = get_prometheus_metric_name(
         METRICS_PROVIDER_UWSGI_V2, moving_average_window
     )
-    worker_filter_terms = "<<.LabelMatchers>>"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
 
     ready_pods = f"""
         (sum(
@@ -1025,9 +1025,8 @@ def create_shared_uwsgi_scaling_rule(
     metric_name = get_prometheus_metric_name(
         METRICS_PROVIDER_UWSGI, moving_average_window
     )
-    worker_filter_terms = "<<.LabelMatchers>>"
-    # replica_filter_terms uses <<.LabelMatchers>> too since kube_deployment is in the HPA selector
-    replica_filter_terms = "<<.LabelMatchers>>"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
     ready_pods = f"""
         (sum(
@@ -1092,8 +1091,8 @@ def create_shared_piscina_scaling_rule(
     metric_name = get_prometheus_metric_name(
         METRICS_PROVIDER_PISCINA, moving_average_window
     )
-    worker_filter_terms = "<<.LabelMatchers>>"
-    replica_filter_terms = "<<.LabelMatchers>>"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
     current_replicas = f"""
         sum(
@@ -1161,8 +1160,8 @@ def create_shared_gunicorn_scaling_rule(
     metric_name = get_prometheus_metric_name(
         METRICS_PROVIDER_GUNICORN, moving_average_window
     )
-    worker_filter_terms = "<<.LabelMatchers>>"
-    replica_filter_terms = "<<.LabelMatchers>>"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
     current_replicas = f"""
         sum(

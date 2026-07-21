@@ -311,12 +311,11 @@ class TronActionConfig(InstanceConfig):
         # we fall back to this default if there's no Spark config
         return super().get_mem()
 
-    def get_disk(self, default: float = 1024) -> float:
-        # increase default threshold for Spark driver pod memory because 1G is too low
+    def get_disk(self, default: float = 4096) -> float:
         if self.action_spark_config and "disk" not in self.config_dict:
             return spark_tools.SPARK_DRIVER_DEFAULT_DISK_MB
         # we fall back to this default if there's no Spark config
-        return super().get_disk()
+        return super().get_disk(default=default)
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()

@@ -1,3 +1,39 @@
+paasta-tools (1.58.0) jammy; urgency=medium
+
+  * 1.58.0 tagged with 'make release'
+    Commit: PAASTA-17879: Ensure a monitoring.yaml file for all services
+    (#4349)  Add a check to paasta validate to ensure a monitoring.yaml
+    file exists for all services
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Jul 2026 11:48:26 -0700
+
+paasta-tools (1.57.1) jammy; urgency=medium
+
+  * 1.57.1 tagged with 'make release'
+    Commit: Merge pull request #4350 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  fix: non worker load autoscaling label
+    selector
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 16 Jul 2026 02:02:26 -0700
+
+paasta-tools (1.57.0) jammy; urgency=medium
+
+  * 1.57.0 tagged with 'make release'
+    Commit: Default `paasta secret` to token auth again (#4351)  Looks
+    like this is having some unforeseen impacts in CI - some services
+    use `paasta secret run` to run `ycp` or `pytest` with secrets, and
+    that"s failing to auth since there"s no human to type in their
+    password :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 14 Jul 2026 11:52:12 -0700
+
+paasta-tools (1.56.0) jammy; urgency=medium
+
+  * 1.56.0 tagged with 'make release'
+    Commit: remove references to secrets_for_teams (#4347)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 14 Jul 2026 02:33:28 -0700
+
 paasta-tools (1.55.3) jammy; urgency=medium
 
   * 1.55.3 tagged with 'make release'

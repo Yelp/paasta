@@ -434,14 +434,18 @@ def test_create_shared_scaling_rule(
 
     rule = rule_func(paasta_cluster, moving_average_window)
 
-    assert LABEL_MATCHERS in rule["metricsQuery"]
     assert str(moving_average_window) in rule["metricsQuery"]
     assert paasta_cluster in rule["seriesQuery"]
     assert expected_series_metric in rule["seriesQuery"]
     assert rule["name"]["as"] == f"{expected_name_prefix}-{moving_average_window}"
-    # if service/instance are provided, we're not compressing the amount of output :p
-    assert "paasta_service=" not in rule["metricsQuery"]
-    assert "paasta_instance=" not in rule["metricsQuery"]
+    assert (
+        "<<index .LabelValuesByName" in rule["metricsQuery"]
+        or LABEL_MATCHERS in rule["metricsQuery"]
+    )
+    # no hardcoded service/instance values — only template references
+    assert "paasta_service='" not in rule["metricsQuery"].replace(
+        "paasta_service='<<index .LabelValuesByName", ""
+    )
 
 
 def _make_instance_config(
