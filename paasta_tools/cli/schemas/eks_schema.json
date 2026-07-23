@@ -685,6 +685,12 @@
                 "fs_group": {
                     "type": "integer"
                 },
+                "fs_group_change_policy": {
+                    "enum": [
+                        "Always",
+                        "OnRootMismatch"
+                    ]
+                },
                 "healthcheck_mode": {
                     "enum": [
                         "cmd",

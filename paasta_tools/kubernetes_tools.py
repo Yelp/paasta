@@ -2487,8 +2487,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
 
         if fs_group is not None:
+            security_context_kwargs: Dict[str, Any] = {"fs_group": fs_group}
+            fs_group_change_policy = self.get_fs_group_change_policy()
+            if fs_group_change_policy is not None:
+                security_context_kwargs[
+                    "fs_group_change_policy"
+                ] = fs_group_change_policy
             pod_spec_kwargs["security_context"] = V1PodSecurityContext(
-                fs_group=fs_group
+                **security_context_kwargs
             )
 
         # prometheus_path is used to override the default scrape path in Prometheus
