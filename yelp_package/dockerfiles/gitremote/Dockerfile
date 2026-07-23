@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=docker-dev.yelpcorp.com/jammy_yelp
+ARG BASE_IMAGE=docker-images.yelpcorp.com/jammy_yelp
 FROM ${BASE_IMAGE}
 
 RUN apt-get update > /dev/null && \

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=docker-dev.yelpcorp.com/focal_yelp
+ARG BASE_IMAGE=docker-images.yelpcorp.com/focal_yelp
 FROM ${BASE_IMAGE}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/focal/simple

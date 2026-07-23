@@ -1,4 +1,4 @@
-FROM docker-dev.yelpcorp.com/jammy_yelp
+FROM docker-images.yelpcorp.com/jammy_yelp
 ARG HACHECK_VERSION=0.18.2-yelp1
 
 RUN apt-get update && \
