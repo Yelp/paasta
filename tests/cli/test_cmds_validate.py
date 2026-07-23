@@ -48,6 +48,7 @@ from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
+from paasta_tools.cli.cmds.validate import validate_single_replica
 from paasta_tools.cli.cmds.validate import validate_smartstack
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
@@ -227,6 +228,68 @@ def test_validate_min_max_instances_success(
         "The number of min_instances (3) cannot be greater than the max_instances (1)."
         in output
     )
+
+
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_single_replica_success(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_load_all_instance_configs_for_service,
+    capsys,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance_type=mock.Mock(return_value="fake_type"),
+                get_min_instances=mock.Mock(return_value=3),
+                get=mock.Mock(return_value=3),
+            ),
+        )
+    ]
+
+    assert validate_single_replica("fake-service-path") is True
+
+
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_single_replica_failure(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_load_all_instance_configs_for_service,
+    capsys,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance_type=mock.Mock(return_value="fake_type"),
+                get_min_instances=mock.Mock(return_value=None),
+                get=mock.Mock(return_value=1),
+            ),
+        )
+    ]
+
+    assert validate_single_replica("fake-service-path") is False
+    output, _ = capsys.readouterr()
+    assert (
+        "Instance fake_instance1 on cluster fake_cluster has only 1 replica(s)."
+        in output
+    )
+    assert "Set the instances field to a value greater than 1." in output
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
