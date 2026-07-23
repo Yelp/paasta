@@ -1,3 +1,12 @@
+paasta-tools (1.58.1) jammy; urgency=medium
+
+  * 1.58.1 tagged with 'make release'
+    Commit: Merge pull request #4354 from
+    Yelp/jfong/fs_group_change_policy  Add support for ppl to set
+    `fsGroupChangePolicy`
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 23 Jul 2026 11:40:00 -0700
+
 paasta-tools (1.58.0) jammy; urgency=medium
 
   * 1.58.0 tagged with 'make release'
