@@ -960,6 +960,11 @@
                     "type": "boolean",
                     "default": true
                 }
+            },
+            "dependencies": {
+                "fs_group_change_policy": [
+                    "fs_group"
+                ]
             }
         }
     }
