@@ -937,6 +937,33 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
+def validate_single_replica(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    # We need to validate to see if the config has more than 1 single replica instance.
+    # If it does, we need to print a warning message.
+    for cluster in list_clusters(service, soa_dir):
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            if instance_config.get_instance_type() != "tron":
+                min_instances = instance_config.get_min_instances()
+                instances = instance_config.get("instances", 1)
+                replicas = min_instances if min_instances is not None else instances
+
+                if replicas is not None and replicas <= 1:
+                    returncode = False
+                    print(
+                        failure(
+                            f"Instance {instance} on cluster {cluster} has only {replicas} replica(s). "
+                            f"Set the instances field to a value greater than 1.",
+                            "",
+                        )
+                    )
+    return returncode
+
+
 def check_secrets_for_instance(
     instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
 ) -> bool:
@@ -1414,6 +1441,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
+        validate_single_replica,
         check_monitoring_file_exists,
     ]
 
