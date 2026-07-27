@@ -1110,6 +1110,13 @@ class TestKubernetesDeploymentConfig:
         )
         assert self.deployment.get_security_context() == expected_security_context
 
+    def test_get_fs_group_change_policy_default(self):
+        assert self.deployment.get_fs_group_change_policy() is None
+
+    def test_get_fs_group_change_policy(self):
+        self.deployment.config_dict["fs_group_change_policy"] = "OnRootMismatch"
+        assert self.deployment.get_fs_group_change_policy() == "OnRootMismatch"
+
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
             DockerVolume(hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"),

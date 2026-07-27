@@ -72,6 +72,12 @@
                 "fs_group": {
                     "type": "integer"
                 },
+                "fs_group_change_policy": {
+                    "enum": [
+                        "Always",
+                        "OnRootMismatch"
+                    ]
+                },
                 "crypto_keys": {
                     "type": "object",
                     "additionalProperties": false,
@@ -375,6 +381,11 @@
                         }
                     }
                 }
+            },
+            "dependencies": {
+                "fs_group_change_policy": [
+                    "fs_group"
+                ]
             }
         }
     }

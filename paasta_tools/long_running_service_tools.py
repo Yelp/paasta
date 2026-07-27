@@ -5,6 +5,7 @@ import socket
 from typing import TYPE_CHECKING
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -85,6 +86,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     drain_method: str
     fs_group: int
+    fs_group_change_policy: Literal["Always", "OnRootMismatch"]
     container_port: int
     drain_method_params: Dict
     healthcheck_cmd: str
@@ -283,6 +285,11 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_fs_group(self) -> Optional[int]:
         return self.config_dict.get("fs_group")
+
+    def get_fs_group_change_policy(
+        self,
+    ) -> Optional[Literal["Always", "OnRootMismatch"]]:
+        return self.config_dict.get("fs_group_change_policy")
 
     def get_healthcheck_uri(
         self, service_namespace_config: ServiceNamespaceConfig
