@@ -862,7 +862,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta_cluster": self.cluster,
                     "paasta_service": self.service,
                     "paasta_instance": self.instance,
-                    "kube_deployment": self.get_sanitised_deployment_name(),
                 }
             )
         else:

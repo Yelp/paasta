@@ -3342,6 +3342,43 @@ class TestKubernetesDeploymentConfig:
         expected_res = None
         assert expected_res == return_value
 
+    def test_get_autoscaling_provider_spec_shared_rules_no_kube_deployment_in_selector(
+        self,
+    ):
+        long_instance = "gondola-biz-owner-account-all-locations-performance"
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
+                            "setpoint": 0.5,
+                            "moving_average_window_seconds": 1800,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="server_side_rendering",
+            cluster="cluster",
+            instance=long_instance,
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        spec = mock_config.get_autoscaling_provider_spec(
+            name="fake_name",
+            namespace="paasta",
+            provider=config_dict["autoscaling"]["metrics_providers"][0],
+            use_shared_rules=True,
+        )
+        # Should use shared metric name with selector, but no kube_deployment in matchLabels
+        assert spec.object.metric.selector is not None
+        assert "kube_deployment" not in spec.object.metric.selector.match_labels
+        assert spec.object.metric.name == "worker-load-prom-1800"
+
     @pytest.mark.parametrize(
         "target_type,expected_target_type,expected_target_field",
         [
