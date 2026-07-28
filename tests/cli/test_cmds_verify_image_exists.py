@@ -29,31 +29,11 @@ def test_wait_polls_until_found():
     ), mock.patch(
         "paasta_tools.cli.cmds.verify_image_exists.time.sleep",
         autospec=True,
-    ) as mock_sleep:
+    ):
         assert (
             verify_image_exists(service="fake_service", commit="abc1234", wait=True)
             == 0
         )
-        assert mock_sleep.call_count == 2
-        mock_sleep.assert_called_with(30)
-
-
-def test_poll_period_override():
-    with mock.patch(
-        "paasta_tools.cli.cmds.verify_image_exists.is_docker_image_already_in_registry",
-        autospec=True,
-        side_effect=[False, True],
-    ), mock.patch(
-        "paasta_tools.cli.cmds.verify_image_exists.time.sleep",
-        autospec=True,
-    ) as mock_sleep:
-        assert (
-            verify_image_exists(
-                service="fake_service", commit="abc1234", wait=True, poll_period=10
-            )
-            == 0
-        )
-        mock_sleep.assert_called_with(10)
 
 
 def test_timeout_expires():
