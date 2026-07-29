@@ -67,7 +67,7 @@ py==1.5.2
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
 pyformance==0.4
-pygments==2.7.4
+pygments==2.20.0
 pyinotify==0.9.6
 pyramid==2.0.2
 pyramid-swagger==2.4.1
