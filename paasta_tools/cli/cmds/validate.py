@@ -937,24 +937,33 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
-def validate_stable_pool_workloads(service_path: str) -> bool:
+def validate_pool_limits(service_path: str) -> bool:
+    # We need to validate pool.
+    # If it does, we need to print a warning message.
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
     for cluster in list_clusters(service, soa_dir):
+
+        pool_limits_for_cluster = (
+            load_system_paasta_config().get_pool_limits().get(cluster, {})
+        )
         for instance, instance_config in load_all_instance_configs_for_service(
             service=service, cluster=cluster, soa_dir=soa_dir
         ):
             cpu = instance_config.get_cpus()
             pool = instance_config.get_pool()
 
-            if pool == "stable" and cpu >= 16:
+            pool_limits = pool_limits_for_cluster.get(pool, {})
+            max_cpus_for_pool = pool_limits.get("max_cpus", float("inf"))
+            recommended_pool = pool_limits.get("recommended_pool")
+
+            if pool in pool_limits_for_cluster and cpu >= max_cpus_for_pool:
                 returncode = False
                 print(
                     failure(
-                        f"""Instance {instance} on cluster {cluster} has {cpu} CPUs and is in the stable pool.
-                        The stable pool should not have workloads with more than 15 CPUs.
-                        If you need to run a workload with more than 15 CPUs, consider using the stable-giant pool.""",
+                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {max_cpus_for_pool} for the {pool} pool.
+                        If you need to run a workload with this many CPUs, consider using the {recommended_pool} pool instead.""",
                         "",
                     )
                 )
@@ -1435,7 +1444,7 @@ def paasta_validate_soa_configs(
         validate_autoscaling_configs,
         validate_secrets,
         validate_min_max_instances,
-        validate_stable_pool_workloads,
+        validate_pool_limits,
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,

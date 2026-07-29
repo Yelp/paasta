@@ -45,11 +45,11 @@ from paasta_tools.cli.cmds.validate import validate_flink_monitoring_team
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
+from paasta_tools.cli.cmds.validate import validate_pool_limits
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_smartstack
-from paasta_tools.cli.cmds.validate import validate_stable_pool_workloads
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
@@ -70,7 +70,7 @@ def clear_get_config_file_dict_cache():
 
 
 @patch("paasta_tools.cli.cmds.validate.validate_cpu_burst", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_stable_pool_workloads", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_pool_limits", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
@@ -96,12 +96,12 @@ def test_paasta_validate_calls_everything(
     mock_validate_min_max_instances,
     mock_validate_unique_instance_names,
     mock_validate_autoscaling_configs,
-    mock_validate_stable_pool_workloads,
+    mock_validate_pool_limits,
     mock_validate_cpu_burst,
 ):
     # Ensure each check in 'paasta_validate' is called
     mock_validate_cpu_burst.return_value = True
-    mock_validate_stable_pool_workloads.return_value = True
+    mock_validate_pool_limits.return_value = True
     mock_validate_autoscaling_configs.return_value = True
     mock_validate_secrets.return_value = True
     mock_check_service_path.return_value = True
@@ -127,7 +127,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_paasta_objects.called
     assert mock_validate_secrets.called
     assert mock_validate_autoscaling_configs.called
-    assert mock_validate_stable_pool_workloads.called
+    assert mock_validate_pool_limits.called
     assert mock_validate_cpu_burst.called
     assert mock_validate_smartstack.called
     assert mock_validate_service_name.called
@@ -2068,20 +2068,27 @@ def test_check_monitoring_file_exists_non_service(tmp_path):
     assert check_monitoring_file_exists(str(tmp_path)) is True
 
 
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_stable_pool_workloads_fails_for_giant_pod(
+def test_validate_pool_limits_fails_for_giant_pod(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
+    mock_load_system_paasta_config,
     capsys,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
+        "fake_cluster": {
+            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
+        }
+    }
     mock_load_all_instance_configs_for_service.return_value = [
         (
             "fake_instance",
@@ -2092,26 +2099,34 @@ def test_validate_stable_pool_workloads_fails_for_giant_pod(
         )
     ]
 
-    assert validate_stable_pool_workloads("fake-service-path") is False
+    assert validate_pool_limits("fake-service-path") is False
     output, _ = capsys.readouterr()
     assert "fake_instance" in output
     assert "20" in output
-    assert "stable pool" in output
+    assert "stable" in output
+    assert "stable-giant" in output
 
 
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_stable_pool_workloads_passes_for_small_pod(
+def test_validate_pool_limits_passes_for_small_pod(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
+    mock_load_system_paasta_config,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
+        "fake_cluster": {
+            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
+        }
+    }
     mock_load_all_instance_configs_for_service.return_value = [
         (
             "fake_instance",
@@ -2122,22 +2137,29 @@ def test_validate_stable_pool_workloads_passes_for_small_pod(
         )
     ]
 
-    assert validate_stable_pool_workloads("fake-service-path") is True
+    assert validate_pool_limits("fake-service-path") is True
 
 
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_stable_pool_workloads_passes_for_non_stable_pool(
+def test_validate_pool_limits_passes_for_unconfigured_pool(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
+    mock_load_system_paasta_config,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
+        "fake_cluster": {
+            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
+        }
+    }
     mock_load_all_instance_configs_for_service.return_value = [
         (
             "fake_instance",
@@ -2148,4 +2170,4 @@ def test_validate_stable_pool_workloads_passes_for_non_stable_pool(
         )
     ]
 
-    assert validate_stable_pool_workloads("fake-service-path") is True
+    assert validate_pool_limits("fake-service-path") is True

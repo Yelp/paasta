@@ -1987,6 +1987,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     pool_node_affinities: Dict[str, Dict[str, List[str]]]
+    pool_limits: Dict[str, Dict[str, Dict[str, Any]]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2544,6 +2545,10 @@ class SystemPaastaConfig:
     def get_pool_node_affinities(self) -> Dict[str, Dict[str, List[str]]]:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
+
+    def get_pool_limits(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Pool limits for each cluster"""
+        return self.config_dict.get("pool_limits", {})
 
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
