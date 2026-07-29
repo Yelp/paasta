@@ -938,13 +938,15 @@ def validate_min_max_instances(service_path):
 
 
 def validate_pool_limits(service_path: str) -> bool:
-    # We need to validate pool.
-    # If it does, we need to print a warning message.
+    """
+    Validate that services in specific pools won't exceed per-node capacities.
+    For the most part, this isn't normally an issue - but there are several pools where
+    folks tend to want to run extra-large workloads that won't fit (e.g., large single-node batches).
+    """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
     for cluster in list_clusters(service, soa_dir):
-
         pool_limits_for_cluster = (
             load_system_paasta_config().get_pool_limits().get(cluster, {})
         )

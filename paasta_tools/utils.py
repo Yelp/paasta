@@ -1917,6 +1917,11 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     match_label_keys: List[str]
 
 
+class PoolLimits(TypedDict):
+    max_cpus: float
+    recommended_pool: str
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_client_timeout: int
@@ -1987,7 +1992,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     pool_node_affinities: Dict[str, Dict[str, List[str]]]
-    pool_limits: Dict[str, Dict[str, Dict[str, Any]]]
+    # i.e. {cluster: {pool: PoolLimits}}
+    pool_limits: Dict[str, Dict[str, PoolLimits]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2546,7 +2552,7 @@ class SystemPaastaConfig:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
 
-    def get_pool_limits(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+    def get_pool_limits(self) -> Dict[str, Dict[str, Any]]:
         """Pool limits for each cluster"""
         return self.config_dict.get("pool_limits", {})
 
