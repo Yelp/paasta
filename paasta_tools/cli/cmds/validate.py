@@ -937,6 +937,30 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
+def validate_stable_pool_workloads(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    for cluster in list_clusters(service, soa_dir):
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            cpu = instance_config.get_cpus()
+            pool = instance_config.get_pool()
+
+            if pool == "stable" and cpu >= 16:
+                returncode = False
+                print(
+                    failure(
+                        f"""Instance {instance} on cluster {cluster} has {cpu} CPUs and is in the stable pool.
+                        The stable pool should not have workloads with more than 15 CPUs.
+                        If you need to run a workload with more than 15 CPUs, consider using the stable-giant pool.""",
+                        "",
+                    )
+                )
+    return returncode
+
+
 def check_secrets_for_instance(
     instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
 ) -> bool:
@@ -1411,6 +1435,7 @@ def paasta_validate_soa_configs(
         validate_autoscaling_configs,
         validate_secrets,
         validate_min_max_instances,
+        validate_stable_pool_workloads,
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
