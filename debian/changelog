@@ -1,3 +1,15 @@
+paasta-tools (1.59.0) jammy; urgency=medium
+
+  * 1.59.0 tagged with 'make release'
+    Commit: Add a `verify-image-exists` sub-command (#4357)  This will
+    be helpful for some model training adhoc jobs that get images built
+    in a somewhat roundabout way.  Without this, someone has to be
+    watching the build and waiting for it to complete before triggering
+    their adhoc job. However, with this: they can prefix their adhoc
+    launch command with this and not have to manually do anything :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 29 Jul 2026 10:24:14 -0700
+
 paasta-tools (1.58.1) jammy; urgency=medium
 
   * 1.58.1 tagged with 'make release'
