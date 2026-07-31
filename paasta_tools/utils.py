@@ -2552,7 +2552,7 @@ class SystemPaastaConfig:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
 
-    def get_pool_limits(self) -> Dict[str, Dict[str, Any]]:
+    def get_pool_limits(self) -> Dict[str, Dict[str, PoolLimits]]:
         """Pool limits for each cluster"""
         return self.config_dict.get("pool_limits", {})
 

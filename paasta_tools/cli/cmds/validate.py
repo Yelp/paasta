@@ -82,6 +82,7 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import PoolLimits
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -947,7 +948,7 @@ def validate_pool_limits(service_path: str) -> bool:
     returncode = True
 
     for cluster in list_clusters(service, soa_dir):
-        pool_limits_for_cluster = (
+        pool_limits_for_cluster: Dict[str, PoolLimits] = (
             load_system_paasta_config().get_pool_limits().get(cluster, {})
         )
         for instance, instance_config in load_all_instance_configs_for_service(
@@ -956,16 +957,16 @@ def validate_pool_limits(service_path: str) -> bool:
             cpu = instance_config.get_cpus()
             pool = instance_config.get_pool()
 
-            pool_limits: Dict[str, Any] = pool_limits_for_cluster.get(pool, {})
-            max_cpus_for_pool = pool_limits.get("max_cpus", float("inf"))
-            recommended_pool = pool_limits.get("recommended_pool")
+            pool_limits = pool_limits_for_cluster.get(pool)
+            if pool_limits is None:
+                continue
 
-            if pool in pool_limits_for_cluster and cpu >= max_cpus_for_pool:
+            if cpu >= pool_limits["max_cpus"]:
                 returncode = False
                 print(
                     failure(
-                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {max_cpus_for_pool} for the {pool} pool.
-                        If you need to run a workload with this many CPUs, consider using the {recommended_pool} pool instead.""",
+                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool.
+                        If you need to run a workload with this many CPUs, consider using the {pool_limits['recommended_pool']} pool instead.""",
                         "",
                     )
                 )
