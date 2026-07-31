@@ -956,7 +956,7 @@ def validate_pool_limits(service_path: str) -> bool:
             cpu = instance_config.get_cpus()
             pool = instance_config.get_pool()
 
-            pool_limits = pool_limits_for_cluster.get(pool, {})
+            pool_limits: Dict[str, Any] = pool_limits_for_cluster.get(pool, {})
             max_cpus_for_pool = pool_limits.get("max_cpus", float("inf"))
             recommended_pool = pool_limits.get("recommended_pool")
 
