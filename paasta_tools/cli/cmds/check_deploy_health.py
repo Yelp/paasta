@@ -80,9 +80,10 @@ def paasta_check_deploy_health(args: argparse.Namespace) -> int:
         )
         return 2
 
-    instances = [
-        (cluster, ic) for cluster, ics in configs_by_cluster.items() for ic in ics
-    ]
+    instances = []
+    for cluster, ics in configs_by_cluster.items():
+        for ic in ics:
+            instances.append((cluster, ic))
     if not instances:
         print(
             f"ERROR: No instances found for {service}/{deploy_group}",
