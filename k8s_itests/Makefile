@@ -23,7 +23,7 @@ else
 	PAASTA_K8S_ENV ?= $(shell hostname --fqdn)
 endif
 
-.PHONY: all itest clean
+.PHONY: all itest clean recreate_cluster
 
 all: clean itest
 
@@ -39,11 +39,17 @@ ifeq (,$(wildcard ./kind))
 endif
 
 .create_cluster: kind
-	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG) --image $(KIND_NODE_IMAGE)
+	sed 's|PAASTA_CHECKOUT_DIR|$(CWD)/..|g' $(KIND_CONFIG) > $(KIND_CONFIG).rendered
+	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG).rendered --kubeconfig $(KUBECONFIG) --image $(KIND_NODE_IMAGE)
 	touch .create_cluster
 
 itest: .create_cluster
 	../.paasta/bin/tox -e k8s_itests
+
+recreate_cluster: kind
+	$(CREATE_CLUSTER_ENVS) ./kind delete cluster --name=$(CLUSTER) 2>/dev/null || true
+	rm -f .create_cluster .fake_cluster
+	$(MAKE) .fake_cluster
 
 clean:
 	./scripts/clean.sh $(PAASTA_CONFIG_DIR) $(CLUSTER) 2>/dev/null || true

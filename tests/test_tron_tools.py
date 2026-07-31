@@ -1570,7 +1570,7 @@ class TestTronTools:
             "executor": "kubernetes",
             "cpus": 1,
             "mem": 4096,
-            "disk": 1024,
+            "disk": 4096,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
             "idempotent": True,
@@ -2095,7 +2095,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "5cf9985b6227ce18dc87376b687046f7"
+        assert hasher.hexdigest() == "eb3b5612be2c275ae768a7ff6225d005"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")

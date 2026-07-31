@@ -130,6 +130,7 @@ PAASTA_SUBCOMMANDS = {
     "restart": "start_stop_restart",
     "status": "status",
     "validate": "validate",
+    "verify-image-exists": "verify_image_exists",
     "wait-for-deployment": "wait_for_deployment",
 }
 

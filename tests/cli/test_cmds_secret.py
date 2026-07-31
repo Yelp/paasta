@@ -147,8 +147,6 @@ def test_paasta_secret():
     ) as mock_get_plaintext_input, mock.patch(
         "paasta_tools.cli.cmds.secret._log_audit", autospec=True
     ) as mock_log_audit, mock.patch(
-        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
-    ) as mock_is_secrets_for_teams_enabled, mock.patch(
         "paasta_tools.cli.cmds.secret.get_secret", autospec=True
     ) as mock_get_secret, mock.patch(
         "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
@@ -221,8 +219,8 @@ def test_paasta_secret():
             service="middleearth",
             clusters="mesosstage",
             shared=False,
+            from_kube=False,
         )
-        mock_is_secrets_for_teams_enabled.return_value = False
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
             "middleearth",
@@ -234,7 +232,7 @@ def test_paasta_secret():
             secret_provider=mock_secret_provider, secret_name="theonering"
         )
 
-        # decrypt with secrets_for_teams enabled
+        # decrypt with from_kube enabled
         mock_args = mock.Mock(
             action="decrypt",
             secret_name="theonering",
@@ -242,16 +240,15 @@ def test_paasta_secret():
             clusters="mesosstage",
             yelpsoa_config_root="something",
             shared=False,
+            from_kube=True,
         )
         kube_client = mock.Mock()
-        mock_is_secrets_for_teams_enabled.return_value = True
         mock_get_namespaces_for_secret.return_value = {"paastasvc-middleearth"}
         mock_select_k8s_secret_namespace.return_value = "paastasvc-middleearth"
         mock_kube_client.return_value = kube_client
 
         secret.paasta_secret(mock_args)
 
-        mock_is_secrets_for_teams_enabled.assert_called_with("middleearth", "something")
         mock_kube_client.assert_called_with(
             config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
         )
@@ -331,10 +328,6 @@ def test_paasta_secret_run():
         "paasta_tools.cli.cmds.secret.get_instance_config",
         autospec=True,
     ), mock.patch(
-        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled",
-        autospec=True,
-        return_value=False,
-    ), mock.patch(
         "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
     ), mock.patch(
         "os.execvpe",
@@ -349,6 +342,7 @@ def test_paasta_secret_run():
             clusters="mesosstage",
             instance="main",
             cmd=["foo"],
+            from_kube=False,
         )
 
         secret.paasta_secret(mock_args)
@@ -363,15 +357,11 @@ def test_paasta_secret_run():
         )
 
 
-def test_paasta_secret_run_secrets_for_teams():
+def test_paasta_secret_run_secrets_from_kube():
     with mock.patch(
         "paasta_tools.cli.cmds.secret.get_instance_config",
         autospec=True,
     ) as mock_get_instance_config, mock.patch(
-        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled",
-        autospec=True,
-        return_value=True,
-    ), mock.patch(
         "paasta_tools.cli.cmds.secret.KubeClient",
         autospec=True,
     ), mock.patch(
@@ -397,6 +387,7 @@ def test_paasta_secret_run_secrets_for_teams():
             clusters="pnw-devc",
             instance="main",
             cmd=["foo"],
+            from_kube=True,
         )
 
         secret.paasta_secret(mock_args)

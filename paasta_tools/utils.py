@@ -80,7 +80,6 @@ from docker.utils import kwargs_from_env
 from environment_tools.type_utils import convert_location_type
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
-from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -2035,6 +2034,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     uses_bulkdata_default: bool
+    use_prometheus_adapter_shared_rules: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     enable_cost_owner_label: bool
@@ -2798,6 +2798,9 @@ class SystemPaastaConfig:
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
 
+    def get_use_prometheus_adapter_shared_rules(self) -> bool:
+        return self.config_dict.get("use_prometheus_adapter_shared_rules", False)
+
     def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
         """
         Convert a Kubernetes cluster's region information to an ecosystem name.
@@ -3257,11 +3260,6 @@ def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) ->
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
-
-
-def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
-    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
-    return service_yaml_contents.get("secrets_for_owner_team", False)
 
 
 def get_pipeline_deploy_group_configs(

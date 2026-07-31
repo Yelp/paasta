@@ -1,3 +1,94 @@
+paasta-tools (1.59.0) jammy; urgency=medium
+
+  * 1.59.0 tagged with 'make release'
+    Commit: Add a `verify-image-exists` sub-command (#4357)  This will
+    be helpful for some model training adhoc jobs that get images built
+    in a somewhat roundabout way.  Without this, someone has to be
+    watching the build and waiting for it to complete before triggering
+    their adhoc job. However, with this: they can prefix their adhoc
+    launch command with this and not have to manually do anything :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 29 Jul 2026 10:24:14 -0700
+
+paasta-tools (1.58.1) jammy; urgency=medium
+
+  * 1.58.1 tagged with 'make release'
+    Commit: Merge pull request #4354 from
+    Yelp/jfong/fs_group_change_policy  Add support for ppl to set
+    `fsGroupChangePolicy`
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 23 Jul 2026 11:40:00 -0700
+
+paasta-tools (1.58.0) jammy; urgency=medium
+
+  * 1.58.0 tagged with 'make release'
+    Commit: PAASTA-17879: Ensure a monitoring.yaml file for all services
+    (#4349)  Add a check to paasta validate to ensure a monitoring.yaml
+    file exists for all services
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Jul 2026 11:48:26 -0700
+
+paasta-tools (1.57.1) jammy; urgency=medium
+
+  * 1.57.1 tagged with 'make release'
+    Commit: Merge pull request #4350 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  fix: non worker load autoscaling label
+    selector
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 16 Jul 2026 02:02:26 -0700
+
+paasta-tools (1.57.0) jammy; urgency=medium
+
+  * 1.57.0 tagged with 'make release'
+    Commit: Default `paasta secret` to token auth again (#4351)  Looks
+    like this is having some unforeseen impacts in CI - some services
+    use `paasta secret run` to run `ycp` or `pytest` with secrets, and
+    that"s failing to auth since there"s no human to type in their
+    password :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 14 Jul 2026 11:52:12 -0700
+
+paasta-tools (1.56.0) jammy; urgency=medium
+
+  * 1.56.0 tagged with 'make release'
+    Commit: remove references to secrets_for_teams (#4347)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 14 Jul 2026 02:33:28 -0700
+
+paasta-tools (1.55.3) jammy; urgency=medium
+
+  * 1.55.3 tagged with 'make release'
+    Commit: Merge pull request #4344 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  fix: labels for adapter
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 09 Jul 2026 03:35:37 -0700
+
+paasta-tools (1.55.2) jammy; urgency=medium
+
+  * 1.55.2 tagged with 'make release'
+    Commit: Merge pull request #4341 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  feat: shared prometheus adapter rules
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Fri, 03 Jul 2026 02:30:21 -0700
+
+paasta-tools (1.55.1) jammy; urgency=medium
+
+  * 1.55.1 tagged with 'make release'
+    Commit: Merge pull request #4343 from Yelp/sina/DREIMP-11556-fix-
+    cassandracluster-counterpart  DREIMP-11556 Add
+    cassandracluster/cassandraclustereks counterpart mapping
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 02 Jul 2026 11:25:54 -0700
+
+paasta-tools (1.55.0) jammy; urgency=medium
+
+  * 1.55.0 tagged with 'make release'
+    Commit: Merge pull request #4338 from Yelp/u/nathanleigh/STREAMAPP-
+    15217/flink-requireSSD  STREAMAPP-15217: Add requireSSD to
+    FlinkDeploymentConfigDict
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 01 Jul 2026 13:19:52 -0700
+
 paasta-tools (1.54.1) jammy; urgency=medium
 
   * 1.54.1 tagged with 'make release'

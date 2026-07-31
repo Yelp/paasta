@@ -30,7 +30,12 @@ KNOWN_CONFIG_TYPES = (
 # this could use a better name - but basically, this is for pairs of instance types
 # where you generally want to check both types (i.e.,g a status-quo and migration
 # instance type)
-INSTANCE_TYPE_COUNTERPARTS = {"eks": "kubernetes", "kubernetes": "eks"}
+INSTANCE_TYPE_COUNTERPARTS = {
+    "eks": "kubernetes",
+    "kubernetes": "eks",
+    "cassandracluster": "cassandraclustereks",
+    "cassandraclustereks": "cassandracluster",
+}
 
 
 def my_represent_none(self, data):

@@ -375,6 +375,23 @@ instance MAY have:
 
       "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
 
+  * ``fs_group``: An integer specifying the GID that will own all volumes in
+    the pod. Kubernetes will change ownership of all files in volumes to this
+    GID before they are exposed to the pod. This is only relevant for pods
+    that mount RW volumes (e.g. persistent volumes, secret volumes with RW
+    access).
+
+  * ``fs_group_change_policy``: Controls how Kubernetes applies ``fs_group``
+    ownership changes to volumes. Must be one of:
+
+    * ``Always`` (default if unset): always change ownership and permissions on every mount.
+    * ``OnRootMismatch``: only change ownership if the root directory's permissions/ownership
+      do not match the expected GID. This can significantly speed up pod startup for
+      large volumes.
+
+    Requires ``fs_group`` to be set. Has no effect if the instance does not declare
+    any RW volumes.
+
   * ``instances``: Kubernetes will attempt to run this many instances of the Service
 
   * ``min_instances``: When autoscaling, the minimum number of instances that
@@ -740,6 +757,8 @@ Each Tron **action** of a job MAY specify the following:
   * Anything in the `Common Settings`_.
 
   * Anything from :ref:`General Placement Options <general-placement-options>`
+
+  * ``disk``: Same as `Common Settings`, but defaults to 4096 MB for non-Spark Actions (Spark Actions use a default of 5120 MB instead).
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
