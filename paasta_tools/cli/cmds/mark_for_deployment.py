@@ -795,6 +795,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "alertmanager_poll_interval_s",
             system_paasta_config.get_alertmanager_poll_interval_s(),
         )
+        self.alertmanager_rollback_dry_run = self._get_deploy_group_config(
+            "alertmanager_rollback_dry_run", False
+        )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
@@ -1179,10 +1182,20 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "dest": None,
             "trigger": "alertmanager_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
-            "unless": [self.already_rolling_back],
+            "unless": [self.already_rolling_back, self._alertmanager_dry_run],
             "before": functools.partial(
                 self.start_auto_rollback_countdown, "rollback_alertmanager_failure"
             ),
+        }
+        # without this, the trigger would be silently swallowed in dry-run mode
+        # (the above transition is skipped via `unless`).
+        # this ensures we still notify that a rollback would have been triggered
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "alertmanager_started_failing",
+            "conditions": [self._alertmanager_dry_run],
+            "before": self._log_alertmanager_dry_run,
         }
         yield {
             "source": "*",
@@ -1585,6 +1598,16 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
         )
         self._log_rollback(rollback_details)
+
+    def _alertmanager_dry_run(self) -> bool:
+        return self.alertmanager_rollback_dry_run
+
+    def _log_alertmanager_dry_run(self) -> None:
+        self.update_slack_thread(
+            "[DRY-RUN] AlertManager alerts are failing — would have triggered "
+            "rollback, but alertmanager_rollback_dry_run is enabled.",
+            color="warning",
+        )
 
     def log_crashloop_rollback(self) -> None:
         self.rollback_type = RollbackTypes.AUTOMATIC_CRASHLOOP_ROLLBACK
