@@ -75,7 +75,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -1294,10 +1293,6 @@ def create_prometheus_adapter_config(
     Currently supports the following metrics providers:
         * uwsgi
     """
-    use_shared_rules = (
-        load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-    )
-
     rules: List[PrometheusAdapterRule] = []
     # get_services_for_cluster() returns a list of (service, instance) tuples, but this
     # is not great for us: if we were to iterate over that we'd end up getting duplicates
@@ -1332,44 +1327,28 @@ def create_prometheus_adapter_config(
                 cluster=paasta_cluster,
                 instance_type_class=instance_type_class,
             ):
-                if use_shared_rules:
-                    for provider_type in TEMPLATEABLE_PROVIDERS:
-                        provider_config = (
-                            instance_config.get_autoscaling_metrics_provider(
-                                provider_type
-                            )
-                        )
-                        if provider_config is not None:
-                            window = provider_config.get(
-                                "moving_average_window_seconds",
-                                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[
-                                    provider_type
-                                ],
-                            )
-                            seen_combos.add((provider_type, window))
-                    # still emit per-instance rules for non-templateable providers
-                    rules.extend(
-                        get_rules_for_service_instance(
-                            service_name=service_name,
-                            instance_config=instance_config,
-                            paasta_cluster=paasta_cluster,
-                            skip_providers=TEMPLATEABLE_PROVIDERS,
-                        )
+                for provider_type in TEMPLATEABLE_PROVIDERS:
+                    provider_config = instance_config.get_autoscaling_metrics_provider(
+                        provider_type
                     )
-                else:
-                    rules.extend(
-                        get_rules_for_service_instance(
-                            service_name=service_name,
-                            instance_config=instance_config,
-                            paasta_cluster=paasta_cluster,
+                    if provider_config is not None:
+                        window = provider_config.get(
+                            "moving_average_window_seconds",
+                            DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider_type],
                         )
+                        seen_combos.add((provider_type, window))
+                # still emit per-instance rules for non-templateable providers
+                rules.extend(
+                    get_rules_for_service_instance(
+                        service_name=service_name,
+                        instance_config=instance_config,
+                        paasta_cluster=paasta_cluster,
+                        skip_providers=TEMPLATEABLE_PROVIDERS,
                     )
+                )
 
-    if use_shared_rules:
-        for provider_type, window in seen_combos:
-            rules.append(
-                create_shared_scaling_rule(paasta_cluster, provider_type, window)
-            )
+    for provider_type, window in seen_combos:
+        rules.append(create_shared_scaling_rule(paasta_cluster, provider_type, window))
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps

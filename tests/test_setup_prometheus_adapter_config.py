@@ -50,7 +50,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
     create_shared_worker_load_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
-from paasta_tools.utils import SystemPaastaConfig
 
 LABEL_MATCHERS = "<<.LabelMatchers>>"
 
@@ -473,13 +472,6 @@ def _make_instance_config(
 def test_create_prometheus_adapter_config_shared_rules() -> None:
     # Two services both using worker-load with the same window → should collapse to 1 shared rule
     with mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-        autospec=True,
-        return_value=mock.Mock(
-            spec=SystemPaastaConfig,
-            get_use_prometheus_adapter_shared_rules=lambda: True,
-        ),
-    ), mock.patch(
         "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
         autospec=True,
         return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
@@ -503,13 +495,6 @@ def test_create_prometheus_adapter_config_shared_rules() -> None:
 def test_create_prometheus_adapter_config_shared_rules_multiple_windows() -> None:
     # Two instances with different windows → 2 shared rules
     with mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-        autospec=True,
-        return_value=mock.Mock(
-            spec=SystemPaastaConfig,
-            get_use_prometheus_adapter_shared_rules=lambda: True,
-        ),
-    ), mock.patch(
         "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
         autospec=True,
         return_value=[("svc_a", "inst1")],
@@ -529,34 +514,6 @@ def test_create_prometheus_adapter_config_shared_rules_multiple_windows() -> Non
     assert len(worker_load_rules) == 2
     names = {r["name"]["as"] for r in worker_load_rules}
     assert names == {"worker-load-prom-1800", "worker-load-prom-300"}
-
-
-def test_create_prometheus_adapter_config_flag_off() -> None:
-    # Flag off → old per-instance rules, no shared rules
-    with mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-        autospec=True,
-        return_value=mock.Mock(
-            spec=SystemPaastaConfig,
-            get_use_prometheus_adapter_shared_rules=lambda: False,
-        ),
-    ), mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
-        autospec=True,
-        return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
-    ), mock.patch(
-        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_loader_cls:
-        mock_loader_cls.return_value.instance_configs.return_value = [
-            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
-        ]
-        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
-        rules = config["rules"]
-
-    # 2 per-instance rules (one per service), no shared rule
-    assert all(LABEL_MATCHERS not in r["metricsQuery"] for r in rules)
-    assert not any(r["name"]["as"] == "worker-load-prom-1800" for r in rules)
 
 
 @pytest.mark.parametrize(
