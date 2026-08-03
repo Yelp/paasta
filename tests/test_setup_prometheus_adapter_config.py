@@ -431,7 +431,12 @@ def test_create_shared_scaling_rule(
     paasta_cluster = "test_cluster"
     moving_average_window = 20120302
 
-    rule = rule_func(paasta_cluster, moving_average_window)
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+    ) as mock_config:
+        mock_config.return_value.get_use_raw_ksm_queries.return_value = False
+        rule = rule_func(paasta_cluster, moving_average_window)
 
     assert str(moving_average_window) in rule["metricsQuery"]
     assert paasta_cluster in rule["seriesQuery"]
@@ -445,6 +450,42 @@ def test_create_shared_scaling_rule(
     assert "paasta_service='" not in rule["metricsQuery"].replace(
         "paasta_service='<<index .LabelValuesByName", ""
     )
+
+
+@pytest.mark.parametrize(
+    "rule_func,expected_series_metric,expected_name_prefix",
+    [
+        (create_shared_uwsgi_v2_scaling_rule, "uwsgi_worker_busy", "uwsgi-v2-prom"),
+        (create_shared_uwsgi_scaling_rule, "uwsgi_worker_busy", "uwsgi-prom"),
+        (
+            create_shared_piscina_scaling_rule,
+            "piscina_pool_utilization",
+            "piscina-prom",
+        ),
+        (create_shared_gunicorn_scaling_rule, "gunicorn_worker_busy", "gunicorn-prom"),
+    ],
+)
+def test_create_shared_scaling_rule_with_raw_ksm_queries(
+    rule_func, expected_series_metric, expected_name_prefix
+) -> None:
+    paasta_cluster = "test_cluster"
+    moving_average_window = 20120302
+
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+    ) as mock_config:
+        mock_config.return_value.get_use_raw_ksm_queries.return_value = True
+        rule = rule_func(paasta_cluster, moving_average_window)
+
+    assert str(moving_average_window) in rule["metricsQuery"]
+    assert paasta_cluster in rule["seriesQuery"]
+    assert expected_series_metric in rule["seriesQuery"]
+    assert rule["name"]["as"] == f"{expected_name_prefix}-{moving_average_window}"
+    assert "<<index .LabelValuesByName" in rule["metricsQuery"]
+    assert "kube_deployment_status_replicas_ready" in rule["metricsQuery"]
+    assert "kube_deployment_labels" in rule["metricsQuery"]
+    assert "k8s:deployment:pods_status_ready" not in rule["metricsQuery"]
 
 
 def _make_instance_config(
