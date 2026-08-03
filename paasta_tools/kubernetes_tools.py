@@ -843,13 +843,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         name: str,
         namespace: str,
         provider: MetricsProviderDict,
-        use_shared_rules: bool = False,
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
+        if provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
@@ -984,14 +983,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        use_shared_rules = (
-            load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-        )
         metrics = []
         for provider in autoscaling_params["metrics_providers"]:
-            spec = self.get_autoscaling_provider_spec(
-                name, namespace, provider, use_shared_rules
-            )
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
             if spec is not None:
                 metrics.append(spec)
         scaling_policy = self.get_autoscaling_scaling_policy(
