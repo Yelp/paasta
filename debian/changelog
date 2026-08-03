@@ -1,3 +1,11 @@
+paasta-tools (1.59.1) jammy; urgency=medium
+
+  * 1.59.1 tagged with 'make release'
+    Commit: Merge pull request #4364 from Yelp/u/sidtuladhar/cleanup
+    chore: cleanup configmap flags
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Mon, 03 Aug 2026 08:40:46 -0700
+
 paasta-tools (1.59.0) jammy; urgency=medium
 
   * 1.59.0 tagged with 'make release'
