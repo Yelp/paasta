@@ -1525,6 +1525,9 @@ fake_instance1:
         return_value=mock.Mock(
             get_instance=mock.Mock(return_value="fake_instance1"),
             get_instance_type=mock.Mock(return_value=instance_type),
+            get_config_path=mock.Mock(
+                return_value=f"fake_soa_dir/fake_service/{instance_type}-fake_cluster.yaml"
+            ),
         ),
     ), mock.patch(
         "paasta_tools.cli.cmds.validate.list_all_instances_for_service",
