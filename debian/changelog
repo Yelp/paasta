@@ -1,3 +1,12 @@
+paasta-tools (1.59.2) jammy; urgency=medium
+
+  * 1.59.2 tagged with 'make release'
+    Commit: Merge pull request #4365 from Yelp/u/sidtuladhar/PAASTA-
+    18905/fix-hpa-query-all  feat: use_raw_ksm query for all autoscaling
+    types
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 04 Aug 2026 06:57:42 -0700
+
 paasta-tools (1.59.1) jammy; urgency=medium
 
   * 1.59.1 tagged with 'make release'
