@@ -956,26 +956,24 @@ def warn_single_replica_instances(service_path: str) -> bool:
 
             if replicas == 1:
                 config_file_path = instance_config.get_config_path()
-                config = get_config_file_dict(config_file_path, use_ruamel=True)
                 config_flat = _get_config_flattened(config_file_path)
 
-                if config[instance].get(replica_key) is None:
-                    # relying on implicit default of 1 — no explicit acknowledgment possible
+                if config_flat[instance].get(replica_key) is None:
                     returncode = False
                     print(
                         failure(
                             msg=f"Instance {instance} on cluster {cluster} has only 1 replica (implicit default). "
-                            f"Set instances explicitly or increase to more than 1.",
+                            f"Set `instances` explicitly if not autoscaled or set `min_instances` greater than 1 if autoscaled.",
                             link="y/override-single-replica",
                         )
                     )
                     continue
 
                 comment = _get_comments_for_key(
-                    data=config[instance],
+                    data=config_flat[instance],
                     key=replica_key,
-                    full_config=config,
-                    key_value=config[instance].get(replica_key),
+                    full_config=config_flat,
+                    key_value=config_flat[instance].get(replica_key),
                     full_config_flattened=config_flat,
                 )
                 if (
@@ -990,6 +988,7 @@ def warn_single_replica_instances(service_path: str) -> bool:
                     print(
                         failure(
                             msg=f"Instance {instance} on cluster {cluster} has only 1 replica. "
+                            f"Single replicas are a SPOF and we do not encourage it. "
                             f"Add a comment to acknowledge: # override-single-replica (PROJ-1234)",
                             link="y/override-single-replica",
                         )
