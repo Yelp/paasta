@@ -843,13 +843,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         name: str,
         namespace: str,
         provider: MetricsProviderDict,
-        use_shared_rules: bool = False,
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
+        if provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
@@ -862,7 +861,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta_cluster": self.cluster,
                     "paasta_service": self.service,
                     "paasta_instance": self.instance,
-                    "kube_deployment": self.get_sanitised_deployment_name(),
                 }
             )
         else:
@@ -985,14 +983,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        use_shared_rules = (
-            load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-        )
         metrics = []
         for provider in autoscaling_params["metrics_providers"]:
-            spec = self.get_autoscaling_provider_spec(
-                name, namespace, provider, use_shared_rules
-            )
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
             if spec is not None:
                 metrics.append(spec)
         scaling_policy = self.get_autoscaling_scaling_policy(
@@ -2487,8 +2480,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
 
         if fs_group is not None:
+            security_context_kwargs: Dict[str, Any] = {"fs_group": fs_group}
+            fs_group_change_policy = self.get_fs_group_change_policy()
+            if fs_group_change_policy is not None:
+                security_context_kwargs[
+                    "fs_group_change_policy"
+                ] = fs_group_change_policy
             pod_spec_kwargs["security_context"] = V1PodSecurityContext(
-                fs_group=fs_group
+                **security_context_kwargs
             )
 
         # prometheus_path is used to override the default scrape path in Prometheus

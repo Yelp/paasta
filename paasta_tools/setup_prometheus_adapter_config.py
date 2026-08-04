@@ -974,35 +974,67 @@ def create_shared_uwsgi_v2_scaling_rule(
     )
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
 
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
+    use_raw_ksm_queries = load_system_paasta_config().get_use_raw_ksm_queries()
+
     load_per_instance = f"""
         avg(
             uwsgi_worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
+    if use_raw_ksm_queries:
+        replicas_filter_terms = (
+            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
         )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
+        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .LabelValuesByName \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .LabelValuesByName \"paasta_instance\">>'"
+        missing_instances = f"""
+            (clamp_min(
+                label_replace(
+                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                    * on (deployment)
+                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                    "kube_deployment", "$1", "deployment", "(.*)")
+                - on (kube_deployment)
+                count by (kube_deployment) (
+                    {load_per_instance}
+                ),
+                0
+            ) or on() vector(0))
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            + ignoring(kube_deployment) group_left()
+            {missing_instances}
+        )
+        """
+    else:
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
+        missing_instances = f"""
+            clamp_min(
+                {ready_pods} - count({load_per_instance}) by (kube_deployment),
+                0
+            )
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            +
+            {missing_instances}
+        )
+        """
+
     total_load_smoothed = f"""
         avg_over_time(
             (
@@ -1026,46 +1058,85 @@ def create_shared_uwsgi_scaling_rule(
         METRICS_PROVIDER_UWSGI, moving_average_window
     )
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
-    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
-    ready_pods_namespaced = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{replica_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
+    use_raw_ksm_queries = load_system_paasta_config().get_use_raw_ksm_queries()
+
     load_per_instance = f"""
         avg(
             uwsgi_worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
+    if use_raw_ksm_queries:
+        replicas_filter_terms = (
+            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
         )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
+        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .LabelValuesByName \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .LabelValuesByName \"paasta_instance\">>'"
+        ready_replicas = f"""
+            label_replace(
+                kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                * on (deployment)
+                kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                "kube_deployment", "$1", "deployment", "(.*)")
+        """
+        missing_instances = f"""
+            (clamp_min(
+                label_replace(
+                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                    * on (deployment)
+                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                    "kube_deployment", "$1", "deployment", "(.*)")
+                - on (kube_deployment)
+                count by (kube_deployment) (
+                    {load_per_instance}
+                ),
+                0
+            ) or on() vector(0))
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            + ignoring(kube_deployment) group_left()
+            {missing_instances}
+        )
+        """
+    else:
+        replica_filter_terms = f"paasta_cluster='{paasta_cluster}',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
+        ready_replicas = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{replica_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
+        missing_instances = f"""
+            clamp_min(
+                {ready_pods} - count({load_per_instance}) by (kube_deployment),
+                0
+            )
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            +
+            {missing_instances}
+        )
+        """
+
     desired_instances = f"""
         avg_over_time(
             (
@@ -1074,7 +1145,7 @@ def create_shared_uwsgi_scaling_rule(
         )
     """
     metrics_query = f"""
-        {desired_instances} / {ready_pods_namespaced}
+        {desired_instances} / {ready_replicas}
     """
     return {
         "name": {"as": metric_name},
@@ -1094,6 +1165,8 @@ def create_shared_piscina_scaling_rule(
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
     replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
+    use_raw_ksm_queries = load_system_paasta_config().get_use_raw_ksm_queries()
+
     current_replicas = f"""
         sum(
             label_join(
@@ -1108,33 +1181,63 @@ def create_shared_piscina_scaling_rule(
             )
         ) by (kube_deployment)
     """
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
     load_per_instance = f"""
         (piscina_pool_utilization{{{worker_filter_terms}}})
     """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
+    if use_raw_ksm_queries:
+        replicas_filter_terms = (
+            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
         )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
+        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .LabelValuesByName \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .LabelValuesByName \"paasta_instance\">>'"
+        missing_instances = f"""
+            (clamp_min(
+                label_replace(
+                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                    * on (deployment)
+                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                    "kube_deployment", "$1", "deployment", "(.*)")
+                - on (kube_deployment)
+                count by (kube_deployment) (
+                    {load_per_instance}
+                ),
+                0
+            ) or on() vector(0))
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            + ignoring(kube_deployment) group_left()
+            {missing_instances}
+        )
+        """
+    else:
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
+        missing_instances = f"""
+            clamp_min(
+                {ready_pods} - count({load_per_instance}) by (kube_deployment),
+                0
+            )
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            +
+            {missing_instances}
+        )
+        """
+
     desired_instances = f"""
         avg_over_time(
             (
@@ -1163,6 +1266,8 @@ def create_shared_gunicorn_scaling_rule(
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='<<index .LabelValuesByName \"paasta_service\">>',paasta_instance='<<index .LabelValuesByName \"paasta_instance\">>',kube_deployment='<<index .LabelValuesByName \"kube_deployment\">>'"
     replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='<<index .LabelValuesByName \"kube_deployment\">>',namespace='<<index .LabelValuesByName \"kube_namespace\">>'"
 
+    use_raw_ksm_queries = load_system_paasta_config().get_use_raw_ksm_queries()
+
     current_replicas = f"""
         sum(
             label_join(
@@ -1177,35 +1282,65 @@ def create_shared_gunicorn_scaling_rule(
             )
         ) by (kube_deployment)
     """
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
     load_per_instance = f"""
         avg(
             gunicorn_worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
+    if use_raw_ksm_queries:
+        replicas_filter_terms = (
+            f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)'"
         )
-    """
-    total_load = f"""
-    (
-        sum(
-            {load_per_instance}
-        ) by (kube_deployment)
-        +
-        {missing_instances}
-    )
-    """
+        deployment_labels_filter_terms = f"paasta_cluster='{paasta_cluster}',namespace=~'(paasta|paastasvc-.*)',label_paasta_yelp_com_service='<<index .LabelValuesByName \"paasta_service\">>',label_paasta_yelp_com_instance='<<index .LabelValuesByName \"paasta_instance\">>'"
+        missing_instances = f"""
+            (clamp_min(
+                label_replace(
+                    kube_deployment_status_replicas_ready{{{replicas_filter_terms}}}
+                    * on (deployment)
+                    kube_deployment_labels{{{deployment_labels_filter_terms}}},
+                    "kube_deployment", "$1", "deployment", "(.*)")
+                - on (kube_deployment)
+                count by (kube_deployment) (
+                    {load_per_instance}
+                ),
+                0
+            ) or on() vector(0))
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            + ignoring(kube_deployment) group_left()
+            {missing_instances}
+        )
+        """
+    else:
+        ready_pods = f"""
+            (sum(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            ) by (kube_deployment))
+        """
+        missing_instances = f"""
+            clamp_min(
+                {ready_pods} - count({load_per_instance}) by (kube_deployment),
+                0
+            )
+        """
+        total_load = f"""
+        (
+            sum(
+                {load_per_instance}
+            ) by (kube_deployment)
+            +
+            {missing_instances}
+        )
+        """
+
     desired_instances = f"""
         avg_over_time(
             (
@@ -1294,10 +1429,6 @@ def create_prometheus_adapter_config(
     Currently supports the following metrics providers:
         * uwsgi
     """
-    use_shared_rules = (
-        load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-    )
-
     rules: List[PrometheusAdapterRule] = []
     # get_services_for_cluster() returns a list of (service, instance) tuples, but this
     # is not great for us: if we were to iterate over that we'd end up getting duplicates
@@ -1332,44 +1463,28 @@ def create_prometheus_adapter_config(
                 cluster=paasta_cluster,
                 instance_type_class=instance_type_class,
             ):
-                if use_shared_rules:
-                    for provider_type in TEMPLATEABLE_PROVIDERS:
-                        provider_config = (
-                            instance_config.get_autoscaling_metrics_provider(
-                                provider_type
-                            )
-                        )
-                        if provider_config is not None:
-                            window = provider_config.get(
-                                "moving_average_window_seconds",
-                                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[
-                                    provider_type
-                                ],
-                            )
-                            seen_combos.add((provider_type, window))
-                    # still emit per-instance rules for non-templateable providers
-                    rules.extend(
-                        get_rules_for_service_instance(
-                            service_name=service_name,
-                            instance_config=instance_config,
-                            paasta_cluster=paasta_cluster,
-                            skip_providers=TEMPLATEABLE_PROVIDERS,
-                        )
+                for provider_type in TEMPLATEABLE_PROVIDERS:
+                    provider_config = instance_config.get_autoscaling_metrics_provider(
+                        provider_type
                     )
-                else:
-                    rules.extend(
-                        get_rules_for_service_instance(
-                            service_name=service_name,
-                            instance_config=instance_config,
-                            paasta_cluster=paasta_cluster,
+                    if provider_config is not None:
+                        window = provider_config.get(
+                            "moving_average_window_seconds",
+                            DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider_type],
                         )
+                        seen_combos.add((provider_type, window))
+                # still emit per-instance rules for non-templateable providers
+                rules.extend(
+                    get_rules_for_service_instance(
+                        service_name=service_name,
+                        instance_config=instance_config,
+                        paasta_cluster=paasta_cluster,
+                        skip_providers=TEMPLATEABLE_PROVIDERS,
                     )
+                )
 
-    if use_shared_rules:
-        for provider_type, window in seen_combos:
-            rules.append(
-                create_shared_scaling_rule(paasta_cluster, provider_type, window)
-            )
+    for provider_type, window in seen_combos:
+        rules.append(create_shared_scaling_rule(paasta_cluster, provider_type, window))
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps

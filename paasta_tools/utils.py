@@ -2034,7 +2034,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     uses_bulkdata_default: bool
-    use_prometheus_adapter_shared_rules: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     enable_cost_owner_label: bool
@@ -2043,6 +2042,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
+    use_raw_ksm_queries: bool
 
 
 def load_system_paasta_config(
@@ -2795,11 +2795,11 @@ class SystemPaastaConfig:
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
 
+    def get_use_raw_ksm_queries(self) -> bool:
+        return self.config_dict.get("use_raw_ksm_queries", False)
+
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
-
-    def get_use_prometheus_adapter_shared_rules(self) -> bool:
-        return self.config_dict.get("use_prometheus_adapter_shared_rules", False)
 
     def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
         """
