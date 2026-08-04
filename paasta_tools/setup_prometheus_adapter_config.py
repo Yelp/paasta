@@ -995,7 +995,7 @@ def create_shared_uwsgi_v2_scaling_rule(
                     "kube_deployment", "$1", "deployment", "(.*)")
                 - on (kube_deployment)
                 count by (kube_deployment) (
-                    uwsgi_worker_busy{{{worker_filter_terms}}}
+                    {load_per_instance}
                 ),
                 0
             ) or on() vector(0))
@@ -1087,7 +1087,7 @@ def create_shared_uwsgi_scaling_rule(
                     "kube_deployment", "$1", "deployment", "(.*)")
                 - on (kube_deployment)
                 count by (kube_deployment) (
-                    uwsgi_worker_busy{{{worker_filter_terms}}}
+                    {load_per_instance}
                 ),
                 0
             ) or on() vector(0))
@@ -1198,7 +1198,7 @@ def create_shared_piscina_scaling_rule(
                     "kube_deployment", "$1", "deployment", "(.*)")
                 - on (kube_deployment)
                 count by (kube_deployment) (
-                    piscina_pool_utilization{{{worker_filter_terms}}}
+                    {load_per_instance}
                 ),
                 0
             ) or on() vector(0))
@@ -1301,7 +1301,7 @@ def create_shared_gunicorn_scaling_rule(
                     "kube_deployment", "$1", "deployment", "(.*)")
                 - on (kube_deployment)
                 count by (kube_deployment) (
-                    gunicorn_worker_busy{{{worker_filter_terms}}}
+                    {load_per_instance}
                 ),
                 0
             ) or on() vector(0))
