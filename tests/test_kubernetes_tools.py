@@ -3010,7 +3010,7 @@ class TestKubernetesDeploymentConfig:
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.4,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3280,7 +3280,7 @@ class TestKubernetesDeploymentConfig:
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",

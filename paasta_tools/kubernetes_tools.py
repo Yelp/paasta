@@ -881,8 +881,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
             METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
+            return V2MetricSpec(
+                type="Object",
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
+                    described_object=V2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2MetricTarget(
+                        type="Value",
+                        # shared rules return avg load per replica (total_load / replicas);
+                        # HPA scales when metric > target, so target = setpoint.
+                        value=target,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
