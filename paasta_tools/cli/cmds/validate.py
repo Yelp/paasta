@@ -141,6 +141,10 @@ OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+# we expect a comment that looks like # override-single-replica (PROJ-1234)
+OVERRIDE_SINGLE_REPLICA_ACK_PATTERN = (
+    r"#\s*override-single-replica\s+\(.+[A-Z]+-[0-9]+.+\)"
+)
 # for now, double the autotune cap to give people the benefit of the doubt
 # if we see that people are still misusing this configuration, we can lower
 # this to the autotune cap (i.e., 1)
@@ -853,11 +857,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
 
                             # we need access to the comments, so we need to read the config with ruamel to be able
                             # to actually get them in a "nice" automated fashion
-                            config_file_path = os.path.join(
-                                soa_dir,
-                                service,
-                                f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                            )
+                            config_file_path = instance_config.get_config_path()
                             config = get_config_file_dict(
                                 config_file_path,
                                 use_ruamel=True,
@@ -933,6 +933,66 @@ def validate_min_max_instances(service_path):
                                 "",
                             )
                         )
+
+    return returncode
+
+
+def warn_single_replica_instances(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    for cluster in list_clusters(service, soa_dir):
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            if not isinstance(instance_config, LongRunningServiceConfig):
+                continue
+            if instance_config.is_autoscaling_enabled():
+                replicas = instance_config.get_min_instances()
+                replica_key = "min_instances"
+            else:
+                replicas = instance_config.get_instances()
+                replica_key = "instances"
+
+            if replicas == 1:
+                config_file_path = instance_config.get_config_path()
+                config_flat = _get_config_flattened(config_file_path)
+
+                if config_flat[instance].get(replica_key) is None:
+                    returncode = False
+                    print(
+                        failure(
+                            msg=f"Instance {instance} on cluster {cluster} has only 1 replica (implicit default). "
+                            f"Set `instances` explicitly if not autoscaled or set `min_instances` greater than 1 if autoscaled.",
+                            link="y/override-single-replica",
+                        )
+                    )
+                    continue
+
+                comment = _get_comments_for_key(
+                    data=config_flat[instance],
+                    key=replica_key,
+                    full_config=config_flat,
+                    key_value=config_flat[instance].get(replica_key),
+                    full_config_flattened=config_flat,
+                )
+                if (
+                    comment is None
+                    or re.search(
+                        pattern=OVERRIDE_SINGLE_REPLICA_ACK_PATTERN,
+                        string=comment,
+                    )
+                    is None
+                ):
+                    returncode = False
+                    print(
+                        failure(
+                            msg=f"Instance {instance} on cluster {cluster} has only 1 replica. "
+                            f"Single replicas are a SPOF and we do not encourage it. "
+                            f"Add a comment to acknowledge: # override-single-replica (PROJ-1234)",
+                            link="y/override-single-replica",
+                        )
+                    )
 
     return returncode
 
@@ -1024,11 +1084,7 @@ def validate_cpu_burst(service_path: str) -> bool:
             if is_k8s_service and not should_skip_cpu_burst_validation:
                 # we need access to the comments, so we need to read the config with ruamel to be able
                 # to actually get them in a "nice" automated fashion
-                config_file_path = os.path.join(
-                    soa_dir,
-                    service,
-                    f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                )
+                config_file_path = instance_config.get_config_path()
                 config = get_config_file_dict(
                     config_file_path,
                     use_ruamel=True,
@@ -1414,6 +1470,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
+        warn_single_replica_instances,
         check_monitoring_file_exists,
     ]
 
