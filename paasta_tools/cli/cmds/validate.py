@@ -1470,7 +1470,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
-        warn_single_replica_instances,
+        # warn_single_replica_instances,  # disabled: firing on adhoc/non-prod instances (PAASTA-18934)
         check_monitoring_file_exists,
     ]
 
