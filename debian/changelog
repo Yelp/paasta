@@ -1,3 +1,11 @@
+paasta-tools (1.59.3) jammy; urgency=medium
+
+  * 1.59.3 tagged with 'make release'
+    Commit: Merge pull request #4368 from Yelp/luisp/DAR-2992-handle-
+    piscina-setpoint  Correctly handle setpoint for Piscina autoscaling
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 06 Aug 2026 06:33:39 -0700
+
 paasta-tools (1.59.2) jammy; urgency=medium
 
   * 1.59.2 tagged with 'make release'
