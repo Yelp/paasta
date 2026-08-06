@@ -1,3 +1,12 @@
+paasta-tools (1.59.4) jammy; urgency=medium
+
+  * 1.59.4 tagged with 'make release'
+    Commit: Merge pull request #4370 from Yelp/u/mbrankin/revert-single-
+    replica-check  Revert "Merge pull request #4355 from
+    Yelp/u/mbrankin/PAASTA-18934"
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 06 Aug 2026 10:51:33 -0700
+
 paasta-tools (1.59.3) jammy; urgency=medium
 
   * 1.59.3 tagged with 'make release'
