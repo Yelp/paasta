@@ -459,15 +459,6 @@ class InstanceConfig:
             "service": self.service,
         }
 
-    def get_config_path(self) -> str:
-        instance_type = self.get_instance_type()
-        assert instance_type is not None
-        return os.path.join(
-            self.soa_dir,
-            self.service,
-            f"{instance_type}-{self.cluster}.yaml",
-        )
-
     def get_cluster(self) -> str:
         return self.cluster
 
