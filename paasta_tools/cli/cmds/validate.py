@@ -950,6 +950,8 @@ def validate_single_replica_instances(service_path: str) -> bool:
         ):
             if not isinstance(instance_config, LongRunningServiceConfig):
                 continue
+            if instance_config.get_instance_type() not in K8S_TYPES:
+                continue
             if instance_config.is_autoscaling_enabled():
                 replicas = instance_config.get_min_instances()
                 replica_key = "min_instances"
