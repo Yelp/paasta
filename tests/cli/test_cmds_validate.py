@@ -83,7 +83,9 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_single_replica_instances", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.validate_single_replica_instances", autospec=True
+)
 def test_paasta_validate_calls_everything(
     mock_validate_monitoring_file,
     mock_validate_service_name,
@@ -234,6 +236,7 @@ def test_validate_min_max_instances_success(
         in output
     )
 
+
 @pytest.mark.parametrize(
     "instances, comment, expected",
     [
@@ -284,6 +287,7 @@ fake_instance1:
 """
 
     assert validate_single_replica_instances("fake-service-path") is expected
+
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.glob", autospec=True)
