@@ -376,6 +376,53 @@ def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     return True
 
 
+def _build_default_error_alert_filter(
+    service: str,
+    instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]],
+) -> List[str]:
+    """Build a filter for Default PaaSTA Error Alerts.
+
+    These alerts use a composite `instance` label: {region}.{service}.{server_namespace}
+    (with an optional .{endpoint} suffix for per-endpoint alerts).
+    NOTE: server_namespace above is the same as the PaaSTA mesh registration
+    """
+    kube_clusters = load_system_paasta_config().get_kube_clusters()
+
+    alertmanager_instances: Set[str] = set()
+    for cluster, configs in instance_configs_per_cluster.items():
+        cluster_info = kube_clusters.get(cluster)
+        if not cluster_info:
+            log.warning(
+                f"Cluster {cluster} not found in kube_clusters config; "
+                "skipping default error alert filter for this cluster"
+            )
+            continue
+        region = cluster_info.get("yelp_region")
+        if not region:
+            log.warning(
+                f"Cluster {cluster} has no yelp_region in kube_clusters config; "
+                "skipping default error alert filter for this cluster"
+            )
+            continue
+        for config in configs:
+            # we could also use get_nerve_namespace(), but that doesn't support
+            # instances with multiple registrations
+            # ...which are a lot more common than you'd think :p
+            for registration in config.get_registrations():
+                namespace = registration.split(".")[1]
+                alertmanager_instances.add(f"{region}.{service}.{namespace}")
+
+    if not alertmanager_instances:
+        return []
+
+    instance_regex = "|".join(sorted(alertmanager_instances))
+    return [
+        'paasta_rollback_metric="true"',
+        # NOTE: the group after instance_regex is for capturing per-endpoint alerts
+        f'instance=~"^({instance_regex})($|[.].*)"',
+    ]
+
+
 def build_alertmanager_rollback_filters(
     service: str,
     instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]],
@@ -404,10 +451,16 @@ def build_alertmanager_rollback_filters(
             f'paasta_instance=~"^({"|".join(sorted(instances))})$"'
         )
 
-    return [
-        custom_alert_filter,
-        # TODO(PAASTA-18915): add default error alerting filters
-    ]
+    default_error_alert_filter = _build_default_error_alert_filter(
+        service=service,
+        instance_configs_per_cluster=instance_configs_per_cluster,
+    )
+
+    filters = [custom_alert_filter]
+    if default_error_alert_filter:
+        filters.append(default_error_alert_filter)
+
+    return filters
 
 
 def report_waiting_aborted(service: str, deploy_group: str) -> None:
@@ -759,7 +812,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.alertmanager_rollback_enabled and (
             alertmanager_url := system_paasta_config.get_alertmanager_url()
         ):
-            # TODO(PAASTA-18915): add default error alerting filters
             filters = build_alertmanager_rollback_filters(
                 service=self.service,
                 instance_configs_per_cluster=self.instance_configs_per_cluster,
