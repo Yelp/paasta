@@ -83,10 +83,13 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_flink_monitoring_team", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.validate.validate_single_replica_instances", autospec=True
 )
 def test_paasta_validate_calls_everything(
+    mock_validate_single_replica_instances,
+    mock_validate_flink_monitoring_team,
     mock_validate_monitoring_file,
     mock_validate_service_name,
     mock_validate_smartstack,
@@ -97,7 +100,6 @@ def test_paasta_validate_calls_everything(
     mock_validate_all_schemas,
     mock_validate_paasta_objects,
     mock_validate_min_max_instances,
-    mock_validate_single_replica_instances,
     mock_validate_unique_instance_names,
     mock_validate_autoscaling_configs,
     mock_validate_cpu_burst,
@@ -116,6 +118,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_smartstack.return_value = True
     mock_validate_service_name.return_value = True
     mock_validate_monitoring_file.return_value = True
+    mock_validate_flink_monitoring_team.return_value = True
     mock_validate_single_replica_instances.return_value = True
 
     args = mock.MagicMock()
@@ -255,7 +258,9 @@ def test_validate_min_max_instances_success(
 )
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 def test_validate_single_replica(
+    mock_load_system_paasta_config,
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
@@ -264,6 +269,9 @@ def test_validate_single_replica(
     comment,
     expected,
 ):
+    mock_load_system_paasta_config.return_value.get_ecosystem_for_cluster.return_value = (
+        "prod"
+    )
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_load_all_instance_configs_for_service.return_value = [
