@@ -1,3 +1,12 @@
+paasta-tools (1.59.5) jammy; urgency=medium
+
+  * 1.59.5 tagged with 'make release'
+    Commit: Merge pull request #4358 from Yelp/u/sidtuladhar/PAASTA-
+    18929/validate-stable-pool  feat: New config to configure CPU limits
+    per cluster per pool
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 11 Aug 2026 04:03:35 -0700
+
 paasta-tools (1.59.4) jammy; urgency=medium
 
   * 1.59.4 tagged with 'make release'
