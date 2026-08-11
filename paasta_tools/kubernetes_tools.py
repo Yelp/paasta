@@ -843,13 +843,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         name: str,
         namespace: str,
         provider: MetricsProviderDict,
-        use_shared_rules: bool = False,
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
+        if provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
@@ -882,8 +881,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
             METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
+            return V2MetricSpec(
+                type="Object",
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
+                    described_object=V2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2MetricTarget(
+                        type="Value",
+                        # shared rules return avg load per replica (total_load / replicas);
+                        # HPA scales when metric > target, so target = setpoint.
+                        value=target,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -984,14 +1001,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        use_shared_rules = (
-            load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-        )
         metrics = []
         for provider in autoscaling_params["metrics_providers"]:
-            spec = self.get_autoscaling_provider_spec(
-                name, namespace, provider, use_shared_rules
-            )
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
             if spec is not None:
                 metrics.append(spec)
         scaling_policy = self.get_autoscaling_scaling_policy(

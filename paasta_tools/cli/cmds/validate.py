@@ -82,6 +82,7 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
+from paasta_tools.utils import PoolLimits
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -937,6 +938,41 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
+def validate_pool_limits(service_path: str) -> bool:
+    """
+    Validate that services in specific pools won't exceed per-node capacities.
+    For the most part, this isn't normally an issue - but there are several pools where
+    folks tend to want to run extra-large workloads that won't fit (e.g., large single-node batches).
+    """
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    for cluster in list_clusters(service, soa_dir):
+        pool_limits_for_cluster: Dict[str, PoolLimits] = (
+            load_system_paasta_config().get_pool_limits().get(cluster, {})
+        )
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            cpu = instance_config.get_cpus()
+            pool = instance_config.get_pool()
+
+            pool_limits = pool_limits_for_cluster.get(pool)
+            if pool_limits is None:
+                continue
+
+            if cpu >= pool_limits["max_cpus"]:
+                returncode = False
+                print(
+                    failure(
+                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool.
+                        If you need to run a workload with this many CPUs, consider using the {pool_limits['recommended_pool']} pool instead.""",
+                        "",
+                    )
+                )
+    return returncode
+
+
 def check_secrets_for_instance(
     instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
 ) -> bool:
@@ -1411,6 +1447,7 @@ def paasta_validate_soa_configs(
         validate_autoscaling_configs,
         validate_secrets,
         validate_min_max_instances,
+        validate_pool_limits,
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,

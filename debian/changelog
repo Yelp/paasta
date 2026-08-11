@@ -1,3 +1,46 @@
+paasta-tools (1.59.5) jammy; urgency=medium
+
+  * 1.59.5 tagged with 'make release'
+    Commit: Merge pull request #4358 from Yelp/u/sidtuladhar/PAASTA-
+    18929/validate-stable-pool  feat: New config to configure CPU limits
+    per cluster per pool
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 11 Aug 2026 04:03:35 -0700
+
+paasta-tools (1.59.4) jammy; urgency=medium
+
+  * 1.59.4 tagged with 'make release'
+    Commit: Merge pull request #4370 from Yelp/u/mbrankin/revert-single-
+    replica-check  Revert "Merge pull request #4355 from
+    Yelp/u/mbrankin/PAASTA-18934"
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 06 Aug 2026 10:51:33 -0700
+
+paasta-tools (1.59.3) jammy; urgency=medium
+
+  * 1.59.3 tagged with 'make release'
+    Commit: Merge pull request #4368 from Yelp/luisp/DAR-2992-handle-
+    piscina-setpoint  Correctly handle setpoint for Piscina autoscaling
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 06 Aug 2026 06:33:39 -0700
+
+paasta-tools (1.59.2) jammy; urgency=medium
+
+  * 1.59.2 tagged with 'make release'
+    Commit: Merge pull request #4365 from Yelp/u/sidtuladhar/PAASTA-
+    18905/fix-hpa-query-all  feat: use_raw_ksm query for all autoscaling
+    types
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 04 Aug 2026 06:57:42 -0700
+
+paasta-tools (1.59.1) jammy; urgency=medium
+
+  * 1.59.1 tagged with 'make release'
+    Commit: Merge pull request #4364 from Yelp/u/sidtuladhar/cleanup
+    chore: cleanup configmap flags
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Mon, 03 Aug 2026 08:40:46 -0700
+
 paasta-tools (1.59.0) jammy; urgency=medium
 
   * 1.59.0 tagged with 'make release'
