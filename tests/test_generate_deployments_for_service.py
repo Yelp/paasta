@@ -156,13 +156,17 @@ def test_main():
         generate_deployments_for_service.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with(
-            soa_dir="ABSOLUTE", service="fake_service"
-        ),
+        (
+            mappings_patch.assert_called_once_with(
+                soa_dir="ABSOLUTE", service="fake_service"
+            ),
+        )
 
-        join_patch.assert_any_call(
-            "ABSOLUTE", "fake_service", generate_deployments_for_service.TARGET_FILE
-        ),
+        (
+            join_patch.assert_any_call(
+                "ABSOLUTE", "fake_service", generate_deployments_for_service.TARGET_FILE
+            ),
+        )
         assert join_patch.call_count == 2
 
         atomic_file_write_patch.assert_called_once_with("JOIN")
@@ -209,12 +213,15 @@ def test_get_deployments_dict():
 
     v2_mappings = mock.sentinel.v2_mappings
 
-    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(
-        branch_mappings, v2_mappings
-    ) == {
-        "v1": branch_mappings,
-        "v2": mock.sentinel.v2_mappings,
-    }
+    assert (
+        generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(
+            branch_mappings, v2_mappings
+        )
+        == {
+            "v1": branch_mappings,
+            "v2": mock.sentinel.v2_mappings,
+        }
+    )
 
 
 def test_get_desired_state_understands_tags():

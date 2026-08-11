@@ -225,7 +225,7 @@ def main(sys_argv):
         cluster, args.superregion, interval=(60 * args.check_interval)
     )
 
-    for (service, instance) in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
+    for service, instance in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
         try:
             instance_config = get_instance_config(
                 service=service,
@@ -236,7 +236,9 @@ def main(sys_argv):
             )
             oom_events = victims.get((service, instance), [])
             send_sensu_event(instance_config, oom_events, args)
-        except NotImplementedError:  # When instance_type is not supported by get_instance_config
+        except (
+            NotImplementedError
+        ):  # When instance_type is not supported by get_instance_config
             pass
 
 

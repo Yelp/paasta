@@ -22,7 +22,9 @@ def parse_args() -> argparse.Namespace:
         else KUBE_CONFIG_USER_PATH,
     )
     parser.add_argument(
-        "-t", "--context", default=None  # -c is taken, so lets use the last letter :p
+        "-t",
+        "--context",
+        default=None,  # -c is taken, so lets use the last letter :p
     )
     parser.add_argument(
         "--for-real",

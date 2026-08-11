@@ -616,17 +616,20 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_series_query():
         metric_name=metric_name,
     )
 
-    assert rule == {
-        "name": {"as": "service-instance-arbitrary-promql-prom"},
-        "resources": {
-            "overrides": {
-                "namespace": {"resource": "namespace"},
-                "deployment": {"group": "apps", "resource": "deployments"},
+    assert (
+        rule
+        == {
+            "name": {"as": "service-instance-arbitrary-promql-prom"},
+            "resources": {
+                "overrides": {
+                    "namespace": {"resource": "namespace"},
+                    "deployment": {"group": "apps", "resource": "deployments"},
+                },
             },
-        },
-        "metricsQuery": "foo",  # if series_query is specified, the user's metrics_query should be unaltered.
-        "seriesQuery": "bar",
-    }
+            "metricsQuery": "foo",  # if series_query is specified, the user's metrics_query should be unaltered.
+            "seriesQuery": "bar",
+        }
+    )
 
 
 def test_create_instance_arbitrary_promql_scaling_rule_with_custom_resources():

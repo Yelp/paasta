@@ -1696,9 +1696,7 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table", autospec=True
     ) as mock_format_kubernetes_replicaset_table, mock.patch(
         "paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True
-    ), mock.patch(
-        "paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True
-    ):
+    ), mock.patch("paasta_tools.cli.cmds.status.get_sl2_dashboard", autospec=True):
         mock_kubernetes_status.replicasets = [
             paastamodels.KubernetesReplicaSet(
                 name="replicaset_1",
@@ -3229,8 +3227,8 @@ class TestFormatKubernetesPodTable:
 
         current_time = real_datetime.fromtimestamp(1234567890.0)
         mock_datetime_module.now.return_value = current_time
-        mock_datetime_module.fromtimestamp.side_effect = (
-            lambda ts: real_datetime.fromtimestamp(ts)
+        mock_datetime_module.fromtimestamp.side_effect = lambda ts: (
+            real_datetime.fromtimestamp(ts)
         )
         mock_kubernetes_pod.delete_timestamp = 1234567830.0
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
@@ -3250,8 +3248,8 @@ class TestFormatKubernetesPodTable:
 
         current_time = real_datetime.fromtimestamp(1234567830.0)
         mock_datetime_module.now.return_value = current_time
-        mock_datetime_module.fromtimestamp.side_effect = (
-            lambda ts: real_datetime.fromtimestamp(ts)
+        mock_datetime_module.fromtimestamp.side_effect = lambda ts: (
+            real_datetime.fromtimestamp(ts)
         )
         mock_kubernetes_pod.delete_timestamp = 1234567890.0
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
@@ -3309,8 +3307,8 @@ def test_get_smartstack_status_human(
             ],
         ),
     ]
-    mock_haproxy_backend_report.side_effect = (
-        lambda expected, running: f"haproxy report: {running}/{expected}"
+    mock_haproxy_backend_report.side_effect = lambda expected, running: (
+        f"haproxy report: {running}/{expected}"
     )
     mock_build_smartstack_backends_table.side_effect = lambda backends: [
         f"{backend.hostname}" for backend in backends

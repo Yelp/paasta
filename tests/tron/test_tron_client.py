@@ -16,7 +16,6 @@ def mock_requests():
 
 
 class TestTronClient:
-
     tron_url = "http://tron.test:9000"
     client = TronClient(tron_url)
 

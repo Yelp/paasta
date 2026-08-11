@@ -140,9 +140,7 @@ def test_adhoc_config_node_selectors_in_pod_spec():
             node_affinity.required_during_scheduling_ignored_during_execution
             is not None
         )
-        node_selector_terms = (
-            node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms
-        )
+        node_selector_terms = node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms
         assert len(node_selector_terms) > 0
 
         # Find the custom_label requirement
