@@ -1530,7 +1530,6 @@ def test_alertmanager_rollback_config_from_system_config(
     assert mfdp.alertmanager_poll_interval_s == 60
 
 
-
 def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     mock_periodically_update_slack,
 ):
@@ -1580,7 +1579,9 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             authors=None,
         )
 
-        mfdp.run_timeout = 1  # fail fast if the state machine gets stuck instead of hanging
+        mfdp.run_timeout = (
+            1  # fail fast if the state machine gets stuck instead of hanging
+        )
         assert mfdp.run() == 1
         assert mfdp.trigger_history == [
             "start_deploy",
@@ -1592,4 +1593,3 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             "auto_abandon",
         ]
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
-
