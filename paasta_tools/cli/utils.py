@@ -921,13 +921,13 @@ def get_subparser(subparsers, function, command, help_text, description):
     new_parser.add_argument(
         "-c",
         "--cluster",
-        help="Cluster on which the service is runningFor example: --cluster pnw-prod",
+        help="Cluster on which the service is running. For example: --cluster pnw-prod",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     new_parser.add_argument(
         "-i",
         "--instance",
-        help="The instance that you wish to inspectFor example: --instance main",
+        help="The instance that you wish to inspect. For example: --instance main",
         required=True,
         default="main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened
