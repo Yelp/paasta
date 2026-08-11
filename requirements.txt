@@ -96,7 +96,6 @@ signalfx==1.0.17
 simplejson==3.10.0
 six==1.15.0
 slackclient==1.2.1
-splunk-sdk==1.7.0
 sseclient-py==1.7
 # make sure you bump sticht in extra_requirements_yelp.txt as well
 sticht==2.0.0
