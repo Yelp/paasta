@@ -189,6 +189,7 @@ CAPS_DROP = [
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
+    AUTOMATIC_ALERTMANAGER_ROLLBACK = "automatic_alertmanager_rollback"
     AUTOMATIC_CRASHLOOP_ROLLBACK = "automatic_crashloop_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
@@ -1981,6 +1982,9 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_crashloop_auto_rollback: bool
     min_restarts_for_crashloop_rollback: int
     crashloop_rollback_percentage_threshold: float
+    alertmanager_url: str
+    enable_alertmanager_rollback: bool
+    alertmanager_poll_interval_s: int
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2683,6 +2687,15 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
+
+    def get_alertmanager_url(self) -> Optional[str]:
+        return self.config_dict.get("alertmanager_url", None)
+
+    def get_enable_alertmanager_rollback(self) -> bool:
+        return self.config_dict.get("enable_alertmanager_rollback", False)
+
+    def get_alertmanager_poll_interval_s(self) -> int:
+        return self.config_dict.get("alertmanager_poll_interval_s", 30)
 
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
