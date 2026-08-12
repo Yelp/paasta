@@ -189,6 +189,7 @@ CAPS_DROP = [
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
+    AUTOMATIC_ALERTMANAGER_ROLLBACK = "automatic_alertmanager_rollback"
     AUTOMATIC_CRASHLOOP_ROLLBACK = "automatic_crashloop_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
@@ -1917,6 +1918,11 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     match_label_keys: List[str]
 
 
+class PoolLimits(TypedDict):
+    max_cpus: float
+    recommended_pool: str
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_client_timeout: int
@@ -1976,6 +1982,9 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_crashloop_auto_rollback: bool
     min_restarts_for_crashloop_rollback: int
     crashloop_rollback_percentage_threshold: float
+    alertmanager_url: str
+    enable_alertmanager_rollback: bool
+    alertmanager_poll_interval_s: int
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -1987,6 +1996,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     pool_node_affinities: Dict[str, Dict[str, List[str]]]
+    # i.e. {cluster: {pool: PoolLimits}}
+    pool_limits: Dict[str, Dict[str, PoolLimits]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2035,7 +2046,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_sso_oidc_client_id: str
     always_authenticating_services: List[str]
     uses_bulkdata_default: bool
-    use_prometheus_adapter_shared_rules: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
     enable_cost_owner_label: bool
@@ -2044,6 +2054,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
+    use_raw_ksm_queries: bool
 
 
 def load_system_paasta_config(
@@ -2546,6 +2557,10 @@ class SystemPaastaConfig:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
 
+    def get_pool_limits(self) -> Dict[str, Dict[str, PoolLimits]]:
+        """Pool limits for each cluster"""
+        return self.config_dict.get("pool_limits", {})
+
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
@@ -2674,6 +2689,15 @@ class SystemPaastaConfig:
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
+    def get_alertmanager_url(self) -> Optional[str]:
+        return self.config_dict.get("alertmanager_url", None)
+
+    def get_enable_alertmanager_rollback(self) -> bool:
+        return self.config_dict.get("enable_alertmanager_rollback", False)
+
+    def get_alertmanager_poll_interval_s(self) -> int:
+        return self.config_dict.get("alertmanager_poll_interval_s", 30)
+
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
 
@@ -2799,11 +2823,11 @@ class SystemPaastaConfig:
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
 
+    def get_use_raw_ksm_queries(self) -> bool:
+        return self.config_dict.get("use_raw_ksm_queries", False)
+
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
-
-    def get_use_prometheus_adapter_shared_rules(self) -> bool:
-        return self.config_dict.get("use_prometheus_adapter_shared_rules", False)
 
     def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
         """

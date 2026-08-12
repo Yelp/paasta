@@ -312,7 +312,7 @@ class TestKubernetesDeploymentConfig:
     @pytest.fixture(autouse=True)
     def mock_load_system_paasta_config(self):
         config = SystemPaastaConfig(
-            SystemPaastaConfigDict({"use_prometheus_adapter_shared_rules": False}),
+            SystemPaastaConfigDict({}),
             "/mock/system/configs",
         )
         with mock.patch(
@@ -2944,7 +2944,6 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
-            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_prometheus(
@@ -3000,11 +2999,18 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-uwsgi-prom",
+                                name="uwsgi-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.4,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3029,7 +3035,6 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
-            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_v2_prometheus(
@@ -3085,7 +3090,14 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-uwsgi-v2-prom",
+                                name="uwsgi-v2-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="AverageValue",
@@ -3116,9 +3128,6 @@ class TestKubernetesDeploymentConfig:
     def test_get_autoscaling_metric_spec_worker_load_prometheus(
         self, fake_system_paasta_config
     ):
-        fake_system_paasta_config.return_value.get_use_prometheus_adapter_shared_rules.return_value = (
-            False
-        )
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
@@ -3169,7 +3178,14 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-worker-load-prom",
+                                name="worker-load-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="AverageValue",
@@ -3198,7 +3214,6 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
-            get_use_prometheus_adapter_shared_rules=lambda: False,
         ),
     )
     def test_get_autoscaling_metric_spec_gunicorn_prometheus(
@@ -3254,11 +3269,18 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-gunicorn-prom",
+                                name="gunicorn-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3341,6 +3363,42 @@ class TestKubernetesDeploymentConfig:
         )
         expected_res = None
         assert expected_res == return_value
+
+    def test_get_autoscaling_provider_spec_shared_rules_no_kube_deployment_in_selector(
+        self,
+    ):
+        long_instance = "gondola-biz-owner-account-all-locations-performance"
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
+                            "setpoint": 0.5,
+                            "moving_average_window_seconds": 1800,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="server_side_rendering",
+            cluster="cluster",
+            instance=long_instance,
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        spec = mock_config.get_autoscaling_provider_spec(
+            name="fake_name",
+            namespace="paasta",
+            provider=config_dict["autoscaling"]["metrics_providers"][0],
+        )
+        # Should use shared metric name with selector, but no kube_deployment in matchLabels
+        assert spec.object.metric.selector is not None
+        assert "kube_deployment" not in spec.object.metric.selector.match_labels
+        assert spec.object.metric.name == "worker-load-prom-1800"
 
     @pytest.mark.parametrize(
         "target_type,expected_target_type,expected_target_field",
