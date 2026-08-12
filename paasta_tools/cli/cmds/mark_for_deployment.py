@@ -1201,9 +1201,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "alertmanager_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_alertmanager_failure"
-            ),
+            "before": self._on_alertmanager_stopped_failing,
         }
         yield {
             "source": "*",
@@ -1598,6 +1596,20 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
         )
         self._log_rollback(rollback_details)
+        for cluster in self.instance_configs_per_cluster.keys():
+            self.metrics_interface.create_counter(
+                "alertmanager_rollback_triggered",
+                default_dimensions={
+                    "paasta_service": self.service,
+                    "paasta_cluster": cluster,
+                },
+            ).count()
+
+    def _on_alertmanager_stopped_failing(self) -> None:
+        self.cancel_auto_rollback_countdown("rollback_alertmanager_failure")
+        self.metrics_interface.create_counter(
+            "alertmanager_rollback_cancelled",
+        ).count()
 
     def _alertmanager_dry_run(self) -> bool:
         return self.alertmanager_rollback_dry_run
