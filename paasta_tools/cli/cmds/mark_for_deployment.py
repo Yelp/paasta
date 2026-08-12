@@ -819,10 +819,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 service=self.service,
                 instance_configs_per_cluster=self.instance_configs_per_cluster,
             )
+            labels = {"deploy_group": self.deploy_group, "service": self.service}
             self.start_alertmanager_watcher_threads(
                 alertmanager_url=alertmanager_url,
                 filters=filters,
                 check_interval_s=self.alertmanager_poll_interval_s,
+                labels=labels,
             )
 
         # Initialize Slack threads and send the first message
