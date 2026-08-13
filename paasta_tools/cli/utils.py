@@ -183,7 +183,7 @@ class PaastaCheckMessages:
     DOCKERFILE_FOUND = success("Found Dockerfile")
 
     DOCKERFILE_MISSING = failure(
-        "Dockerfile not found. Create a Dockerfile and try again.\n  More info:",
+        ("Dockerfile not found. Create a Dockerfile and try again.\n  More info:"),
         "http://y/paasta-runbook-dockerfile",
     )
 

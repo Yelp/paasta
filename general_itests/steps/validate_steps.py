@@ -28,10 +28,7 @@ def given_service(context, service_type):
 
 @when("we run paasta validate")
 def run_paasta_validate(context):
-    validate_cmd = "paasta validate --yelpsoa-config-root %s --service %s " % (
-        context.soa_dir,
-        context.service,
-    )
+    validate_cmd = f"paasta validate --yelpsoa-config-root {context.soa_dir} --service {context.service} "
     context.return_code, context.output = _run(command=validate_cmd)
 
 
