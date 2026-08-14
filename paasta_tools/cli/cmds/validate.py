@@ -960,10 +960,7 @@ def validate_pool_limits(service_path: str) -> bool:
             pool = instance_config.get_pool()
 
             pool_limits = pool_limits_for_cluster.get(pool)
-            if pool_limits is None:
-                continue
-
-            if cpu < pool_limits["max_cpus"]:
+            if pool_limits is None or cpu < pool_limits["max_cpus"]:
                 continue
 
             if __is_templated(
@@ -997,10 +994,10 @@ def validate_pool_limits(service_path: str) -> bool:
             returncode = False
             print(
                 failure(
-                    msg=f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool."
+                    f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool."
                     " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # need large pod for batch)."
-                    " Please read the following link for next steps:",
-                    link="y/pool-cpu-limits",
+                    " If you have any questions, reach out to #compute-infra.",
+                    "",
                 )
             )
     return returncode
