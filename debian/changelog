@@ -1,3 +1,15 @@
+paasta-tools (1.59.6) jammy; urgency=medium
+
+  * 1.59.6 tagged with 'make release'
+    Commit: Accept OCI manifests for checking image existence (#4372)  #
+    Problem  Image verification check incorrectly claims image is not
+    already there, because the newly pushed image was pushed as OCI
+    rather than Docker.  Good thing we don"t actually care about that,
+    so just need to advertise that we are OK with getting OCI format
+    stuff for manifests  # Solution  Advertise that in headers
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:01:46 -0700
+
 paasta-tools (1.59.5) jammy; urgency=medium
 
   * 1.59.5 tagged with 'make release'
