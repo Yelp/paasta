@@ -1,3 +1,11 @@
+paasta-tools (1.59.7) jammy; urgency=medium
+
+  * 1.59.7 tagged with 'make release'
+    Commit: Pin thriftpy2 in extra_requirements_yelp (#4374)  not sure
+    how we missed this
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:54:54 -0700
+
 paasta-tools (1.59.6) jammy; urgency=medium
 
   * 1.59.6 tagged with 'make release'
