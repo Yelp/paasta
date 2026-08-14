@@ -2078,6 +2078,8 @@ def test_check_monitoring_file_exists_non_service(tmp_path):
         (20, "", False, "eks"),
         (20, "# large batch job", True, "eks"),
         (8, "", True, "eks"),
+        # non-k8s instance types are skipped (e.g., tron uses dotted job.action names)
+        (20, "", True, "tron"),
     ],
 )
 def test_validate_pool_limits(cpus, comment, expected, instance_type):
