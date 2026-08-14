@@ -963,6 +963,9 @@ def validate_pool_limits(service_path: str) -> bool:
             if pool_limits is None or cpu < pool_limits["max_cpus"]:
                 continue
 
+            if instance_config.get_instance_type() not in ("kubernetes", "eks"):
+                continue
+
             if __is_templated(
                 service, soa_dir, cluster, workload="kubernetes"
             ) or __is_templated(service, soa_dir, cluster, workload="eks"):
