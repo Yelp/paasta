@@ -943,6 +943,8 @@ def validate_pool_limits(service_path: str) -> bool:
     Validate that services in specific pools won't exceed per-node capacities.
     For the most part, this isn't normally an issue - but there are several pools where
     folks tend to want to run extra-large workloads that won't fit (e.g., large single-node batches).
+
+    Users can override this check by adding any comment next to `cpus` in their yelpsoa config.
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
@@ -961,15 +963,46 @@ def validate_pool_limits(service_path: str) -> bool:
             if pool_limits is None:
                 continue
 
-            if cpu >= pool_limits["max_cpus"]:
-                returncode = False
-                print(
-                    failure(
-                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool.
-                        If you need to run a workload with this many CPUs, consider using the {pool_limits['recommended_pool']} pool instead.""",
-                        "",
-                    )
+            if cpu < pool_limits["max_cpus"]:
+                continue
+
+            if __is_templated(
+                service, soa_dir, cluster, workload="kubernetes"
+            ) or __is_templated(service, soa_dir, cluster, workload="eks"):
+                continue
+
+            config_file_path = os.path.join(
+                soa_dir,
+                service,
+                f"{instance_config.get_instance_type()}-{cluster}.yaml",
+            )
+            config = get_config_file_dict(
+                config_file_path,
+                use_ruamel=True,
+            )
+
+            config_flattened = _get_config_flattened(config_file_path)
+
+            cpu_comment = _get_comments_for_key(
+                data=config[instance],
+                key="cpus",
+                full_config=config,
+                key_value=config[instance].get("cpus"),
+                full_config_flattened=config_flattened,
+            )
+
+            if cpu_comment is not None and cpu_comment.strip():
+                continue
+
+            returncode = False
+            print(
+                failure(
+                    msg=f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool."
+                    " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # need large pod for batch)."
+                    " Please read the following link for next steps:",
+                    link="y/pool-cpu-limits",
                 )
+            )
     return returncode
 
 

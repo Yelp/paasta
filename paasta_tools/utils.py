@@ -1919,7 +1919,6 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
 
 class PoolLimits(TypedDict):
     max_cpus: float
-    recommended_pool: str
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
