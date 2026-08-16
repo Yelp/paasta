@@ -17,15 +17,13 @@ make install-hooks # pre-commit hooks
 Tox manages virtualenvs in `.tox/py310-linux/`. Use `tox` or `make` targets to ensure the env is built.
 
 ## Dependencies
-- Follow the application-style pinning model from requirements-tools: https://github.com/YelpArchive/requirements-tools
-- Treat `requirements*.txt` as the source of truth for dependencies (requirements-tools recommends not relying on `setup.py` for listing deps).
-- `requirements-minimal.txt`: top-level production deps. Do not pin unless strictly necessary; if you must, use a loose lower-bound and note why.
-- `requirements-dev-minimal.txt`: top-level dev deps. Do not pin unless strictly necessary; if you must, use a loose lower-bound and note why.
-- Do not list transitive-only deps in the `*-minimal` files; those live in the fully pinned files.
+- Dependencies are defined in `pyproject.toml` under `[project]` and `[project.optional-dependencies]` sections
+- `[project].dependencies`: top-level production deps. Do not pin unless strictly necessary; if you must, use a loose lower-bound and note why.
+- `[project.optional-dependencies].dev`: top-level dev deps. Do not pin unless strictly necessary; if you must, use a loose lower-bound and note why.
+- Do not list transitive-only deps in pyproject.toml; those live in the fully pinned `requirements*.txt` files.
 - `requirements.txt`: fully pinned production deps (including transitive), used for installs.
 - `requirements-dev.txt`: fully pinned dev deps (including transitive), installed alongside `requirements.txt` in dev/test.
-- Run `check-requirements` (via `make test`) to verify pins and alignment.
-- Use `upgrade-requirements` for bulk refreshes; for a small set or individual package bumps, add deps to `*-minimal` and update the pinned files incrementally.
+- For bulk dependency updates, regenerate the pinned files from pyproject.toml using standard pip tools.
 
 ## Testing
 ```bash
