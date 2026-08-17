@@ -378,13 +378,34 @@ def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
 
 def build_alertmanager_rollback_filters(
     service: str,
+    instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]],
 ) -> List[List[str]]:
+    custom_alert_filter: List[str] = [
+        'paasta_rollback_metric="true"',
+        f'paasta_service="{service}"',
+    ]
+
+    # alertmanager doesn't care about the ordering, but it does make tests slightly easier to write :p
+    clusters = sorted(
+        cluster
+        for cluster, instances in instance_configs_per_cluster.items()
+        if instances
+    )
+    instances = set()
+    for configs in instance_configs_per_cluster.values():
+        for config in configs:
+            instances.add(config.instance)
+
+    if clusters:
+        custom_alert_filter.append(f'paasta_cluster=~"^({"|".join(clusters)})$"')
+
+    if instances:
+        custom_alert_filter.append(
+            f'paasta_instance=~"^({"|".join(sorted(instances))})$"'
+        )
+
     return [
-        # TODO(PAASTA-18914): find clusters/instances based on deploy group
-        [
-            'paasta_rollback_metric="true"',
-            f'paasta_service="{service}"',
-        ],
+        custom_alert_filter,
         # TODO(PAASTA-18915): add default error alerting filters
     ]
 
@@ -738,9 +759,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if self.alertmanager_rollback_enabled and (
             alertmanager_url := system_paasta_config.get_alertmanager_url()
         ):
-            # TODO(PAASTA-18914, PAASTA-18915): filter by instance/cluster based on deploy group + default error alerts
+            # TODO(PAASTA-18915): add default error alerting filters
             filters = build_alertmanager_rollback_filters(
                 service=self.service,
+                instance_configs_per_cluster=self.instance_configs_per_cluster,
             )
             self.start_alertmanager_watcher_threads(
                 alertmanager_url=alertmanager_url,

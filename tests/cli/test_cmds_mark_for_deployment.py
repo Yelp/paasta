@@ -1593,3 +1593,88 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             "auto_abandon",
         ]
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
+
+
+def _make_instance_config(instance: str) -> MagicMock:
+    cfg = MagicMock(spec=LongRunningServiceConfig)
+    cfg.instance = instance
+    return cfg
+
+
+def test_build_alertmanager_rollback_filters_empty():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={},
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_single_cluster_single_instance():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_multi_cluster_multi_instance():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+            "cluster-b": [_make_instance_config("worker")],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a|cluster-b)$"',
+            'paasta_instance=~"^(web|worker)$"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_empty_cluster_excluded():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+            "cluster-b": [],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_duplicate_instances_deduplicated():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+            "cluster-b": [_make_instance_config("web")],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a|cluster-b)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
