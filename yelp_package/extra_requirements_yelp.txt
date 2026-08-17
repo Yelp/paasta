@@ -30,9 +30,8 @@ signalform-tools==0.0.16            # slo-transcoder dependency
 slo-transcoder==3.3.0
 smmap==5.0.3                        # slo-transcoder, vault-tools dependency
 smmap2==2.0.3                       # slo-transcoder, vault-tools dependency
-splunk-sdk==1.7.0                   # sticht dependency
 srv-configs==1.1.0                  # yelp-profiling dependency
-sticht[yelp_internal]==1.2.1
+sticht[yelp_internal]==2.0.0
 tenacity==8.3.0                     # yelp-clog dependency
 thriftpy2==0.6.0                    # yelp-clog dependency
 vault-tools==2.3.1

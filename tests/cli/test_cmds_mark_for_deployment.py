@@ -80,6 +80,15 @@ def ensure_default_event_loop():
         yield
 
 
+@fixture(autouse=True)
+def mock_alertmanager_watcher_threads():
+    with patch(
+        "sticht.rollbacks.base.RollbackSlackDeploymentProcess.start_alertmanager_watcher_threads",
+        autospec=True,
+    ):
+        yield
+
+
 class FakeArgs:
     deploy_group = "test_deploy_group"
     service = "test_service"
@@ -257,6 +266,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
+    config_mock.get_enable_alertmanager_rollback.return_value = False
+    config_mock.get_alertmanager_url.return_value = None
+    config_mock.get_alertmanager_poll_interval_s.return_value = 30
     mock_load_system_paasta_config.return_value = config_mock
     mock_get_instance_configs.return_value = {"fake_cluster": [], "fake_cluster2": []}
     mock_mark_for_deployment.return_value = 0
@@ -441,6 +453,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_get_instance_configs,
 ):
     mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
+    mock_load_system_paasta_config.return_value = MOCK_SYSTEM_PAASTA_CONFIG
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
@@ -1444,3 +1457,139 @@ def test_log_crashloop_rollback():
         call_kwargs["action_details"]["rollback_type"]
         == RollbackTypes.AUTOMATIC_CRASHLOOP_ROLLBACK.value
     )
+
+
+def test_alertmanager_rollback_config_defaults(
+    mock_periodically_update_slack,
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    assert mfdp.alertmanager_rollback_enabled is False
+
+
+def test_alertmanager_rollback_config_from_system_config(
+    mock_periodically_update_slack,
+):
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "enable_alertmanager_rollback": True,
+                "alertmanager_poll_interval_s": 60,
+            }
+        ),
+        "/mock/system/configs",
+    )
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    assert mfdp.alertmanager_rollback_enabled is True
+    assert mfdp.alertmanager_poll_interval_s == 60
+
+
+def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
+    mock_periodically_update_slack,
+):
+    """When an alertmanager alert fires during deploying, the state machine transitions to rollback.
+
+    NOTE: we don't need alertmanager_rollback_enabled here because the test fires the trigger directly
+    via simulate_alert (bypassing the real AlertManager watcher). The state machine transition only
+    requires auto_rollback=True, not the alertmanager-specific config.
+    """
+
+    def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
+        if target_commit == "commit":
+            self.trigger("alertmanager_started_failing")
+        else:
+            self.trigger("deploy_finished")
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+        side_effect=simulate_alert,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=True,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+        mfdp.run_timeout = (
+            1  # fail fast if the state machine gets stuck instead of hanging
+        )
+        assert mfdp.run() == 1
+        assert mfdp.trigger_history == [
+            "start_deploy",
+            "mfd_succeeded",
+            "alertmanager_started_failing",
+            "rollback_alertmanager_failure",
+            "mfd_succeeded",
+            "deploy_finished",
+            "auto_abandon",
+        ]
+        assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK

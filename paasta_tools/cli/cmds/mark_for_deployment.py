@@ -49,8 +49,6 @@ from slackclient import SlackClient
 from sticht import state_machine
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
 from sticht.rollbacks.slo import SLOWatcher
-from sticht.rollbacks.types import MetricWatcher
-from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -88,7 +86,6 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import format_tag
-from paasta_tools.utils import get_files_of_type_in_dir
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import get_rollback_tags_for_sha
@@ -379,22 +376,17 @@ def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     return True
 
 
-def can_run_metric_watcher_threads(
+def build_alertmanager_rollback_filters(
     service: str,
-    soa_dir: str,
-) -> bool:
-    """
-    Cannot run slo and metric watcher threads together for now.
-    SLO Watcher Threads take precedence over metric watcher threads.
-    Metric Watcher Threads can run if there are no SLOs available.
-    """
-    slo_files = get_files_of_type_in_dir(
-        file_type="slo", service=service, soa_dir=soa_dir
-    )
-    rollback_files = get_files_of_type_in_dir(
-        file_type="rollback", service=service, soa_dir=soa_dir
-    )
-    return bool(not slo_files and rollback_files)
+) -> List[List[str]]:
+    return [
+        # TODO(PAASTA-18914): find clusters/instances based on deploy group
+        [
+            'paasta_rollback_metric="true"',
+            f'paasta_service="{service}"',
+        ],
+        # TODO(PAASTA-18915): add default error alerting filters
+    ]
 
 
 def report_waiting_aborted(service: str, deploy_group: str) -> None:
@@ -721,6 +713,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "crashloop_rollback_percentage_threshold",
             system_paasta_config.get_crashloop_rollback_percentage_threshold(),
         )
+        self.alertmanager_rollback_enabled = self._get_deploy_group_config(
+            "alertmanager_rollback",
+            system_paasta_config.get_enable_alertmanager_rollback(),
+        )
+        self.alertmanager_poll_interval_s = self._get_deploy_group_config(
+            "alertmanager_poll_interval_s",
+            system_paasta_config.get_alertmanager_poll_interval_s(),
+        )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
@@ -733,12 +733,20 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.progress = Progress()
         self.last_action = None
         self.slo_watchers: List[SLOWatcher] = []
-        self.metric_watchers: List[MetricWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
-        # TODO: Allow both metric and slo watcher threads to run together in the future
-        if can_run_metric_watcher_threads(service=self.service, soa_dir=self.soa_dir):
-            self.start_metric_watcher_threads(self.service, self.soa_dir)
+        if self.alertmanager_rollback_enabled and (
+            alertmanager_url := system_paasta_config.get_alertmanager_url()
+        ):
+            # TODO(PAASTA-18914, PAASTA-18915): filter by instance/cluster based on deploy group + default error alerts
+            filters = build_alertmanager_rollback_filters(
+                service=self.service,
+            )
+            self.start_alertmanager_watcher_threads(
+                alertmanager_url=alertmanager_url,
+                filters=filters,
+                check_interval_s=self.alertmanager_poll_interval_s,
+            )
 
         # Initialize Slack threads and send the first message
         super().__init__()
@@ -1002,8 +1010,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             yield {
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
-                "trigger": "rollback_metric_failure",
-                "before": self.log_metric_rollback,
+                "trigger": "rollback_alertmanager_failure",
+                "before": self.log_alertmanager_rollback,
+            }
+            yield {
+                "source": self.rollback_states,
+                "dest": None,
+                "trigger": "rollback_alertmanager_failure",
             }
             yield {
                 "source": self.rollforward_states,
@@ -1090,19 +1103,19 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         yield {
             "source": "*",
             "dest": None,
-            "trigger": "metrics_started_failing",
+            "trigger": "alertmanager_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_metric_failure"
+                self.start_auto_rollback_countdown, "rollback_alertmanager_failure"
             ),
         }
         yield {
             "source": "*",
             "dest": None,
-            "trigger": "metrics_stopped_failing",
+            "trigger": "alertmanager_stopped_failing",
             "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_metric_failure"
+                self.cancel_auto_rollback_countdown, "rollback_alertmanager_failure"
             ),
         }
         yield {
@@ -1364,9 +1377,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.ping_authors(
                 "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
-        elif self.any_metric_failing() and self.auto_rollbacks_enabled():
+        elif self.any_alertmanager_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
-                "Because a rollback-triggering metric for this service is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+                "Because an AlertManager alert for this service is currently firing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         elif self.any_crashloop_failing():
             self.ping_authors(
@@ -1416,21 +1429,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             load_system_paasta_config()
             .get_monitoring_config()
             .get("signalfx_api_key", None)
-        )
-
-    def get_splunk_api_token(self) -> SplunkAuth:
-        auth_token = os.environ["SPLUNK_MFD_TOKEN"]
-        auth_data = (
-            load_system_paasta_config()
-            .get_monitoring_config()
-            .get("splunk_mfd_authentication")
-        )
-
-        return SplunkAuth(
-            host=auth_data["host"],
-            port=auth_data["port"],
-            username=auth_data["username"],
-            password=auth_token,
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:
@@ -1507,10 +1505,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
         self._log_rollback(rollback_details)
 
-    def log_metric_rollback(self) -> None:
-        self.rollback_type = RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
+    def log_alertmanager_rollback(self) -> None:
+        self.rollback_type = RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
         rollback_details = self.__build_rollback_audit_details(
-            RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
+            RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
