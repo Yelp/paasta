@@ -1,3 +1,17 @@
+paasta-tools (1.60.0) jammy; urgency=medium
+
+  * 1.60.0 tagged with 'make release'
+    Commit: Add alertmanager rollback dry-run support (#4367)  * Add
+    alertmanager rollback dry-run support  This is the PaaSTA side of
+    https://github.com/Yelp/sticht/pull/67 - i.e,. how we"ll allow folks
+    to experiment with alertmanager rollbacks without needing to fully
+    commit (and/or for testing new rollback alerts)  As usual, config
+    mostly lives in deploy.yaml per-deploy-group :)  That said, this
+    1000% requires the sticht PR linked above, since that"s essentially
+    where all the logic actually lives  * ...and then add tests
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 17 Aug 2026 10:06:59 -0700
+
 paasta-tools (1.59.7) jammy; urgency=medium
 
   * 1.59.7 tagged with 'make release'
