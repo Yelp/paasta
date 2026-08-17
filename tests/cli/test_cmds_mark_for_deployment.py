@@ -1595,6 +1595,63 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
 
 
+def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
+    mock_periodically_update_slack,
+):
+    """When alertmanager_rollback_dry_run is enabled, alerts fire but don't trigger rollback."""
+
+    def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
+        self.trigger("alertmanager_started_failing")
+        self.trigger("deploy_finished")
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+        side_effect=simulate_alert,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={
+                "pipeline": [
+                    {"step": "deploy_group", "alertmanager_rollback_dry_run": True}
+                ]
+            },
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=True,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+        mfdp.run_timeout = 1
+        assert mfdp.run() == 0
+        assert mfdp.trigger_history == [
+            "start_deploy",
+            "mfd_succeeded",
+            "alertmanager_started_failing",
+            "deploy_finished",
+            "auto_certify",
+        ]
+
+
 def _make_instance_config(instance: str, registrations=None) -> MagicMock:
     cfg = MagicMock(spec=LongRunningServiceConfig)
     cfg.instance = instance
