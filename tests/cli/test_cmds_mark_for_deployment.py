@@ -1595,9 +1595,10 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
 
 
-def _make_instance_config(instance: str) -> MagicMock:
+def _make_instance_config(instance: str, registrations=None) -> MagicMock:
     cfg = MagicMock(spec=LongRunningServiceConfig)
     cfg.instance = instance
+    cfg.get_registrations.return_value = registrations or [f"service.{instance}"]
     return cfg
 
 
@@ -1630,20 +1631,40 @@ def test_build_alertmanager_rollback_filters_single_cluster_single_instance():
 
 
 def test_build_alertmanager_rollback_filters_multi_cluster_multi_instance():
-    assert mark_for_deployment.build_alertmanager_rollback_filters(
-        service="my_service",
-        instance_configs_per_cluster={
-            "cluster-a": [_make_instance_config("web")],
-            "cluster-b": [_make_instance_config("worker")],
-        },
-    ) == [
-        [
-            'paasta_rollback_metric="true"',
-            'paasta_service="my_service"',
-            'paasta_cluster=~"^(cluster-a|cluster-b)$"',
-            'paasta_instance=~"^(web|worker)$"',
-        ],
-    ]
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                    "cluster-b": {"yelp_region": "useast1-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        assert mark_for_deployment.build_alertmanager_rollback_filters(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [_make_instance_config("web")],
+                "cluster-b": [_make_instance_config("worker")],
+            },
+        ) == [
+            [
+                'paasta_rollback_metric="true"',
+                'paasta_service="my_service"',
+                'paasta_cluster=~"^(cluster-a|cluster-b)$"',
+                'paasta_instance=~"^(web|worker)$"',
+            ],
+            [
+                'paasta_rollback_metric="true"',
+                'instance=~"^(useast1-prod.my_service.worker|uswest2-prod.my_service.web)($|[.].*)"',
+            ],
+        ]
 
 
 def test_build_alertmanager_rollback_filters_empty_cluster_excluded():
@@ -1677,4 +1698,76 @@ def test_build_alertmanager_rollback_filters_duplicate_instances_deduplicated():
             'paasta_cluster=~"^(cluster-a|cluster-b)$"',
             'paasta_instance=~"^(web)$"',
         ],
+    ]
+
+
+def test_default_error_alert_filter_skips_unknown_cluster():
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        result = mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [_make_instance_config("main")],
+                "cluster-unknown": [_make_instance_config("canary")],
+            },
+        )
+    assert result == [
+        'paasta_rollback_metric="true"',
+        'instance=~"^(uswest2-prod.my_service.main)($|[.].*)"',
+    ]
+
+
+def test_default_error_alert_filter_returns_empty_when_no_instances():
+    assert (
+        mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={},
+        )
+        == []
+    )
+
+
+def test_default_error_alert_filter_multiple_registrations():
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        result = mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [
+                    _make_instance_config(
+                        "main",
+                        registrations=["my_service.main", "my_service.main_alt"],
+                    )
+                ],
+            },
+        )
+    assert result == [
+        'paasta_rollback_metric="true"',
+        'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
     ]
