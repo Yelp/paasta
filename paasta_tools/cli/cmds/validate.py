@@ -142,6 +142,10 @@ OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+
+# we expect a comment that starts with # override-
+OVERRIDE_POOL_CPU_LIMIT_PATTERN = r"#\s*override-"
+
 # for now, double the autotune cap to give people the benefit of the doubt
 # if we see that people are still misusing this configuration, we can lower
 # this to the autotune cap (i.e., 1)
@@ -966,9 +970,7 @@ def validate_pool_limits(service_path: str) -> bool:
             if instance_config.get_instance_type() not in ("kubernetes", "eks"):
                 continue
 
-            if __is_templated(
-                service, soa_dir, cluster, workload="kubernetes"
-            ) or __is_templated(service, soa_dir, cluster, workload="eks"):
+            if __is_templated(service, soa_dir, cluster, workload="eks"):
                 continue
 
             config_file_path = os.path.join(
@@ -991,14 +993,17 @@ def validate_pool_limits(service_path: str) -> bool:
                 full_config_flattened=config_flattened,
             )
 
-            if cpu_comment is not None and cpu_comment.strip():
+            if cpu_comment is not None and re.search(
+                pattern=OVERRIDE_POOL_CPU_LIMIT_PATTERN,
+                string=cpu_comment,
+            ):
                 continue
 
             returncode = False
             print(
                 failure(
-                    f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool."
-                    " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # need large pod for batch)."
+                    f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the recommended limit of {pool_limits['max_cpus']} for the {pool} pool."
+                    " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # override-need-large-pod)."
                     " If you have any questions, reach out to #compute-infra.",
                     "",
                 )
