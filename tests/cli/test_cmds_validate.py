@@ -2072,11 +2072,12 @@ def test_check_monitoring_file_exists_non_service(tmp_path):
     "cpus, comment, expected, instance_type",
     [
         (20, "", False, "kubernetes"),
-        (20, "# need large pod for batch", True, "kubernetes"),
-        (20, "# any reason at all", True, "kubernetes"),
+        (20, "# override-need-large-pod", True, "kubernetes"),
+        (20, "# override-approved-by-compute-infra", True, "kubernetes"),
+        (20, "# not a valid override comment", False, "kubernetes"),
         (8, "", True, "kubernetes"),
         (20, "", False, "eks"),
-        (20, "# large batch job", True, "eks"),
+        (20, "# override-large-batch-job", True, "eks"),
         (8, "", True, "eks"),
         # non-k8s instance types are skipped (e.g., tron uses dotted job.action names)
         (20, "", True, "tron"),
