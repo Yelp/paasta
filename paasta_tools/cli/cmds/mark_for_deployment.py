@@ -826,8 +826,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 check_interval_s=self.alertmanager_poll_interval_s,
                 labels=labels,
             )
-
-        # Initialize Slack threads and send the first message
         super().__init__()
         self.print_who_is_running_this()
 
