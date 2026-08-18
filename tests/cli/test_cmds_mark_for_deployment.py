@@ -150,6 +150,7 @@ def test_mark_for_deployment_happy(
             "deploy_group": "fake_deploy_group",
             "commit": "fake_commit",
             "image_version": "extrastuff",
+            "dry_run": "False",
         },
         service="fake_service",
     )
@@ -333,6 +334,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             "rolled_back_from": "DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             "rolled_back_to": "old-sha",
             "rollback_type": "user_initiated_rollback",
+            "dry_run": "False",
         },
         service="test_service",
     )
@@ -363,6 +365,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         rolled_back_from="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
         rolled_back_to="old-sha",
         rollback_type="user_initiated_rollback",
+        dry_run="False",
     )
     expected_calls = []
     for cluster in mock_get_instance_configs.return_value.keys():
