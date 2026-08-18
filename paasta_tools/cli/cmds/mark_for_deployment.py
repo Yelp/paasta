@@ -325,6 +325,7 @@ def mark_for_deployment(
                 "deploy_group": deploy_group,
                 "commit": commit,
                 "image_version": image_version,
+                "dry_run": "False",
             }
             _log_audit(
                 action="mark-for-deployment",
@@ -1574,13 +1575,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         return default
 
     def __build_rollback_audit_details(
-        self, rollback_type: RollbackTypes
+        self, rollback_type: RollbackTypes, dry_run: bool = False
     ) -> Dict[str, str]:
         return {
             "rolled_back_from": str(self.deployment_version),
             "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
+            "dry_run": str(dry_run),
         }
 
     def log_slo_rollback(self) -> None:
@@ -1619,6 +1621,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "[DRY-RUN] AlertManager alerts are failing — would have triggered "
             "rollback, but alertmanager_rollback_dry_run is enabled.",
             color="warning",
+        )
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK, dry_run=True
+        )
+        _log_audit(
+            action="rollback",
+            action_details=rollback_details,
+            service=self.service,
         )
 
     def log_crashloop_rollback(self) -> None:
