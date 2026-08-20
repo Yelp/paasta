@@ -325,7 +325,6 @@ def mark_for_deployment(
                 "deploy_group": deploy_group,
                 "commit": commit,
                 "image_version": image_version,
-                "dry_run": "False",
             }
             _log_audit(
                 action="mark-for-deployment",
@@ -820,12 +819,16 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 service=self.service,
                 instance_configs_per_cluster=self.instance_configs_per_cluster,
             )
-            labels = {"deploy_group": self.deploy_group, "service": self.service}
             self.start_alertmanager_watcher_threads(
                 alertmanager_url=alertmanager_url,
                 filters=filters,
                 check_interval_s=self.alertmanager_poll_interval_s,
-                labels=labels,
+                # while we can technically grab these from the filters, we'll pass
+                # these through separately so that we're not relying on a specific filter format :p
+                extra_monitoring_labels={
+                    "deploy_group": self.deploy_group,
+                    "service": self.service,
+                },
             )
         super().__init__()
         self.print_who_is_running_this()
@@ -1575,14 +1578,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         return default
 
     def __build_rollback_audit_details(
-        self, rollback_type: RollbackTypes, dry_run: bool = False
+        self, rollback_type: RollbackTypes, is_dry_run: bool = False
     ) -> Dict[str, str]:
         return {
             "rolled_back_from": str(self.deployment_version),
             "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
-            "dry_run": str(dry_run),
+            "dry_run": str(is_dry_run),
         }
 
     def log_slo_rollback(self) -> None:
@@ -1623,7 +1626,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             color="warning",
         )
         rollback_details = self.__build_rollback_audit_details(
-            RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK, dry_run=True
+            RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK, is_dry_run=True
         )
         _log_audit(
             action="rollback",
