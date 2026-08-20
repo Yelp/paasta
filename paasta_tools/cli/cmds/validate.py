@@ -58,6 +58,7 @@ from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import success
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import DEFAULT_PROMQL_AUTOSCALING_SETPOINT
@@ -72,6 +73,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.monitoring_tools import get_sensu_team_data
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -138,9 +140,11 @@ SCHEMA_TYPES = {
 # comment
 OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9]+.+\)"
 
-# we expect a comment that looks like # override-cpu-burst PROJ-1234
-# but we don't have a $ anchor in case users want to add an additional
-# comment
+# we expect a comment that looks like # override-single-replica (PROJ-1234)
+OVERRIDE_SINGLE_REPLICA_ACK_PATTERN = (
+    r"#\s*override-single-replica\s+\(.+[A-Z]+-[0-9]+.+\)"
+)
+
 OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
 # for now, double the autotune cap to give people the benefit of the doubt
 # if we see that people are still misusing this configuration, we can lower
@@ -148,6 +152,11 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
+
+
+SINGLE_REPLICA_VALIDATED_ECOSYSTEMS = {
+    "prod",
+}
 
 _PROMQL_ONLY_FIELDS = {"metrics_query", "series_query", "target_type", "resources"}
 
@@ -854,11 +863,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
 
                             # we need access to the comments, so we need to read the config with ruamel to be able
                             # to actually get them in a "nice" automated fashion
-                            config_file_path = os.path.join(
-                                soa_dir,
-                                service,
-                                f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                            )
+                            config_file_path = instance_config.get_config_path()
                             config = get_config_file_dict(
                                 config_file_path,
                                 use_ruamel=True,
@@ -1004,6 +1009,124 @@ def check_secrets_for_instance(
     return return_value
 
 
+def instance_registration_lookup(
+    all_configs: List[EksDeploymentConfig],
+) -> Dict[str, List[EksDeploymentConfig]]:
+    """Build a dict mapping each registration to the list of instance configs that share that registration"""
+    registration_dict: Dict[str, List[EksDeploymentConfig]] = {}
+    for instance_config in all_configs:
+        for registration in instance_config.get_registrations():
+            if registration not in registration_dict:
+                registration_dict[registration] = []
+            registration_dict[registration].append(instance_config)
+    return registration_dict
+
+
+def is_canary(
+    instance_config: EksDeploymentConfig,
+    registration_to_instances: Dict[str, List[EksDeploymentConfig]],
+) -> bool:
+    """Return True if this instance shares a registration with another instance that has more than 1 replica,
+    indicating it is a canary service, otherwise return False"""
+    registrations = instance_config.get_registrations()
+    if not registrations:
+        return False
+    for registration in registrations:
+        for other_instance_config in registration_to_instances[registration]:
+            if other_instance_config.get_instance() == instance_config.get_instance():
+                continue
+            if other_instance_config.is_autoscaling_enabled():
+                other_instance_replicas = other_instance_config.get_max_instances()
+            else:
+                other_instance_replicas = other_instance_config.get_instances()
+            if other_instance_replicas is not None and other_instance_replicas > 1:
+                return True
+    return False
+
+
+def validate_single_replica_instances(service_path: str) -> bool:
+    """Validate that single replica instances have an override comment to acknowledge the risk of SPOF.
+    This is only enforced for certain ecosystems."""
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+    system_paasta_config = load_system_paasta_config()
+    config_loader = PaastaServiceConfigLoader(
+        service=service, soa_dir=soa_dir, load_deployments=False
+    )
+
+    for cluster in config_loader.clusters:
+        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+        if ecosystem not in SINGLE_REPLICA_VALIDATED_ECOSYSTEMS:
+            continue
+
+        all_configs: List[EksDeploymentConfig] = list(
+            config_loader.instance_configs(
+                cluster=cluster, instance_type_class=EksDeploymentConfig
+            )
+        )
+        reg_lookup = instance_registration_lookup(all_configs)
+        canary_allowlist = system_paasta_config.get_common_canary_instance_names()
+
+        for instance_config in all_configs:
+            instance = instance_config.get_instance()
+            if any(pattern in instance for pattern in canary_allowlist):
+                continue
+            if is_canary(instance_config, reg_lookup):
+                continue
+
+            if instance_config.is_autoscaling_enabled():
+                max_instance_count = instance_config.get_max_instances()
+                if max_instance_count is not None and max_instance_count > 1:
+                    continue
+                replicas = instance_config.get_min_instances()
+                replica_key = "min_instances"
+            else:
+                replicas = instance_config.get_instances()
+                replica_key = "instances"
+
+            if replicas == 1:
+                config_file_path = instance_config.get_config_path()
+                config_flat = _get_config_flattened(config_file_path)
+
+                if config_flat[instance].get(replica_key) is None:
+                    # service hasn't explicitly set the number of replicas and is using
+                    # the default of 1 — don't fail validation, just warn
+                    print(
+                        info_message(
+                            f"Instance {instance} on cluster {cluster} has only 1 replica (implicit default). "
+                            f"We recommend setting `instances` / `min instances` to a value greater than 1 to avoid SPOF. "
+                            f"We hope to update the default value > 1 in the future"
+                        ),
+                    )
+                    continue
+
+                comment = _get_comments_for_key(
+                    data=config_flat[instance],
+                    key=replica_key,
+                    full_config=config_flat,
+                    key_value=config_flat[instance].get(replica_key),
+                    full_config_flattened=config_flat,
+                )
+                if (
+                    comment is None
+                    or re.search(
+                        pattern=OVERRIDE_SINGLE_REPLICA_ACK_PATTERN,
+                        string=comment,
+                    )
+                    is None
+                ):
+                    returncode = False
+                    print(
+                        failure(
+                            msg=f"Instance {instance} on cluster {cluster} has only 1 instance / min_instance. "
+                            f"\nSingle replicas are a SPOF and we do not encourage it. "
+                            f"\nAdd a comment like the following to acknowledge: # override-single-replica (PROJ-1234)",
+                            link="y/override-single-replica",
+                        )
+                    )
+    return returncode
+
+
 def list_upcoming_runs(
     cron_schedule: str, starting_from: datetime, num_runs: int = 5
 ) -> List[datetime]:
@@ -1060,11 +1183,7 @@ def validate_cpu_burst(service_path: str) -> bool:
             if is_k8s_service and not should_skip_cpu_burst_validation:
                 # we need access to the comments, so we need to read the config with ruamel to be able
                 # to actually get them in a "nice" automated fashion
-                config_file_path = os.path.join(
-                    soa_dir,
-                    service,
-                    f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                )
+                config_file_path = instance_config.get_config_path()
                 config = get_config_file_dict(
                     config_file_path,
                     use_ruamel=True,
@@ -1451,6 +1570,7 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
         validate_smartstack,
         validate_flink_monitoring_team,
+        validate_single_replica_instances,
         check_monitoring_file_exists,
     ]
 
