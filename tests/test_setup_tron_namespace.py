@@ -89,3 +89,54 @@ def test_ensure_service_accounts():
             ],
             any_order=True,
         )
+
+
+def test_ensure_service_accounts_no_spark_actions_does_not_create_spark_kube_client():
+    """Regression test: a service with no spark actions must not instantiate the
+    spark KubeClient. The spark kubeconfig may not exist on hosts that don't talk
+    to spark clusters, so eagerly creating it would raise ConfigException for
+    non-spark services."""
+    regular_kube_client = mock.Mock(spec=KubeClient)
+
+    with mock.patch.object(
+        setup_tron_namespace, "ensure_service_account", autospec=True
+    ) as mock_ensure_service_account, mock.patch.object(
+        setup_tron_namespace, "KubeClient", autospec=True
+    ) as mock_kube_client_class, mock.patch.object(
+        setup_tron_namespace, "load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config:
+        mock_kube_client_class.return_value = regular_kube_client
+
+        job_configs = [
+            _make_job(
+                [
+                    _make_action(iam_role="role-a"),
+                    # a spark action without a spark_executor_iam_role should not
+                    # trigger spark kube client creation either
+                    _make_action(iam_role="role-b", executor="spark"),
+                ]
+            ),
+        ]
+
+        setup_tron_namespace.ensure_service_accounts(job_configs)
+
+        # only the regular kube client should be created -- never the spark one
+        assert mock_kube_client_class.call_args_list == [mock.call()]
+        mock_load_system_paasta_config.return_value.get_spark_kubeconfig.assert_not_called()
+
+        assert mock_ensure_service_account.call_count == 2
+        mock_ensure_service_account.assert_has_calls(
+            [
+                mock.call(
+                    "role-a",
+                    namespace=KUBERNETES_NAMESPACE,
+                    kube_client=regular_kube_client,
+                ),
+                mock.call(
+                    "role-b",
+                    namespace=KUBERNETES_NAMESPACE,
+                    kube_client=regular_kube_client,
+                ),
+            ],
+            any_order=True,
+        )

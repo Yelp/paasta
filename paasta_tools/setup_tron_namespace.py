@@ -84,9 +84,6 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
     # NOTE: these are lru_cache'd so it should be fine to call these for every service
     system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
-    spark_kube_client = KubeClient(
-        config_file=system_paasta_config.get_spark_kubeconfig()
-    )
 
     regular_service_accounts_to_ensure: Set[str] = set()
     spark_service_accounts_to_ensure: Set[str] = set()
@@ -117,12 +114,19 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
             kube_client=kube_client,
         )
 
-    for iam_role in spark_service_accounts_to_ensure:
-        ensure_service_account(
-            iam_role,
-            namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-            kube_client=spark_kube_client,
+    if spark_service_accounts_to_ensure:
+        # Only create the spark kube client if we actually have spark executor SAs to ensure.
+        # The spark kubeconfig may not exist on hosts that don't talk to spark clusters, so
+        # creating this eagerly (for every service) would raise ConfigException for non-spark services.
+        spark_kube_client = KubeClient(
+            config_file=system_paasta_config.get_spark_kubeconfig()
         )
+        for iam_role in spark_service_accounts_to_ensure:
+            ensure_service_account(
+                iam_role,
+                namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                kube_client=spark_kube_client,
+            )
 
 
 def main() -> None:
