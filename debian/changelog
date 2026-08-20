@@ -1,3 +1,11 @@
+paasta-tools (1.60.1) jammy; urgency=medium
+
+  * 1.60.1 tagged with 'make release'
+    Commit: Only call ensure_service_account once per iam_role per
+    service.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 12:40:01 -0700
+
 paasta-tools (1.60.0) jammy; urgency=medium
 
   * 1.60.0 tagged with 'make release'
