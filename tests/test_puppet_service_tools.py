@@ -10,8 +10,9 @@ def test_get_puppet_services_that_run_here():
     ) as listdir_patch, mock.patch(
         "os.path.exists",
         autospec=True,
-        side_effect=lambda x: x
-        in ("/etc/nerve/puppet_services.d", "/etc/nerve/puppet_services.d/a"),
+        side_effect=lambda x: (
+            x in ("/etc/nerve/puppet_services.d", "/etc/nerve/puppet_services.d/a")
+        ),
     ), mock.patch(
         "paasta_tools.puppet_service_tools.open",
         create=True,

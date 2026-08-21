@@ -15,6 +15,7 @@
 """
 Responds to paasta service and instance requests.
 """
+
 import argparse
 import contextlib
 import logging

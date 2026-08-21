@@ -186,9 +186,9 @@ def step_impl_then(context):
             },
         }
     )
-    assert (
-        expected_deployments == deployments
-    ), f"actual: {deployments}\nexpected:{expected_deployments}"
+    assert expected_deployments == deployments, (
+        f"actual: {deployments}\nexpected:{expected_deployments}"
+    )
 
 
 @then('that deployments.json has a desired_state of "{expected_state}"')
@@ -202,9 +202,9 @@ def step_impl_then_desired_state(context, expected_state):
         reverse=True,
     )[0][1]
     desired_state = latest["desired_state"]
-    assert (
-        desired_state == expected_state
-    ), f"actual: {desired_state}\nexpected: {expected_state}"
+    assert desired_state == expected_state, (
+        f"actual: {desired_state}\nexpected: {expected_state}"
+    )
 
 
 @then("the repository should be correctly tagged")

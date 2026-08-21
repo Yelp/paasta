@@ -25,7 +25,6 @@ from . import mesos_file
 
 
 class Task:
-
     cmd_re = re.compile(r"\(Command: (.+)\)")
 
     def __init__(self, master, items):

@@ -15,6 +15,7 @@
 """
 Usage: ./check_cassandracluster_services_replication.py [options]
 """
+
 import logging
 
 from paasta_tools import cassandracluster_tools

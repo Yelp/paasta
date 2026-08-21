@@ -1618,7 +1618,7 @@ class TestTronTools:
         (
             ("my_job.do_something", "my_job.do_something"),
             (
-                f"my_job.{'a'* 100}",
+                f"my_job.{'a' * 100}",
                 "my_job.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-6xhe",
             ),
         ),
@@ -2262,7 +2262,6 @@ fake_job:
         with mock.patch(
             "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
         ) as mock_filter_templates_from_config:
-
             mock_filter_templates_from_config.return_value = {
                 "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
             }

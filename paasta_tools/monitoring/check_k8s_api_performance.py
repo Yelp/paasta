@@ -86,7 +86,6 @@ def get_pods_from_namespace_selector(
 
 
 if __name__ == "__main__":
-
     options = parse_k8s_api_performance_options()
     kube_client = KubeClient(
         config_file=options.kube_config_path, context=options.context

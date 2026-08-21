@@ -89,8 +89,9 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
                 decompose_job_id(registration)
             except InvalidJobNameError:
                 log.error(
-                    "Provided registration {} for service "
-                    "{} is invalid".format(registration, self.service)
+                    "Provided registration {} for service {} is invalid".format(
+                        registration, self.service
+                    )
                 )
 
         return registrations or [
