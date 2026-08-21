@@ -830,6 +830,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     "service": self.service,
                 },
             )
+
+        # Initialize Slack threads and send the first message
         super().__init__()
         self.print_who_is_running_this()
 
