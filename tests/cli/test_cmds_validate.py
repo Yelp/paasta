@@ -2068,76 +2068,73 @@ def test_check_monitoring_file_exists_non_service(tmp_path):
     assert check_monitoring_file_exists(str(tmp_path)) is True
 
 
-@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
+@pytest.mark.parametrize(
+    "cpus, comment, expected, instance_type",
+    [
+        (20, "", False, "kubernetes"),
+        (20, "# override-need-large-pod", True, "kubernetes"),
+        (20, "# override-approved-by-compute-infra", True, "kubernetes"),
+        (20, "# not a valid override comment", False, "kubernetes"),
+        (8, "", True, "kubernetes"),
+        (20, "", False, "eks"),
+        (20, "# override-large-batch-job", True, "eks"),
+        (8, "", True, "eks"),
+        # non-k8s instance types are skipped (e.g., tron uses dotted job.action names)
+        (20, "", True, "tron"),
+    ],
 )
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_pool_limits_fails_for_giant_pod(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    mock_load_system_paasta_config,
-    capsys,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
-        "fake_cluster": {
-            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
-        }
-    }
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance",
-            mock.Mock(
-                get_cpus=mock.Mock(return_value=20),
-                get_pool=mock.Mock(return_value="stable"),
-            ),
-        )
-    ]
+def test_validate_pool_limits(cpus, comment, expected, instance_type):
+    instance_config = f"""
+---
+fake_instance:
+  cpus: {cpus} {comment}
+  pool: stable
+"""
 
-    assert validate_pool_limits("fake-service-path") is False
-    output, _ = capsys.readouterr()
-    assert "fake_instance" in output
-    assert "20" in output
-    assert "stable" in output
-    assert "stable-giant" in output
-
-
-@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_pool_limits_passes_for_small_pod(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    mock_load_system_paasta_config,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
-        "fake_cluster": {
-            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
-        }
-    }
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance",
-            mock.Mock(
-                get_cpus=mock.Mock(return_value=8),
-                get_pool=mock.Mock(return_value="stable"),
-            ),
-        )
-    ]
-
-    assert validate_pool_limits("fake-service-path") is True
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={
+                "pool_limits": {
+                    "fake_cluster": {
+                        "stable": {"max_cpus": 16},
+                    }
+                }
+            },
+            directory="/some/test/dir",
+        ),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents",
+        autospec=True,
+        return_value=instance_config,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+        autospec=True,
+        return_value=[
+            (
+                "fake_instance",
+                mock.Mock(
+                    get_cpus=mock.Mock(return_value=cpus),
+                    get_pool=mock.Mock(return_value="stable"),
+                    get_instance_type=mock.Mock(return_value=instance_type),
+                ),
+            )
+        ],
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.list_clusters",
+        autospec=True,
+        return_value=["fake_cluster"],
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.path_to_soa_dir_service",
+        autospec=True,
+        return_value=("fake_soa_dir", "fake_service"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.os.path.exists",
+        autospec=True,
+        return_value=False,
+    ):
+        assert validate_pool_limits("fake-service-path") is expected
 
 
 @patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
@@ -2157,7 +2154,7 @@ def test_validate_pool_limits_passes_for_unconfigured_pool(
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_load_system_paasta_config.return_value.get_pool_limits.return_value = {
         "fake_cluster": {
-            "stable": {"max_cpus": 16, "recommended_pool": "stable-giant"},
+            "stable": {"max_cpus": 16},
         }
     }
     mock_load_all_instance_configs_for_service.return_value = [
