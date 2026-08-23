@@ -1044,6 +1044,46 @@ def is_canary(
     return False
 
 
+def _has_single_replica_override_in_raw(
+    file_path: str, instance: str, replica_key: str
+) -> bool:
+    """Check for override-single-replica comment by reading the raw YAML file.
+    Bypasses ruamel's flatten_mapping which corrupts comments on merge overrides
+    when a template defines a different value for the same key."""
+    lines = get_file_contents(file_path).splitlines()
+    pattern = rf"^\s+{replica_key}:\s.*" + OVERRIDE_SINGLE_REPLICA_ACK_PATTERN
+
+    in_block = False
+    anchor = None
+    for line in lines:
+        if line.startswith(f"{instance}:"):
+            in_block = True
+            continue
+        if in_block:
+            if line and not line[0].isspace():
+                break
+            if re.search(pattern, line):
+                return True
+            if not anchor:
+                match = re.search(r"<<:\s*\*(\w+)", line)
+                if match:
+                    anchor = match.group(1)
+
+    if anchor:
+        in_template = False
+        for line in lines:
+            if f"&{anchor}" in line and ":" in line:
+                in_template = True
+                continue
+            if in_template:
+                if line and not line[0].isspace():
+                    break
+                if re.search(pattern, line):
+                    return True
+
+    return False
+
+
 def validate_single_replica_instances(service_path: str) -> bool:
     """Validate that single replica instances have an override comment to acknowledge the risk of SPOF.
     This is only enforced for certain ecosystems."""
@@ -1089,8 +1129,6 @@ def validate_single_replica_instances(service_path: str) -> bool:
                 config_flat = _get_config_flattened(config_file_path)
 
                 if config_flat[instance].get(replica_key) is None:
-                    # service hasn't explicitly set the number of replicas and is using
-                    # the default of 1 — don't fail validation, just warn
                     print(
                         info_message(
                             f"Instance {instance} on cluster {cluster} has only 1 replica (implicit default). "
@@ -1100,30 +1138,20 @@ def validate_single_replica_instances(service_path: str) -> bool:
                     )
                     continue
 
-                comment = _get_comments_for_key(
-                    data=config_flat[instance],
-                    key=replica_key,
-                    full_config=config_flat,
-                    key_value=config_flat[instance].get(replica_key),
-                    full_config_flattened=config_flat,
-                )
-                if (
-                    comment is None
-                    or re.search(
-                        pattern=OVERRIDE_SINGLE_REPLICA_ACK_PATTERN,
-                        string=comment,
-                    )
-                    is None
+                if _has_single_replica_override_in_raw(
+                    config_file_path, instance, replica_key
                 ):
-                    returncode = False
-                    print(
-                        failure(
-                            msg=f"Instance {instance} on cluster {cluster} has only 1 instance / min_instance. "
-                            f"\nSingle replicas are a SPOF and we do not encourage it. "
-                            f"\nAdd a comment like the following to acknowledge: # override-single-replica (PROJ-1234)",
-                            link="y/override-single-replica",
-                        )
+                    continue
+
+                returncode = False
+                print(
+                    failure(
+                        msg=f"Instance {instance} on cluster {cluster} has only 1 instance / min_instance. "
+                        f"\nSingle replicas are a SPOF and we do not encourage it. "
+                        f"\nAdd a comment like the following to acknowledge: # override-single-replica (PROJ-1234)",
+                        link="y/override-single-replica",
                     )
+                )
     return returncode
 
 
