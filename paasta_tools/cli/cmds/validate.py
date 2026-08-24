@@ -1048,38 +1048,47 @@ def _has_single_replica_override_in_raw(
     file_path: str, instance: str, replica_key: str
 ) -> bool:
     """Check for override-single-replica comment by reading the raw YAML file.
-    Bypasses ruamel's flatten_mapping which corrupts comments on merge overrides
-    when a template defines a different value for the same key."""
+    Bypasses ruamel's flatten_mapping which overrides comments on a merge
+    when a template defines a different value for the same key.
+    Follows the <<: *anchor chain until the comment is found or no more anchors remain."""
     lines = get_file_contents(file_path).splitlines()
     pattern = rf"^\s+{replica_key}:\s.*" + OVERRIDE_SINGLE_REPLICA_ACK_PATTERN
 
-    in_block = False
+    found = False
     anchor = None
     for line in lines:
         if line.startswith(f"{instance}:"):
-            in_block = True
+            found = True
             continue
-        if in_block:
+        if found:
             if line and not line[0].isspace():
                 break
             if re.search(pattern, line):
                 return True
             if not anchor:
-                match = re.search(r"<<:\s*\*(\w+)", line)
-                if match:
-                    anchor = match.group(1)
+                matched_anchor = re.search(r"<<:\s*\*(\w+)", line)
+                if matched_anchor:
+                    anchor = matched_anchor.group(1)
 
-    if anchor:
-        in_template = False
+    visited = set()
+    while anchor and anchor not in visited:
+        visited.add(anchor)
+        next_anchor = None
+        scanning = False
         for line in lines:
             if f"&{anchor}" in line and ":" in line:
-                in_template = True
+                scanning = True
                 continue
-            if in_template:
+            if scanning:
                 if line and not line[0].isspace():
                     break
                 if re.search(pattern, line):
                     return True
+                if not next_anchor:
+                    matched_anchor = re.search(r"<<:\s*\*(\w+)", line)
+                    if matched_anchor:
+                        next_anchor = matched_anchor.group(1)
+        anchor = next_anchor
 
     return False
 
