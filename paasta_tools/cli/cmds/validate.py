@@ -1048,14 +1048,16 @@ def _has_single_replica_override_in_raw(
     file_path: str, instance: str, replica_key: str
 ) -> bool:
     """Check for override-single-replica comment by reading the raw YAML file.
-    Bypasses ruamel's flatten_mapping which overrides comments on a merge
-    when a template defines a different value for the same key.
-    Follows the <<: *anchor chain until the comment is found or no more anchors remain."""
+    Bypasses ruamel's flatten_mapping which corrupts comments on merge overrides.
+    If the instance explicitly sets the key, the comment must be on that line.
+    Otherwise follows the <<: *anchor chain until the comment is found or no more anchors remain."""
     lines = get_file_contents(file_path).splitlines()
     pattern = rf"^\s+{replica_key}:\s.*" + OVERRIDE_SINGLE_REPLICA_ACK_PATTERN
+    bare_key_pattern = rf"^\s+{replica_key}:\s"
 
     found = False
     anchor = None
+    has_explicit_key = False
     for line in lines:
         if line.startswith(f"{instance}:"):
             found = True
@@ -1065,10 +1067,15 @@ def _has_single_replica_override_in_raw(
                 break
             if re.search(pattern, line):
                 return True
+            if re.search(bare_key_pattern, line):
+                has_explicit_key = True
             if not anchor:
                 matched_anchor = re.search(r"<<:\s*\*(\w+)", line)
                 if matched_anchor:
                     anchor = matched_anchor.group(1)
+
+    if has_explicit_key:
+        return False
 
     visited: Set[str] = set()
     while anchor and anchor not in visited:
