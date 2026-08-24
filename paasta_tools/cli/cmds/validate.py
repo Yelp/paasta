@@ -1070,7 +1070,7 @@ def _has_single_replica_override_in_raw(
                 if matched_anchor:
                     anchor = matched_anchor.group(1)
 
-    visited = set()
+    visited: Set[str] = set()
     while anchor and anchor not in visited:
         visited.add(anchor)
         next_anchor = None
