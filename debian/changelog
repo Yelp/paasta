@@ -1,3 +1,32 @@
+paasta-tools (1.60.3) jammy; urgency=medium
+
+  * 1.60.3 tagged with 'make release'
+    Commit: Add resolute .deb to releases (#4378)  @vulpine says I"ll be
+    their new best friend if I do this  real description: Yelp/nerve-
+    tools tests currently grab paasta-tools debs from our releases for
+    GHA builds. this is fine, but what is not fine is that we are only
+    uploading (and testing against) a jammy deb - which doesn"t quite
+    work out so well if you"re trying to add a resolute build to nerve-
+    tools
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 21 Aug 2026 08:35:51 -0700
+
+paasta-tools (1.60.2) jammy; urgency=medium
+
+  * 1.60.2 tagged with 'make release'
+    Commit: Only create spark_kube_client if it"s necessary, to avoid
+    errors on clusters where we don"t have the spark kubeconfig.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 15:24:52 -0700
+
+paasta-tools (1.60.1) jammy; urgency=medium
+
+  * 1.60.1 tagged with 'make release'
+    Commit: Only call ensure_service_account once per iam_role per
+    service.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 12:40:01 -0700
+
 paasta-tools (1.60.0) jammy; urgency=medium
 
   * 1.60.0 tagged with 'make release'

@@ -25,6 +25,7 @@ import logging
 import sys
 from typing import Dict
 from typing import List
+from typing import Set
 
 import ruamel.yaml as yaml
 
@@ -84,14 +85,13 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
     system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
 
+    regular_service_accounts_to_ensure: Set[str] = set()
+    spark_service_accounts_to_ensure: Set[str] = set()
+
     for job in job_configs:
         for action in job.get_actions():
             if action.get_iam_role():
-                ensure_service_account(
-                    action.get_iam_role(),
-                    namespace=KUBERNETES_NAMESPACE,
-                    kube_client=kube_client,
-                )
+                regular_service_accounts_to_ensure.add(action.get_iam_role())
                 # spark executors are special in that we want the SA to exist in two namespaces:
                 # the tron namespace - for the spark driver (which will be created by the ensure_service_account() above)
                 # and the spark namespace - for the spark executor (which we'll create below)
@@ -100,18 +100,33 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
                     # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
                     and action.get_spark_executor_iam_role()
                 ):
-                    # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
-                    spark_kube_client = KubeClient(
-                        config_file=system_paasta_config.get_spark_kubeconfig()
-                    )
                     # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
                     # this one is for the actual spark executors to use. if an iam_role is set, we'll use that, otherwise
                     # there's an executor-specifc default role just like there is for the drivers :)
-                    ensure_service_account(
-                        action.get_spark_executor_iam_role(),
-                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-                        kube_client=spark_kube_client,
+                    spark_service_accounts_to_ensure.add(
+                        action.get_spark_executor_iam_role()
                     )
+
+    for iam_role in regular_service_accounts_to_ensure:
+        ensure_service_account(
+            iam_role,
+            namespace=KUBERNETES_NAMESPACE,
+            kube_client=kube_client,
+        )
+
+    if spark_service_accounts_to_ensure:
+        # Only create the spark kube client if we actually have spark executor SAs to ensure.
+        # The spark kubeconfig may not exist on hosts that don't talk to spark clusters, so
+        # creating this eagerly (for every service) would raise ConfigException for non-spark services.
+        spark_kube_client = KubeClient(
+            config_file=system_paasta_config.get_spark_kubeconfig()
+        )
+        for iam_role in spark_service_accounts_to_ensure:
+            ensure_service_account(
+                iam_role,
+                namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                kube_client=spark_kube_client,
+            )
 
 
 def main() -> None:
