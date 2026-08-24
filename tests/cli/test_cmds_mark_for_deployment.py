@@ -150,7 +150,6 @@ def test_mark_for_deployment_happy(
             "deploy_group": "fake_deploy_group",
             "commit": "fake_commit",
             "image_version": "extrastuff",
-            "dry_run": "False",
         },
         service="fake_service",
     )
