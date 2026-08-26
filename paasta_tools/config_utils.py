@@ -18,6 +18,20 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
 
+_RESOURCE_UNIT_TO_MIB = {"Gi": 1024.0, "Mi": 1.0, "Ki": 1.0 / 1024}
+_SUFFIX_RESOURCE_TYPES = {"mem", "disk"}
+
+
+def _normalize_resource_value(value: int | float | str, resource_type: str) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and resource_type in _SUFFIX_RESOURCE_TYPES:
+        for suffix, factor in _RESOURCE_UNIT_TO_MIB.items():
+            if value.endswith(suffix):
+                return float(value.removesuffix(suffix)) * factor
+    raise ValueError(f"Cannot parse resource value: {value!r}")
+
+
 # Must have a schema defined
 KNOWN_CONFIG_TYPES = (
     "kubernetes",
@@ -300,14 +314,15 @@ class AutoConfigUpdater:
 
             # otherwise, we can do some pretty rote clamping of resource values
             elif unclamped_resource_value is not None:
-                if min_value and unclamped_resource_value < min_value:
+                unclamped_mib = _normalize_resource_value(unclamped_resource_value, limit_type)
+                if min_value and unclamped_mib < _normalize_resource_value(min_value, limit_type):
                     log.debug(
                         f"{limit_type} autotune config under configured limit ({min_value}), using autotune limit lower bound."
                     )
                     clamped_recomendation[limit_type] = min_value
-                if max_value and unclamped_resource_value > max_value:
+                if max_value and unclamped_mib > _normalize_resource_value(max_value, limit_type):
                     log.debug(
-                        f"{limit_type} autotune config over configured limit ({min_value}), using autotune limit upper bound."
+                        f"{limit_type} autotune config over configured limit ({max_value}), using autotune limit upper bound."
                     )
                     clamped_recomendation[limit_type] = max_value
             else:
