@@ -516,7 +516,7 @@ class TestTronJobConfig:
             "deploy_group": "prod",
             "max_runtime": "2h",
             "actions": {"normal": {"command": "echo first"}},
-            "cleanup_action": {"command": "rm *"},
+            "cleanup_action": {"command": "rm *", "max_runtime": "5m"},
             "monitoring": {"team": "noop"},
         }
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "paasta-dev")
@@ -923,12 +923,14 @@ class TestTronTools:
             ],
         }
 
-    def test_format_tron_action_dict_default_executor(self):
+    @pytest.mark.parametrize("max_runtime", [None, "0s", "30m"])
+    def test_format_tron_action_dict_default_executor(self, max_runtime):
         action_dict = {
             "command": "echo something",
             "requires": ["required_action"],
             "retries": 2,
             "expected_runtime": "30m",
+            "max_runtime": max_runtime,
         }
         branch_dict = {
             "docker_image": "my_service:paasta-123abcde",
@@ -960,6 +962,10 @@ class TestTronTools:
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "kubernetes"
+        if max_runtime is None:
+            assert "max_runtime" not in result
+        else:
+            assert result["max_runtime"] == max_runtime
 
     def test_format_tron_action_dict_paasta(self):
         action_dict = {
@@ -1147,6 +1153,7 @@ class TestTronTools:
             "service": "my_service",
             "deploy_group": "prod",
             "executor": "spark",
+            "max_runtime": "2h",
             "disk": 42,
             "idempotent": True,
             "pool": "special_pool",
@@ -1296,6 +1303,7 @@ class TestTronTools:
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
+        assert "max_runtime" not in result
         confs = result["command"].split(" ")
         spark_app_name = ""
         for s in confs:
@@ -1336,7 +1344,7 @@ class TestTronTools:
         expected_scs_conf = json.dumps(expected_scs_conf_json, indent=4)
 
         expected = {
-            "command": "timeout 12h spark-submit "
+            "command": "timeout 2h spark-submit "
             "--conf spark.cores.max=4 "
             "--conf spark.driver.memory=1g "
             "--conf spark.executor.memory=1g "
