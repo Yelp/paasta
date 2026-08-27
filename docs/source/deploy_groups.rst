@@ -197,7 +197,7 @@ This is configured per deploy_group in deploy.yaml:
   validating that alerting rules behave as expected before enabling real rollbacks.
 
 * ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
-  PaaSTA polls AlertManager for firing alerts during a deployment (default: 30). 
+  PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
 
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
 
@@ -217,5 +217,3 @@ Example:
      wait_for_deployment: true
      alertmanager_rollback: true
      alertmanager_poll_interval_s: 60
-
-
