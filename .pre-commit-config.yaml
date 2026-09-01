@@ -1,6 +1,6 @@
 ---
 default_language_version:
-    python: python3.10
+    python: python3.11
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.1.0
@@ -40,7 +40,7 @@ repos:
     rev: 22.3.0
     hooks:
     -   id: black
-        args: ['--target-version', 'py310']
+        args: ['--target-version', 'py311']
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.3.0
