@@ -108,6 +108,9 @@
                 "alertmanager_rollback": {
                     "type": "boolean"
                 },
+                "alertmanager_rollback_dry_run": {
+                    "type": "boolean"
+                },
                 "alertmanager_poll_interval_s": {
                     "type": "integer",
                     "minimum": 30
