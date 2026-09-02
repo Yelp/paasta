@@ -1,3 +1,29 @@
+paasta-tools (1.60.4) jammy; urgency=medium
+
+  * 1.60.4 tagged with 'make release'
+    Commit: Build paasta-tools for arm64 - COMPINFRA-5995 (#4383)  ##
+    Summary  Use dpkg --print-architecture instead of hardcoded amd64
+    references in the build system so paasta-tools can be built natively
+    on both amd64 and arm64.  ## Changes  ### yelp_package/Makefile -
+    Added DPKG_ARCH variable using dpkg --print-architecture - Changed
+    itest target to reference the dynamic arch instead of hardcoded
+    amd64  ### yelp_package/dockerfiles/itest/k8s/Dockerfile - Changed
+    kubectl download URL to use dpkg --print-architecture instead of
+    hardcoded amd64  ### yelp_package/extra_requirements_yelp.txt -
+    bumped cryptography/pyopenssl/cffi to versions with arm64 wheels  ##
+    How it works  debian/control already has Architecture: any, so dpkg-
+    buildpackage produces a .deb named with the native architecture. The
+    only issue was the itest target that hardcoded amd64.deb in the
+    expected filename.  ## Testing  Tested on an arm64 build host: -
+    make itest_jammy completes successfully producing paasta-
+    tools_1.60.3-yelp1_arm64.deb - The deb installs correctly and all
+    itest checks pass - Architecture metadata verified: both filename
+    and metadata report arm64  ## Notes  - Noble/resolute: No additional
+    changes needed, the architecture detection applies to all distros.
+    Jira: COMPINFRA-5995
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 02 Sep 2026 12:54:55 -0700
+
 paasta-tools (1.60.3) jammy; urgency=medium
 
   * 1.60.3 tagged with 'make release'
