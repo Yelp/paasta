@@ -37,7 +37,7 @@ repos:
         args: [--py36-plus]
         exclude: ^paasta_tools/paastaapi
 -   repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.10.0
     hooks:
     -   id: black
         args: ['--target-version', 'py311']
