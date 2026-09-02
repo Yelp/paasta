@@ -19,6 +19,7 @@ SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
+DPKG_ARCH:=$(shell dpkg --print-architecture)
 DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw docker.io/yelp/paastatools_$*_container
 
 NOOP = true
@@ -41,7 +42,7 @@ build_%_docker:
 
 .SECONDEXPANSION:
 itest_%: package_$$*
-	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
+	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_$(DPKG_ARCH).deb
 
 PTG_VERSION=0.0.20
 PTG_SUM=17fabafb3aa8ea728c8c4a62927fc699b7b16ad0bd561ed822096f2da329eed1
