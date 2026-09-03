@@ -15,6 +15,7 @@
 """
 PaaSTA API error handling.
 """
+
 import logging
 
 from pyramid.response import Response

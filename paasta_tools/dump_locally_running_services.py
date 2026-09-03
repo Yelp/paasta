@@ -22,6 +22,7 @@ Command line options:
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
+
 import argparse
 import json
 import sys
@@ -55,12 +56,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
     soa_dir = args.soa_dir
 
-    service_dump: List[
-        Tuple[str, ServiceNamespaceConfig]
-    ] = get_puppet_services_running_here_for_nerve(
-        soa_dir=soa_dir
-    ) + get_kubernetes_services_running_here_for_nerve(
-        cluster=None, soa_dir=soa_dir
+    service_dump: List[Tuple[str, ServiceNamespaceConfig]] = (
+        get_puppet_services_running_here_for_nerve(soa_dir=soa_dir)
+        + get_kubernetes_services_running_here_for_nerve(cluster=None, soa_dir=soa_dir)
     )
 
     print(json.dumps(service_dump))

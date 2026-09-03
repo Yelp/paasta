@@ -768,10 +768,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
         self.rollback_type: Optional[RollbackTypes] = None
-        self.instance_configs_per_cluster: Dict[
-            str, List[LongRunningServiceConfig]
-        ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, soa_dir
+        self.instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]] = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, soa_dir
+            )
         )
 
         system_paasta_config = load_system_paasta_config()
@@ -2215,9 +2215,7 @@ async def wait_for_deployment(
             system_paasta_config.get_mark_for_deployment_default_diagnosis_interval()
         )
     if time_before_first_diagnosis is None:
-        time_before_first_diagnosis = (
-            system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
-        )
+        time_before_first_diagnosis = system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
 
     kube_clusters = system_paasta_config.get_kube_clusters()
     start_time = time.time()

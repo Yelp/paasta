@@ -22,6 +22,7 @@ Command line options:
 - -v, --verbose: Verbose output
 - -n, --dry-run: Only report what would have been deleted
 """
+
 import argparse
 import logging
 import sys

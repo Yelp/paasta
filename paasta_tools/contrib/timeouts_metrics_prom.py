@@ -14,6 +14,7 @@ Example output:
 yelpsoaconfig_endpoint_timeouts_ms{path="/consumer_app/devices/braze/info",upstream="push_notifications.main.egress_cluster"} 10000.0
 yelpsoaconfig_endpoint_timeouts_ms{path="/",upstream="mysql_read_security.main.egress_cluster"} 100.0
 """
+
 import os
 
 from prometheus_client import CollectorRegistry
