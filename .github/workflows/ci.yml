@@ -58,10 +58,7 @@ jobs:
         arch: [amd64]
         runner: [ubuntu-22.04]
         include:
-          # Arm64 builds run on arm64 runners; the deb build and itest are
-          # arch-agnostic as of #4383. Only jammy is built for arm64 for now,
-          # since the other dists' arm64 builds are untested and a failure
-          # would block the release job.
+          # Only build jammy on arm64 for now
           - dist: jammy
             arch: arm64
             runner: ubuntu-22.04-arm
