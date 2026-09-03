@@ -50,11 +50,18 @@ jobs:
       - run: pip install coveralls tox==3.2 tox-pip-extensions==1.3.0 ephemeral-port-reserve
       - run: make k8s_itests
   build_debs:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         dist: [jammy, noble, resolute]
+        arch: [amd64]
+        runner: [ubuntu-22.04]
+        include:
+          # Only build jammy on arm64 for now
+          - dist: jammy
+            arch: arm64
+            runner: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -65,7 +72,7 @@ jobs:
       - run: make itest_${{ matrix.dist }}
       - uses: actions/upload-artifact@v4
         with:
-          name: deb-${{ matrix.dist }}
+          name: deb-${{ matrix.dist }}-${{ matrix.arch }}
           path: dist/paasta-tools_*.deb
   cut_release:
     runs-on: ubuntu-22.04
@@ -75,11 +82,15 @@ jobs:
       - run: mkdir -p dist/
       - uses: actions/download-artifact@v4
         with:
-          name: deb-jammy
+          name: deb-jammy-amd64
           path: dist/
       - uses: actions/download-artifact@v4
         with:
-          name: deb-resolute
+          name: deb-jammy-arm64
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-resolute-amd64
           path: dist/
       - name: Release
         uses: softprops/action-gh-release@v1
