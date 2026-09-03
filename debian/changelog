@@ -1,3 +1,12 @@
+paasta-tools (1.60.5) jammy; urgency=medium
+
+  * 1.60.5 tagged with 'make release'
+    Commit: Merge pull request #4384 from Yelp/build-arm64-release-debs
+    Build arm64 paasta-tools debs in the release pipeline - COMPINFRA-
+    6038
+
+ -- Evan Krall <krall@yelp.com>  Wed, 02 Sep 2026 17:48:29 -0700
+
 paasta-tools (1.60.4) jammy; urgency=medium
 
   * 1.60.4 tagged with 'make release'
