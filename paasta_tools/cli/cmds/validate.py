@@ -142,6 +142,10 @@ OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+
+# we expect a comment that starts with # override-
+OVERRIDE_POOL_CPU_LIMIT_PATTERN = r"#\s*override-"
+
 # for now, double the autotune cap to give people the benefit of the doubt
 # if we see that people are still misusing this configuration, we can lower
 # this to the autotune cap (i.e., 1)
@@ -943,6 +947,8 @@ def validate_pool_limits(service_path: str) -> bool:
     Validate that services in specific pools won't exceed per-node capacities.
     For the most part, this isn't normally an issue - but there are several pools where
     folks tend to want to run extra-large workloads that won't fit (e.g., large single-node batches).
+
+    Users can override this check by adding any comment next to `cpus` in their yelpsoa config.
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
@@ -958,18 +964,50 @@ def validate_pool_limits(service_path: str) -> bool:
             pool = instance_config.get_pool()
 
             pool_limits = pool_limits_for_cluster.get(pool)
-            if pool_limits is None:
+            if pool_limits is None or cpu < pool_limits["max_cpus"]:
                 continue
 
-            if cpu >= pool_limits["max_cpus"]:
-                returncode = False
-                print(
-                    failure(
-                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool.
-                        If you need to run a workload with this many CPUs, consider using the {pool_limits['recommended_pool']} pool instead.""",
-                        "",
-                    )
+            if instance_config.get_instance_type() not in ("kubernetes", "eks"):
+                continue
+
+            if __is_templated(service, soa_dir, cluster, workload="eks"):
+                continue
+
+            config_file_path = os.path.join(
+                soa_dir,
+                service,
+                f"{instance_config.get_instance_type()}-{cluster}.yaml",
+            )
+            config = get_config_file_dict(
+                config_file_path,
+                use_ruamel=True,
+            )
+
+            config_flattened = _get_config_flattened(config_file_path)
+
+            cpu_comment = _get_comments_for_key(
+                data=config[instance],
+                key="cpus",
+                full_config=config,
+                key_value=config[instance].get("cpus"),
+                full_config_flattened=config_flattened,
+            )
+
+            if cpu_comment is not None and re.search(
+                pattern=OVERRIDE_POOL_CPU_LIMIT_PATTERN,
+                string=cpu_comment,
+            ):
+                continue
+
+            returncode = False
+            print(
+                failure(
+                    f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the recommended limit of {pool_limits['max_cpus']} for the {pool} pool."
+                    " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # override-need-large-pod)."
+                    " If you have any questions, reach out to #compute-infra.",
+                    "",
                 )
+            )
     return returncode
 
 
