@@ -305,6 +305,94 @@ fake_instance1:
 
 
 @pytest.mark.parametrize(
+    "yaml_content, expected",
+    [
+        # Template has override comment, instance inherits via merge — should pass
+        (
+            """\
+_template: &tmpl
+  instances: 1 # override-single-replica (PAASTA-18934)
+fake_instance1:
+  <<: *tmpl
+""",
+            True,
+        ),
+        # Template has no comment, instance inherits via merge — should fail
+        (
+            """\
+_template: &tmpl
+  instances: 1
+fake_instance1:
+  <<: *tmpl
+""",
+            False,
+        ),
+        # Multi-hop: instance -> template_a -> template_b (has comment) — should pass
+        (
+            """\
+_template_b: &tmpl_b
+  instances: 1 # override-single-replica (PAASTA-18934)
+_template_a: &tmpl_a
+  <<: *tmpl_b
+fake_instance1:
+  <<: *tmpl_a
+""",
+            True,
+        ),
+        # Instance explicitly sets instances: 1 with comment, even though template has none — should pass
+        (
+            """\
+_template: &tmpl
+  instances: 1
+fake_instance1:
+  <<: *tmpl
+  instances: 1 # override-single-replica (PAASTA-18934)
+""",
+            True,
+        ),
+    ],
+)
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.PaastaServiceConfigLoader",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
+def test_validate_single_replica_template_inheritance(
+    mock_load_system_paasta_config,
+    mock_path_to_soa_dir_service,
+    mock_config_loader_cls,
+    mock_get_file_contents,
+    yaml_content,
+    expected,
+):
+    mock_load_system_paasta_config.return_value.get_ecosystem_for_cluster.return_value = (
+        "prod"
+    )
+    mock_load_system_paasta_config.return_value.get_common_canary_instance_names.return_value = (
+        []
+    )
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_instance_config = mock.Mock(
+        spec=EksDeploymentConfig,
+        is_autoscaling_enabled=mock.Mock(return_value=False),
+        get_instances=mock.Mock(return_value=1),
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_registrations=mock.Mock(return_value=["fake_service.fake_instance1"]),
+        get_config_path=mock.Mock(
+            return_value="fake_soa_dir/fake_service/eks-fake_cluster.yaml"
+        ),
+    )
+    mock_config_loader = mock_config_loader_cls.return_value
+    mock_config_loader.clusters = ["fake_cluster"]
+    mock_config_loader.instance_configs.return_value = iter([mock_instance_config])
+    mock_get_file_contents.return_value = yaml_content
+
+    assert validate_single_replica_instances("fake-service-path") is expected
+
+
+@pytest.mark.parametrize(
     "registrations, other_registrations, other_instances_count, other_autoscaling, expected",
     [
         # Test case 1: No other registrations, should return false - not a canary
