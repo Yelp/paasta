@@ -663,6 +663,11 @@ def _get_comments_for_key(
     data: CommentedMap,
     key: Any,
 ) -> Optional[str]:
+    # this is a little weird, but ruamel is returning a list that looks like:
+    # [None, None, CommentToken(...), None] for some reason instead of just a
+    # single string
+    # Sometimes ruamel returns a recursive list of CommentTokens as well that looks like
+    # [None, None, [CommentToken(...),CommentToken(...),None], CommentToken(...), None]
     def _flatten_comments(comments):
         for comment in comments:
             if comment is None:
@@ -675,6 +680,11 @@ def _get_comments_for_key(
     raw_comments = [*_flatten_comments(data.ca.items.get(key, []))]
     if raw_comments:
         return "".join(raw_comments)
+
+    # If the instance explicitly sets the key, the comment must be on that
+    # line — don't follow the merge chain.
+    if key in getattr(data, "_ok", set()):
+        return None
 
     # Follow the <<: *anchor merge chain to find comments on inherited keys
     visited: Set[int] = set()

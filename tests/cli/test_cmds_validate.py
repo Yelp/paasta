@@ -350,6 +350,21 @@ fake_instance1:
 """,
             True,
         ),
+        # Instance explicitly sets instances: 1 without comment, chain has comment two hops up — should fail
+        (
+            """\
+worker_a: &cool_template
+  instances: 1 # override-single-replica (PAASTA-18934)
+worker_b: &other_template
+  <<: *cool_template
+  instances: 2
+  mem: 12345
+fake_instance1:
+  <<: *other_template
+  instances: 1
+""",
+            False,
+        ),
     ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
