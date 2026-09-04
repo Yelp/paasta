@@ -2056,7 +2056,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
-    use_raw_ksm_queries: bool
 
 
 def load_system_paasta_config(
@@ -2821,9 +2820,6 @@ class SystemPaastaConfig:
 
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
-
-    def get_use_raw_ksm_queries(self) -> bool:
-        return self.config_dict.get("use_raw_ksm_queries", False)
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
