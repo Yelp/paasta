@@ -501,6 +501,9 @@ class InstanceConfig:
             cluster=self.get_cluster(), instance=self.get_instance()
         )
 
+    def get_service_override(self) -> Optional[str]:
+        return self.config_dict.get("service", None)
+
     def get_deploy_group(self) -> str:
         return self.config_dict.get("deploy_group", self.get_branch())
 
