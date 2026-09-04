@@ -659,7 +659,6 @@ def validate_unique_instance_names(service_path):
     return check_passed
 
 
-
 def _get_comments_for_key(
     data: CommentedMap,
     key: Any,
@@ -1006,7 +1005,6 @@ def is_canary(
             if other_instance_replicas is not None and other_instance_replicas > 1:
                 return True
     return False
-
 
 
 def validate_single_replica_instances(service_path: str) -> bool:
