@@ -2035,6 +2035,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     skip_unique_instance_name_validation: List[str]
+    skip_check_monitoring_file_exists: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2730,6 +2731,9 @@ class SystemPaastaConfig:
 
     def get_skip_cpu_burst_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_burst_validation", [])
+
+    def get_skip_monitoring_file_existence_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_monitoring_file_existence_validation", [])
 
     def get_skip_unique_instance_name_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_unique_instance_name_validation", [])
