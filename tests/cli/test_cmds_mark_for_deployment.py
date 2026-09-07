@@ -125,7 +125,7 @@ def mock_periodically_update_slack():
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 def test_mark_for_deployment_happy(
     mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log
@@ -159,7 +159,7 @@ def test_mark_for_deployment_happy(
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 def test_mark_for_deployment_sad(
     mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log
@@ -234,7 +234,7 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 @patch("paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True)
 @patch("paasta_tools.remote_git.list_remote_refs", autospec=True)
@@ -378,7 +378,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 def test_mark_for_deployment_yelpy_repo(
     mock_load_system_paasta_config,
@@ -404,7 +404,7 @@ def test_mark_for_deployment_yelpy_repo(
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 def test_mark_for_deployment_nonyelpy_repo(
     mock_load_system_paasta_config,
@@ -439,7 +439,7 @@ def test_mark_for_deployment_nonyelpy_repo(
     new_callable=AsyncMock,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
@@ -498,7 +498,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     new_callable=AsyncMock,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_first_time_deploys(
@@ -548,7 +548,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
 @patch.object(mark_for_deployment, "get_authors_to_be_notified", autospec=True)
 @patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
 @patch.object(mark_for_deployment, "get_slack_client", autospec=True)
-@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
+@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=None)
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
     mock_get_slos_for_service,
@@ -595,7 +595,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
 @patch.object(mark_for_deployment, "get_authors_to_be_notified", autospec=True)
 @patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
 @patch.object(mark_for_deployment, "get_slack_client", autospec=True)
-@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
+@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=None)
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     mock_get_slos_for_service,
@@ -647,7 +647,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     new_callable=AsyncMock,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
@@ -708,7 +708,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch("sticht.slack.get_slack_events", autospec=True)
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
     mock_load_system_paasta_config,
@@ -762,7 +762,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
     new_callable=AsyncMock,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=None
 )
 @patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
@@ -1281,7 +1281,7 @@ def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
         autospec=True,
     ), patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock_config,
     ):
         mfdp = WrappedMarkForDeploymentProcess(
@@ -1505,7 +1505,7 @@ def test_alertmanager_rollback_config_from_system_config(
         autospec=True,
     ), patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock_config,
     ):
         mfdp = WrappedMarkForDeploymentProcess(
@@ -1701,7 +1701,7 @@ def test_build_alertmanager_rollback_filters_multi_cluster_multi_instance():
     )
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock_config,
     ):
         assert mark_for_deployment.build_alertmanager_rollback_filters(
@@ -1771,7 +1771,7 @@ def test_default_error_alert_filter_skips_unknown_cluster():
     )
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock_config,
     ):
         result = mark_for_deployment._build_default_error_alert_filter(
@@ -1810,7 +1810,7 @@ def test_default_error_alert_filter_multiple_registrations():
     )
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock_config,
     ):
         result = mark_for_deployment._build_default_error_alert_filter(

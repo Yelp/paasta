@@ -944,7 +944,7 @@ class TestKubernetesDeploymentConfig:
             return_value=["mock_sidecar"],
         ), mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            autospec=True,
+            autospec=None,
         ):
             if prometheus_port:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
@@ -1516,7 +1516,7 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
         ) as mock_get_git_sha, mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            autospec=True,
+            autospec=None,
         ) as mock_load_system_config, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
@@ -1586,7 +1586,7 @@ class TestKubernetesDeploymentConfig:
     )
     def test_format_kubernetes_app_dict(self, _):
         with mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None
         ) as mock_load_system_config, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
@@ -1735,7 +1735,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
     )
     @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
@@ -1952,7 +1952,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
     )
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
@@ -2941,7 +2941,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
@@ -3032,7 +3032,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
@@ -3123,7 +3123,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
     )
     def test_get_autoscaling_metric_spec_worker_load_prometheus(
         self, fake_system_paasta_config
@@ -3211,7 +3211,7 @@ class TestKubernetesDeploymentConfig:
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
+        autospec=None,
         return_value=mock.Mock(
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
@@ -3608,7 +3608,7 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize("storage_class_name", ["ebs", "ebs-slow", "ebs-retain"])
     def test_get_storage_class_name_correct(self, storage_class_name):
         with mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None
         ) as mock_load_system_config:
             mock_load_system_config.side_effect = None
             mock_load_system_config.return_value = mock.Mock(
