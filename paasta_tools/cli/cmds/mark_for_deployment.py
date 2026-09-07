@@ -823,6 +823,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 alertmanager_url=alertmanager_url,
                 filters=filters,
                 check_interval_s=self.alertmanager_poll_interval_s,
+                # while we can technically grab these from the filters, we'll pass
+                # these through separately so that we're not relying on a specific filter format :p
+                extra_monitoring_labels={
+                    "deploy_group": self.deploy_group,
+                    "service": self.service,
+                },
             )
 
         # Initialize Slack threads and send the first message
@@ -1201,9 +1207,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "alertmanager_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_alertmanager_failure"
-            ),
+            "before": self._on_alertmanager_stopped_failing,
         }
         yield {
             "source": "*",
@@ -1576,13 +1580,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         return default
 
     def __build_rollback_audit_details(
-        self, rollback_type: RollbackTypes
+        self, rollback_type: RollbackTypes, is_dry_run: bool = False
     ) -> Dict[str, str]:
         return {
             "rolled_back_from": str(self.deployment_version),
             "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
+            "dry_run": str(is_dry_run),
         }
 
     def log_slo_rollback(self) -> None:
@@ -1598,6 +1603,20 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
         )
         self._log_rollback(rollback_details)
+        for cluster in self.instance_configs_per_cluster.keys():
+            self.metrics_interface.create_counter(
+                "alertmanager_rollback_triggered",
+                default_dimensions={
+                    "paasta_service": self.service,
+                    "paasta_cluster": cluster,
+                },
+            ).count()
+
+    def _on_alertmanager_stopped_failing(self) -> None:
+        self.cancel_auto_rollback_countdown("rollback_alertmanager_failure")
+        self.metrics_interface.create_counter(
+            "alertmanager_rollback_cancelled",
+        ).count()
 
     def _alertmanager_dry_run(self) -> bool:
         return self.alertmanager_rollback_dry_run
@@ -1607,6 +1626,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "[DRY-RUN] AlertManager alerts are failing — would have triggered "
             "rollback, but alertmanager_rollback_dry_run is enabled.",
             color="warning",
+        )
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK, is_dry_run=True
+        )
+        _log_audit(
+            action="rollback",
+            action_details=rollback_details,
+            service=self.service,
         )
 
     def log_crashloop_rollback(self) -> None:
