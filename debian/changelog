@@ -1,3 +1,11 @@
+paasta-tools (1.60.7) jammy; urgency=medium
+
+  * 1.60.7 tagged with 'make release'
+    Commit: Merge pull request #4381 from Yelp/u/abubakarrj/PAASTA-18970
+    PAASTA-18970: Update docs to include Alert Manager auto-rollbacks
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Mon, 07 Sep 2026 02:54:57 -0700
+
 paasta-tools (1.60.6) jammy; urgency=medium
 
   * 1.60.6 tagged with 'make release'
