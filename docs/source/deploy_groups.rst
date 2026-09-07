@@ -199,14 +199,6 @@ This is configured per deploy_group in deploy.yaml:
 * ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
   PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
 
-* ``alertmanager_max_healthy_period_s`` (integer, optional): Maximum time (in seconds)
-  that a deploy group must remain healthy (no firing alerts) before considering the
-  deployment successful. PaaSTA sets a default if not specified.
-
-* ``alertmanager_max_unhealthy_periods`` (integer, optional): How many consecutive
-  unhealthy polling periods a deploy group must have before considering the deployment
-  a failure and triggering a rollback. PaaSTA sets a default if not specified.
-
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
 
 Example:
