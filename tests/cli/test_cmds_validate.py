@@ -36,6 +36,8 @@ from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
 from paasta_tools.cli.cmds.validate import get_schema_validator
 from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import instance_registration_lookup
+from paasta_tools.cli.cmds.validate import is_canary
 from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
@@ -49,15 +51,18 @@ from paasta_tools.cli.cmds.validate import validate_pool_limits
 from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
+from paasta_tools.cli.cmds.validate import validate_single_replica_instances
 from paasta_tools.cli.cmds.validate import validate_smartstack
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -83,7 +88,13 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_flink_monitoring_team", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.validate_single_replica_instances", autospec=True
+)
 def test_paasta_validate_calls_everything(
+    mock_validate_single_replica_instances,
+    mock_validate_flink_monitoring_team,
     mock_validate_monitoring_file,
     mock_validate_service_name,
     mock_validate_smartstack,
@@ -114,6 +125,8 @@ def test_paasta_validate_calls_everything(
     mock_validate_smartstack.return_value = True
     mock_validate_service_name.return_value = True
     mock_validate_monitoring_file.return_value = True
+    mock_validate_flink_monitoring_team.return_value = True
+    mock_validate_single_replica_instances.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
@@ -132,6 +145,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_smartstack.called
     assert mock_validate_service_name.called
     assert mock_validate_monitoring_file.called
+    assert mock_validate_single_replica_instances.called
 
 
 @patch(
@@ -232,6 +246,225 @@ def test_validate_min_max_instances_success(
         "The number of min_instances (3) cannot be greater than the max_instances (1)."
         in output
     )
+
+
+@pytest.mark.parametrize(
+    "instances, comment, expected",
+    [
+        (3, "", True),
+        (1, "# override-single-replica (PAASTA-18934)", True),
+        (1, "# override-single-replica (DRE-1234#operator pattern)", True),
+        (1, "", False),
+        (1, "# some random comment", False),
+        (1, "# override-single-replicaXXX (PAASTA-18934)", False),
+    ],
+)
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.PaastaServiceConfigLoader",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
+def test_validate_single_replica(
+    mock_load_system_paasta_config,
+    mock_path_to_soa_dir_service,
+    mock_config_loader_cls,
+    mock_get_file_contents,
+    instances,
+    comment,
+    expected,
+):
+    mock_load_system_paasta_config.return_value.get_ecosystem_for_cluster.return_value = (
+        "prod"
+    )
+    mock_load_system_paasta_config.return_value.get_common_canary_instance_names.return_value = (
+        []
+    )
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_instance_config = mock.Mock(
+        spec=EksDeploymentConfig,
+        is_autoscaling_enabled=mock.Mock(return_value=False),
+        get_instances=mock.Mock(return_value=instances),
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_registrations=mock.Mock(return_value=["fake_service.fake_instance1"]),
+        get_config_path=mock.Mock(
+            return_value="fake_soa_dir/fake_service/eks-fake_cluster.yaml"
+        ),
+    )
+    mock_config_loader = mock_config_loader_cls.return_value
+    mock_config_loader.clusters = ["fake_cluster"]
+    mock_config_loader.instance_configs.return_value = iter([mock_instance_config])
+    mock_get_file_contents.return_value = f"""
+---
+fake_instance1:
+  instances: {instances} {comment}
+"""
+
+    assert validate_single_replica_instances("fake-service-path") is expected
+
+
+@pytest.mark.parametrize(
+    "yaml_content, expected",
+    [
+        # Template has override comment, instance inherits via merge — should pass
+        (
+            """\
+_template: &tmpl
+  instances: 1 # override-single-replica (PAASTA-18934)
+fake_instance1:
+  <<: *tmpl
+""",
+            True,
+        ),
+        # Template has no comment, instance inherits via merge — should fail
+        (
+            """\
+_template: &tmpl
+  instances: 1
+fake_instance1:
+  <<: *tmpl
+""",
+            False,
+        ),
+        # Multi-hop: instance -> template_a -> template_b (has comment) — should pass
+        (
+            """\
+_template_b: &tmpl_b
+  instances: 1 # override-single-replica (PAASTA-18934)
+_template_a: &tmpl_a
+  <<: *tmpl_b
+fake_instance1:
+  <<: *tmpl_a
+""",
+            True,
+        ),
+        # Instance explicitly sets instances: 1 with comment, even though template has none — should pass
+        (
+            """\
+_template: &tmpl
+  instances: 1
+fake_instance1:
+  <<: *tmpl
+  instances: 1 # override-single-replica (PAASTA-18934)
+""",
+            True,
+        ),
+        # Instance explicitly sets instances: 1 without comment, chain has comment two hops up — should fail
+        (
+            """\
+worker_a: &cool_template
+  instances: 1 # override-single-replica (PAASTA-18934)
+worker_b: &other_template
+  <<: *cool_template
+  instances: 2
+  mem: 12345
+fake_instance1:
+  <<: *other_template
+  instances: 1
+""",
+            False,
+        ),
+    ],
+)
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.PaastaServiceConfigLoader",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
+def test_validate_single_replica_template_inheritance(
+    mock_load_system_paasta_config,
+    mock_path_to_soa_dir_service,
+    mock_config_loader_cls,
+    mock_get_file_contents,
+    yaml_content,
+    expected,
+):
+    mock_load_system_paasta_config.return_value.get_ecosystem_for_cluster.return_value = (
+        "prod"
+    )
+    mock_load_system_paasta_config.return_value.get_common_canary_instance_names.return_value = (
+        []
+    )
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_instance_config = mock.Mock(
+        spec=EksDeploymentConfig,
+        is_autoscaling_enabled=mock.Mock(return_value=False),
+        get_instances=mock.Mock(return_value=1),
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_registrations=mock.Mock(return_value=["fake_service.fake_instance1"]),
+        get_config_path=mock.Mock(
+            return_value="fake_soa_dir/fake_service/eks-fake_cluster.yaml"
+        ),
+    )
+    mock_config_loader = mock_config_loader_cls.return_value
+    mock_config_loader.clusters = ["fake_cluster"]
+    mock_config_loader.instance_configs.return_value = iter([mock_instance_config])
+    mock_get_file_contents.return_value = yaml_content
+
+    assert validate_single_replica_instances("fake-service-path") is expected
+
+
+@pytest.mark.parametrize(
+    "registrations, other_registrations, other_instances_count, other_autoscaling, expected",
+    [
+        # Test case 1: No other registrations, should return false - not a canary
+        ([], ["fake_service.main"], 5, False, False),
+        # Test case 2: shares a registration with a service with more than 1 replica, returns true - is a canary
+        (["fake_service.main"], ["fake_service.main"], 5, False, True),
+        # Test case 3: shares a registration with a service with 1 replica, returns false - not a canary
+        (["fake_service.main"], ["fake_service.main"], 1, False, False),
+        # Test case 4: shares a registration with an autoscaled service, returns true - is a canary
+        (["fake_service.main"], ["fake_service.main"], 5, True, True),
+    ],
+)
+def test_is_canary(
+    registrations,
+    other_registrations,
+    other_instances_count,
+    other_autoscaling,
+    expected,
+):
+    mock_instance_config = mock.Mock(
+        spec=LongRunningServiceConfig,
+        get_instance=mock.Mock(return_value="fake_instance_canary"),
+        get_registrations=mock.Mock(return_value=registrations),
+    )
+    mock_other_instance_config = mock.Mock(
+        spec=LongRunningServiceConfig,
+        get_registrations=mock.Mock(return_value=other_registrations),
+        get_instance=mock.Mock(return_value="fake_instance_main"),
+        get_instances=mock.Mock(return_value=other_instances_count),
+        get_max_instances=mock.Mock(return_value=other_instances_count),
+        is_autoscaling_enabled=mock.Mock(return_value=other_autoscaling),
+    )
+    reg_lookup = instance_registration_lookup(
+        [mock_instance_config, mock_other_instance_config]
+    )
+    assert is_canary(mock_instance_config, reg_lookup) is expected
+
+
+def test_registration_lookup():
+    config_a = mock.Mock(
+        spec=LongRunningServiceConfig,
+        get_registrations=mock.Mock(
+            return_value=["fake_service.main", "fake_service.secondary"]
+        ),
+    )
+    config_b = mock.Mock(
+        spec=LongRunningServiceConfig,
+        get_registrations=mock.Mock(return_value=["fake_service.main"]),
+    )
+    config_c = mock.Mock(
+        spec=LongRunningServiceConfig,
+        get_registrations=mock.Mock(return_value=["fake_service.other"]),
+    )
+    reg_lookup = instance_registration_lookup([config_a, config_b, config_c])
+    assert reg_lookup["fake_service.main"] == [config_a, config_b]
+    assert reg_lookup["fake_service.secondary"] == [config_a]
+    assert reg_lookup["fake_service.other"] == [config_c]
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
@@ -1291,6 +1524,9 @@ def test_validate_autoscaling_configs(
             mock.Mock(
                 get_instance=mock.Mock(return_value="fake_instance1"),
                 get_instance_type=mock.Mock(return_value="kubernetes"),
+                get_config_path=mock.Mock(
+                    return_value="fake_soa_dir/fake_service/eks-fake_cluster.yaml"
+                ),
                 is_autoscaling_enabled=mock.Mock(return_value=True),
                 get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
                 get_registrations=mock.Mock(return_value=registrations),
@@ -1353,6 +1589,9 @@ def test_validate_cpu_autotune_override(
             mock.Mock(
                 get_instance=mock.Mock(return_value="fake_instance1"),
                 get_instance_type=mock.Mock(return_value=instance_type),
+                get_config_path=mock.Mock(
+                    return_value=f"fake_soa_dir/fake_service/{instance_type}-fake_cluster.yaml"
+                ),
                 is_autoscaling_enabled=mock.Mock(return_value=True),
                 get_autoscaling_params=mock.Mock(
                     return_value={
@@ -1466,6 +1705,9 @@ fake_instance1:
         return_value=mock.Mock(
             get_instance=mock.Mock(return_value="fake_instance1"),
             get_instance_type=mock.Mock(return_value=instance_type),
+            get_config_path=mock.Mock(
+                return_value=f"fake_soa_dir/fake_service/{instance_type}-fake_cluster.yaml"
+            ),
         ),
     ), mock.patch(
         "paasta_tools.cli.cmds.validate.list_all_instances_for_service",
