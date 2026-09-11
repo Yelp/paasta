@@ -29,7 +29,7 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.10-dev \
+        python3.11-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -45,7 +45,7 @@ RUN KUBE_ARCH=$(dpkg --print-architecture) && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.10 --no-download
+RUN virtualenv /venv -ppython3.11 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install --only-binary=grpcio -r requirements.txt
 ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin

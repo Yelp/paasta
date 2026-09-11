@@ -249,7 +249,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -265,7 +265,7 @@ def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck)
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -281,7 +281,7 @@ def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -298,7 +298,7 @@ def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -315,7 +315,7 @@ def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -334,7 +334,7 @@ def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
@@ -1646,7 +1646,7 @@ def test_run_docker_container_with_user_specified_port(
     assert mock_execlpe.call_count == 1
 
 
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 def test_simulate_healthcheck_on_service_disabled(mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     mock_service_manifest = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
@@ -1663,7 +1663,7 @@ def test_simulate_healthcheck_on_service_disabled(mock_sleep):
     )
 
 
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
 )
@@ -1692,7 +1692,7 @@ def test_simulate_healthcheck_on_service_enabled_success(
     )
 
 
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
 )
@@ -1724,7 +1724,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(
     assert actual is False
 
 
-@mock.patch("time.sleep", autospec=True)
+@mock.patch("time.sleep", autospec=None)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
 )
@@ -1763,8 +1763,8 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(
     assert mock_sleep.call_count == 4
 
 
-@mock.patch("time.sleep", autospec=True)
-@mock.patch("time.time", autospec=True)
+@mock.patch("time.sleep", autospec=None)
+@mock.patch("time.time", autospec=None)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
     autospec=True,
@@ -1799,8 +1799,8 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     assert mock_run_healthcheck_on_container.call_count == 1
 
 
-@mock.patch("time.sleep", autospec=True)
-@mock.patch("time.time", autospec=True)
+@mock.patch("time.sleep", autospec=None)
+@mock.patch("time.time", autospec=None)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
 )
