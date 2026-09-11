@@ -745,6 +745,11 @@ Each Tron **job** configuration MAY specify the following options:
 
   * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
+  * ``max_runtime``: The maximum duration of the entire JobRun. When this
+    duration expires, Tron stops all active actions in the job. This limit is
+    independent of any action-level ``max_runtime`` values, and whichever limit
+    expires first stops the applicable work.
+
   * ``cost_owner``: A string identifying the team responsible for the cost of this
     job. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost
     attribution. Should be in kebab-case and match a canonical owner name from the
@@ -779,6 +784,12 @@ Each Tron **action** of a job MAY specify the following:
   * ``command``: The command to run. If the action is configured with ``executor: paasta`` (default),
     then the command should be something available in the docker container (it should NOT
     start with ``paasta local-run``).
+
+  * ``max_runtime``: The maximum duration of one ActionRun attempt, including a
+    cleanup action attempt. When this duration expires, Tron terminates only that
+    attempt and applies the action's normal retry behavior. Automatic and manual
+    retries each receive a fresh full duration. This limit is independent of the
+    job-level ``max_runtime``. Spark retains its existing default command timeout.
 
   * ``ssm_secrets``: A list of configurations for syncing secrets from the AWS SSM Parameter Store to the service as environment variables. Each entry requires:
 
