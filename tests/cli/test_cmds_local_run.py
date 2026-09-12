@@ -1980,7 +1980,6 @@ def test_volumes_are_deduped(mock_exists):
         autospec=True,
         return_value="kubernetes",
     ):
-
         mock_get_instance_config.return_value = InstanceConfig(
             cluster="cluster",
             instance="instance",
@@ -2037,7 +2036,6 @@ def test_missing_volumes_skipped(mock_exists):
         autospec=True,
         return_value="kubernetes",
     ):
-
         mock_get_instance_config.return_value = InstanceConfig(
             cluster="cluster",
             instance="instance",

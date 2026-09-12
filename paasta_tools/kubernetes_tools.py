@@ -569,7 +569,7 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
     if len(name) > limit:
         digest = hashlib.md5(name.encode()).digest()
         hashed = base64.b32encode(digest).decode().replace("=", "").lower()
-        return f"{name[:(limit-suffix-1)]}-{hashed[:suffix]}"
+        return f"{name[: (limit - suffix - 1)]}-{hashed[:suffix]}"
     else:
         return name
 
@@ -621,8 +621,8 @@ class KubeClient:
         )
 
         models.V1PodDisruptionBudgetStatus.disrupted_pods = property(
-            fget=lambda *args, **kwargs: models.V1PodDisruptionBudgetStatus.disrupted_pods(
-                *args, **kwargs
+            fget=lambda *args, **kwargs: (
+                models.V1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs)
             ),
             fset=_set_disrupted_pods,
         )
@@ -679,7 +679,7 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, NodeSelectorConfig]
+    raw_selectors: Mapping[str, NodeSelectorConfig],
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.
@@ -2324,15 +2324,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
             prometheus_shard = self.get_prometheus_shard()
             if prometheus_shard:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_shard"
-                ] = prometheus_shard
+                complete_config.metadata.labels["paasta.yelp.com/prometheus_shard"] = (
+                    prometheus_shard
+                )
 
             image_version = self.get_image_version()
             if image_version is not None:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/image_version"
-                ] = image_version
+                complete_config.metadata.labels["paasta.yelp.com/image_version"] = (
+                    image_version
+                )
 
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
@@ -2472,9 +2472,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config
         )
         if termination_grace_period is not None:
-            pod_spec_kwargs[
-                "termination_grace_period_seconds"
-            ] = termination_grace_period
+            pod_spec_kwargs["termination_grace_period_seconds"] = (
+                termination_grace_period
+            )
 
         fs_group = self.get_fs_group()
 
@@ -2501,9 +2501,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             security_context_kwargs: Dict[str, Any] = {"fs_group": fs_group}
             fs_group_change_policy = self.get_fs_group_change_policy()
             if fs_group_change_policy is not None:
-                security_context_kwargs[
-                    "fs_group_change_policy"
-                ] = fs_group_change_policy
+                security_context_kwargs["fs_group_change_policy"] = (
+                    fs_group_change_policy
+                )
             pod_spec_kwargs["security_context"] = V1PodSecurityContext(
                 **security_context_kwargs
             )
@@ -4345,7 +4345,8 @@ def load_custom_resource_definitions(
         kube_kind = KubeKind(**custom_resource_dict.pop("kube_kind"))  # type: ignore
         custom_resources.append(
             CustomResourceDefinition(  # type: ignore
-                kube_kind=kube_kind, **custom_resource_dict  # type: ignore
+                kube_kind=kube_kind,
+                **custom_resource_dict,  # type: ignore
             )
         )
     return custom_resources
@@ -4622,13 +4623,12 @@ def update_crds(
                 existing_crd = crd
                 break
         try:
-
             apiextensions = kube_client.apiextensions
 
             if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
+                desired_crd.metadata["resourceVersion"] = (
+                    existing_crd.metadata.resource_version
+                )
 
                 apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd

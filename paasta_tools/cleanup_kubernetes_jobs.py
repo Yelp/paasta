@@ -33,6 +33,7 @@ Command line options:
 - -c, --cluster: Specifies the paasta cluster to check
 - --eks: This flag cleans up only k8 services that shouldn't be running on EKS leaving instances from eks-*.yaml files
 """
+
 import argparse
 import logging
 import sys
@@ -293,8 +294,7 @@ def parse_args(argv):
         "--kill-threshold",
         dest="kill_threshold",
         default=0.5,
-        help="The decimal fraction of apps we think is "
-        "sane to kill when this job runs",
+        help="The decimal fraction of apps we think is sane to kill when this job runs",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
@@ -305,7 +305,7 @@ def parse_args(argv):
         action="store_true",
         dest="force",
         default=False,
-        help="Force the cleanup if we are above the " "kill_threshold",
+        help="Force the cleanup if we are above the kill_threshold",
     )
     parser.add_argument(
         "--eks",

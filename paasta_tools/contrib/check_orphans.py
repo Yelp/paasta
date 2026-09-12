@@ -173,7 +173,7 @@ def read_one_nerve_file(nerve_config: str) -> Set[InstanceTuple]:
 
 
 def read_nerve_files(
-    nerve_configs: Dict[str, Optional[str]]
+    nerve_configs: Dict[str, Optional[str]],
 ) -> Tuple[Set[InstanceTuple], Set[str]]:
     instance_set: Set[InstanceTuple] = set()
     not_found_hosts: Set[str] = set()

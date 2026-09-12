@@ -3,12 +3,10 @@ coverage
 # See https://code.visualstudio.com/docs/python/debugging#_local-script-debugging
 debugpy
 docutils
-flake8
 freezegun
 hypothesis
 mypy
 path.py
-pep8
 pre-commit
 pyfakefs
 pytest

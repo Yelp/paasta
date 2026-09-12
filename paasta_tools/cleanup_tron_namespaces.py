@@ -22,6 +22,7 @@ defined in SOA configs.
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - --dry-run: Print namespaces to be deleted instead of deleting them
 """
+
 import argparse
 import sys
 

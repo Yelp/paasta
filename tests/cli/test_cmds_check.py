@@ -208,7 +208,7 @@ def test_check_sensu_check_fail(mock_is_file_in_dir, capfd):
     assert output == expected_output
 
 
-@patch("service_configuration_lib." "read_service_configuration", autospec=True)
+@patch("service_configuration_lib.read_service_configuration", autospec=True)
 @patch("paasta_tools.cli.cmds.check.is_file_in_dir", autospec=True)
 def test_check_smartstack_check_pass(
     mock_is_file_in_dir, mock_read_service_info, capfd
@@ -231,7 +231,7 @@ def test_check_smartstack_check_pass(
     assert output == expected_output
 
 
-@patch("service_configuration_lib." "read_service_configuration", autospec=True)
+@patch("service_configuration_lib.read_service_configuration", autospec=True)
 @patch("paasta_tools.cli.cmds.check.is_file_in_dir", autospec=True)
 def test_check_smartstack_check_missing_port(
     mock_is_file_in_dir, mock_read_service_info, capfd
@@ -253,7 +253,7 @@ def test_check_smartstack_check_missing_port(
     assert output == expected_output
 
 
-@patch("paasta_tools.utils." "read_service_configuration", autospec=True)
+@patch("paasta_tools.utils.read_service_configuration", autospec=True)
 @patch("paasta_tools.cli.cmds.check.is_file_in_dir", autospec=True)
 def test_check_smartstack_check_missing_instance(
     mock_is_file_in_dir, mock_read_service_info, capfd
@@ -445,12 +445,16 @@ def test_get_deploy_groups_used_by_framework(
         ("unused", "instance1"),
         ("unused", "instance2"),
     ]
-    mock_get_instance_config.side_effect = lambda service, instance, cluster, soa_dir, load_deployments, instance_type: KubernetesDeploymentConfig(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        config_dict={},
-        branch_dict=None,
+    mock_get_instance_config.side_effect = (
+        lambda service, instance, cluster, soa_dir, load_deployments, instance_type: (
+            KubernetesDeploymentConfig(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                config_dict={},
+                branch_dict=None,
+            )
+        )
     )
     expected = {"cluster1.instance1", "cluster1.instance2"}
     actual = get_deploy_groups_used_by_framework(

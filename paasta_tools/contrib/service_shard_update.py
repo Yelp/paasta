@@ -347,9 +347,9 @@ def main(args):
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
             if args.timeout_server_ms:
-                smartstack_file[args.shard_name][
-                    "timeout_server_ms"
-                ] = args.timeout_server_ms
+                smartstack_file[args.shard_name]["timeout_server_ms"] = (
+                    args.timeout_server_ms
+                )
             updater.write_configs(args.service, "smartstack", smartstack_file)
         else:
             log.info(f"{args.shard_name} is in smartstack config already, skipping.")

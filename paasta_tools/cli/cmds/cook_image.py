@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains methods used by the paasta client to build a docker image."""
+
 import argparse
 import os
 import sys

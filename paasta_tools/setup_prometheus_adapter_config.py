@@ -14,6 +14,7 @@
 """
 Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
+
 import argparse
 import logging
 import sys

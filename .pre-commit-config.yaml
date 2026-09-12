@@ -12,7 +12,6 @@ repos:
     -   id: check-json
     -   id: check-yaml
         exclude: /template/
-    -   id: debug-statements
     -   id: name-tests-test
         args: [--django]
     -   id: requirements-txt-fixer
@@ -25,29 +24,14 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
--   repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.2
     hooks:
-    -   id: isort
+    -   id: ruff
+        args: [--fix]
         exclude: ^paasta_tools/paastaapi
--   repo: https://github.com/asottile/pyupgrade
-    rev: v1.12.0
-    hooks:
-    -   id: pyupgrade
-        args: [--py36-plus]
+    -   id: ruff-format
         exclude: ^paasta_tools/paastaapi
--   repo: https://github.com/psf/black
-    rev: 22.3.0
-    hooks:
-    -   id: black
-        args: ['--target-version', 'py310']
-        exclude: ^paasta_tools/paastaapi
--   repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
-    hooks:
-    -   id: flake8
-        args: ['--ignore', 'E231']
-        exclude: ^docs/source/conf.py|paasta_tools/paastaapi.*$
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1
     hooks:

@@ -20,6 +20,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys
@@ -98,7 +99,7 @@ def cleanup_all_custom_resources(
         if crd.kube_kind.singular not in cluster_crds:
             # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
             # and not `crd.names.singular`
-            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
+            log.warning(f"CRD {crd.kube_kind.singular} not found in {cluster}")
             continue
         config_dicts = load_all_configs(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
