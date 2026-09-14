@@ -386,7 +386,11 @@ def _build_default_error_alert_filter(
     (with an optional .{endpoint} suffix for per-endpoint alerts).
     NOTE: server_namespace above is the same as the PaaSTA mesh registration
     """
-    kube_clusters = load_system_paasta_config().get_kube_clusters()
+    system_paasta_config = load_system_paasta_config()
+    kube_clusters = system_paasta_config.get_kube_clusters()
+    prometheus_shard_region_overrides = (
+        system_paasta_config.get_prometheus_shard_region_overrides()
+    )
 
     alertmanager_instances: Set[str] = set()
     for cluster, configs in instance_configs_per_cluster.items():
@@ -404,10 +408,7 @@ def _build_default_error_alert_filter(
                 "skipping default error alert filter for this cluster"
             )
             continue
-        if (
-            cluster == "norcal-devc"
-        ):  # PAASTA-18976 - uswest1-devc does not have a prometheus-otel shard
-            region = "uswest2-devc"
+        region = prometheus_shard_region_overrides.get(region, region)
         for config in configs:
             # we could also use get_nerve_namespace(), but that doesn't support
             # instances with multiple registrations
