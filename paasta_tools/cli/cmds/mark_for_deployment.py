@@ -404,6 +404,10 @@ def _build_default_error_alert_filter(
                 "skipping default error alert filter for this cluster"
             )
             continue
+        if (
+            cluster == "norcal-devc"
+        ):  # PAASTA-18976 - uswest1-devc does not have a prometheus-otel shard
+            region = "uswest2-devc"
         for config in configs:
             # we could also use get_nerve_namespace(), but that doesn't support
             # instances with multiple registrations
