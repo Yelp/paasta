@@ -388,7 +388,7 @@ def _build_default_error_alert_filter(
     """
     system_paasta_config = load_system_paasta_config()
     kube_clusters = system_paasta_config.get_kube_clusters()
-    prometheus_shard_region_overrides = (
+    autorollback_prometheus_shard_region_overrides = (
         system_paasta_config.get_autorollback_prometheus_shard_region_overrides()
     )
 
@@ -408,7 +408,7 @@ def _build_default_error_alert_filter(
                 "skipping default error alert filter for this cluster"
             )
             continue
-        region = prometheus_shard_region_overrides.get(region, region)
+        region = autorollback_prometheus_shard_region_overrides.get(region, region)
         for config in configs:
             # we could also use get_nerve_namespace(), but that doesn't support
             # instances with multiple registrations
