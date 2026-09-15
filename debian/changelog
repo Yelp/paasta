@@ -1,3 +1,11 @@
+paasta-tools (1.60.9) jammy; urgency=medium
+
+  * 1.60.9 tagged with 'make release'
+    Commit: Merge pull request #4389 from Yelp/u/abubakarrj/PAASTA-18976
+    PAASTA-18976: Update alerting region for norcal-devc cluster
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Tue, 15 Sep 2026 05:20:01 -0700
+
 paasta-tools (1.60.8) jammy; urgency=medium
 
   * 1.60.8 tagged with 'make release'
