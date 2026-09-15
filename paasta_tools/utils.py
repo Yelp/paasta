@@ -1997,6 +1997,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     alertmanager_url: str
     enable_alertmanager_rollback: bool
     alertmanager_poll_interval_s: int
+    autorollback_prometheus_shard_region_overrides: Dict[str, str]
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2708,6 +2709,11 @@ class SystemPaastaConfig:
 
     def get_alertmanager_poll_interval_s(self) -> int:
         return self.config_dict.get("alertmanager_poll_interval_s", 30)
+
+    def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
+        return self.config_dict.get(
+            "autorollback_prometheus_shard_region_overrides", {}
+        )
 
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
