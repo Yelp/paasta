@@ -389,7 +389,7 @@ def _build_default_error_alert_filter(
     system_paasta_config = load_system_paasta_config()
     kube_clusters = system_paasta_config.get_kube_clusters()
     prometheus_shard_region_overrides = (
-        system_paasta_config.get_prometheus_shard_region_overrides()
+        system_paasta_config.get_autorollback_prometheus_shard_region_overrides()
     )
 
     alertmanager_instances: Set[str] = set()
