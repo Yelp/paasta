@@ -43,10 +43,10 @@ def test_timeout_expires():
         return_value=False,
     ), mock.patch(
         "paasta_tools.cli.cmds.verify_image_exists.time.sleep",
-        autospec=None,
+        autospec=True,
     ), mock.patch(
         "paasta_tools.cli.cmds.verify_image_exists.time.time",
-        autospec=None,
+        autospec=True,
         # slightly brittle, but oh well.
         # first call is for setting the start_time, second one
         # is after the mocked sleep and is past the timeout
