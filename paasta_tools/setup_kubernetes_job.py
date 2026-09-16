@@ -20,6 +20,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import json
 import logging

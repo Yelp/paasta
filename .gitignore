@@ -42,6 +42,7 @@ paasta_itests/fake_etc_paasta/chronos.json
 paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/gopath
 .mypy_cache/
+.ruff_cache/
 .pytest_cache/
 .hypothesis/
 debian/.debhelper

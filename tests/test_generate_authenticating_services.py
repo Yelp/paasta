@@ -26,30 +26,42 @@ def mock_soa_configs(tmpdir):
     service_a = soa_dir / "service_a"
     service_a.mkdir()
     with (service_a / "authorization.yaml").open("w") as f:
-        yaml.safe_dump(
-            {
-                "authorization": {
-                    "rules": [
-                        {"identity_groups": {"services": ["service_b", "service_c"]}},
-                        {"identity_groups": {"services": ["service_d"]}},
-                    ],
+        (
+            yaml.safe_dump(
+                {
+                    "authorization": {
+                        "rules": [
+                            {
+                                "identity_groups": {
+                                    "services": ["service_b", "service_c"]
+                                }
+                            },
+                            {"identity_groups": {"services": ["service_d"]}},
+                        ],
+                    },
                 },
-            },
-            f,
-        ),
+                f,
+            ),
+        )
     service_b = soa_dir / "service_b"
     service_b.mkdir()
     with (service_b / "authorization.yaml").open("w") as f:
-        yaml.safe_dump(
-            {
-                "authorization": {
-                    "rules": [
-                        {"identity_groups": {"services": ["service_a", "service_d"]}},
-                    ],
+        (
+            yaml.safe_dump(
+                {
+                    "authorization": {
+                        "rules": [
+                            {
+                                "identity_groups": {
+                                    "services": ["service_a", "service_d"]
+                                }
+                            },
+                        ],
+                    },
                 },
-            },
-            f,
-        ),
+                f,
+            ),
+        )
     with patch(
         "paasta_tools.generate_authenticating_services.DEFAULT_SOA_DIR", str(soa_dir)
     ):

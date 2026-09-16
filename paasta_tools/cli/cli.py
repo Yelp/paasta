@@ -14,6 +14,7 @@
 # limitations under the License.
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
+
 import argparse
 import logging
 import os
@@ -208,7 +209,7 @@ def get_argparser(commands: list[str] | None = None) -> argparse.ArgumentParser:
             (command, (subparsers.add_parser, [command], dict(help="")))
         )
 
-    for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):
+    for _, (fn, args, kwds) in sorted(command_choices, key=lambda e: e[0]):
         fn(*args, **kwds)
 
     return parser

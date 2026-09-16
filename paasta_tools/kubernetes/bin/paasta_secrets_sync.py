@@ -151,7 +151,7 @@ def parse_args() -> argparse.Namespace:
 
 @contextlib.contextmanager
 def set_temporary_environment_variables(
-    environ: Mapping[str, str]
+    environ: Mapping[str, str],
 ) -> Generator[None, None, None]:
     """
     *Note the return value means "yields None, takes None, and when finished, returns None"*

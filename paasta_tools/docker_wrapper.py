@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # flake8: noqa: E402
-""" Meant to be used by mesos-slave instead of the /usr/bin/docker executable
+"""Meant to be used by mesos-slave instead of the /usr/bin/docker executable
 directly This will parse the CLI arguments intended for docker, extract
 environment variable settings related to the actual node hostname and mesos
 task ID, and use those as an additional --hostname argument when calling the
@@ -10,6 +10,7 @@ If the environment variables are unspecified, or if --hostname is already
 specified, this does not change any arguments and just directly calls docker
 as-is.
 """
+
 import os
 import re
 import socket
@@ -79,7 +80,6 @@ def can_add_hostname(args):
         return False
 
     for index, arg in enumerate(args):
-
         # Check for --hostname and variants
         if arg == "-h":
             return False
@@ -159,7 +159,7 @@ def main(argv=None):
     if mesos_task_id and can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         hostname_task_id = generate_hostname_task_id(hostname, mesos_task_id)
-        argv = add_argument(argv, f"--hostname={hostname_task_id }")
+        argv = add_argument(argv, f"--hostname={hostname_task_id}")
     elif can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         argv = add_argument(argv, f"--hostname={hostname}")

@@ -1112,9 +1112,7 @@ async def test_mesh_status_retry_on_timeout_then_success():
 
         mock_settings = mock.Mock()
         mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
-        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
-            "http://{host}:{port}/status"
-        )
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = "http://{host}:{port}/status"
 
         pods_task = wrap_value_in_task([])
 
@@ -1169,9 +1167,7 @@ async def test_mesh_status_all_retries_exhausted():
 
         mock_settings = mock.Mock()
         mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
-        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
-            "http://{host}:{port}/status"
-        )
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = "http://{host}:{port}/status"
 
         pods_task = wrap_value_in_task([])
 
@@ -1227,9 +1223,7 @@ async def test_mesh_status_retry_switches_hosts():
 
         mock_settings = mock.Mock()
         mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
-        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
-            "http://{host}:{port}/status"
-        )
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = "http://{host}:{port}/status"
 
         pods_task = wrap_value_in_task([])
 
@@ -1281,9 +1275,7 @@ async def test_mesh_status_no_timeout_success():
 
         mock_settings = mock.Mock()
         mock_settings.system_paasta_config.get_synapse_port.return_value = 3212
-        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = (
-            "http://{host}:{port}/status"
-        )
+        mock_settings.system_paasta_config.get_synapse_haproxy_url_format.return_value = "http://{host}:{port}/status"
 
         pods_task = wrap_value_in_task([])
 
@@ -1343,9 +1335,7 @@ async def test_mesh_status_envoy_timeout_retry():
 
         mock_settings = mock.Mock()
         mock_settings.system_paasta_config.get_envoy_admin_port.return_value = 9901
-        mock_settings.system_paasta_config.get_envoy_admin_endpoint_format.return_value = (
-            "http://{host}:{port}/clusters"
-        )
+        mock_settings.system_paasta_config.get_envoy_admin_endpoint_format.return_value = "http://{host}:{port}/clusters"
 
         pods_task = wrap_value_in_task([])
 

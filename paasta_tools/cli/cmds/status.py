@@ -253,7 +253,7 @@ def missing_deployments_message(
     service: str,
 ) -> str:
     message = (
-        f"{service} has no deployments in deployments.json yet.\n  " "Has Jenkins run?"
+        f"{service} has no deployments in deployments.json yet.\n  Has Jenkins run?"
     )
     return message
 
@@ -2010,7 +2010,7 @@ def report_invalid_whitelist_values(
             bogus_entries.append(entry)
     if len(bogus_entries) > 0:
         return_string = (
-            "\n" "Warning: This service does not have any %s matching these names:\n%s"
+            "\nWarning: This service does not have any %s matching these names:\n%s"
         ) % (item_type, ",".join(bogus_entries))
     return return_string
 

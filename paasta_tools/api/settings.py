@@ -14,6 +14,7 @@
 """
 Settings of the paasta-api server.
 """
+
 import os
 from typing import Optional
 

@@ -255,8 +255,9 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_registrations(self) -> List[str]:
         for registration in self.get_invalid_registrations():
             log.error(
-                "Provided registration {} for service "
-                "{} is invalid".format(registration, self.service)
+                "Provided registration {} for service {} is invalid".format(
+                    registration, self.service
+                )
             )
 
         registrations = self.config_dict.get("registrations", [])

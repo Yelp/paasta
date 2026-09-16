@@ -19,6 +19,7 @@ Command line options:
 
 - -v, --verbose: Verbose output
 """
+
 import argparse
 import logging
 import sys

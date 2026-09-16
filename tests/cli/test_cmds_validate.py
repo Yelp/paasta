@@ -860,8 +860,8 @@ def test_instance_validate_schema_sa_and_iam_role(
 ):
     instance_content = f"""
 test_instance:
-  {"iam_role: "+iam_role if iam_role else ""}
-  {"service_account_name: "+service_account_name if service_account_name else ""}
+  {"iam_role: " + iam_role if iam_role else ""}
+  {"service_account_name: " + service_account_name if service_account_name else ""}
 """
     with patch(
         "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
@@ -1000,8 +1000,8 @@ test_job:
   schedule: "daily 04:00:00"
   actions:
     first:
-      {"iam_role: "+iam_role if iam_role else ""}
-      {"service_account_name: "+service_account_name if service_account_name else ""}
+      {"iam_role: " + iam_role if iam_role else ""}
+      {"service_account_name: " + service_account_name if service_account_name else ""}
       command: echo hello world
 """
     with patch(
@@ -1201,9 +1201,7 @@ def test_validate_unique_service_name_success(
     mock_get_service_instance_list,
     mock_load_system_paasta_config,
 ):
-    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = (
-        []
-    )
+    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = []
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
     mock_get_service_instance_list.return_value = [
@@ -1223,9 +1221,7 @@ def test_validate_unique_service_name_failure(
     mock_load_system_paasta_config,
     capsys,
 ):
-    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = (
-        []
-    )
+    mock_load_system_paasta_config.return_value.get_skip_unique_instance_name_validation_services.return_value = []
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
     mock_get_service_instance_list.return_value = [
@@ -2119,7 +2115,10 @@ def test_validate_flink_monitoring_team_valid():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ), mock.patch(
@@ -2144,7 +2143,10 @@ def test_validate_flink_monitoring_team_invalid_team():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ), mock.patch(
@@ -2169,7 +2171,10 @@ def test_validate_flink_monitoring_team_missing_team():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ):
@@ -2188,7 +2193,10 @@ def test_validate_flink_monitoring_team_missing_monitoring():
         "paasta_tools.cli.cmds.validate.glob",
         side_effect=[["flinkeks-pnw-prod.yaml"], []],
         autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+    ), mock.patch(
+        "builtins.open",
+        mock.mock_open(read_data=""),
+    ), mock.patch(
         "paasta_tools.cli.cmds.validate.yaml.safe_load",
         return_value=mock_config,
     ):

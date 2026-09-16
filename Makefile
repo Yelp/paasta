@@ -98,6 +98,8 @@ clean:
 	-find . -name '*.pyc' -delete
 	-find . -name '__pycache__' -delete
 	-rm -rf .tox
+	-rm -rf .mypy_cache
+	-rm -rf .ruff_cache
 	-rm -rf .paasta
 	-make -C k8s_itests clean
 

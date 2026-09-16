@@ -20,6 +20,7 @@ Reads from the soa_dir /nail/etc/services by default.
 The script will load the service configuration file, generate a Tron configuration
 file for it, and send the updated file to Tron.
 """
+
 import argparse
 import logging
 import sys

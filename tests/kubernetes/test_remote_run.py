@@ -355,9 +355,7 @@ def test_find_job_pod(mock_sleep):
 
 def test_create_temp_exec_token():
     mock_client = MagicMock()
-    mock_client.core.create_namespaced_service_account_token.return_value.status.token = (
-        "datoken"
-    )
+    mock_client.core.create_namespaced_service_account_token.return_value.status.token = "datoken"
     assert create_temp_exec_token(mock_client, "namespace", "somesa") == "datoken"
     mock_client.core.create_namespaced_service_account_token.assert_called_once_with(
         "somesa",

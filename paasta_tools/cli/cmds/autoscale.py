@@ -71,17 +71,21 @@ def add_subparser(subparsers):
     override_group.add_argument(
         "--set-min",
         help="Set the minimum number of replicas (must be >= 1). Requires --for parameter.",
-        type=lambda x: int(x)
-        if int(x) >= 1
-        else autoscale_parser.error("Minimum instances must be >= 1"),
+        type=lambda x: (
+            int(x)
+            if int(x) >= 1
+            else autoscale_parser.error("Minimum instances must be >= 1")
+        ),
         default=None,
     )
     override_group.add_argument(
         "--set-max",
         help="Set the maximum number of replicas (must be >= 1). Requires --for parameter.",
-        type=lambda x: int(x)
-        if int(x) >= 1
-        else autoscale_parser.error("Maximum instances must be >= 1"),
+        type=lambda x: (
+            int(x)
+            if int(x) >= 1
+            else autoscale_parser.error("Maximum instances must be >= 1")
+        ),
         default=None,
     )
     override_group.add_argument(

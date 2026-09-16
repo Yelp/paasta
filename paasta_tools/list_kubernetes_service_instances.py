@@ -26,6 +26,7 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 """
+
 import argparse
 import random
 import sys
