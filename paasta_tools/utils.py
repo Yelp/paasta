@@ -460,6 +460,15 @@ class InstanceConfig:
             "service": self.service,
         }
 
+    def get_config_path(self) -> str:
+        instance_type = self.get_instance_type()
+        assert instance_type is not None
+        return os.path.join(
+            self.soa_dir,
+            self.service,
+            f"{instance_type}-{self.cluster}.yaml",
+        )
+
     def get_cluster(self) -> str:
         return self.cluster
 
@@ -491,6 +500,9 @@ class InstanceConfig:
         return get_paasta_branch(
             cluster=self.get_cluster(), instance=self.get_instance()
         )
+
+    def get_service_override(self) -> Optional[str]:
+        return self.config_dict.get("service", None)
 
     def get_deploy_group(self) -> str:
         return self.config_dict.get("deploy_group", self.get_branch())
@@ -1985,6 +1997,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     alertmanager_url: str
     enable_alertmanager_rollback: bool
     alertmanager_poll_interval_s: int
+    autorollback_prometheus_shard_region_overrides: Dict[str, str]
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2033,6 +2046,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     skip_unique_instance_name_validation: List[str]
     skip_check_monitoring_file_exists: List[str]
+    common_canary_instance_names: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2054,7 +2068,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
-    use_raw_ksm_queries: bool
 
 
 def load_system_paasta_config(
@@ -2698,6 +2711,11 @@ class SystemPaastaConfig:
     def get_alertmanager_poll_interval_s(self) -> int:
         return self.config_dict.get("alertmanager_poll_interval_s", 30)
 
+    def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
+        return self.config_dict.get(
+            "autorollback_prometheus_shard_region_overrides", {}
+        )
+
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
 
@@ -2735,6 +2753,9 @@ class SystemPaastaConfig:
 
     def get_skip_unique_instance_name_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_unique_instance_name_validation", [])
+
+    def get_common_canary_instance_names(self) -> List[str]:
+        return self.config_dict.get("common_canary_instance_names", ["canary"])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
@@ -2822,9 +2843,6 @@ class SystemPaastaConfig:
 
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
-
-    def get_use_raw_ksm_queries(self) -> bool:
-        return self.config_dict.get("use_raw_ksm_queries", False)
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
