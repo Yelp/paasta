@@ -153,9 +153,7 @@ def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log_audit, moc
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
-def test_mark_for_deployment_sad(
-    mock_create_remote_refs, mock__log_audit, mock__logmock_load_system_paasta_config
-):
+def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock__log):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
     mock_load_system_paasta_config.return_value = config_mock
