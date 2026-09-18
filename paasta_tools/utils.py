@@ -2068,6 +2068,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
+    reconciled_iam_service_account_namespaces: List[str]
 
 
 def load_system_paasta_config(
@@ -2843,6 +2844,9 @@ class SystemPaastaConfig:
 
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
+
+    def get_reconciled_iam_service_account_namespaces(self) -> List[str]:
+        return self.config_dict.get("reconciled_iam_service_account_namespaces", [])
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
