@@ -37,7 +37,7 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.10-dev \
+        python3.11-dev \
         python3-pip \
         tox \
         wget \
@@ -45,8 +45,8 @@ RUN apt-get update > /dev/null && \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3.10 -m pip install --upgrade pip==20.0.2
-RUN pip3.10 install virtualenv==20.29.3
+RUN python3.11 -m pip install --upgrade pip==20.0.2
+RUN pip3.11 install virtualenv==20.29.3
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

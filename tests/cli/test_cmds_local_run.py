@@ -167,7 +167,7 @@ def test_perform_cmd_healthcheck_success(mock_exec_container):
     )
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
+@mock.patch("socket.socket.connect_ex", autospec=True)
 def test_perform_tcp_healthcheck_success(mock_socket_connect):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
@@ -176,7 +176,7 @@ def test_perform_tcp_healthcheck_success(mock_socket_connect):
     mock_socket_connect.assert_called_with(("fakehost", 1234))
 
 
-@mock.patch("socket.socket.connect_ex", autospec=None)
+@mock.patch("socket.socket.connect_ex", autospec=True)
 def test_perform_tcp_healthcheck_failure(mock_socket_connect):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
