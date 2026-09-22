@@ -1941,3 +1941,51 @@ def test_validate_flink_monitoring_team_missing_monitoring():
         return_value=mock_config,
     ):
         assert validate_flink_monitoring_team("/fake/service/path") is False
+
+
+@pytest.mark.parametrize("job_monitoring", [None, "", {}, {"page": False}])
+def test_validate_flink_monitoring_team_inherits_from_instance(job_monitoring):
+    """A job need not restate the team when the instance declares it."""
+    job: dict = {} if job_monitoring is None else {"monitoring": job_monitoring}
+    mock_config = {
+        "my_instance": {
+            "monitoring": {"team": "streamhouse", "page": False},
+            "jobs": {"my_job": job},
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
+        return_value={"pages_slack_channel": "#streamhouse"},
+        autospec=True,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is True
+
+
+def test_validate_flink_monitoring_team_job_team_still_checked():
+    """An invalid team on the job is caught even when the instance team is valid."""
+    mock_config = {
+        "my_instance": {
+            "monitoring": {"team": "streamhouse"},
+            "jobs": {"my_job": {"monitoring": {"team": "dre-analytics"}}},
+        }
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.glob",
+        side_effect=[["flinkeks-pnw-prod.yaml"], []],
+        autospec=True,
+    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
+        "paasta_tools.cli.cmds.validate.yaml.safe_load",
+        return_value=mock_config,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
+        return_value={},
+        autospec=True,
+    ):
+        assert validate_flink_monitoring_team("/fake/service/path") is False

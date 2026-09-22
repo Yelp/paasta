@@ -1273,11 +1273,27 @@ def validate_smartstack(service_path: str) -> bool:
     return True
 
 
-def validate_flink_monitoring_team(service_path: str) -> bool:
-    """Check that every Flink job's monitoring.team is a valid Sensu team.
+def _parse_flink_monitoring(value: Any) -> Optional[Dict]:
+    """Parse a Flink monitoring block, which may be a mapping or a YAML string."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = yaml.safe_load(value)
+        except Exception:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
 
-    Reads all flink-*.yaml and flinkeks-*.yaml files in service_path and
-    validates the team field inside each job's monitoring block.
+
+def validate_flink_monitoring_team(service_path: str) -> bool:
+    """Check that every Flink job resolves to a valid Sensu team.
+
+    Reads all flink-*.yaml and flinkeks-*.yaml files in service_path. The team may
+    be declared on the job's own monitoring block or on the instance's, since a job
+    inherits the instance block for any field it does not set. flink-metrics-exporter
+    resolves it the same way at scrape time, so requiring the job to restate it
+    would reject configs that are correctly routed.
 
     :param service_path: path to location of configuration files
     """
@@ -1307,41 +1323,25 @@ def validate_flink_monitoring_team(service_path: str) -> bool:
             if not isinstance(jobs, dict):
                 continue
 
+            instance_monitoring = (
+                _parse_flink_monitoring(instance_config.get("monitoring")) or {}
+            )
+
             for job_name, job_config in jobs.items():
                 if not isinstance(job_config, dict):
                     continue
 
-                monitoring_raw = job_config.get("monitoring")
-                if monitoring_raw is None:
-                    print(
-                        failure(
-                            f"Missing 'monitoring' block in {filename} "
-                            f"at {instance_name}.jobs.{job_name}",
-                            "",
-                        )
-                    )
-                    returncode = False
-                    continue
+                job_monitoring = (
+                    _parse_flink_monitoring(job_config.get("monitoring")) or {}
+                )
 
-                if isinstance(monitoring_raw, str):
-                    try:
-                        monitoring = yaml.safe_load(monitoring_raw)
-                    except Exception:
-                        continue
-                elif isinstance(monitoring_raw, dict):
-                    monitoring = monitoring_raw
-                else:
-                    continue
-
-                if not isinstance(monitoring, dict):
-                    continue
-
-                team = monitoring.get("team")
+                team = job_monitoring.get("team", instance_monitoring.get("team"))
                 if team is None:
                     print(
                         failure(
                             f"Missing 'team' in {filename} "
-                            f"at {instance_name}.jobs.{job_name}.monitoring",
+                            f"at {instance_name}.jobs.{job_name}: set it on the job's "
+                            f"monitoring block or on the instance's",
                             "",
                         )
                     )
@@ -1350,7 +1350,7 @@ def validate_flink_monitoring_team(service_path: str) -> bool:
                     print(
                         failure(
                             f"Invalid monitoring team '{team}' in {filename} "
-                            f"at {instance_name}.jobs.{job_name}.monitoring.team "
+                            f"at {instance_name}.jobs.{job_name} "
                             f"— not a valid Sensu team",
                             "",
                         )
