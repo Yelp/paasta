@@ -43,7 +43,6 @@ from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_cpu_burst
-from paasta_tools.cli.cmds.validate import validate_flink_monitoring_team
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
@@ -88,13 +87,11 @@ def clear_get_config_file_dict_cache():
 @patch("paasta_tools.cli.cmds.validate.validate_smartstack", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_monitoring_file_exists", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_flink_monitoring_team", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.validate.validate_single_replica_instances", autospec=True
 )
 def test_paasta_validate_calls_everything(
     mock_validate_single_replica_instances,
-    mock_validate_flink_monitoring_team,
     mock_validate_monitoring_file,
     mock_validate_service_name,
     mock_validate_smartstack,
@@ -125,7 +122,6 @@ def test_paasta_validate_calls_everything(
     mock_validate_smartstack.return_value = True
     mock_validate_service_name.return_value = True
     mock_validate_monitoring_file.return_value = True
-    mock_validate_flink_monitoring_team.return_value = True
     mock_validate_single_replica_instances.return_value = True
 
     args = mock.MagicMock()
@@ -2094,105 +2090,6 @@ def test_get_etc_services_entry_malformed_line():
     ):
         result = _get_etc_services_entry(20000)
         assert result == "my-service.main"
-
-
-def test_validate_flink_monitoring_team_no_flink_files():
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.glob",
-        return_value=[],
-        autospec=True,
-    ):
-        assert validate_flink_monitoring_team("/fake/service/path") is True
-
-
-def test_validate_flink_monitoring_team_valid():
-    mock_config = {
-        "my_instance": {
-            "jobs": {
-                "my_job": {
-                    "monitoring": {"team": "streamhouse", "page": False},
-                }
-            }
-        }
-    }
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.glob",
-        side_effect=[["flinkeks-pnw-prod.yaml"], []],
-        autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
-        "paasta_tools.cli.cmds.validate.yaml.safe_load",
-        return_value=mock_config,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
-        return_value={"pages_slack_channel": "#streamhouse"},
-        autospec=True,
-    ):
-        assert validate_flink_monitoring_team("/fake/service/path") is True
-
-
-def test_validate_flink_monitoring_team_invalid_team():
-    mock_config = {
-        "my_instance": {
-            "jobs": {
-                "my_job": {
-                    "monitoring": {"team": "dre-analytics", "page": False},
-                }
-            }
-        }
-    }
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.glob",
-        side_effect=[["flinkeks-pnw-prod.yaml"], []],
-        autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
-        "paasta_tools.cli.cmds.validate.yaml.safe_load",
-        return_value=mock_config,
-    ), mock.patch(
-        "paasta_tools.cli.cmds.validate.get_sensu_team_data",
-        return_value={},
-        autospec=True,
-    ):
-        assert validate_flink_monitoring_team("/fake/service/path") is False
-
-
-def test_validate_flink_monitoring_team_missing_team():
-    mock_config = {
-        "my_instance": {
-            "jobs": {
-                "my_job": {
-                    "monitoring": {"page": False},
-                }
-            }
-        }
-    }
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.glob",
-        side_effect=[["flinkeks-pnw-prod.yaml"], []],
-        autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
-        "paasta_tools.cli.cmds.validate.yaml.safe_load",
-        return_value=mock_config,
-    ):
-        assert validate_flink_monitoring_team("/fake/service/path") is False
-
-
-def test_validate_flink_monitoring_team_missing_monitoring():
-    mock_config = {
-        "my_instance": {
-            "jobs": {
-                "my_job": {},
-            }
-        }
-    }
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.glob",
-        side_effect=[["flinkeks-pnw-prod.yaml"], []],
-        autospec=True,
-    ), mock.patch("builtins.open", mock.mock_open(read_data=""),), mock.patch(
-        "paasta_tools.cli.cmds.validate.yaml.safe_load",
-        return_value=mock_config,
-    ):
-        assert validate_flink_monitoring_team("/fake/service/path") is False
 
 
 @pytest.mark.parametrize(
