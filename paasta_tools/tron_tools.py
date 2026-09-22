@@ -385,7 +385,7 @@ class TronActionConfig(InstanceConfig):
 
         spark_conf.setdefault(
             "spark.kubernetes.executor.podTemplateFile",
-            spark_tools.SPARK_DNS_POD_TEMPLATE,
+            spark_tools.SPARK_EXECUTOR_POD_TEMPLATE,
         )
 
         spark_conf.update(

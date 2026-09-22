@@ -1400,7 +1400,7 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.decommission.script=/opt/spark/kubernetes/dockerfiles/spark/decom.sh "
             "--conf spark.logConf=true "
-            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
+            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_executor_pod_template.yaml "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
             "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
