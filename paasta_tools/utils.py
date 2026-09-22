@@ -460,6 +460,15 @@ class InstanceConfig:
             "service": self.service,
         }
 
+    def get_config_path(self) -> str:
+        instance_type = self.get_instance_type()
+        assert instance_type is not None
+        return os.path.join(
+            self.soa_dir,
+            self.service,
+            f"{instance_type}-{self.cluster}.yaml",
+        )
+
     def get_cluster(self) -> str:
         return self.cluster
 
@@ -1988,6 +1997,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     alertmanager_url: str
     enable_alertmanager_rollback: bool
     alertmanager_poll_interval_s: int
+    autorollback_prometheus_shard_region_overrides: Dict[str, str]
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2035,6 +2045,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     skip_unique_instance_name_validation: List[str]
+    skip_check_monitoring_file_exists: List[str]
+    common_canary_instance_names: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2699,6 +2711,11 @@ class SystemPaastaConfig:
     def get_alertmanager_poll_interval_s(self) -> int:
         return self.config_dict.get("alertmanager_poll_interval_s", 30)
 
+    def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
+        return self.config_dict.get(
+            "autorollback_prometheus_shard_region_overrides", {}
+        )
+
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
 
@@ -2731,8 +2748,14 @@ class SystemPaastaConfig:
     def get_skip_cpu_burst_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_burst_validation", [])
 
+    def get_skip_check_monitoring_file_exists(self) -> List[str]:
+        return self.config_dict.get("skip_check_monitoring_file_exists", [])
+
     def get_skip_unique_instance_name_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_unique_instance_name_validation", [])
+
+    def get_common_canary_instance_names(self) -> List[str]:
+        return self.config_dict.get("common_canary_instance_names", ["canary"])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})

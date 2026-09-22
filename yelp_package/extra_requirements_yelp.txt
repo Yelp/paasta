@@ -31,7 +31,7 @@ slo-transcoder==3.3.0
 smmap==5.0.3                        # slo-transcoder, vault-tools dependency
 smmap2==2.0.3                       # slo-transcoder, vault-tools dependency
 srv-configs==1.1.0                  # yelp-profiling dependency
-sticht[yelp_internal]==2.0.0
+sticht[yelp_internal]==2.1.0
 tenacity==8.3.0                     # yelp-clog dependency
 thriftpy2==0.6.0                    # yelp-clog dependency
 vault-tools==2.3.1
