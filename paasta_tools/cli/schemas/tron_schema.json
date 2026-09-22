@@ -77,6 +77,7 @@
                 "disk": {
                     "type": "number",
                     "minimum": 0,
+                    "default": 4096,
                     "exclusiveMinimum": true
                 },
                 "constraints": {
@@ -103,6 +104,11 @@
                 },
                 "deploy_group": {
                     "type": "string"
+                },
+                "cost_owner": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                    "maxLength": 63
                 },
                 "pool": {
                     "type": "string"
@@ -706,6 +712,11 @@
                 },
                 "deploy_group": {
                     "type": "string"
+                },
+                "cost_owner": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                    "maxLength": 63
                 }
             }
         }

@@ -61,6 +61,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkInstanceDetails
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
@@ -795,11 +796,6 @@ def append_pod_status(pod_status, output: List[str]):
     output.extend([f"      {line}" for line in pods_table])
 
 
-OUTPUT_HORIZONTAL_RULE = (
-    "=================================================================="
-)
-
-
 def _print_flink_status_from_job_manager(
     service: str,
     instance: str,
@@ -822,12 +818,15 @@ def _print_flink_status_from_job_manager(
         return 1
 
     labels = metadata.get("labels", {})
+    annotations = metadata.get("annotations", {})
     config_sha = labels.get(paasta_prefixed("config_sha"), "").removeprefix("config")
+    desired_state = annotations.get(paasta_prefixed("desired_state"))
     output.append(f"    Config SHA: {config_sha}")
 
     # Initialize all vars upfront; populated only when cluster is running
     dashboard_url = None
     overview = None
+    instance_details: Optional[FlinkInstanceDetails] = None
     jobs: List[FlinkJobDetails] = []
     job_ids: List[str] = []
     checkpoint_data: Dict[str, Union[FlinkCheckpointStatus, BaseException]] = {}
@@ -857,22 +856,6 @@ def _print_flink_status_from_job_manager(
 
         if verbose:
             output.extend(flink_tools.format_flink_udf_info(flink_instance_config))
-            output.extend(
-                flink_tools.format_flink_instance_metadata(instance_details, service)
-            )
-            ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
-            output.extend(flink_tools.format_flink_config_links(service, ecosystem))
-            output.append(OUTPUT_HORIZONTAL_RULE)
-            output.extend(
-                flink_tools.format_flink_log_commands(service, instance, cluster)
-            )
-            output.append(OUTPUT_HORIZONTAL_RULE)
-            output.extend(
-                flink_tools.format_flink_monitoring_links(
-                    service, instance, ecosystem, cluster
-                )
-            )
-            output.append(OUTPUT_HORIZONTAL_RULE)
 
         try:
             overview = flink_tools.get_flink_overview_from_paasta_api_client(
@@ -909,7 +892,9 @@ def _print_flink_status_from_job_manager(
             except Exception:
                 pass  # checkpoints are informational, don't fail status
 
-    job_details = flink_tools.collect_flink_job_details(status, overview)
+    job_details = flink_tools.collect_flink_job_details(
+        status, overview, desired_state=desired_state
+    )
     output.extend(flink_tools.format_flink_state_and_pods(job_details))
 
     if not flink_tools.should_job_info_be_shown(status["state"]):
@@ -929,6 +914,20 @@ def _print_flink_status_from_job_manager(
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
+
+    if verbose and instance_details is not None:
+        ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster)
+        output.extend(
+            flink_tools.format_flink_instance_metadata(
+                instance_details, service, ecosystem
+            )
+        )
+        output.extend(
+            flink_tools.format_flink_monitoring_links(
+                service, instance, ecosystem, cluster
+            )
+        )
+        output.extend(flink_tools.format_flink_log_commands(service, instance, cluster))
     return 0
 
 

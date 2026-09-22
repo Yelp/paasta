@@ -375,6 +375,23 @@ instance MAY have:
 
       "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
 
+  * ``fs_group``: An integer specifying the GID that will own all volumes in
+    the pod. Kubernetes will change ownership of all files in volumes to this
+    GID before they are exposed to the pod. This is only relevant for pods
+    that mount RW volumes (e.g. persistent volumes, secret volumes with RW
+    access).
+
+  * ``fs_group_change_policy``: Controls how Kubernetes applies ``fs_group``
+    ownership changes to volumes. Must be one of:
+
+    * ``Always`` (default if unset): always change ownership and permissions on every mount.
+    * ``OnRootMismatch``: only change ownership if the root directory's permissions/ownership
+      do not match the expected GID. This can significantly speed up pod startup for
+      large volumes.
+
+    Requires ``fs_group`` to be set. Has no effect if the instance does not declare
+    any RW volumes.
+
   * ``instances``: Kubernetes will attempt to run this many instances of the Service
 
   * ``min_instances``: When autoscaling, the minimum number of instances that
@@ -500,6 +517,12 @@ instance MAY have:
     to. The ``step`` parameter in ``deploy.yaml`` references this value
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
+
+  * ``cost_owner``: A string identifying the team responsible for the cost of this
+    instance. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost
+    attribution. Should be in kebab-case and match a canonical owner name from the
+    Ownership service. Must match the pattern ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$``
+    and be at most 63 characters. If not specified, inherits from ``service.yaml``.
 
   * ``replication_threshold``: An integer representing the percentage of instances that
     need to be available for monitoring purposes. If less than ``replication_threshold``
@@ -722,11 +745,20 @@ Each Tron **job** configuration MAY specify the following options:
 
   * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
+  * ``cost_owner``: A string identifying the team responsible for the cost of this
+    job. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost
+    attribution. Should be in kebab-case and match a canonical owner name from the
+    Ownership service. Inherited by all actions unless overridden at the action level.
+    If not specified, inherits from ``service.yaml``. Must match the pattern
+    ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`` and be at most 63 characters.
+
 Each Tron **action** of a job MAY specify the following:
 
   * Anything in the `Common Settings`_.
 
   * Anything from :ref:`General Placement Options <general-placement-options>`
+
+  * ``disk``: Same as `Common Settings`, but defaults to 4096 MB for non-Spark Actions (Spark Actions use a default of 5120 MB instead).
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
@@ -739,6 +771,9 @@ Each Tron **action** of a job MAY specify the following:
     composed of mixed ``paasta`` and ``ssh`` actions.
 
   * ``deploy_group``: Same setting as the ``Job``, but on a per-action basis. Defaults
+    to the setting for the entire job.
+
+  * ``cost_owner``: Same setting as the ``Job``, but on a per-action basis. Defaults
     to the setting for the entire job.
 
   * ``command``: The command to run. If the action is configured with ``executor: paasta`` (default),
@@ -1262,6 +1297,7 @@ Various PaaSTA utilities look at the following keys from service.yaml
  * ``description``
  * ``external_link``
  * ``docker_registry`` This is optional. Set this to override the `system-wide docker registry <system_configs.html#configuration-options>`_, and specify an alternate docker registry for your service.
+ * ``cost_owner`` A string identifying the team responsible for the cost of this service. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost attribution. Should be in kebab-case and match a canonical owner name from the Ownership service. Must match the pattern ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`` and be at most 63 characters. Can be overridden per-instance in instance configs or per-job/action in Tron configs.
 
 Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------

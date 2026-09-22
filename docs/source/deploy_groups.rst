@@ -144,3 +144,76 @@ As an example the following deploy.yaml will execute steps ``security-check`` & 
    - step: prod.canary
      trigger_next_step_manually: true
    - step: prod.non_canary
+
+Crashloop auto-rollback
+------------------------
+
+When ``wait_for_deployment`` is active, PaaSTA can automatically roll back if the new
+version is persistently crashlooping (or OOMing - anything that restarts the underlying Pods).
+This is configured per deploy_group in deploy.yaml:
+
+* ``enable_crashloop_auto_rollback`` (boolean, optional): Enable or disable crashloop
+  detection for this step.
+  NOTE: this feature may be enabled or disabled at the PaaSTA cluster-level: this value overrides that state
+
+* ``min_restarts_for_crashloop_rollback`` (integer, optional): Number of container restarts
+  per replica before considering it crashlooping. (default: 2).
+
+* ``crashloop_rollback_percentage_threshold`` (float 0-1, optional): Fraction of replicas
+  that must be crashlooping to trigger the rollback.
+  (default: 1.0, i.e., all replicas must be crashlooping).
+
+Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack.
+
+A replica recovering does not cancel the rollback under the assumption that if we've had had enough repeated restarts
+across all replicas, something is fundamentally unsafe with the new deployment.
+
+.. sourcecode:: yaml
+
+   # deploy.yaml
+   ---
+   pipeline:
+   - step: prod.canary
+     trigger_next_step_manually: true
+     enable_crashloop_auto_rollback: true
+     min_restarts_for_crashloop_rollback: 3
+     crashloop_rollback_percentage_threshold: 0.8
+   - step: prod.non_canary
+     enable_crashloop_auto_rollback: true
+
+Alert Manager auto-rollback
+---------------------------
+
+When ``wait_for_deployment`` is active, PaaSTA can poll AlertManager for firing alerts
+targeting the deploy group and automatically roll back if the deployment appears unhealthy.
+Any AlertManager rule that fires for the service during a deployment can trigger a rollback.
+This is configured per deploy_group in deploy.yaml:
+
+* ``alertmanager_rollback`` (boolean, optional): Enable AlertManager-based auto-rollback
+  for this deploy group.
+
+* ``alertmanager_rollback_dry_run`` (boolean, optional): Run the AlertManager polling and
+  evaluation logic but only log results without actually triggering a rollback. Useful for
+  validating that alerting rules behave as expected before enabling real rollbacks.
+
+* ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
+  PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
+
+Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
+
+Example:
+
+.. sourcecode:: yaml
+
+   # deploy.yaml
+   ---
+   pipeline:
+   - step: dev
+   - step: stage
+     wait_for_deployment: true
+     alertmanager_rollback: true
+     alertmanager_rollback_dry_run: true
+   - step: prod
+     wait_for_deployment: true
+     alertmanager_rollback: true
+     alertmanager_poll_interval_s: 60

@@ -36,6 +36,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import _log
+from paasta_tools.utils import cached_read_service_configuration
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import time_cache
@@ -152,13 +153,6 @@ def get_description(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value("description", overrides, service, soa_dir)
 
 
-# Our typical usage pattern is that we call all the different get_* functions back to back. Applying a small amount of
-# cache here helps cut down on the number of times we re-parse service.yaml.
-_cached_read_service_configuration = time_cache(ttl=5)(
-    service_configuration_lib.read_service_configuration
-)
-
-
 def __get_monitoring_config_value(
     key,
     overrides,
@@ -166,7 +160,7 @@ def __get_monitoring_config_value(
     soa_dir=DEFAULT_SOA_DIR,
     monitoring_defaults=monitoring_defaults,
 ):
-    general_config = _cached_read_service_configuration(service, soa_dir=soa_dir)
+    general_config = cached_read_service_configuration(service, soa_dir=soa_dir)
     monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get("monitoring", {key: service_default}).get(

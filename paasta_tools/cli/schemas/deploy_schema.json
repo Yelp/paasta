@@ -105,6 +105,27 @@
                 "enable_automated_redeploys": {
                     "type": "boolean"
                 },
+                "alertmanager_rollback": {
+                    "type": "boolean"
+                },
+                "alertmanager_rollback_dry_run": {
+                    "type": "boolean"
+                },
+                "alertmanager_poll_interval_s": {
+                    "type": "integer",
+                    "minimum": 30
+                },
+                "enable_crashloop_auto_rollback": {
+                    "type": "boolean"
+                },
+                "min_restarts_for_crashloop_rollback": {
+                    "type": "integer"
+                },
+                "crashloop_rollback_percentage_threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
                 "service_account": {
                     "type": "string"
                 }

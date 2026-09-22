@@ -403,6 +403,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.use_okta_role = False
     args.use_service_auth_token = False
     args.use_sso_service_auth_token = False
+    args.secrets_from_kube = False
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -447,6 +448,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         use_okta_role=False,
         use_service_auth_token=False,
         use_sso_service_auth_token=False,
+        secrets_from_kube=False,
     )
 
 
@@ -484,6 +486,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.use_okta_role = False
     args.use_service_auth_token = False
     args.use_sso_service_auth_token = False
+    args.secrets_from_kube = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -527,6 +530,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         use_okta_role=False,
         use_service_auth_token=False,
         use_sso_service_auth_token=False,
+        secrets_from_kube=False,
     )
 
 
@@ -570,6 +574,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.use_okta_role = False
     args.use_service_auth_token = False
     args.use_sso_service_auth_token = False
+    args.secrets_from_kube = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -617,6 +622,7 @@ def test_configure_and_run_pulls_image_when_asked(
         use_okta_role=False,
         use_service_auth_token=False,
         use_sso_service_auth_token=False,
+        secrets_from_kube=False,
     )
 
 
@@ -656,6 +662,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.use_okta_role = False
         args.use_service_auth_token = False
         args.use_sso_service_auth_token = False
+        args.secrets_from_kube = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -701,6 +708,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             use_okta_role=False,
             use_service_auth_token=False,
             use_sso_service_auth_token=False,
+            secrets_from_kube=False,
         )
 
 
@@ -2311,15 +2319,11 @@ def test_run_docker_container_secret_volumes(
     new_callable=mock.mock_open(),
     autospec=None,
 )
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
-)
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
 @mock.patch("os.makedirs", autospec=True)
-def test_run_docker_container_secret_volumes_for_teams(
+def test_run_docker_container_secret_volumes_from_kube(
     mock_os_makedirs,
     mock_kube_client,
-    mock_is_secrets_for_teams_enabled,
     mock_open,
     mock_get_kubernetes_secret_volumes,
     mock_get_healthcheck_for_instance,
@@ -2352,7 +2356,6 @@ def test_run_docker_container_secret_volumes_for_teams(
 
     # For tests that run on github actions, explicitly set this to /tmp which definitely exists
     os.environ["TMPDIR"] = "/tmp/"
-    mock_is_secrets_for_teams_enabled.return_value = True
     return_code = run_docker_container(
         docker_client=mock_docker_client,
         service="fake_service",
@@ -2366,6 +2369,7 @@ def test_run_docker_container_secret_volumes_for_teams(
         user_port=None,
         instance_config=mock_service_manifest,
         secret_provider_name="vault",
+        secrets_from_kube=True,
     )
     assert 1 == mock_get_docker_run_cmd.call_count
 
@@ -2483,13 +2487,9 @@ def test_run_docker_container_secret_volumes_raises(
     new_callable=mock.mock_open(),
     autospec=None,
 )
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
-)
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
-def test_run_docker_container_secret_volumes_for_teams_raises(
+def test_run_docker_container_secret_volumes_from_kube_raises(
     mock_kube_client,
-    mock_is_secrets_for_teams_enabled,
     mock_open,
     mock_get_kubernetes_secret_volumes,
     mock_get_healthcheck_for_instance,
@@ -2523,6 +2523,7 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
             user_port=None,
             instance_config=mock_service_manifest,
             secret_provider_name="vault",
+            secrets_from_kube=True,
         )
     assert 0 == mock_get_docker_run_cmd.call_count
     assert 1 == sys_exit.value.code

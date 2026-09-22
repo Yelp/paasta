@@ -80,7 +80,6 @@ from docker.utils import kwargs_from_env
 from environment_tools.type_utils import convert_location_type
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
-from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -190,6 +189,8 @@ CAPS_DROP = [
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
+    AUTOMATIC_ALERTMANAGER_ROLLBACK = "automatic_alertmanager_rollback"
+    AUTOMATIC_CRASHLOOP_ROLLBACK = "automatic_crashloop_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
@@ -228,6 +229,10 @@ class time_cache:
             return self.configs[key]["data"]
 
         return cache
+
+
+# Avoid re-reading service.yaml when multiple callers need it in quick succession.
+cached_read_service_configuration = time_cache(ttl=5)(read_service_configuration)
 
 
 _SortDictsT = TypeVar("_SortDictsT", bound=Mapping)
@@ -358,6 +363,7 @@ class InstanceConfigDict(TypedDict, total=False):
     service: str
     uses_bulkdata: bool
     docker_url: str
+    cost_owner: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -454,6 +460,15 @@ class InstanceConfig:
             "service": self.service,
         }
 
+    def get_config_path(self) -> str:
+        instance_type = self.get_instance_type()
+        assert instance_type is not None
+        return os.path.join(
+            self.soa_dir,
+            self.service,
+            f"{instance_type}-{self.cluster}.yaml",
+        )
+
     def get_cluster(self) -> str:
         return self.cluster
 
@@ -485,6 +500,9 @@ class InstanceConfig:
         return get_paasta_branch(
             cluster=self.get_cluster(), instance=self.get_instance()
         )
+
+    def get_service_override(self) -> Optional[str]:
+        return self.config_dict.get("service", None)
 
     def get_deploy_group(self) -> str:
         return self.config_dict.get("deploy_group", self.get_branch())
@@ -956,6 +974,9 @@ class InstanceConfig:
         """Which mesos role of nodes this job should run on."""
         return self.config_dict.get("role")
 
+    def get_cost_owner(self) -> Optional[str]:
+        return self.config_dict.get("cost_owner")
+
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
@@ -1191,6 +1212,13 @@ class PaastaColors:
     @staticmethod
     def default(text: str) -> str:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
+
+    @staticmethod
+    def terminal_link(url: str, label: str) -> str:
+        """Format an OSC 8 terminal hyperlink (clickable in supported terminals)."""
+        if os.getenv("NO_COLOR", "0") == "1":
+            return f"{label} ({url})"
+        return f"\033]8;;{url}\033\\{label}\033]8;;\033\\"
 
 
 LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
@@ -1902,6 +1930,11 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     match_label_keys: List[str]
 
 
+class PoolLimits(TypedDict):
+    max_cpus: float
+    recommended_pool: str
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_client_timeout: int
@@ -1958,6 +1991,13 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
+    enable_crashloop_auto_rollback: bool
+    min_restarts_for_crashloop_rollback: int
+    crashloop_rollback_percentage_threshold: float
+    alertmanager_url: str
+    enable_alertmanager_rollback: bool
+    alertmanager_poll_interval_s: int
+    autorollback_prometheus_shard_region_overrides: Dict[str, str]
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -1969,6 +2009,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     pool_node_affinities: Dict[str, Dict[str, List[str]]]
+    # i.e. {cluster: {pool: PoolLimits}}
+    pool_limits: Dict[str, Dict[str, PoolLimits]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2003,6 +2045,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     skip_unique_instance_name_validation: List[str]
+    skip_check_monitoring_file_exists: List[str]
+    common_canary_instance_names: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2018,6 +2062,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     uses_bulkdata_default: bool
     enable_automated_redeploys_default: bool
     enable_tron_tsc: bool
+    enable_cost_owner_label: bool
     default_spark_iam_user: str
     default_spark_driver_pool_override: str
     readonly_docker_registry_auth_file: str
@@ -2525,6 +2570,10 @@ class SystemPaastaConfig:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
 
+    def get_pool_limits(self) -> Dict[str, Dict[str, PoolLimits]]:
+        """Pool limits for each cluster"""
+        return self.config_dict.get("pool_limits", {})
+
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
@@ -2653,6 +2702,29 @@ class SystemPaastaConfig:
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
+    def get_alertmanager_url(self) -> Optional[str]:
+        return self.config_dict.get("alertmanager_url", None)
+
+    def get_enable_alertmanager_rollback(self) -> bool:
+        return self.config_dict.get("enable_alertmanager_rollback", False)
+
+    def get_alertmanager_poll_interval_s(self) -> int:
+        return self.config_dict.get("alertmanager_poll_interval_s", 30)
+
+    def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
+        return self.config_dict.get(
+            "autorollback_prometheus_shard_region_overrides", {}
+        )
+
+    def get_enable_crashloop_auto_rollback(self) -> bool:
+        return self.config_dict.get("enable_crashloop_auto_rollback", False)
+
+    def get_min_restarts_for_crashloop_rollback(self) -> int:
+        return self.config_dict.get("min_restarts_for_crashloop_rollback", 2)
+
+    def get_crashloop_rollback_percentage_threshold(self) -> float:
+        return self.config_dict.get("crashloop_rollback_percentage_threshold", 1.0)
+
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
@@ -2676,8 +2748,14 @@ class SystemPaastaConfig:
     def get_skip_cpu_burst_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_burst_validation", [])
 
+    def get_skip_check_monitoring_file_exists(self) -> List[str]:
+        return self.config_dict.get("skip_check_monitoring_file_exists", [])
+
     def get_skip_unique_instance_name_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_unique_instance_name_validation", [])
+
+    def get_common_canary_instance_names(self) -> List[str]:
+        return self.config_dict.get("common_canary_instance_names", ["canary"])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
@@ -2762,6 +2840,9 @@ class SystemPaastaConfig:
 
     def get_enable_tron_tsc(self) -> bool:
         return self.config_dict.get("enable_tron_tsc", True)
+
+    def get_enable_cost_owner_label(self) -> bool:
+        return self.config_dict.get("enable_cost_owner_label", False)
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)
@@ -3225,11 +3306,6 @@ def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) ->
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
-
-
-def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
-    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
-    return service_yaml_contents.get("secrets_for_owner_team", False)
 
 
 def get_pipeline_deploy_group_configs(

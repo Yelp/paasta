@@ -1,3 +1,429 @@
+paasta-tools (1.60.9) jammy; urgency=medium
+
+  * 1.60.9 tagged with 'make release'
+    Commit: Merge pull request #4389 from Yelp/u/abubakarrj/PAASTA-18976
+    PAASTA-18976: Update alerting region for norcal-devc cluster
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Tue, 15 Sep 2026 05:20:01 -0700
+
+paasta-tools (1.60.8) jammy; urgency=medium
+
+  * 1.60.8 tagged with 'make release'
+    Commit: Merge pull request #4371 from Yelp/u/mbrankin/PAASTA-18934-2
+    creating single replica commit hook
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Tue, 15 Sep 2026 03:16:14 -0700
+
+paasta-tools (1.60.7) jammy; urgency=medium
+
+  * 1.60.7 tagged with 'make release'
+    Commit: Merge pull request #4381 from Yelp/u/abubakarrj/PAASTA-18970
+    PAASTA-18970: Update docs to include Alert Manager auto-rollbacks
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Mon, 07 Sep 2026 02:54:57 -0700
+
+paasta-tools (1.60.6) jammy; urgency=medium
+
+  * 1.60.6 tagged with 'make release'
+    Commit: filter instances with service override from deployments
+    (#4382)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 03 Sep 2026 01:06:59 -0700
+
+paasta-tools (1.60.5) jammy; urgency=medium
+
+  * 1.60.5 tagged with 'make release'
+    Commit: Merge pull request #4384 from Yelp/build-arm64-release-debs
+    Build arm64 paasta-tools debs in the release pipeline - COMPINFRA-
+    6038
+
+ -- Evan Krall <krall@yelp.com>  Wed, 02 Sep 2026 17:48:29 -0700
+
+paasta-tools (1.60.4) jammy; urgency=medium
+
+  * 1.60.4 tagged with 'make release'
+    Commit: Build paasta-tools for arm64 - COMPINFRA-5995 (#4383)  ##
+    Summary  Use dpkg --print-architecture instead of hardcoded amd64
+    references in the build system so paasta-tools can be built natively
+    on both amd64 and arm64.  ## Changes  ### yelp_package/Makefile -
+    Added DPKG_ARCH variable using dpkg --print-architecture - Changed
+    itest target to reference the dynamic arch instead of hardcoded
+    amd64  ### yelp_package/dockerfiles/itest/k8s/Dockerfile - Changed
+    kubectl download URL to use dpkg --print-architecture instead of
+    hardcoded amd64  ### yelp_package/extra_requirements_yelp.txt -
+    bumped cryptography/pyopenssl/cffi to versions with arm64 wheels  ##
+    How it works  debian/control already has Architecture: any, so dpkg-
+    buildpackage produces a .deb named with the native architecture. The
+    only issue was the itest target that hardcoded amd64.deb in the
+    expected filename.  ## Testing  Tested on an arm64 build host: -
+    make itest_jammy completes successfully producing paasta-
+    tools_1.60.3-yelp1_arm64.deb - The deb installs correctly and all
+    itest checks pass - Architecture metadata verified: both filename
+    and metadata report arm64  ## Notes  - Noble/resolute: No additional
+    changes needed, the architecture detection applies to all distros.
+    Jira: COMPINFRA-5995
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 02 Sep 2026 12:54:55 -0700
+
+paasta-tools (1.60.3) jammy; urgency=medium
+
+  * 1.60.3 tagged with 'make release'
+    Commit: Add resolute .deb to releases (#4378)  @vulpine says I"ll be
+    their new best friend if I do this  real description: Yelp/nerve-
+    tools tests currently grab paasta-tools debs from our releases for
+    GHA builds. this is fine, but what is not fine is that we are only
+    uploading (and testing against) a jammy deb - which doesn"t quite
+    work out so well if you"re trying to add a resolute build to nerve-
+    tools
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 21 Aug 2026 08:35:51 -0700
+
+paasta-tools (1.60.2) jammy; urgency=medium
+
+  * 1.60.2 tagged with 'make release'
+    Commit: Only create spark_kube_client if it"s necessary, to avoid
+    errors on clusters where we don"t have the spark kubeconfig.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 15:24:52 -0700
+
+paasta-tools (1.60.1) jammy; urgency=medium
+
+  * 1.60.1 tagged with 'make release'
+    Commit: Only call ensure_service_account once per iam_role per
+    service.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 12:40:01 -0700
+
+paasta-tools (1.60.0) jammy; urgency=medium
+
+  * 1.60.0 tagged with 'make release'
+    Commit: Add alertmanager rollback dry-run support (#4367)  * Add
+    alertmanager rollback dry-run support  This is the PaaSTA side of
+    https://github.com/Yelp/sticht/pull/67 - i.e,. how we"ll allow folks
+    to experiment with alertmanager rollbacks without needing to fully
+    commit (and/or for testing new rollback alerts)  As usual, config
+    mostly lives in deploy.yaml per-deploy-group :)  That said, this
+    1000% requires the sticht PR linked above, since that"s essentially
+    where all the logic actually lives  * ...and then add tests
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 17 Aug 2026 10:06:59 -0700
+
+paasta-tools (1.59.7) jammy; urgency=medium
+
+  * 1.59.7 tagged with 'make release'
+    Commit: Pin thriftpy2 in extra_requirements_yelp (#4374)  not sure
+    how we missed this
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:54:54 -0700
+
+paasta-tools (1.59.6) jammy; urgency=medium
+
+  * 1.59.6 tagged with 'make release'
+    Commit: Accept OCI manifests for checking image existence (#4372)  #
+    Problem  Image verification check incorrectly claims image is not
+    already there, because the newly pushed image was pushed as OCI
+    rather than Docker.  Good thing we don"t actually care about that,
+    so just need to advertise that we are OK with getting OCI format
+    stuff for manifests  # Solution  Advertise that in headers
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:01:46 -0700
+
+paasta-tools (1.59.5) jammy; urgency=medium
+
+  * 1.59.5 tagged with 'make release'
+    Commit: Merge pull request #4358 from Yelp/u/sidtuladhar/PAASTA-
+    18929/validate-stable-pool  feat: New config to configure CPU limits
+    per cluster per pool
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 11 Aug 2026 04:03:35 -0700
+
+paasta-tools (1.59.4) jammy; urgency=medium
+
+  * 1.59.4 tagged with 'make release'
+    Commit: Merge pull request #4370 from Yelp/u/mbrankin/revert-single-
+    replica-check  Revert "Merge pull request #4355 from
+    Yelp/u/mbrankin/PAASTA-18934"
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 06 Aug 2026 10:51:33 -0700
+
+paasta-tools (1.59.3) jammy; urgency=medium
+
+  * 1.59.3 tagged with 'make release'
+    Commit: Merge pull request #4368 from Yelp/luisp/DAR-2992-handle-
+    piscina-setpoint  Correctly handle setpoint for Piscina autoscaling
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 06 Aug 2026 06:33:39 -0700
+
+paasta-tools (1.59.2) jammy; urgency=medium
+
+  * 1.59.2 tagged with 'make release'
+    Commit: Merge pull request #4365 from Yelp/u/sidtuladhar/PAASTA-
+    18905/fix-hpa-query-all  feat: use_raw_ksm query for all autoscaling
+    types
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 04 Aug 2026 06:57:42 -0700
+
+paasta-tools (1.59.1) jammy; urgency=medium
+
+  * 1.59.1 tagged with 'make release'
+    Commit: Merge pull request #4364 from Yelp/u/sidtuladhar/cleanup
+    chore: cleanup configmap flags
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Mon, 03 Aug 2026 08:40:46 -0700
+
+paasta-tools (1.59.0) jammy; urgency=medium
+
+  * 1.59.0 tagged with 'make release'
+    Commit: Add a `verify-image-exists` sub-command (#4357)  This will
+    be helpful for some model training adhoc jobs that get images built
+    in a somewhat roundabout way.  Without this, someone has to be
+    watching the build and waiting for it to complete before triggering
+    their adhoc job. However, with this: they can prefix their adhoc
+    launch command with this and not have to manually do anything :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 29 Jul 2026 10:24:14 -0700
+
+paasta-tools (1.58.1) jammy; urgency=medium
+
+  * 1.58.1 tagged with 'make release'
+    Commit: Merge pull request #4354 from
+    Yelp/jfong/fs_group_change_policy  Add support for ppl to set
+    `fsGroupChangePolicy`
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 23 Jul 2026 11:40:00 -0700
+
+paasta-tools (1.58.0) jammy; urgency=medium
+
+  * 1.58.0 tagged with 'make release'
+    Commit: PAASTA-17879: Ensure a monitoring.yaml file for all services
+    (#4349)  Add a check to paasta validate to ensure a monitoring.yaml
+    file exists for all services
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Jul 2026 11:48:26 -0700
+
+paasta-tools (1.57.1) jammy; urgency=medium
+
+  * 1.57.1 tagged with 'make release'
+    Commit: Merge pull request #4350 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  fix: non worker load autoscaling label
+    selector
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 16 Jul 2026 02:02:26 -0700
+
+paasta-tools (1.57.0) jammy; urgency=medium
+
+  * 1.57.0 tagged with 'make release'
+    Commit: Default `paasta secret` to token auth again (#4351)  Looks
+    like this is having some unforeseen impacts in CI - some services
+    use `paasta secret run` to run `ycp` or `pytest` with secrets, and
+    that"s failing to auth since there"s no human to type in their
+    password :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 14 Jul 2026 11:52:12 -0700
+
+paasta-tools (1.56.0) jammy; urgency=medium
+
+  * 1.56.0 tagged with 'make release'
+    Commit: remove references to secrets_for_teams (#4347)
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 14 Jul 2026 02:33:28 -0700
+
+paasta-tools (1.55.3) jammy; urgency=medium
+
+  * 1.55.3 tagged with 'make release'
+    Commit: Merge pull request #4344 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  fix: labels for adapter
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 09 Jul 2026 03:35:37 -0700
+
+paasta-tools (1.55.2) jammy; urgency=medium
+
+  * 1.55.2 tagged with 'make release'
+    Commit: Merge pull request #4341 from Yelp/u/sidtuladhar/COMPINFRA-
+    5816/configmap-limit  feat: shared prometheus adapter rules
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Fri, 03 Jul 2026 02:30:21 -0700
+
+paasta-tools (1.55.1) jammy; urgency=medium
+
+  * 1.55.1 tagged with 'make release'
+    Commit: Merge pull request #4343 from Yelp/sina/DREIMP-11556-fix-
+    cassandracluster-counterpart  DREIMP-11556 Add
+    cassandracluster/cassandraclustereks counterpart mapping
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 02 Jul 2026 11:25:54 -0700
+
+paasta-tools (1.55.0) jammy; urgency=medium
+
+  * 1.55.0 tagged with 'make release'
+    Commit: Merge pull request #4338 from Yelp/u/nathanleigh/STREAMAPP-
+    15217/flink-requireSSD  STREAMAPP-15217: Add requireSSD to
+    FlinkDeploymentConfigDict
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 01 Jul 2026 13:19:52 -0700
+
+paasta-tools (1.54.1) jammy; urgency=medium
+
+  * 1.54.1 tagged with 'make release'
+    Commit: Merge pull request #4340 from Yelp/u/sidtuladhar/PAASTA-
+    18886/hpa-fix  chore: cleanup rollout flag
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 25 Jun 2026 07:33:54 -0700
+
+paasta-tools (1.54.0) jammy; urgency=medium
+
+  * 1.54.0 tagged with 'make release'
+    Commit: Automatically rollback after persistent crashlooping (#4328)
+    If we"re crashing consistently, something has probably gone wrong
+    and we don"t want to keep trying to deploy in the interest of not
+    wasting compute on broken code :)  (and also, so that we don"t leave
+    a timebomb after the deployment times out if no one is watching:
+    should this happen, the next deployment would skip the broken deploy
+    group and impact prod)  To enable this, I"m piggybacking off of our
+    existing code for diagnosing stuck/slow bounces: after
+    `time_before_first_diagnosis` seconds, we start checking pod restart
+    counts. If all pods have: 1. `restart_count >=
+    min_restarts_for_crashloop_rollback` (new config option, default:
+    2), AND 2. `restart_count > baseline` (i.e., at least one new
+    restart since we started watching)  ...then we immediately trigger
+    the autorollback sequence  The baseline comparison prevents false
+    positives from pods that crashed at startup but recovered — we only
+    roll back if crashes are happening during the diagnosis loop  Once
+    triggered, the only way to exit the autorollback state is to click
+    the Slack buttons in the deploy thread: it"s not exactly obvious
+    when/if a Pod has recovered for things like OOMKills as those might
+    take a couple minutes but still be prevalent enough to prevent a
+    deployment from completing (and also: if your code crashed N times
+    already during this deployment, it"s broken :p)  NOTE: The tests are
+    all `claude`-authored (which is great "cause mocking some of the
+    paasta api bits would have been kinda annoying by hand atm :p)  that
+    said, I"ve also done some manual testing in the paasta playground to
+    ensure that the tests aren"t providing me a false sense of security:
+    (note: `cb9e0385` is a "good" SHA and an actual commit in the
+    compute-infra-test-service repo, and `c1413ea9` only exists on my
+    devbox and is an image that always runs `exit 1`)  With crashloop
+    rollback enabled in deploy.yaml and default diagnosis parameters
+    (5min delay, 60s interval) when marking c1413ea9:  ``` Would update
+    the slack thread with: Marked `c1413ea9` for prod.main. Would update
+    the slack thread with: Will automatically roll back in 30 seconds,
+    (at 14:15:42)! Click "Disable auto rollbacks :close_eyes_monkey:" to
+    cancel this! Would update the slack thread with: Time"s up, will now
+    automatically roll back. Would update the slack thread with: Marked
+    `cb9e0385` for prod.main. ```  Total time from deploy to rollback:
+    ~6.5 minutes (300s first diagnosis delay + 60s second probe + 30s
+    countdown).  With crashloop rollback disabled, diagnosis parameters
+    tuned down so that i didn"t have to wait so long, and the m-f-d
+    wrapped with a `timeout 90`: none of the rollback messages showed up
+    and the command was killed after 90 seconds, but i still saw the
+    diagnosis output show up   NOTE2: I"ve refactored this quite a bit
+    from the initial version after a conversation with rofe made me
+    realize there were some edge cases I hadn"t considered earlier
+    (spurred on by a question about whether or not this would catch
+    OOMKills and rollback on "em) :p ...which also made me go ahead and
+    add deploy.yaml configs/toggles for things since this is more
+    opinionated now
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Jun 2026 11:59:56 -0700
+
+paasta-tools (1.53.4) jammy; urgency=medium
+
+  * 1.53.4 tagged with 'make release'
+    Commit: Merge pull request #4334 from Yelp/flink-y-links  Flink: add
+    y/ links and remove dead is_eks branching
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 18 Jun 2026 06:54:42 -0700
+
+paasta-tools (1.53.3) jammy; urgency=medium
+
+  * 1.53.3 tagged with 'make release'
+    Commit: Stop overriding user-specified podTemplateFile in Tron Spark
+    jobs (#4336)  Use setdefault instead of unconditionally overwriting,
+    so users who explicitly set
+    spark.kubernetes.executor.podTemplateFile keep their value while the
+    DNS pod template remains the default.  Co-authored-by: Claude Opus
+    4.7 <noreply@anthropic.com>
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Jun 2026 08:07:06 -0700
+
+paasta-tools (1.53.2) jammy; urgency=medium
+
+  * 1.53.2 tagged with 'make release'
+    Commit: Merge pull request #4333 from Yelp/u/sidtuladhar/fix-raw-
+    metric-hpa-key-mismatch  fix: align system config key with puppet
+    variable name for raw HPA metric
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 16 Jun 2026 10:43:31 -0700
+
+paasta-tools (1.53.1) jammy; urgency=medium
+
+  * 1.53.1 tagged with 'make release'
+    Commit: Merge pull request #4329 from Yelp/u/sidtuladhar/PAASTA-
+    18886/hpa-fix  feat: use raw metrics over recording rule rollout
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 16 Jun 2026 06:18:54 -0700
+
+paasta-tools (1.53.0) jammy; urgency=medium
+
+  * 1.53.0 tagged with 'make release'
+    Commit: Merge pull request #4330 from tub/u-tobyc-flink-restart-
+    support  Support paasta restart for Flink instances
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 15 Jun 2026 06:51:52 -0700
+
+paasta-tools (1.52.1) jammy; urgency=medium
+
+  * 1.52.1 tagged with 'make release'
+    Commit: Added --hostname to docker run command for spark-run (#4331)
+    For spark-run to work properly on yelp"s internal dev-boxes,
+    hostname needs to be fqdn instead of short name By adding --hostname
+    to docker run command, spark.driver.host gets the fqdn instead of
+    the short name and fixes the error ``` Caused by:
+    java.net.UnknownHostException: ```
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 11 Jun 2026 06:37:56 -0700
+
+paasta-tools (1.52.0) jammy; urgency=medium
+
+  * 1.52.0 tagged with 'make release'
+    Commit: Merge pull request #4326 from Yelp/u/sids/CLOUD-1216  add
+    yelp.com/cost_owner label, default value specified in service.yaml
+    with instance level overriding possible for paasta instances and
+    tron jobs
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 09 Jun 2026 11:36:29 -0700
+
+paasta-tools (1.51.3) jammy; urgency=medium
+
+  * 1.51.3 tagged with 'make release'
+    Commit: Improve `paasta rollback` output (#4325)  This generally
+    does 4 things: * Adds some much needed spacing between messages :p *
+    Makes it very explict that the rollback succeeded     * + makes it
+    clear that the rollback will happen in the background * Provides a
+    way to check if the rollback is done (we should maybe just   do this
+    automatically in the future) * Makes the Git revert reminder match
+    internal messaging  I will probably obviate the wait-for-deployment
+    messaging by having `paasta rollback` automatically do that for you
+    ...but for now i wanted to keep this to just small text tweaks :p
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Jun 2026 09:34:29 -0700
+
+paasta-tools (1.51.2) jammy; urgency=medium
+
+  * 1.51.2 tagged with 'make release'
+    Commit: Merge pull request #4315 from Yelp/u/sidtuladhar/PAASTA-
+    18877-emit-new-metrics  Emit additional deployment metrics
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 26 May 2026 02:22:22 -0700
+
+paasta-tools (1.51.1) jammy; urgency=medium
+
+  * 1.51.1 tagged with 'make release'
+    Commit: Merge pull request #4323 from Yelp/jfong/set-secret-
+    namespaces  AIRFLOW-3: Add a new set-namespaces subcmd to paasta
+    secret
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 May 2026 14:11:18 -0700
+
 paasta-tools (1.51.0) jammy; urgency=medium
 
   * 1.51.0 tagged with 'make release'

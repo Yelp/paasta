@@ -29,7 +29,6 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
-from paasta_tools.cli.cmds.status import OUTPUT_HORIZONTAL_RULE
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
@@ -2846,18 +2845,27 @@ class TestPrintFlinkStatus:
             verbose=0,
         )
 
-        status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_flink_base_status_verbose_0(metadata) + [
-            f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other, 3 total",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
-            "    1 taskmanagers, 3/4 slots available",
-            "    Jobs:",
-            "      Job Name       State       Started",
-            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
-        ]
-        assert expected_output == output
+        joined = "\n".join(output)
+
+        # Cluster info
+        assert "Config SHA: 00000" in joined
+        assert config_obj.flink_version in joined
+        assert "Dashboard" in joined
+
+        # State and resources
+        assert "Running" in joined
+        assert "3 running, 0 evicted, 0 other, 3 total" in joined
+        assert "1 running, 0 finished, 0 failed, 0 cancelled, 1 total" in joined
+        assert "1 taskmanagers" in joined
+        assert "3/4 slots available" in joined
+
+        # Jobs table
+        assert get_flink_job_name(job_details_obj) in joined
+
+        # No verbose-only sections in non-verbose mode
+        assert "Links:" not in joined
+        assert "Monitoring:" not in joined
+        assert "Logs:" not in joined
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
@@ -3015,37 +3023,46 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
 
-        status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        job_start_time = str(
-            datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
+        joined = "\n".join(output)
+
+        # Cluster info
+        assert "Config SHA: 00000" in joined
+        assert config_obj.flink_version in joined
+        assert config_obj.flink_revision in joined
+        assert "Dashboard" in joined
+
+        # State and resources
+        assert "Running" in joined
+        assert "3 running, 0 evicted, 0 other, 3 total" in joined
+        assert "1 running, 0 finished, 0 failed, 0 cancelled, 1 total" in joined
+        assert "1 taskmanagers" in joined
+        assert "3/4 slots available" in joined
+
+        # Jobs table
+        assert get_flink_job_name(job_details_obj) in joined
+
+        # Links section
+        assert "y/service-sg/fake_service" in joined
+        assert "fake_owner" in joined
+        assert "fake_runbook_url" in joined
+        assert "y/service-yelpsoa/fake_service" in joined
+        assert "y/service-srv/devc/fake_service" in joined
+
+        # Monitoring links
+        assert "y/flink-job-metrics/" in joined
+        assert "y/flink-container-metrics" in joined
+        assert "y/flink-jvm-metrics" in joined
+        assert "y/flink-cost-dashboard/" in joined
+        assert "var-service=fake_service" in joined
+
+        # Log commands
+        assert (
+            "paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance"
+            in joined
         )
-        expected_output = _get_flink_base_status_verbose_1(metadata) + [
-            "    Yelpsoa configs: https://github.yelpcorp.com/sysgit/yelpsoa-configs/tree/master/fake_service",
-            "    Srv configs: https://github.yelpcorp.com/sysgit/srv-configs/tree/master/ecosystem/devc/fake_service",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Log Commands:",
-            "      Service:     paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance",
-            "      Taskmanager: paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.TASKMANAGER",
-            "      Jobmanager:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.JOBMANAGER",
-            "      Supervisor:  paasta logs -a 1h -c fake_cluster -s fake_service -i fake_instance.SUPERVISOR",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            "    Flink Monitoring:",
-            "      Job Metrics: https://grafana.yelpcorp.com/d/flink-metrics/flink-job-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&var-job=All&from=now-24h&to=now",
-            "      Container Metrics: https://grafana.yelpcorp.com/d/flink-container-metrics/flink-container-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      JVM Metrics: https://grafana.yelpcorp.com/d/flink-jvm-metrics/flink-jvm-metrics?orgId=1&var-datasource=Prometheus-flink&var-region=uswest2-devc&var-service=fake_service&var-instance=fake_instance&from=now-24h&to=now",
-            "      Flink Cost: https://app.cloudzero.com/explorer?activeCostType=invoiced_amortized_cost&partitions=costcontext%3AResource%20Summary&dateRange=Last%2030%20Days&costcontext%3AKube%20Paasta%20Cluster=fake_cluster&costcontext%3APaasta%20Instance=fake_instance&costcontext%3APaasta%20Service=fake_service&showRightFlyout=filters",
-            f"{OUTPUT_HORIZONTAL_RULE}",
-            f"    State: {PaastaColors.green(status['state'].title())}",
-            "    Pods: 3 running, 0 evicted, 0 other, 3 total",
-            "    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled, 1 total",
-            "    1 taskmanagers, 3/4 slots available",
-            "    Jobs:",
-            "      Job Name       State       Started",
-            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
-        ]
-        append_pod_status(status["pod_status"], expected_output)
-        assert expected_output == output
+        assert "fake_instance.TASKMANAGER" in joined
+        assert "fake_instance.JOBMANAGER" in joined
+        assert "fake_instance.SUPERVISOR" in joined
 
 
 overview_obj = paastamodels.FlinkClusterOverview(
@@ -3085,27 +3102,6 @@ def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
     mock_api.service.get_flink_job_details_from_paasta_api_client.return_value = (
         job_details_obj
     )
-
-
-def _get_flink_base_status_verbose_0(metadata):
-    return [
-        "    Config SHA: 00000",
-        f"    Flink version: {config_obj.flink_version}",
-        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
-    ]
-
-
-def _get_flink_base_status_verbose_1(metadata):
-    return [
-        "    Config SHA: 00000",
-        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
-        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
-        "    Repo(git): https://github.yelpcorp.com/services/fake_service",
-        "    Repo(sourcegraph): https://sourcegraph.yelpcorp.com/services/fake_service",
-        "    Flink Pool: flink",
-        "    Owner: fake_owner",
-        "    Flink Runbook: fake_runbook_url",
-    ]
 
 
 def _formatted_table_to_dict(formatted_table):

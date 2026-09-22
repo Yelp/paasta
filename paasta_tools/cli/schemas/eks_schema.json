@@ -197,6 +197,11 @@
                 "deploy_group": {
                     "type": "string"
                 },
+                "cost_owner": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                    "maxLength": 63
+                },
                 "bounce_overprovision_factor": {
                     "type": "number",
                     "minimum": 0.25,
@@ -680,6 +685,12 @@
                 "fs_group": {
                     "type": "integer"
                 },
+                "fs_group_change_policy": {
+                    "enum": [
+                        "Always",
+                        "OnRootMismatch"
+                    ]
+                },
                 "healthcheck_mode": {
                     "enum": [
                         "cmd",
@@ -1006,6 +1017,11 @@
                     "type": "boolean",
                     "default": true
                 }
+            },
+            "dependencies": {
+                "fs_group_change_policy": [
+                    "fs_group"
+                ]
             }
         }
     }

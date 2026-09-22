@@ -25,9 +25,34 @@ from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
 
+from paasta_tools import utils
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.utils import DeploymentVersion
+from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
+
+MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
+    utils.SystemPaastaConfigDict(
+        # empty for now since we don't really read anything from here atm
+        # ...but this should stop us from writing tests that won't work on
+        # GitHub Actions + should make it so that we have one less super-common mock
+        # in all our tests :D
+        {},
+    ),
+    "/mock/system/configs",
+)
+
+
+@fixture(autouse=True)
+def mock_load_system_paasta_config():
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        yield
 
 
 @fixture(autouse=True)
@@ -52,6 +77,15 @@ def ensure_default_event_loop():
             loop.close()
             asyncio.set_event_loop(None)
     else:
+        yield
+
+
+@fixture(autouse=True)
+def mock_alertmanager_watcher_threads():
+    with patch(
+        "sticht.rollbacks.base.RollbackSlackDeploymentProcess.start_alertmanager_watcher_threads",
+        autospec=True,
+    ):
         yield
 
 
@@ -232,11 +266,16 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
+    config_mock.get_enable_alertmanager_rollback.return_value = False
+    config_mock.get_alertmanager_url.return_value = None
+    config_mock.get_alertmanager_poll_interval_s.return_value = 30
     mock_load_system_paasta_config.return_value = config_mock
     mock_get_instance_configs.return_value = {"fake_cluster": [], "fake_cluster2": []}
     mock_mark_for_deployment.return_value = 0
 
-    def do_wait_for_deployment_side_effect(self, target_commit, target_image_version):
+    def do_wait_for_deployment_side_effect(
+        self, target_commit, target_image_version, rollback_type=None
+    ):
         if (
             target_commit == FakeArgs.commit
             and target_image_version == FakeArgs.image_version
@@ -280,7 +319,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_do_wait_for_deployment.assert_any_call(
         mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha", None)
+    mock_do_wait_for_deployment.assert_any_call(
+        mock.ANY, "old-sha", None, RollbackTypes.USER_INITIATED_ROLLBACK
+    )
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
@@ -292,6 +333,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             "rolled_back_from": "DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             "rolled_back_to": "old-sha",
             "rollback_type": "user_initiated_rollback",
+            "dry_run": "False",
         },
         service="test_service",
     )
@@ -305,11 +347,16 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             old_version="old-sha",
             new_version="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             deploy_timeout=600,
+            wait_for_deployment=True,
         ),
     )
     mock_timer = mock_get_metrics.return_value.create_timer.return_value
     mock_timer.start.assert_called_once_with()
-    mock_timer.stop.assert_called_once_with(tmp_dimensions=dict(exit_status=1))
+    mock_timer.stop.assert_called_once_with(
+        tmp_dimensions=dict(
+            exit_status=1,
+        )
+    )
     mock_emit_event = mock_get_metrics.return_value.emit_event
     event_dimensions = dict(
         paasta_service="test_service",
@@ -317,6 +364,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         rolled_back_from="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
         rolled_back_to="old-sha",
         rollback_type="user_initiated_rollback",
+        dry_run="False",
     )
     expected_calls = []
     for cluster in mock_get_instance_configs.return_value.keys():
@@ -407,6 +455,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_get_instance_configs,
 ):
     mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
+    mock_load_system_paasta_config.return_value = MOCK_SYSTEM_PAASTA_CONFIG
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
@@ -778,8 +827,8 @@ class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProce
         }
         return fake_slack_client
 
-    def start_timer(self, timeout, trigger, message_verb):
-        return super().start_timer(0, trigger, message_verb)
+    def start_timer(self, timeout, trigger, message_verb, **kwargs):
+        return super().start_timer(0, trigger, message_verb, **kwargs)
 
     def after_state_change(self, *args, **kwargs):
         self.state_history.append(self.state)
@@ -954,9 +1003,6 @@ def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_ro
 def test_MarkForDeployProcess_send_manual_rollback_instructions_with_no_old_git_sha():
     """Test that rollback instructions are not sent when old_git_sha is None (new deploy group)."""
     with mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
-    ), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
     ):
@@ -990,9 +1036,6 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_with_no_old_git_
 def test_MarkForDeployProcess_send_manual_rollback_instructions_with_old_git_sha():
     """Test that rollback instructions are sent when old_git_sha is set."""
     with mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
-    ), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
     ):
@@ -1027,9 +1070,6 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_same_version():
     """Test that rollback instructions are not sent when deployment versions are the same."""
     same_sha = "same_commit_sha"
     with mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
-        autospec=True,
-    ), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
         autospec=True,
     ):
@@ -1081,3 +1121,712 @@ def test_slo_transcoder_is_importable():
     from sticht.rollbacks.slo import SLO_TRANSCODER_LOADED
 
     assert SLO_TRANSCODER_LOADED is True
+
+
+def test_MarkForDeployProcess_crashloop_triggers_rollback(
+    mock_periodically_update_slack,
+):
+    """When crashloops are detected during deploying, the state machine transitions to rollback."""
+
+    def simulate_crashloop(
+        self, target_commit, target_image_version, rollback_type=None
+    ):
+        if target_commit == "commit":
+            self.on_crashloop_detected("cluster1", "instance1", True)
+        # this case handles the automatic rollback so that we don't loop forever :p
+        else:
+            self.trigger("deploy_finished")
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+        # this is slighlty funky, but this is a little easier than really going through do_wait_for_deployment()
+        side_effect=simulate_crashloop,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+        mfdp.run_timeout = 1
+        assert mfdp.run() == 1
+        assert "crashloops_started_failing" in mfdp.trigger_history
+        assert "rollback_crashloop_failure" in mfdp.trigger_history
+        assert "start_rollback" in mfdp.state_history
+
+
+def test_MarkForDeployProcess_crashloop_recovery_does_not_cancel(
+    mock_periodically_update_slack,
+):
+    """Once crashlooping is detected, recovery does not cancel the rollback countdown."""
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    mfdp.state = "deploying"
+    mfdp.trigger_history.clear()
+
+    mfdp.on_crashloop_detected("cluster1", "instance1", True)
+    assert "crashloops_started_failing" in mfdp.trigger_history
+
+    mfdp.trigger_history.clear()
+    # Recovery reported — should NOT cancel
+    mfdp.on_crashloop_detected("cluster1", "instance1", False)
+    assert "crashloops_stopped_failing" not in mfdp.trigger_history
+    assert mfdp.any_crashloop_failing()
+
+
+def test_on_crashloop_detected_multi_instance_aggregation(
+    mock_periodically_update_slack,
+):
+    """Only fires trigger on first crashlooping instance; recovery never clears."""
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    mfdp.state = "deploying"
+    mfdp.trigger_history.clear()
+
+    # inst1: first detection — triggers immediately
+    mfdp.on_crashloop_detected("cluster1", "inst1", True)
+    assert "crashloops_started_failing" in mfdp.trigger_history
+
+    mfdp.trigger_history.clear()
+    # inst2: also crashlooping — already failing so no new trigger
+    mfdp.on_crashloop_detected("cluster1", "inst2", True)
+    assert "crashloops_started_failing" not in mfdp.trigger_history
+
+    mfdp.trigger_history.clear()
+    # inst1 reports recovery — still failing (no recovery logic)
+    mfdp.on_crashloop_detected("cluster1", "inst1", False)
+    assert "crashloops_stopped_failing" not in mfdp.trigger_history
+    assert mfdp.any_crashloop_failing()
+
+    mfdp.trigger_history.clear()
+    # inst2 reports recovery — still failing (no recovery logic)
+    mfdp.on_crashloop_detected("cluster1", "inst2", False)
+    assert "crashloops_stopped_failing" not in mfdp.trigger_history
+    assert mfdp.any_crashloop_failing()
+
+
+def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
+    mock_periodically_update_slack,
+):
+    # NOTE: we don't have this as the default 'cause we're going to remove this toggle
+    # (and this test) entirely once we're fully rolled out :p
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict({"enable_crashloop_auto_rollback": False}),
+        "/mock/system/configs",
+    )
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    assert mfdp.crashloop_auto_rollback_enabled is False
+
+
+def test_pods_above_crashloop_threshold_all_crashing():
+    current_counts = {"pod1": 3, "pod2": 4}
+    baseline_counts = {"pod1": 1, "pod2": 1}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is True
+    )
+
+
+def test_pods_above_crashloop_threshold_no_increase():
+    current_counts = {"pod1": 2, "pod2": 2}
+    baseline_counts = {"pod1": 2, "pod2": 2}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_below_min_restarts():
+    current_counts = {"pod1": 1, "pod2": 1}
+    baseline_counts = {"pod1": 0, "pod2": 0}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_percentage():
+    current_counts = {"pod1": 3, "pod2": 3, "pod3": 0}
+    baseline_counts = {"pod1": 1, "pod2": 1, "pod3": 0}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2, percentage_threshold=0.5
+        )
+        is True
+    )
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2, percentage_threshold=1.0
+        )
+        is False
+    )
+
+
+def test_pods_above_crashloop_threshold_new_pods():
+    current_counts = {"pod1": 3, "pod_new": 3}
+    baseline_counts = {"pod1": 1}
+    assert (
+        mark_for_deployment.pods_above_crashloop_threshold(
+            current_counts, baseline_counts, min_restarts=2
+        )
+        is True
+    )
+
+
+def test_get_pod_restart_counts_ignores_old_version():
+    version = DeploymentVersion(sha="abc123", image_version=None)
+
+    old_version_status = MagicMock()
+    old_version_status.git_sha = "old_sha"
+    old_version_status.image_version = None
+    old_version_status.pods = [MagicMock(spec=KubernetesPodV2)]
+
+    status = MagicMock()
+    status.kubernetes_v2.versions = [old_version_status]
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_main_container",
+        autospec=True,
+    ):
+        assert mark_for_deployment.get_pod_restart_counts(version, status) == {}
+
+
+def test_diagnose_why_instance_is_stuck_returns_restart_counts():
+    mock_api = MagicMock()
+    mock_status = MagicMock()
+    mock_status.kubernetes_v2.versions = []
+    mock_api.service.status_instance.return_value = mock_status
+
+    version = DeploymentVersion(sha="abc123", image_version=None)
+    instance_config = MagicMock(spec=LongRunningServiceConfig)
+    instance_config.get_instance_type.return_value = "kubernetes"
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_oapi_client",
+        autospec=True,
+        return_value=mock_api,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_paasta_oapi_api_clustername",
+        autospec=True,
+        return_value="cluster1",
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_pod_restart_counts",
+        autospec=True,
+        return_value={"pod1": 3, "pod2": 4},
+    ):
+        result = mark_for_deployment.diagnose_why_instance_is_stuck(
+            service="service",
+            instance="instance",
+            cluster="cluster1",
+            version=version,
+            instance_config=instance_config,
+            should_ping_for_unhealthy_pods=False,
+            notify_fn=None,
+        )
+
+    assert result == {"pod1": 3, "pod2": 4}
+
+
+def test_log_crashloop_rollback():
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+        return_value={"cluster1": []},
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log_audit",
+        autospec=True,
+    ) as mock_log_audit:
+        mfdp.log_crashloop_rollback()
+
+    mock_log_audit.assert_called_once()
+    call_kwargs = mock_log_audit.call_args[1]
+    assert call_kwargs["action"] == "rollback"
+    assert (
+        call_kwargs["action_details"]["rollback_type"]
+        == RollbackTypes.AUTOMATIC_CRASHLOOP_ROLLBACK.value
+    )
+
+
+def test_alertmanager_rollback_config_defaults(
+    mock_periodically_update_slack,
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    assert mfdp.alertmanager_rollback_enabled is False
+
+
+def test_alertmanager_rollback_config_from_system_config(
+    mock_periodically_update_slack,
+):
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "enable_alertmanager_rollback": True,
+                "alertmanager_poll_interval_s": 60,
+            }
+        ),
+        "/mock/system/configs",
+    )
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+    assert mfdp.alertmanager_rollback_enabled is True
+    assert mfdp.alertmanager_poll_interval_s == 60
+
+
+def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
+    mock_periodically_update_slack,
+):
+    """When an alertmanager alert fires during deploying, the state machine transitions to rollback.
+
+    NOTE: we don't need alertmanager_rollback_enabled here because the test fires the trigger directly
+    via simulate_alert (bypassing the real AlertManager watcher). The state machine transition only
+    requires auto_rollback=True, not the alertmanager-specific config.
+    """
+
+    def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
+        if target_commit == "commit":
+            self.trigger("alertmanager_started_failing")
+        else:
+            self.trigger("deploy_finished")
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+        side_effect=simulate_alert,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=True,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+        mfdp.run_timeout = (
+            1  # fail fast if the state machine gets stuck instead of hanging
+        )
+        assert mfdp.run() == 1
+        assert mfdp.trigger_history == [
+            "start_deploy",
+            "mfd_succeeded",
+            "alertmanager_started_failing",
+            "rollback_alertmanager_failure",
+            "mfd_succeeded",
+            "deploy_finished",
+            "auto_abandon",
+        ]
+        assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
+
+
+def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
+    mock_periodically_update_slack,
+):
+    """When alertmanager_rollback_dry_run is enabled, alerts fire but don't trigger rollback."""
+
+    def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
+        self.trigger("alertmanager_started_failing")
+        self.trigger("deploy_finished")
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+        side_effect=simulate_alert,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={
+                "pipeline": [
+                    {"step": "deploy_group", "alertmanager_rollback_dry_run": True}
+                ]
+            },
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=True,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=None,
+        )
+
+        mfdp.run_timeout = 1
+        assert mfdp.run() == 0
+        assert mfdp.trigger_history == [
+            "start_deploy",
+            "mfd_succeeded",
+            "alertmanager_started_failing",
+            "deploy_finished",
+            "auto_certify",
+        ]
+
+
+def _make_instance_config(instance: str, registrations=None) -> MagicMock:
+    cfg = MagicMock(spec=LongRunningServiceConfig)
+    cfg.instance = instance
+    cfg.get_registrations.return_value = registrations or [f"service.{instance}"]
+    return cfg
+
+
+def test_build_alertmanager_rollback_filters_empty():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={},
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_single_cluster_single_instance():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_multi_cluster_multi_instance():
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                    "cluster-b": {"yelp_region": "useast1-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        assert mark_for_deployment.build_alertmanager_rollback_filters(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [_make_instance_config("web")],
+                "cluster-b": [_make_instance_config("worker")],
+            },
+        ) == [
+            [
+                'paasta_rollback_metric="true"',
+                'paasta_service="my_service"',
+                'paasta_cluster=~"^(cluster-a|cluster-b)$"',
+                'paasta_instance=~"^(web|worker)$"',
+            ],
+            [
+                'paasta_rollback_metric="true"',
+                'instance=~"^(useast1-prod.my_service.worker|uswest2-prod.my_service.web)($|[.].*)"',
+            ],
+        ]
+
+
+def test_build_alertmanager_rollback_filters_empty_cluster_excluded():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+            "cluster-b": [],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
+
+
+def test_build_alertmanager_rollback_filters_duplicate_instances_deduplicated():
+    assert mark_for_deployment.build_alertmanager_rollback_filters(
+        service="my_service",
+        instance_configs_per_cluster={
+            "cluster-a": [_make_instance_config("web")],
+            "cluster-b": [_make_instance_config("web")],
+        },
+    ) == [
+        [
+            'paasta_rollback_metric="true"',
+            'paasta_service="my_service"',
+            'paasta_cluster=~"^(cluster-a|cluster-b)$"',
+            'paasta_instance=~"^(web)$"',
+        ],
+    ]
+
+
+def test_default_error_alert_filter_skips_unknown_cluster():
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        result = mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [_make_instance_config("main")],
+                "cluster-unknown": [_make_instance_config("canary")],
+            },
+        )
+    assert result == [
+        'paasta_rollback_metric="true"',
+        'instance=~"^(uswest2-prod.my_service.main)($|[.].*)"',
+    ]
+
+
+def test_default_error_alert_filter_returns_empty_when_no_instances():
+    assert (
+        mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={},
+        )
+        == []
+    )
+
+
+def test_default_error_alert_filter_multiple_registrations():
+    mock_config = utils.SystemPaastaConfig(
+        utils.SystemPaastaConfigDict(
+            {
+                "kube_clusters": {
+                    "cluster-a": {"yelp_region": "uswest2-prod"},
+                },
+            }
+        ),
+        "/mock/system/configs",
+    )
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config",
+        autospec=True,
+        return_value=mock_config,
+    ):
+        result = mark_for_deployment._build_default_error_alert_filter(
+            service="my_service",
+            instance_configs_per_cluster={
+                "cluster-a": [
+                    _make_instance_config(
+                        "main",
+                        registrations=["my_service.main", "my_service.main_alt"],
+                    )
+                ],
+            },
+        )
+    assert result == [
+        'paasta_rollback_metric="true"',
+        'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
+    ]

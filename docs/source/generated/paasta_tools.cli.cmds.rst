@@ -34,6 +34,7 @@ Submodules
    paasta_tools.cli.cmds.start_stop_restart
    paasta_tools.cli.cmds.status
    paasta_tools.cli.cmds.validate
+   paasta_tools.cli.cmds.verify_image_exists
    paasta_tools.cli.cmds.wait_for_deployment
 
 Module contents

@@ -171,6 +171,7 @@ from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 from paasta_tools.utils import TopologySpreadConstraintDict
 
 # Expected pre-stop command for smartstack services waiting for connections on port 8888
@@ -305,6 +306,19 @@ class TestKubernetesDeploymentConfig:
         with mock.patch(
             "paasta_tools.kubernetes_tools.kube_config.load_kube_config",
             autospec=True,
+        ) as m:
+            yield m
+
+    @pytest.fixture(autouse=True)
+    def mock_load_system_paasta_config(self):
+        config = SystemPaastaConfig(
+            SystemPaastaConfigDict({}),
+            "/mock/system/configs",
+        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=config,
         ) as m:
             yield m
 
@@ -1095,6 +1109,13 @@ class TestKubernetesDeploymentConfig:
             capabilities=V1Capabilities(add=["SETGID"], drop=expected_dropped_caps)
         )
         assert self.deployment.get_security_context() == expected_security_context
+
+    def test_get_fs_group_change_policy_default(self):
+        assert self.deployment.get_fs_group_change_policy() is None
+
+    def test_get_fs_group_change_policy(self):
+        self.deployment.config_dict["fs_group_change_policy"] = "OnRootMismatch"
+        assert self.deployment.get_fs_group_change_policy() == "OnRootMismatch"
 
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
@@ -2922,7 +2943,7 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_prometheus(
@@ -2978,11 +2999,18 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-uwsgi-prom",
+                                name="uwsgi-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.4,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3006,7 +3034,7 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
     )
     def test_get_autoscaling_metric_spec_uwsgi_v2_prometheus(
@@ -3062,7 +3090,14 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-uwsgi-v2-prom",
+                                name="uwsgi-v2-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="AverageValue",
@@ -3143,7 +3178,14 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-worker-load-prom",
+                                name="worker-load-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="AverageValue",
@@ -3171,7 +3213,7 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
         ),
     )
     def test_get_autoscaling_metric_spec_gunicorn_prometheus(
@@ -3227,11 +3269,18 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="service-instance-gunicorn-prom",
+                                name="gunicorn-prom-300",
+                                selector=V1LabelSelector(
+                                    match_labels={
+                                        "paasta_cluster": "cluster",
+                                        "paasta_service": "service",
+                                        "paasta_instance": "instance",
+                                    }
+                                ),
                             ),
                             target=V2MetricTarget(
                                 type="Value",
-                                value=1,
+                                value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3314,6 +3363,42 @@ class TestKubernetesDeploymentConfig:
         )
         expected_res = None
         assert expected_res == return_value
+
+    def test_get_autoscaling_provider_spec_shared_rules_no_kube_deployment_in_selector(
+        self,
+    ):
+        long_instance = "gondola-biz-owner-account-all-locations-performance"
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
+                            "setpoint": 0.5,
+                            "moving_average_window_seconds": 1800,
+                        }
+                    ]
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="server_side_rendering",
+            cluster="cluster",
+            instance=long_instance,
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        spec = mock_config.get_autoscaling_provider_spec(
+            name="fake_name",
+            namespace="paasta",
+            provider=config_dict["autoscaling"]["metrics_providers"][0],
+        )
+        # Should use shared metric name with selector, but no kube_deployment in matchLabels
+        assert spec.object.metric.selector is not None
+        assert "kube_deployment" not in spec.object.metric.selector.match_labels
+        assert spec.object.metric.name == "worker-load-prom-1800"
 
     @pytest.mark.parametrize(
         "target_type,expected_target_type,expected_target_field",
@@ -6114,3 +6199,208 @@ def test_delete_pod_by_name_no_pods():
 
         assert result is False
         mock_client.core.delete_namespaced_pod.assert_not_called()
+
+
+class TestCostOwnerLabel:
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+        return_value=[],
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    def test_cost_owner_label_present_when_enabled(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_volumes,
+        mock_get_kubernetes_containers,
+        mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
+    ):
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.is_in_smartstack.return_value = False
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            False
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = {}
+        mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        deployment = KubernetesDeploymentConfig(
+            service="myservice",
+            instance="main",
+            cluster="testcluster",
+            config_dict=KubernetesDeploymentConfigDict(
+                cost_owner="compute-infra-batch",
+                deploy_group="testcluster.main",
+            ),
+            branch_dict=None,
+        )
+        ret = deployment.get_pod_template_spec(
+            git_sha="abc123", system_paasta_config=mock_system_paasta_config
+        )
+        assert ret.metadata.labels["yelp.com/cost_owner"] == "compute-infra-batch"
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+        return_value=[],
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    def test_cost_owner_label_absent_when_gate_disabled(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_volumes,
+        mock_get_kubernetes_containers,
+        mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
+    ):
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.is_in_smartstack.return_value = False
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            False
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = {}
+        mock_system_paasta_config.get_enable_cost_owner_label.return_value = False
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        deployment = KubernetesDeploymentConfig(
+            service="myservice",
+            instance="main",
+            cluster="testcluster",
+            config_dict=KubernetesDeploymentConfigDict(
+                cost_owner="compute-infra-batch",
+                deploy_group="testcluster.main",
+            ),
+            branch_dict=None,
+        )
+        ret = deployment.get_pod_template_spec(
+            git_sha="abc123", system_paasta_config=mock_system_paasta_config
+        )
+        assert "yelp.com/cost_owner" not in ret.metadata.labels
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+        return_value=[],
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
+    def test_cost_owner_label_absent_when_not_configured(
+        self,
+        mock_create_pod_topology_spread_constraints,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_volumes,
+        mock_get_kubernetes_containers,
+        mock_load_service_namespace_config,
+        mock_load_system_paasta_config,
+    ):
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.is_in_smartstack.return_value = False
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            False
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+        mock_system_paasta_config.get_pod_defaults.return_value = {}
+        mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
+        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        deployment = KubernetesDeploymentConfig(
+            service="myservice",
+            instance="main",
+            cluster="testcluster",
+            config_dict=KubernetesDeploymentConfigDict(
+                deploy_group="testcluster.main",
+            ),
+            branch_dict=None,
+        )
+        ret = deployment.get_pod_template_spec(
+            git_sha="abc123", system_paasta_config=mock_system_paasta_config
+        )
+        assert "yelp.com/cost_owner" not in ret.metadata.labels

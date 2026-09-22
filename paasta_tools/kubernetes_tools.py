@@ -139,6 +139,9 @@ from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import run_sync
 from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER,
+)
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
@@ -235,6 +238,18 @@ PROJECTED_SA_TOKEN_PATH = "token"
 
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
+
+TEMPLATEABLE_PROVIDERS = {
+    METRICS_PROVIDER_UWSGI,
+    METRICS_PROVIDER_UWSGI_V2,
+    METRICS_PROVIDER_PISCINA,
+    METRICS_PROVIDER_WORKER_LOAD,
+    METRICS_PROVIDER_GUNICORN,
+}
+
+
+def get_prometheus_metric_name(metric_name: str, moving_average_window: int) -> str:
+    return f"{metric_name}-prom-{moving_average_window}"
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -385,6 +400,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
+        "yelp.com/cost_owner": str,
         "paasta.yelp.com/managed": str,
         "elbv2.k8s.aws/pod-readiness-gate-inject": str,
     },
@@ -823,12 +839,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return f"{self.get_sanitised_deployment_name()}-{metric_name}-prom"
 
     def get_autoscaling_provider_spec(
-        self, name: str, namespace: str, provider: MetricsProviderDict
+        self,
+        name: str,
+        namespace: str,
+        provider: MetricsProviderDict,
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
+        if provider["type"] in TEMPLATEABLE_PROVIDERS:
+            window = provider.get(
+                "moving_average_window_seconds",
+                DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
+            )
+            prometheus_hpa_metric_name = get_prometheus_metric_name(
+                provider["type"], window
+            )
+            metric_selector: Optional[V1LabelSelector] = V1LabelSelector(
+                match_labels={
+                    "paasta_cluster": self.cluster,
+                    "paasta_service": self.service,
+                    "paasta_instance": self.instance,
+                }
+            )
+        else:
+            metric_selector = None
 
         if provider["type"] in {METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY}:
             return V2MetricSpec(
@@ -845,12 +881,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
             METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
-                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
+                    described_object=V2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2MetricTarget(
+                        type="Value",
+                        # shared rules return avg load per replica (total_load / replicas);
+                        # HPA scales when metric > target, so target = setpoint.
+                        value=target,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
+            return V2MetricSpec(
+                type="Object",
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
@@ -894,7 +951,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
-                    metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
                     described_object=V2CrossVersionObjectReference(
                         api_version="apps/v1", kind="Deployment", name=name
                     ),
@@ -2438,8 +2498,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
 
         if fs_group is not None:
+            security_context_kwargs: Dict[str, Any] = {"fs_group": fs_group}
+            fs_group_change_policy = self.get_fs_group_change_policy()
+            if fs_group_change_policy is not None:
+                security_context_kwargs[
+                    "fs_group_change_policy"
+                ] = fs_group_change_policy
             pod_spec_kwargs["security_context"] = V1PodSecurityContext(
-                fs_group=fs_group
+                **security_context_kwargs
             )
 
         # prometheus_path is used to override the default scrape path in Prometheus
@@ -2496,6 +2562,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
+
+        if system_paasta_config.get_enable_cost_owner_label():
+            cost_owner = self.get_cost_owner()
+            if cost_owner:
+                labels["yelp.com/cost_owner"] = cost_owner
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them

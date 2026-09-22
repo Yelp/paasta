@@ -204,6 +204,7 @@ def setup_all_custom_resources(
                     cluster=cluster,
                     service=service,
                     instance=instance,
+                    soa_dir=soa_dir,
                 )
             )
         if results:
@@ -226,6 +227,7 @@ def setup_custom_resources(
     cluster: str,
     service: str = None,
     instance: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -246,6 +248,7 @@ def setup_custom_resources(
             group=group,
             cluster=cluster,
             crd=crd,
+            soa_dir=soa_dir,
         ):
             succeded = False
     return succeded
@@ -257,7 +260,7 @@ def get_dashboard_base_url(kind: str, cluster: str, is_eks: bool) -> Optional[st
     if kind.lower() == "flink":
         flink_link = dashboard_links.get(cluster, {}).get("Flink")
         if flink_link is None:
-            flink_link = get_flink_ingress_url_root(cluster, is_eks)
+            flink_link = get_flink_ingress_url_root(cluster)
         if flink_link[-1:] != "/":
             flink_link += "/"
         return flink_link
@@ -332,6 +335,7 @@ def reconcile_kubernetes_resource(
     crd: CustomResourceDefinition,
     cluster: str,
     instance: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     succeeded = True
     config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
@@ -350,7 +354,7 @@ def reconcile_kubernetes_resource(
                     instance=inst,
                     cluster=cluster,
                     load_deployments=True,
-                    soa_dir=DEFAULT_SOA_DIR,
+                    soa_dir=soa_dir,
                 )
             except NoDeploymentsAvailable:
                 log.warning(

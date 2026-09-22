@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -30,13 +31,27 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_worker_load_scaling_rule,
 )
-from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
-from paasta_tools.utils import SystemPaastaConfig
-
-MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
-    {},
-    "/mock/system/configs",
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_prometheus_adapter_config,
 )
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_shared_gunicorn_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_shared_piscina_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_shared_uwsgi_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_shared_uwsgi_v2_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_shared_worker_load_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
+
+LABEL_MATCHERS = "<<.LabelMatchers>>"
 
 
 @pytest.mark.parametrize(
@@ -394,6 +409,111 @@ def test_get_rules_for_service_instance(
         )
         == expected_rules
     )
+
+
+@pytest.mark.parametrize(
+    "rule_func,expected_series_metric,expected_name_prefix",
+    [
+        (create_shared_worker_load_scaling_rule, "worker_busy", "worker-load-prom"),
+        (create_shared_uwsgi_v2_scaling_rule, "uwsgi_worker_busy", "uwsgi-v2-prom"),
+        (create_shared_uwsgi_scaling_rule, "uwsgi_worker_busy", "uwsgi-prom"),
+        (
+            create_shared_piscina_scaling_rule,
+            "piscina_pool_utilization",
+            "piscina-prom",
+        ),
+        (create_shared_gunicorn_scaling_rule, "gunicorn_worker_busy", "gunicorn-prom"),
+    ],
+)
+def test_create_shared_scaling_rule(
+    rule_func, expected_series_metric, expected_name_prefix
+) -> None:
+    paasta_cluster = "test_cluster"
+    moving_average_window = 20120302
+
+    rule = rule_func(paasta_cluster, moving_average_window)
+
+    assert str(moving_average_window) in rule["metricsQuery"]
+    assert paasta_cluster in rule["seriesQuery"]
+    assert expected_series_metric in rule["seriesQuery"]
+    assert rule["name"]["as"] == f"{expected_name_prefix}-{moving_average_window}"
+    assert "<<index .LabelValuesByName" in rule["metricsQuery"]
+    assert "kube_deployment_status_replicas_ready" in rule["metricsQuery"]
+    assert "kube_deployment_labels" in rule["metricsQuery"]
+    assert "k8s:deployment:pods_status_ready" not in rule["metricsQuery"]
+    # no hardcoded service/instance values — only template references
+    assert "paasta_service='" not in rule["metricsQuery"].replace(
+        "paasta_service='<<index .LabelValuesByName", ""
+    )
+
+
+def _make_instance_config(
+    provider_type: str, window: int, service: str = "svc", instance: str = "inst"
+) -> mock.Mock:
+    m = mock.Mock(spec=KubernetesDeploymentConfig)
+    m.instance = instance
+    m.get_namespace.return_value = "paastasvc-test"
+    m.get_registrations.return_value = []
+    m.namespace_custom_prometheus_metric_name.return_value = (
+        f"{service}-{instance}-{provider_type}-prom"
+    )
+    m.get_autoscaling_metrics_provider.side_effect = lambda x: (
+        {
+            "type": provider_type,
+            "setpoint": 0.5,
+            "moving_average_window_seconds": window,
+        }
+        if x == provider_type
+        else None
+    )
+    return m
+
+
+def test_create_prometheus_adapter_config_shared_rules() -> None:
+    # Two services both using worker-load with the same window → should collapse to 1 shared rule
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
+        autospec=True,
+        return_value=[("svc_a", "inst1"), ("svc_b", "inst1")],
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_loader_cls:
+        mock_loader_cls.return_value.instance_configs.return_value = [
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
+        ]
+        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
+        rules = config["rules"]
+
+    # Only 1 shared rule for worker-load-1800, not 2 per-instance rules
+    worker_load_rules = [r for r in rules if "worker-load-prom" in r["name"]["as"]]
+    assert len(worker_load_rules) == 1
+    assert worker_load_rules[0]["name"]["as"] == "worker-load-prom-1800"
+    assert LABEL_MATCHERS in worker_load_rules[0]["metricsQuery"]
+
+
+def test_create_prometheus_adapter_config_shared_rules_multiple_windows() -> None:
+    # Two instances with different windows → 2 shared rules
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.get_services_for_cluster",
+        autospec=True,
+        return_value=[("svc_a", "inst1")],
+    ), mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_loader_cls:
+        mock_loader_cls.return_value.instance_configs.return_value = [
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 1800),
+            _make_instance_config(METRICS_PROVIDER_WORKER_LOAD, 300),
+        ]
+        config = create_prometheus_adapter_config("test_cluster", Path("/fake/soa"))
+
+    worker_load_rules = [
+        r for r in config["rules"] if "worker-load-prom" in r["name"]["as"]
+    ]
+    assert len(worker_load_rules) == 2
+    names = {r["name"]["as"] for r in worker_load_rules}
+    assert names == {"worker-load-prom-1800", "worker-load-prom-300"}
 
 
 @pytest.mark.parametrize(

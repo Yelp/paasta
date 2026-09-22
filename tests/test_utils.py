@@ -2075,6 +2075,22 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
+    def test_get_cost_owner(self):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"cost_owner": "compute-infra-batch"},
+            branch_dict=None,
+        )
+        assert fake_conf.get_cost_owner() == "compute-infra-batch"
+
+    def test_get_cost_owner_default(self):
+        fake_conf = utils.InstanceConfig(
+            service="", cluster="", instance="", config_dict={}, branch_dict=None
+        )
+        assert fake_conf.get_cost_owner() is None
+
     def test_get_pool(self):
         pool = "poolname"
         fake_conf = utils.InstanceConfig(
@@ -2845,31 +2861,6 @@ def test_filter_templates_from_config():
     }
 
 
-def test_is_secrets_for_teams_enabled():
-    with mock.patch(
-        "paasta_tools.utils.read_extra_service_information", autospec=True
-    ) as mock_read_extra_service_information:
-        service = "example_secrets_for_teams"
-
-        # if enabled
-        mock_read_extra_service_information.return_value = {
-            "description": "something",
-            "secrets_for_owner_team": True,
-        }
-        assert utils.is_secrets_for_teams_enabled(service)
-
-        # if specifically not enabled
-        mock_read_extra_service_information.return_value = {
-            "description": "something",
-            "secrets_for_owner_team": False,
-        }
-        assert not utils.is_secrets_for_teams_enabled(service)
-
-        # if not present
-        mock_read_extra_service_information.return_value = {"description": "something"}
-        assert not utils.is_secrets_for_teams_enabled(service)
-
-
 @pytest.mark.parametrize(
     "cluster,pool,system_paasta_config,expected",
     [
@@ -3021,3 +3012,15 @@ class TestGetDefaultBounceOverprovisionFactor:
             directory="/fake/dir",
         )
         assert config.get_bounce_overprovision_factor() == 1.0
+
+
+def test_SystemPaastaConfig_get_enable_cost_owner_label_default():
+    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
+    assert fake_config.get_enable_cost_owner_label() is False
+
+
+def test_SystemPaastaConfig_get_enable_cost_owner_label_enabled():
+    fake_config = utils.SystemPaastaConfig(
+        {"enable_cost_owner_label": True}, "/some/fake/dir"
+    )
+    assert fake_config.get_enable_cost_owner_label() is True
