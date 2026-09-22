@@ -71,7 +71,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.monitoring_tools import get_sensu_team_data
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -1273,95 +1272,6 @@ def validate_smartstack(service_path: str) -> bool:
     return True
 
 
-def _parse_flink_monitoring(value: Any) -> Optional[Dict]:
-    """Parse a Flink monitoring block, which may be a mapping or a YAML string."""
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        try:
-            parsed = yaml.safe_load(value)
-        except Exception:
-            return None
-        return parsed if isinstance(parsed, dict) else None
-    return None
-
-
-def validate_flink_monitoring_team(service_path: str) -> bool:
-    """Check that every Flink job resolves to a valid Sensu team.
-
-    Reads all flink-*.yaml and flinkeks-*.yaml files in service_path. The team may
-    be declared on the job's own monitoring block or on the instance's, since a job
-    inherits the instance block for any field it does not set. flink-metrics-exporter
-    resolves it the same way at scrape time, so requiring the job to restate it
-    would reject configs that are correctly routed.
-
-    :param service_path: path to location of configuration files
-    """
-    flink_files = glob(os.path.join(service_path, "flink-*.yaml")) + glob(
-        os.path.join(service_path, "flinkeks-*.yaml")
-    )
-    if not flink_files:
-        return True
-
-    returncode = True
-    for file_path in flink_files:
-        filename = os.path.relpath(file_path, start=os.path.dirname(service_path))
-        try:
-            with open(file_path) as f:
-                config = yaml.safe_load(f)
-        except Exception:
-            continue
-
-        if not isinstance(config, dict):
-            continue
-
-        for instance_name, instance_config in config.items():
-            if not isinstance(instance_config, dict):
-                continue
-
-            jobs = instance_config.get("jobs")
-            if not isinstance(jobs, dict):
-                continue
-
-            instance_monitoring = (
-                _parse_flink_monitoring(instance_config.get("monitoring")) or {}
-            )
-
-            for job_name, job_config in jobs.items():
-                if not isinstance(job_config, dict):
-                    continue
-
-                job_monitoring = (
-                    _parse_flink_monitoring(job_config.get("monitoring")) or {}
-                )
-
-                team = job_monitoring.get("team", instance_monitoring.get("team"))
-                if team is None:
-                    print(
-                        failure(
-                            f"Missing 'team' in {filename} "
-                            f"at {instance_name}.jobs.{job_name}: set it on the job's "
-                            f"monitoring block or on the instance's",
-                            "",
-                        )
-                    )
-                    returncode = False
-                elif not get_sensu_team_data(team):
-                    print(
-                        failure(
-                            f"Invalid monitoring team '{team}' in {filename} "
-                            f"at {instance_name}.jobs.{job_name} "
-                            f"— not a valid Sensu team",
-                            "",
-                        )
-                    )
-                    returncode = False
-
-    if returncode:
-        print(success("All Flink job monitoring teams are valid"))
-    return returncode
-
-
 def paasta_validate_soa_configs(
     service: str, service_path: str, verbose: bool = False
 ) -> bool:
@@ -1385,7 +1295,6 @@ def paasta_validate_soa_configs(
         validate_min_max_instances,
         validate_cpu_burst,
         validate_smartstack,
-        validate_flink_monitoring_team,
     ]
 
     # NOTE: we're explicitly passing a list comprehension to all()
