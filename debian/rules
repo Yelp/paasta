@@ -26,6 +26,10 @@ override_dh_virtualenv:
 	@echo patching k8s client lib
 	patch $(DH_VENV_DIR)/lib/python3.11/site-packages/kubernetes/client/api_client.py contrib/python-k8s-client.diff
 
+override_dh_strip:
+	# gpgme's .so has a corrupt string table that objcopy cannot process
+	dh_strip --exclude=/gpgme/
+
 override_dh_shlibdeps:
 	# pylibmc manylinux bundle libraries fail unless this is passed.
 	# See https://dh-virtualenv.readthedocs.io/en/latest/howtos.html#handling-binary-wheels for more details
