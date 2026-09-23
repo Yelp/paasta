@@ -28,14 +28,6 @@ SA naming mirrors paasta_tools.kubernetes_tools.get_service_account_name.
 
 Credentials come from the environment (instance profile on system nodes,
 or AWS_PROFILE when run by a human).
-
-Command line options:
-
-- -c <CLUSTER>, --cluster <CLUSTER>: Kubernetes cluster name
-- -n <NAMESPACE>, --namespace <NAMESPACE>: Limit to specific namespaces (repeatable)
-- --allow-unlisted: Allow --namespace values not in paasta_sa_namespaces config
-- --dry-run: Log intended changes without applying them
-- -v, --verbose: Verbose output
 """
 import argparse
 import logging
@@ -75,7 +67,7 @@ class DriftKind(Enum):
 
 
 @dataclass
-class DesiredSA:
+class DesiredServiceAccount:
     namespace: str
     sa_name: str
     role_arn: str
@@ -102,17 +94,14 @@ def get_oidc_provider_arn(
     account_id: str,
     cluster_server_url: str,
     aws_region: str,
-    cluster_name: str,
-    ecosystem: str,
 ) -> str:
     host = urlparse(cluster_server_url).hostname or ""
-    if ".eks.amazonaws.com" in host:
-        oidc_id = host.split(".")[0].upper()
-        return f"arn:aws:iam::{account_id}:oidc-provider/oidc.eks.{aws_region}.amazonaws.com/id/{oidc_id}"
-    return (
-        f"arn:aws:iam::{account_id}:oidc-provider/"
-        f"s3.{aws_region}.amazonaws.com/aws-k8s-pod-identity-oidc-{ecosystem}-{aws_region}/{cluster_name}"
-    )
+    oidc_id = host.split(".")[0].upper()
+    if not oidc_id:
+        raise RuntimeError(
+            f"Unable to derive OIDC ID from cluster server URL: {cluster_server_url}"
+        )
+    return f"arn:aws:iam::{account_id}:oidc-provider/oidc.eks.{aws_region}.amazonaws.com/id/{oidc_id}"
 
 
 def parse_namespaces_from_trust_policy(
@@ -127,31 +116,38 @@ def parse_namespaces_from_trust_policy(
         string_not_like = condition.get("StringNotLike", {})
         for key, patterns in string_not_like.items():
             if not key.endswith(":sub"):
+                log.debug(f"Skipping condition key {key} (not a :sub key)")
                 continue
             if isinstance(patterns, str):
                 patterns = [patterns]
             for pattern in patterns:
                 # Expected: "system:serviceaccount:<namespace>:<sa-name>"
                 # Wildcard: "*:*:*:*"
-                parts = pattern.split(":")
-                if len(parts) < 4:
+                try:
+                    _, _, namespace, _ = pattern.split(":")
+                except ValueError:
+                    log.debug(
+                        f"Skipping pattern {pattern}: does not match expected *:*:namespace:namematch"
+                    )
                     continue
-                _, _, namespace, *_ = parts
-                namespace = namespace.strip("*")
-                if namespace == "":
+                if namespace == "*":
                     namespaces.update(allowed_namespaces)
                 elif namespace in allowed_namespaces:
                     namespaces.add(namespace)
+                else:
+                    log.debug(
+                        f"Skipping namespace {namespace} (not in allowed namespaces)"
+                    )
     return namespaces
 
 
-def collect_desired_sas(
+def collect_desired_service_accounts(
     oidc_provider_arn: str,
     allowed_namespaces: Set[str],
-) -> List[DesiredSA]:
+) -> List[DesiredServiceAccount]:
     session = boto3.Session()
     iam = session.client("iam")
-    desired: List[DesiredSA] = []
+    desired: List[DesiredServiceAccount] = []
 
     paginator = iam.get_paginator("list_roles")
     for page in paginator.paginate():
@@ -176,6 +172,7 @@ def collect_desired_sas(
                     break
 
             if not references_our_cluster:
+                log.debug(f"Skipping role {role_arn} (does not reference our cluster)")
                 continue
 
             namespaces = parse_namespaces_from_trust_policy(
@@ -183,12 +180,15 @@ def collect_desired_sas(
                 allowed_namespaces,
             )
             if not namespaces:
+                log.debug(
+                    f"Skipping role {role_arn} (no matching namespaces in trust policy)"
+                )
                 continue
 
             sa_name = get_service_account_name(role_arn)
             for namespace in namespaces:
                 desired.append(
-                    DesiredSA(
+                    DesiredServiceAccount(
                         namespace=namespace,
                         sa_name=sa_name,
                         role_arn=role_arn,
@@ -200,7 +200,7 @@ def collect_desired_sas(
 
 def compute_drift(
     kube_client: KubeClient,
-    desired: List[DesiredSA],
+    desired: List[DesiredServiceAccount],
     allowed_namespaces: Set[str],
 ) -> Tuple[List[DriftItem], List[str]]:
     errors: List[str] = []
@@ -333,7 +333,7 @@ def apply_drift(
                 log.info(f"{ns}: adopt SA {sa_name} (adding managed label)")
             else:
                 log.info(
-                    f"{ns}: update SA {sa_name} {item.actual_arn!r} -> {item.desired_arn!r}"
+                    f"{ns}: update SA {sa_name} {item.actual_arn} -> {item.desired_arn}"
                 )
             if not dry_run:
                 try:
@@ -460,8 +460,6 @@ def main() -> None:
         raise RuntimeError(
             f"Missing server for cluster {cluster} in kube_clusters config"
         )
-    ecosystem = system_paasta_config.get_ecosystem_for_cluster(cluster) or ""
-
     session = boto3.Session()
     account_id = session.client("sts", region_name=aws_region).get_caller_identity()[
         "Account"
@@ -471,8 +469,6 @@ def main() -> None:
         account_id=account_id,
         cluster_server_url=server,
         aws_region=aws_region,
-        cluster_name=cluster,
-        ecosystem=ecosystem,
     )
     log.debug(f"Cluster: {cluster}, OIDC provider: {oidc_provider_arn}")
     log.info(f"Namespaces: {sorted(allowed_namespaces)}")
@@ -481,7 +477,7 @@ def main() -> None:
         log.info("DRY RUN - no changes will be applied")
 
     log.info("Collecting desired SAs from IAM trust policies...")
-    desired = collect_desired_sas(oidc_provider_arn, allowed_namespaces)
+    desired = collect_desired_service_accounts(oidc_provider_arn, allowed_namespaces)
     log.info(f"Found {len(desired)} desired SA entries")
 
     kube_client = KubeClient()
