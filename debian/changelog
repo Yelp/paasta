@@ -1,3 +1,10 @@
+paasta-tools (1.60.11) jammy; urgency=medium
+
+  * 1.60.11 tagged with 'make release'
+    Commit: Exclude gpgme in dh_strip (#4395)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 23 Sep 2026 15:53:15 -0700
+
 paasta-tools (1.60.10) jammy; urgency=medium
 
   * 1.60.10 tagged with 'make release'
