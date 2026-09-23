@@ -1,3 +1,11 @@
+paasta-tools (1.60.10) jammy; urgency=medium
+
+  * 1.60.10 tagged with 'make release'
+    Commit: Merge pull request #4387 from Yelp/u/abubakarrj/PAASTA-18819
+    Upgrade paasta to python 3.11
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 23 Sep 2026 08:55:31 -0700
+
 paasta-tools (1.60.9) jammy; urgency=medium
 
   * 1.60.9 tagged with 'make release'
