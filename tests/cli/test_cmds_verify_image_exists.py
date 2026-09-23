@@ -28,7 +28,7 @@ def test_wait_polls_until_found():
         side_effect=[False, False, True],
     ), mock.patch(
         "paasta_tools.cli.cmds.verify_image_exists.time.sleep",
-        autospec=True,
+        autospec=None,
     ):
         assert (
             verify_image_exists(service="fake_service", commit="abc1234", wait=True)
