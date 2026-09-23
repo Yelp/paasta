@@ -54,6 +54,7 @@ def test_execute_in_container_reuses_exec():
     mock_docker_client.inspect_container.return_value = {"ExecIDs": [fake_execid]}
     mock_docker_client.exec_start.return_value = fake_output
     mock_docker_client.exec_inspect.return_value = {
+        "Running": False,
         "ExitCode": fake_return_code,
         "ProcessConfig": {"entrypoint": "/bin/sh", "arguments": ["-c", fake_command]},
     }
@@ -77,6 +78,7 @@ def test_execute_in_container_reuses_only_valid_exec():
     fake_output = "fake_output"
     fake_command = "fake_cmd"
     bad_exec = {
+        "Running": False,
         "ExitCode": fake_return_code,
         "ProcessConfig": {
             "entrypoint": "/bin/sh",
@@ -84,6 +86,7 @@ def test_execute_in_container_reuses_only_valid_exec():
         },
     }
     good_exec = {
+        "Running": False,
         "ExitCode": fake_return_code,
         "ProcessConfig": {"entrypoint": "/bin/sh", "arguments": ["-c", fake_command]},
     }
@@ -105,6 +108,118 @@ def test_execute_in_container_reuses_only_valid_exec():
     ) == (fake_output, fake_return_code)
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
+
+
+@mock.patch(
+    "paasta_tools.paasta_execute_docker_command.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
+def test_execute_in_container_creates_exec_when_no_existing_exec_matches():
+    fake_container_id = "fake_container_id"
+    fake_return_code = 0
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    mock_docker_client.inspect_container.return_value = {
+        "ExecIDs": ["unrelated_exec_1", "unrelated_exec_2"]
+    }
+    mock_docker_client.exec_start.return_value = fake_output
+    mock_docker_client.exec_inspect.side_effect = [
+        {
+            "Running": False,
+            "ProcessConfig": {
+                "entrypoint": "/bin/sh",
+                "arguments": ["-c", "some_other_command"],
+            },
+        },
+        {
+            "Running": False,
+            "ProcessConfig": {
+                "entrypoint": "/bin/bash",
+                "arguments": ["-c", "another_command"],
+            },
+        },
+        {"ExitCode": fake_return_code},
+    ]
+
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
+    mock_docker_client.exec_create.assert_called_once_with(
+        fake_container_id, ["/bin/sh", "-c", fake_command]
+    )
+
+
+@mock.patch(
+    "paasta_tools.paasta_execute_docker_command.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
+def test_execute_in_container_reuses_already_exited_exec():
+    """An exec with a matching command that already ran should be reused."""
+    fake_container_id = "fake_container_id"
+    fake_return_code = 0
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    mock_docker_client.inspect_container.return_value = {
+        "ExecIDs": ["already_ran_exec"]
+    }
+    mock_docker_client.exec_start.return_value = fake_output
+    mock_docker_client.exec_inspect.side_effect = [
+        {
+            "Running": False,
+            "Pid": 12345,
+            "ProcessConfig": {
+                "entrypoint": "/bin/sh",
+                "arguments": ["-c", fake_command],
+            },
+        },
+        {"ExitCode": fake_return_code},
+    ]
+
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
+    assert mock_docker_client.exec_create.call_count == 0
+    mock_docker_client.exec_start.assert_called_once_with(
+        "already_ran_exec", stream=False
+    )
+
+
+@mock.patch(
+    "paasta_tools.paasta_execute_docker_command.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
+def test_execute_in_container_skips_currently_running_exec():
+    """An exec with a matching command that is still running should not be reused."""
+    fake_container_id = "fake_container_id"
+    fake_return_code = 0
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+    mock_docker_client.inspect_container.return_value = {"ExecIDs": ["running_exec"]}
+    mock_docker_client.exec_start.return_value = fake_output
+    mock_docker_client.exec_inspect.side_effect = [
+        {
+            "Running": True,
+            "Pid": 12345,
+            "ProcessConfig": {
+                "entrypoint": "/bin/sh",
+                "arguments": ["-c", fake_command],
+            },
+        },
+        {"ExitCode": fake_return_code},
+    ]
+
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
+    mock_docker_client.exec_create.assert_called_once_with(
+        fake_container_id, ["/bin/sh", "-c", fake_command]
+    )
 
 
 def test_main():
