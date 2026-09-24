@@ -1155,11 +1155,13 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile is not None:
+            if field_name == "iam_role" and (
+                args.aws_profile is not None or args.force_pod_identity is not None
+            ):
                 print(
                     PaastaColors.yellow(
-                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` is provided. "
-                        f"We are giving higher priority to `--aws-profile` in case of paasta spark-run adhoc runs."
+                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` or `--force-pod-identity` are provided. "
+                        f"We are giving higher priority to direct CLI args in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
