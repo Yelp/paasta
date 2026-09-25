@@ -1,3 +1,11 @@
+paasta-tools (1.60.16) jammy; urgency=medium
+
+  * 1.60.16 tagged with 'make release'
+    Commit: Merge pull request #4398 from Yelp/u/abubakarrj/bump-sticht-
+    2.1.1  Bump sticht to v2.1.1
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 25 Sep 2026 09:03:44 -0700
+
 paasta-tools (1.60.15) jammy; urgency=medium
 
   * 1.60.15 tagged with 'make release'
