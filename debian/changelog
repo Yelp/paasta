@@ -1,3 +1,11 @@
+paasta-tools (1.60.17) jammy; urgency=medium
+
+  * 1.60.17 tagged with 'make release'
+    Commit: Use latest sticht version (#4401)  Which includes fixes for
+    various issues we"ve seen with alertmanager autorollbacks :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 28 Sep 2026 11:01:48 -0700
+
 paasta-tools (1.60.16) jammy; urgency=medium
 
   * 1.60.16 tagged with 'make release'
