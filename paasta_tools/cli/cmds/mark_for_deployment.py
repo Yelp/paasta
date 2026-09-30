@@ -1454,9 +1454,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("deploy_errored")
 
     def on_enter_rolled_back(self) -> None:
-        self.update_slack_status(
-            f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
-        )
+        message = f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
+        self.update_slack_status(message)
+        # NOTE: update_slack_status() only edits the status message at the top of the thread (which is easy to miss/editable),
+        # so we also post this to the thread itself so that it's always clear that a rollback happened and was successful
+        # XXX: perhaps we should audit our update_* calls and ensure we do this everywhere?
+        self.update_slack_thread(message)
         line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
