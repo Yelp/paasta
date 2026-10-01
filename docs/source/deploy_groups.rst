@@ -199,6 +199,13 @@ This is configured per deploy_group in deploy.yaml:
 * ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
   PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
 
+Alerts that were already firing before the deployment started are ignored, unless they resolve
+and then fire again during the deployment.
+
+An alert is only considered resolved once it has been absent from AlertManager for several
+consecutive polls (currently 2, i.e. ~60 seconds with the default poll interval), so that brief
+blips in AlertManager don't cancel an in-progress rollback.
+
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
 
 Example:
