@@ -1,3 +1,18 @@
+paasta-tools (1.60.19) jammy; urgency=medium
+
+  * 1.60.19 tagged with 'make release'
+    Commit: Update slack thread in on_enter_rolled_back (#4402)  ...and
+    not just the status (i.e., the parent message) since unless you
+    happen to be watching Slack way too closely, it"s easy to miss that
+    the rollback was successful  Trying to look at the thread messages
+    to reconstruct what happened is somewhat hard to understand if
+    you"re not on CI since we really just say "marked $SHA for
+    deployment" and normal people aren"t keeping track of SHAs that
+    closely and will almost certainly be left wondering if the rollback
+    was successful or not :p
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 02 Oct 2026 06:13:57 -0700
+
 paasta-tools (1.60.18) jammy; urgency=medium
 
   * 1.60.18 tagged with 'make release'
