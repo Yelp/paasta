@@ -1,3 +1,11 @@
+paasta-tools (1.60.18) jammy; urgency=medium
+
+  * 1.60.18 tagged with 'make release'
+    Commit: Merge pull request #4403 from Yelp/u/luisp/alertmanager-
+    rollback-docs  Bump sticht to show existing alerts + update docs
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 02 Oct 2026 03:37:17 -0700
+
 paasta-tools (1.60.17) jammy; urgency=medium
 
   * 1.60.17 tagged with 'make release'
