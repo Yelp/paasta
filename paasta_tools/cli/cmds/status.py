@@ -1322,9 +1322,10 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
                 pod.create_timestamp + main_container.healthcheck_grace_period
                 > datetime.now(timezone.utc).timestamp()
             )
-            # liveness probes only start after the grace period, and the first few often
-            # fail while the service finishes starting up. Failures stay "recent" for
-            # HEALTHCHECK_WINDOW_S, so allow them that long to age out before we warn
+            # liveness probes only start after the grace period, and the first few often fail
+            # while the service finishes starting up. Additionally allow HEALTHCHECK_WINDOW_S extra time, and another
+            # HEALTHCHECK_WINDOW_S before we warn. This is to avoid warning on a service that is just starting up
+            # and has not yet passed its grace period.
             recently_deployed = (
                 pod.create_timestamp
                 + main_container.healthcheck_grace_period
