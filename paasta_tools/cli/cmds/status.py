@@ -66,6 +66,7 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import HEALTHCHECK_WINDOW_S
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import format_pod_event_messages
@@ -1267,7 +1268,8 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 
 def recent_container_restart(
-    container: Optional[KubernetesContainerV2], time_window: int = 900
+    container: Optional[KubernetesContainerV2],
+    time_window: int = HEALTHCHECK_WINDOW_S,
 ) -> bool:
     if container:
         return kubernetes_tools.recent_container_restart(
@@ -1320,6 +1322,15 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
                 pod.create_timestamp + main_container.healthcheck_grace_period
                 > datetime.now(timezone.utc).timestamp()
             )
+            # liveness probes only start after the grace period, and the first few often
+            # fail while the service finishes starting up. Failures stay "recent" for
+            # HEALTHCHECK_WINDOW_S, so allow them that long to age out before we warn
+            recently_deployed = (
+                pod.create_timestamp
+                + main_container.healthcheck_grace_period
+                + 2 * HEALTHCHECK_WINDOW_S
+                > datetime.now(timezone.utc).timestamp()
+            )
             if pod.mesh_ready is False:
                 if main_container.state != "running":
                     state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
@@ -1328,10 +1339,13 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
             elif not pod.ready:
                 state = ReplicaState.NOT_READY
             else:
-                if recent_liveness_failure(pod) or recent_container_restart(
-                    main_container
-                ):
+                liveness_failed = recent_liveness_failure(pod)
+                if (
+                    liveness_failed and not recently_deployed
+                ) or recent_container_restart(main_container):
                     state = ReplicaState.WARNING
+                elif liveness_failed:
+                    state = ReplicaState.WARMING_UP
                 else:
                     state = ReplicaState.RUNNING
 
@@ -1434,15 +1448,24 @@ def create_replica_table(
                         + main_container.healthcheck_grace_period
                         - datetime.now(timezone.utc).timestamp()
                     )
-                    humanized_remaining = humanize.naturaldelta(
-                        timedelta(seconds=grace_period_remaining)
-                    )
+                    if grace_period_remaining > 0:
+                        humanized_remaining = humanize.naturaldelta(
+                            timedelta(seconds=grace_period_remaining)
+                        )
+                        warmup_status = (
+                            f"{humanized_remaining} before healthchecking starts"
+                        )
+                    else:
+                        warmup_status = "healthchecks have started but are failing while the service starts up"
                     table.append(
                         PaastaColors.cyan(
-                            f"  Still warming up, {humanized_duration} elapsed, {humanized_remaining} before healthchecking starts"
+                            f"  Still warming up, {humanized_duration} elapsed, {warmup_status}"
                         )
                     )
-        if recent_liveness_failure(pod) and state != ReplicaState.TERMINATING:
+        if recent_liveness_failure(pod) and state not in (
+            ReplicaState.TERMINATING,
+            ReplicaState.WARMING_UP,
+        ):
             healthcheck_string = (
                 "check your healthcheck configuration in yelpsoa_configs"
             )

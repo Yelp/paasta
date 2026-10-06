@@ -29,6 +29,7 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import ReplicaState
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
@@ -36,6 +37,7 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import get_instance_state
+from paasta_tools.cli.cmds.status import get_replica_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
@@ -1892,6 +1894,73 @@ def test_recent_container_restart_no_last_timestamp():
     recent_container_restart(container)
 
 
+class TestGetReplicaState:
+    @pytest.fixture
+    def now(self):
+        return datetime.datetime(2026, 10, 6, 12, 0, tzinfo=datetime.timezone.utc)
+
+    @pytest.fixture
+    def mock_pod(self, now):
+        return paastamodels.KubernetesPodV2(
+            name="pod1",
+            ip="1.2.3.4",
+            host="w.x.y.z",
+            create_timestamp=now.timestamp(),
+            phase="Running",
+            ready=True,
+            mesh_ready=True,
+            scheduled=True,
+            containers=[
+                paastamodels.KubernetesContainerV2(
+                    name="main",
+                    state="running",
+                    restart_count=0,
+                    healthcheck_grace_period=60,
+                )
+            ],
+            events=[],
+        )
+
+    @pytest.mark.parametrize(
+        "seconds_since_created,liveness_failed,restarted,expected",
+        [
+            # within grace period: existing behaviour, k8s isn't probing yet
+            (30, True, False, ReplicaState.WARMING_UP),
+            # after grace period but still recently deployed: startup noise is forgiven
+            (180, True, False, ReplicaState.WARMING_UP),
+            # recently deployed, but restarts are never forgiven
+            (180, True, True, ReplicaState.WARNING),
+            (180, False, True, ReplicaState.WARNING),
+            # startup failures are given HEALTHCHECK_WINDOW_S to age out before we warn
+            (360, True, False, ReplicaState.WARMING_UP),
+            # boundary: grace period (60) + 2 * HEALTHCHECK_WINDOW_S (600) is no longer recent
+            (660, True, False, ReplicaState.WARNING),
+            # long-running pod with a liveness failure
+            (3600, True, False, ReplicaState.WARNING),
+            # healthy pods
+            (180, False, False, ReplicaState.RUNNING),
+            (3600, False, False, ReplicaState.RUNNING),
+        ],
+    )
+    def test_healthcheck_failure_states(
+        self, now, mock_pod, seconds_since_created, liveness_failed, restarted, expected
+    ):
+        mock_pod.create_timestamp = now.timestamp() - seconds_since_created
+        with mock.patch(
+            "paasta_tools.cli.cmds.status.datetime", autospec=True
+        ) as mock_datetime, mock.patch(
+            "paasta_tools.cli.cmds.status.recent_liveness_failure",
+            autospec=True,
+            return_value=liveness_failed,
+        ), mock.patch(
+            "paasta_tools.cli.cmds.status.recent_container_restart",
+            autospec=True,
+            return_value=restarted,
+        ):
+            mock_datetime.now.return_value = now
+            assert get_replica_state(mock_pod) == expected
+
+
 class TestGetVersionsTable:
     @pytest.fixture
     def mock_running_container(self):
@@ -2132,6 +2201,32 @@ class TestGetVersionsTable:
                 for row in versions_table
             ]
         )
+
+    def test_warming_up_after_grace_period(self, mock_replicasets):
+        pod = mock_replicasets[1].pods[0]
+        pod.containers[0].healthcheck_grace_period = 60
+        pod.events = [
+            paastamodels.KubernetesPodEvent(
+                message="Liveness probe failed:", time_stamp="2021-03-05 00:02:00"
+            )
+        ]
+        fake_now = datetime.datetime.fromtimestamp(pod.create_timestamp + 180)
+
+        with mock.patch(
+            "paasta_tools.cli.cmds.status.datetime", autospec=True
+        ) as mock_datetime:
+            mock_datetime.now.return_value = fake_now
+            versions_table = get_versions_table(
+                mock_replicasets, "service", "instance", "cluster", verbose=1
+            )
+        assert any(["1 Warming Up" in row for row in versions_table])
+        assert any(
+            [
+                "healthchecks have started but are failing" in row
+                for row in versions_table
+            ]
+        )
+        assert not any(["Healthchecks are failing" in row for row in versions_table])
 
     def test_unreachable(self, mock_replicasets):
         mock_replicasets[1].pods[0].ready = False
