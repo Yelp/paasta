@@ -86,8 +86,8 @@ def mock_alertmanager_watcher_threads():
     with patch(
         "sticht.rollbacks.base.RollbackSlackDeploymentProcess.start_alertmanager_watcher_threads",
         autospec=True,
-    ):
-        yield
+    ) as mock_start_alertmanager_watcher_threads:
+        yield mock_start_alertmanager_watcher_threads
 
 
 class FakeArgs:
@@ -1488,11 +1488,10 @@ def test_alertmanager_rollback_config_from_system_config(
 def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     mock_periodically_update_slack,
 ):
-    """When an alertmanager alert fires during deploying, the state machine transitions to rollback.
+    """When an alertmanager alert fires during deploying and alertmanager_rollback is enabled, the state
+    machine transitions to rollback - even if (SLO-based) auto_rollback is disabled.
 
-    NOTE: we don't need alertmanager_rollback_enabled here because the test fires the trigger directly
-    via simulate_alert (bypassing the real AlertManager watcher). The state machine transition only
-    requires auto_rollback=True, not the alertmanager-specific config.
+    NOTE: the test fires the trigger directly via simulate_alert (bypassing the real AlertManager watcher).
     """
 
     def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
@@ -1518,12 +1517,14 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
-            deploy_info={"pipeline": []},
+            deploy_info={
+                "pipeline": [{"step": "deploy_group", "alertmanager_rollback": True}]
+            },
             deploy_group="deploy_group",
             commit="commit",
             old_git_sha="old_git_sha",
             git_url="git_url",
-            auto_rollback=True,
+            auto_rollback=False,
             block=True,
             soa_dir="soa_dir",
             timeout=3600,
@@ -1534,6 +1535,8 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             authors=None,
         )
 
+        # AlertManager-only deploys still wait before certifying so that alerts can be caught
+        assert mfdp.get_auto_certify_delay() > 0
         mfdp.run_timeout = (
             1  # fail fast if the state machine gets stuck instead of hanging
         )
@@ -1548,6 +1551,56 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             "auto_abandon",
         ]
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
+    mock_get_instance_configs,
+    mock_alertmanager_watcher_threads,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={"pipeline": []},
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    mfdp.state = "deploying"
+    mfdp.slo_watchers = [MagicMock(spec=SLOWatcher, failing=True, label="some_slo")]
+    mfdp.alertmanager_url = "http://alertmanager"
+    assert not mock_alertmanager_watcher_threads.called
+
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running()
+
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+    assert not mfdp.any_auto_rollbacks_enabled()
+
+    # enabling turns on both SLO-based and AlertManager-based rollbacks, even though
+    # AlertManager-based rollbacks weren't configured - so the watcher is started on click
+    mfdp.trigger("enable_auto_rollbacks_button_clicked")
+    assert mfdp.auto_rollbacks_enabled()
+    assert mfdp.alertmanager_rollbacks_enabled()
+    mock_alertmanager_watcher_threads.assert_called_once()
+
+    # the AlertManager watcher keeps running after disabling, so new alerts must not start a countdown
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    mfdp.trigger("alertmanager_started_failing")
+    assert not mfdp.is_timer_running()
 
 
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
@@ -1605,41 +1658,6 @@ def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
             "deploy_finished",
             "auto_certify",
         ]
-
-
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
-    autospec=True,
-)
-def test_MarkForDeployProcess_disable_auto_rollbacks_button_cancels_countdown(
-    mock_get_instance_configs,
-):
-    mfdp = WrappedMarkForDeploymentProcess(
-        service="service",
-        deploy_info={"pipeline": []},
-        deploy_group="deploy_group",
-        commit="commit",
-        old_git_sha="old_git_sha",
-        git_url="git_url",
-        auto_rollback=True,
-        block=True,
-        soa_dir="soa_dir",
-        timeout=3600,
-        warn_pct=50,
-        auto_certify_delay=None,
-        auto_abandon_delay=600,
-        auto_rollback_delay=30,
-        authors=None,
-    )
-    mfdp.state = "deploying"
-    mfdp.slo_watchers = [MagicMock(spec=SLOWatcher, failing=True, label="some_slo")]
-
-    mfdp.trigger("slos_started_failing")
-    assert mfdp.is_timer_running()
-
-    mfdp.trigger("disable_auto_rollbacks_button_clicked")
-    assert not mfdp.is_timer_running()
-    assert not mfdp.auto_rollbacks_enabled()
 
 
 def _make_instance_config(instance: str, registrations=None) -> MagicMock:
