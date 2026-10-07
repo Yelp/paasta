@@ -4531,9 +4531,13 @@ def ensure_service_account(
     namespace: str,
     kube_client: KubeClient,
     k8s_role: Optional[str] = None,
+    managed: bool = False,
 ) -> None:
     role_annotation = "eks.amazonaws.com/role-arn"
     sa_name = get_service_account_name(iam_role, k8s_role)
+    managed_label = paasta_prefixed("managed")
+
+    labels = {managed_label: "true"} if managed else {}
 
     existing_sa = None
     for sa in get_all_service_accounts(kube_client, namespace):
@@ -4546,19 +4550,29 @@ def ensure_service_account(
             metadata=V1ObjectMeta(
                 name=sa_name,
                 namespace=namespace,
+                labels=labels or None,
                 annotations={role_annotation: iam_role},
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
     if existing_sa:
+        needs_update = False
         if (
             not sa.metadata.annotations
             or sa.metadata.annotations.get(role_annotation, None) != iam_role
         ):
-            # NOTE: we don't annotate SAs apart with anything other
-            # than the pod identity role ARN, so this will remove
-            # any annotations that folks may have manually added
-            sa.metadata.annotations = {role_annotation: iam_role}
+            sa.metadata.annotations = {
+                **(sa.metadata.annotations or {}),
+                role_annotation: iam_role,
+            }
+            needs_update = True
+        if managed and (sa.metadata.labels or {}).get(managed_label) != "true":
+            sa.metadata.labels = {
+                **(sa.metadata.labels or {}),
+                managed_label: "true",
+            }
+            needs_update = True
+        if needs_update:
             kube_client.core.patch_namespaced_service_account(
                 namespace=namespace, body=sa, name=sa.metadata.name
             )

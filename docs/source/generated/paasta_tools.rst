@@ -79,6 +79,7 @@ Submodules
    paasta_tools.paasta_service_config_loader
    paasta_tools.prune_completed_pods
    paasta_tools.puppet_service_tools
+   paasta_tools.reconcile_paasta_service_accounts
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.run-paasta-api-playground
