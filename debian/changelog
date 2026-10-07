@@ -1,3 +1,11 @@
+paasta-tools (1.61.0) jammy; urgency=medium
+
+  * 1.61.0 tagged with 'make release'
+    Commit: Merge pull request #4390 from Yelp/u/jfong/reconcile-paasta-
+    service-accounts  Add reconcile_paasta_service_accounts script
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Oct 2026 13:37:58 -0700
+
 paasta-tools (1.60.19) jammy; urgency=medium
 
   * 1.60.19 tagged with 'make release'
