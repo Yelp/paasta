@@ -1231,8 +1231,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self, trigger: str) -> None:
-        self.cancel_auto_rollback_countdown(trigger=trigger)
+    def disable_auto_rollbacks(self) -> None:
+        self.cancel_auto_rollback_countdown(trigger="rollback_slo_failure")
+        self.cancel_auto_rollback_countdown(trigger="rollback_alertmanager_failure")
         self.auto_rollback = False
         self.update_slack_status(
             f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."

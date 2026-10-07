@@ -24,6 +24,7 @@ import pytest
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
+from sticht.rollbacks.slo import SLOWatcher
 
 from paasta_tools import utils
 from paasta_tools.cli.cmds import mark_for_deployment
@@ -1604,6 +1605,41 @@ def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
             "deploy_finished",
             "auto_certify",
         ]
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+def test_MarkForDeployProcess_disable_auto_rollbacks_button_cancels_countdown(
+    mock_get_instance_configs,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={"pipeline": []},
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    mfdp.state = "deploying"
+    mfdp.slo_watchers = [MagicMock(spec=SLOWatcher, failing=True, label="some_slo")]
+
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running()
+
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+    assert not mfdp.auto_rollbacks_enabled()
 
 
 def _make_instance_config(instance: str, registrations=None) -> MagicMock:
