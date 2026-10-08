@@ -40,7 +40,7 @@ from paasta_tools.async_utils import to_blocking
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
-from paasta_tools.kubernetes_tools import HEALTHCHECK_WINDOW_S
+from paasta_tools.kubernetes_tools import POD_EVENT_WINDOW_S
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
@@ -971,7 +971,7 @@ async def get_pod_status(
     num_tail_lines: int,
 ) -> Dict[str, Any]:
     events_task = asyncio.create_task(
-        get_pod_event_messages(client, pod, max_age_in_seconds=HEALTHCHECK_WINDOW_S)
+        get_pod_event_messages(client, pod, max_age_in_seconds=POD_EVENT_WINDOW_S)
     )
     containers_task = asyncio.create_task(
         get_pod_containers(pod, client, num_tail_lines)

@@ -236,7 +236,7 @@ DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
 DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS = 3600
 PROJECTED_SA_TOKEN_PATH = "token"
 
-HEALTHCHECK_WINDOW_S = 300
+POD_EVENT_WINDOW_S = 300
 
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
@@ -3329,7 +3329,7 @@ def recent_container_restart(
     restart_count: int,
     last_state: Optional[str],
     last_timestamp: Optional[int],
-    time_window_s: int = HEALTHCHECK_WINDOW_S,
+    time_window_s: int = POD_EVENT_WINDOW_S,
 ) -> bool:
     min_timestamp = datetime.now(timezone.utc).timestamp() - time_window_s
     return (

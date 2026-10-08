@@ -66,7 +66,7 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
-from paasta_tools.kubernetes_tools import HEALTHCHECK_WINDOW_S
+from paasta_tools.kubernetes_tools import POD_EVENT_WINDOW_S
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import format_pod_event_messages
@@ -1269,7 +1269,7 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 def recent_container_restart(
     container: Optional[KubernetesContainerV2],
-    time_window: int = HEALTHCHECK_WINDOW_S,
+    time_window: int = POD_EVENT_WINDOW_S,
 ) -> bool:
     if container:
         return kubernetes_tools.recent_container_restart(
@@ -1279,6 +1279,16 @@ def recent_container_restart(
             time_window_s=time_window,
         )
     return False
+
+
+def is_recently_deployed(
+    pod: KubernetesPodV2, main_container: KubernetesContainerV2
+) -> bool:
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    return (
+        pod.create_timestamp + main_container.healthcheck_grace_period
+        > datetime.now(timezone.utc).timestamp()
+    )
 
 
 def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
@@ -1317,21 +1327,7 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         #   This logic likely needs refining
         main_container = get_main_container(pod)
         if main_container:
-            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
-            warming_up = (
-                pod.create_timestamp + main_container.healthcheck_grace_period
-                > datetime.now(timezone.utc).timestamp()
-            )
-            # liveness probes only start after the grace period, and the first few often fail
-            # while the service finishes starting up. Additionally allow HEALTHCHECK_WINDOW_S extra time, and another
-            # HEALTHCHECK_WINDOW_S before we warn. This is to avoid warning on a service that is just starting up
-            # and has not yet passed its grace period.
-            recently_deployed = (
-                pod.create_timestamp
-                + main_container.healthcheck_grace_period
-                + 2 * HEALTHCHECK_WINDOW_S
-                > datetime.now(timezone.utc).timestamp()
-            )
+            warming_up = is_recently_deployed(pod, main_container)
             if pod.mesh_ready is False:
                 if main_container.state != "running":
                     state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
@@ -1340,13 +1336,10 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
             elif not pod.ready:
                 state = ReplicaState.NOT_READY
             else:
-                liveness_failed = recent_liveness_failure(pod)
-                if (
-                    liveness_failed and not recently_deployed
-                ) or recent_container_restart(main_container):
+                if recent_liveness_failure(pod) or recent_container_restart(
+                    main_container
+                ):
                     state = ReplicaState.WARNING
-                elif liveness_failed:
-                    state = ReplicaState.WARMING_UP
                 else:
                     state = ReplicaState.RUNNING
 
@@ -1449,23 +1442,16 @@ def create_replica_table(
                         + main_container.healthcheck_grace_period
                         - datetime.now(timezone.utc).timestamp()
                     )
-                    if grace_period_remaining > 0:
-                        humanized_remaining = humanize.naturaldelta(
-                            timedelta(seconds=grace_period_remaining)
-                        )
-                        warmup_status = (
-                            f"{humanized_remaining} before healthchecking starts"
-                        )
-                    else:
-                        warmup_status = "healthchecks have started but are failing while the service starts up"
+                    humanized_remaining = humanize.naturaldelta(
+                        timedelta(seconds=grace_period_remaining)
+                    )
                     table.append(
                         PaastaColors.cyan(
-                            f"  Still warming up, {humanized_duration} elapsed, {warmup_status}"
+                            f"  Still warming up, {humanized_duration} elapsed, {humanized_remaining} before healthchecking starts"
                         )
                     )
-        if recent_liveness_failure(pod) and state not in (
-            ReplicaState.TERMINATING,
-            ReplicaState.WARMING_UP,
+        if recent_liveness_failure(pod) and (
+            state.is_unhealthy() or state == ReplicaState.WARNING
         ):
             healthcheck_string = (
                 "check your healthcheck configuration in yelpsoa_configs"
