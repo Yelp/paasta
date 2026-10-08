@@ -1,5 +1,7 @@
 from unittest import mock
 
+import pytest
+
 from paasta_tools import check_services_replication_tools
 
 
@@ -22,19 +24,20 @@ def test_main_kubernetes():
     ) as mock_yelp_meteorite, mock.patch(
         "paasta_tools.check_services_replication_tools.metrics_lib.system_timer",
         autospec=True,
-    ) as mock_system_timer, mock.patch(
-        "paasta_tools.check_services_replication_tools.sys.exit",
-        autospec=True,
-    ) as mock_sys_exit:
+    ) as mock_system_timer:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
         mock_parse_args.return_value.dry_run = False
 
         mock_check_services_replication.return_value = (6, 100)
 
-        check_services_replication_tools.main(
-            instance_type_class=None, check_service_replication=None, namespace="test"
-        )
+        with pytest.raises(SystemExit) as e:
+            check_services_replication_tools.main(
+                instance_type_class=None,
+                check_service_replication=None,
+                namespace="test",
+            )
+        assert e.value.code == 2
         assert mock_check_services_replication.called
 
         mock_yelp_meteorite.create_gauge.assert_called_once_with(
@@ -49,8 +52,13 @@ def test_main_kubernetes():
 
         mock_timer = mock_system_timer.return_value
         assert mock_timer.start.called
-        mock_timer.stop.assert_called_once_with(tmp_dimensions={"result": 2})
-        mock_sys_exit.assert_called_once_with(2)
+        mock_timer.stop.assert_called_once_with(
+            tmp_dimensions={
+                "eks": mock_parse_args.return_value.eks,
+                "cluster": mock_load_system_paasta_config.return_value.get_cluster.return_value,
+                "result": 2,
+            }
+        )
 
 
 def test_check_services_replication():

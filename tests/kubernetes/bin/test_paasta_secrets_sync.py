@@ -73,8 +73,8 @@ def test_main_dimensions_include_secret_type_and_namespace():
         with pytest.raises(SystemExit):
             main()
 
-        _, kwargs = mock_system_timer.call_args
-        dims = kwargs["dimensions"]
+        _, kwargs = mock_system_timer.return_value.stop.call_args
+        dims = kwargs["tmp_dimensions"]
         assert dims["secret_type"] == "paasta-secret"
         assert dims["namespace"] == "paasta-flinks"
         assert dims["only_extra_namespaces"] is False

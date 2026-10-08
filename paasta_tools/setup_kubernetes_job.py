@@ -111,6 +111,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     soa_dir = args.soa_dir
@@ -124,15 +125,8 @@ def main() -> None:
     # emit deploy events for updated jobs
     deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
-    # emit timing metrics for s_k_j
     cluster = args.cluster or load_system_paasta_config().get_cluster()
-    timer = metrics_lib.system_timer(
-        dimensions=dict(
-            cluster=cluster,
-            eks=args.eks,
-        ),
-    )
-    timer.start()
+    metrics_lib.add_timer_dimensions(cluster=cluster, eks=args.eks)
 
     kube_client = KubeClient()
     service_instances_valid = True
@@ -177,11 +171,6 @@ def main() -> None:
     else:
         setup_kube_succeeded = False
     exit_code = 0 if setup_kube_succeeded and service_instances_valid else 1
-
-    timer.stop(tmp_dimensions={"result": exit_code})
-    logging.info(
-        f"Stopping timer for {cluster} (eks={args.eks}) with result {exit_code}: {timer()}ms elapsed"
-    )
     sys.exit(exit_code)
 
 

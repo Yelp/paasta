@@ -188,6 +188,7 @@ def emit_cluster_replication_metrics(
         gauge.set(pct_under_replicated)
 
 
+@metrics_lib.timed_entry_point
 def main(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
@@ -203,9 +204,7 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    timer = metrics_lib.system_timer(dimensions=dict(eks=args.eks, cluster=cluster))
-
-    timer.start()
+    metrics_lib.add_timer_dimensions(eks=args.eks, cluster=cluster)
 
     if namespace:
         pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
@@ -252,10 +251,6 @@ def main(
         )
         exit_code = 2
 
-    timer.stop(tmp_dimensions={"result": exit_code})
-    logging.info(
-        f"Stopping timer for {cluster} (eks={args.eks}) with result {exit_code}: {timer()}ms elapsed"
-    )
     sys.exit(exit_code)
 
 

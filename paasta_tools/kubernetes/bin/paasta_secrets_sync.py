@@ -169,6 +169,7 @@ def set_temporary_environment_variables(
         os.environ.update(old_environ)
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     if args.verbose:
@@ -182,16 +183,13 @@ def main() -> None:
     else:
         cluster = system_paasta_config.get_cluster()
 
-    timer = metrics_lib.system_timer(
-        dimensions=dict(
-            cluster=cluster,
-            secret_type=args.secret_type,
-            namespace=args.namespace or "",
-            only_extra_namespaces=args.only_extra_namespaces,
-        )
+    metrics_lib.add_timer_dimensions(
+        cluster=cluster,
+        secret_type=args.secret_type,
+        namespace=args.namespace or "",
+        only_extra_namespaces=args.only_extra_namespaces,
     )
 
-    timer.start()
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
@@ -224,11 +222,6 @@ def main() -> None:
         secret_type=args.secret_type,
     )
     exit_code = 0 if result else 1
-
-    timer.stop(tmp_dimensions={"result": exit_code})
-    logging.info(
-        f"Stopping timer for {cluster} with result {exit_code}: {timer()}ms elapsed"
-    )
     sys.exit(exit_code)
 
 
