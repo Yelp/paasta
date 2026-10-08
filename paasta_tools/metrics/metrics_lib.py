@@ -1,9 +1,12 @@
+import functools
 import logging
 import os
 import socket
+import sys
 import time
 from abc import ABC
 from abc import abstractmethod
+from contextvars import ContextVar
 from inspect import currentframe
 from types import TracebackType
 from typing import Any
@@ -11,6 +14,7 @@ from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Type
+from typing import TypeVar
 from typing import Union
 from typing import cast
 
@@ -26,6 +30,16 @@ except ImportError:
     yelp_meteorite = None
 
 _metrics_interfaces: Dict[str, Type["BaseMetrics"]] = {}
+
+# extra dimensions for the active @timed_entry_point timer; None outside of one
+_timer_extra_dimensions: ContextVar[Optional[Dict[str, Any]]] = ContextVar(
+    "_timer_extra_dimensions", default=None
+)
+
+_EntryPoint = TypeVar("_EntryPoint", bound=Callable[..., Any])
+
+# result recorded for uncaught exceptions; real exit codes are always 0-255
+CRASHED_RESULT = -1
 
 
 class TimerProtocol(Protocol):
@@ -240,3 +254,63 @@ def system_timer(
     return metrics_interface.create_timer(
         name=name, default_dimensions=default_dimensions
     )
+
+
+def add_timer_dimensions(**dims: Any) -> None:
+    """Add dimensions to the timer of the enclosing @timed_entry_point."""
+    current = _timer_extra_dimensions.get()
+    if current is None:
+        log.debug(f"No active timed_entry_point, ignoring timer dimensions {dims}")
+        return
+    current.update(dims)
+
+
+def _exit_code_from_system_exit(e: SystemExit) -> int:
+    # mirrors how the interpreter and OS map SystemExit.code to a process exit code
+    if e.code is None:
+        return 0
+    if isinstance(e.code, int):
+        return e.code & 0xFF
+    return 1
+
+
+def timed_entry_point(fn: _EntryPoint) -> _EntryPoint:
+    """Emit a system_timer metric around main(); result is the exit code, or -1 on crash."""
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        # system_timer derives path from its caller's frame, which would be this module
+        module = sys.modules.get(fn.__module__)
+        path = getattr(module, "__file__", None) or "unknown"
+        token = _timer_extra_dimensions.set({})
+        timer: Optional[TimerProtocol] = None
+        try:
+            timer = system_timer(dimensions={"path": path})
+            timer.start()
+        except Exception:
+            # metrics should never prevent a script from running
+            log.exception(f"Unable to start timer for {path}")
+            timer = None
+
+        exit_code = 0
+        try:
+            return fn(*args, **kwargs)
+        except SystemExit as e:
+            exit_code = _exit_code_from_system_exit(e)
+            raise
+        except BaseException:
+            exit_code = CRASHED_RESULT
+            raise
+        finally:
+            extra_dimensions = _timer_extra_dimensions.get() or {}
+            _timer_extra_dimensions.reset(token)
+            if timer is not None:
+                try:
+                    timer.stop(tmp_dimensions={**extra_dimensions, "result": exit_code})
+                    log.info(
+                        f"Stopping timer for {path} {extra_dimensions} with result {exit_code}: {timer()}ms elapsed"
+                    )
+                except Exception:
+                    log.exception(f"Unable to stop timer for {path}")
+
+    return cast(_EntryPoint, wrapper)

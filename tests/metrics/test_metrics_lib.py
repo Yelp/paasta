@@ -1,6 +1,8 @@
+import sys
 import unittest
 from unittest import mock
 
+import pytest
 from py.test import raises
 
 from paasta_tools.metrics import metrics_lib
@@ -106,3 +108,89 @@ class TestParseMetricLabelsEnv(unittest.TestCase):
             "os.environ", {"PAASTA_METRICS_LABELS": "good=val,bad_token,other=x"}
         ):
             self.assertEqual(_parse_metric_labels_env(), {"good": "val", "other": "x"})
+
+
+@pytest.fixture
+def mock_system_timer():
+    with mock.patch(
+        "paasta_tools.metrics.metrics_lib.system_timer", autospec=True
+    ) as mock_system_timer:
+        yield mock_system_timer
+
+
+def _sys_exit(code):
+    def fn():
+        sys.exit(code)
+
+    return fn
+
+
+def _raise():
+    raise ValueError("boom")
+
+
+def _raise_keyboard_interrupt():
+    raise KeyboardInterrupt()
+
+
+@pytest.mark.parametrize(
+    "fn,expected_exception,expected_result",
+    [
+        (lambda: None, None, 0),
+        (_sys_exit(None), SystemExit, 0),
+        (_sys_exit(0), SystemExit, 0),
+        (_sys_exit(2), SystemExit, 2),
+        (_sys_exit(-1), SystemExit, 255),
+        (_sys_exit(256), SystemExit, 0),
+        (_sys_exit("error message"), SystemExit, 1),
+        (_raise, ValueError, metrics_lib.CRASHED_RESULT),
+        (_raise_keyboard_interrupt, KeyboardInterrupt, metrics_lib.CRASHED_RESULT),
+    ],
+)
+def test_timed_entry_point_result(
+    mock_system_timer, fn, expected_exception, expected_result
+):
+    wrapped = metrics_lib.timed_entry_point(fn)
+    if expected_exception:
+        with raises(expected_exception):
+            wrapped()
+    else:
+        wrapped()
+
+    mock_system_timer.assert_called_once_with(dimensions={"path": __file__})
+    mock_timer = mock_system_timer.return_value
+    mock_timer.start.assert_called_once_with()
+    mock_timer.stop.assert_called_once_with(tmp_dimensions={"result": expected_result})
+
+
+def test_timed_entry_point_preserves_exit_message_and_return_value(mock_system_timer):
+    with raises(SystemExit) as excinfo:
+        metrics_lib.timed_entry_point(_sys_exit("error message"))()
+    assert excinfo.value.code == "error message"
+
+    assert metrics_lib.timed_entry_point(lambda: 3)() == 3
+
+
+def test_add_timer_dimensions(mock_system_timer):
+    @metrics_lib.timed_entry_point
+    def main():
+        metrics_lib.add_timer_dimensions(cluster="a_cluster", eks=True)
+        metrics_lib.add_timer_dimensions(result="ignored")
+
+    main()
+
+    mock_system_timer.return_value.stop.assert_called_once_with(
+        tmp_dimensions={"cluster": "a_cluster", "eks": True, "result": 0}
+    )
+    # dimensions don't leak outside the decorated call
+    assert metrics_lib._timer_extra_dimensions.get() is None
+
+
+def test_add_timer_dimensions_outside_decorator():
+    metrics_lib.add_timer_dimensions(cluster="a_cluster")
+    assert metrics_lib._timer_extra_dimensions.get() is None
+
+
+def test_timed_entry_point_metrics_failure_does_not_break_script(mock_system_timer):
+    mock_system_timer.side_effect = Exception("no metrics for you")
+    assert metrics_lib.timed_entry_point(lambda: 3)() == 3
