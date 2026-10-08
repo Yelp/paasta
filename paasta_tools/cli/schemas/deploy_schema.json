@@ -115,6 +115,9 @@
                     "type": "integer",
                     "minimum": 30
                 },
+                "alertmanager_auto_rollback_delay": {
+                    "type": "integer"
+                },
                 "enable_crashloop_auto_rollback": {
                     "type": "boolean"
                 },
