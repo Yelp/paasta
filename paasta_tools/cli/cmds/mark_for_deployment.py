@@ -753,12 +753,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.deployment_version = DeploymentVersion(commit, image_version)
         self.old_deployment_version = DeploymentVersion(old_git_sha, old_image_version)
         self.git_url = git_url
-        self.auto_rollback = (
-            auto_rollback
-            and old_git_sha is not None
+        rollback_is_possible = (
+            old_git_sha is not None
             and self.deployment_version != self.old_deployment_version
         )
-        self.auto_rollbacks_ever_enabled = self.auto_rollback
+        # NOTE: auto_rollback only controls SLO-based auto-rollbacks - AlertManager-based
+        # auto-rollbacks are controlled independently (see alertmanager_rollback_enabled below)
+        self.auto_rollback = auto_rollback and rollback_is_possible
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
@@ -792,10 +793,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "crashloop_rollback_percentage_threshold",
             system_paasta_config.get_crashloop_rollback_percentage_threshold(),
         )
-        self.alertmanager_rollback_enabled = self._get_deploy_group_config(
-            "alertmanager_rollback",
-            system_paasta_config.get_enable_alertmanager_rollback(),
+        self.alertmanager_rollback_enabled: bool = (
+            self._get_deploy_group_config(
+                "alertmanager_rollback",
+                system_paasta_config.get_enable_alertmanager_rollback(),
+            )
+            and rollback_is_possible
         )
+        self.alertmanager_url = system_paasta_config.get_alertmanager_url()
+        self.auto_rollbacks_ever_enabled = self.any_auto_rollbacks_enabled()
         self.alertmanager_poll_interval_s = self._get_deploy_group_config(
             "alertmanager_poll_interval_s",
             system_paasta_config.get_alertmanager_poll_interval_s(),
@@ -817,28 +823,31 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.slo_watchers: List[SLOWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
-        if self.alertmanager_rollback_enabled and (
-            alertmanager_url := system_paasta_config.get_alertmanager_url()
-        ):
-            filters = build_alertmanager_rollback_filters(
-                service=self.service,
-                instance_configs_per_cluster=self.instance_configs_per_cluster,
-            )
-            self.start_alertmanager_watcher_threads(
-                alertmanager_url=alertmanager_url,
-                filters=filters,
-                check_interval_s=self.alertmanager_poll_interval_s,
-                # while we can technically grab these from the filters, we'll pass
-                # these through separately so that we're not relying on a specific filter format :p
-                extra_monitoring_labels={
-                    "deploy_group": self.deploy_group,
-                    "service": self.service,
-                },
-            )
+        if self.alertmanager_rollback_enabled:
+            self.start_alertmanager_watcher()
 
         # Initialize Slack threads and send the first message
         super().__init__()
         self.print_who_is_running_this()
+
+    def start_alertmanager_watcher(self) -> None:
+        if self.alertmanager_watcher is not None or not self.alertmanager_url:
+            return
+        filters = build_alertmanager_rollback_filters(
+            service=self.service,
+            instance_configs_per_cluster=self.instance_configs_per_cluster,
+        )
+        self.start_alertmanager_watcher_threads(
+            alertmanager_url=self.alertmanager_url,
+            filters=filters,
+            check_interval_s=self.alertmanager_poll_interval_s,
+            # while we can technically grab these from the filters, we'll pass
+            # these through separately so that we're not relying on a specific filter format :p
+            extra_monitoring_labels={
+                "deploy_group": self.deploy_group,
+                "service": self.service,
+            },
+        )
 
     def get_progress(self, summary: bool = False) -> str:
         if not self.block:
@@ -1157,7 +1166,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": "*",
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "enable_auto_rollbacks_button_clicked",
-                "unless": [self.auto_rollbacks_enabled],
+                "unless": [self.any_auto_rollbacks_enabled],
                 "before": self.enable_auto_rollbacks,
             }
             yield {
@@ -1166,7 +1175,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "disable_auto_rollbacks_button_clicked",
                 "conditions": [
                     self.any_rollback_condition_failing,
-                    self.auto_rollbacks_enabled,
+                    self.any_auto_rollbacks_enabled,
                 ],
                 "before": self.disable_auto_rollbacks,
             }
@@ -1192,7 +1201,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "alertmanager_started_failing",
-            "conditions": [self.auto_rollbacks_enabled],
+            "conditions": [self.alertmanager_rollbacks_enabled],
             "unless": [self.already_rolling_back, self._alertmanager_dry_run],
             "before": functools.partial(
                 self.start_auto_rollback_countdown, "rollback_alertmanager_failure"
@@ -1231,23 +1240,49 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self, trigger: str) -> None:
-        self.cancel_auto_rollback_countdown(trigger=trigger)
+    def disable_auto_rollbacks(self) -> None:
+        self.cancel_auto_rollback_countdown(trigger="rollback_slo_failure")
+        self.cancel_auto_rollback_countdown(trigger="rollback_alertmanager_failure")
         self.auto_rollback = False
-        self.update_slack_status(
-            f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        self.alertmanager_rollback_enabled = False
+        message = (
+            "Automatic SLO and AlertManager rollback disabled for this deploy. "
+            "To disable this permanently, edit `deploy.yaml` and set `auto_rollback: false` (for SLO-triggered rollbacks) "
+            f"+ `alertmanager_rollback: false` (for AlertManager-triggered rollbacks) for the `{self.deploy_group}` step."
         )
+        self.update_slack_status(message)
+        self.update_slack_thread(message)
 
     def enable_auto_rollbacks(self) -> None:
         self.auto_rollback = True
+        self.alertmanager_rollback_enabled = True
         self.auto_rollbacks_ever_enabled = True
-        self.update_slack_status(
-            f"Automatic rollback enabled for this deploy. Will watch for failures and rollback when necessary. To set this permanently, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        # NOTE: if AlertManager rollbacks weren't enabled at the start of this deploy, the watcher
+        # will only be started now - so any alerts that are already firing will be ignored
+        self.start_alertmanager_watcher()
+        message = (
+            "Automatic SLO and AlertManager rollback enabled for this deploy. "
+            "Will watch for failures and rollback when necessary. "
+            "To set this permanently, edit `deploy.yaml` and set `auto_rollback: true` (for SLO-triggered rollbacks) "
+            f"+ `alertmanager_rollback: true` (for AlertManager-triggered rollbacks) for the `{self.deploy_group}` step."
         )
+        self.update_slack_status(message)
+        self.update_slack_thread(message)
 
     def auto_rollbacks_enabled(self) -> bool:
-        """This getter exists so it can be a condition on transitions, since those need to be callables."""
+        """Whether SLO-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.auto_rollback
+
+    def alertmanager_rollbacks_enabled(self) -> bool:
+        """Whether AlertManager-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.alertmanager_rollback_enabled
+
+    def any_auto_rollbacks_enabled(self) -> bool:
+        return self.auto_rollbacks_enabled() or self.alertmanager_rollbacks_enabled()
 
     def get_auto_rollback_delay(self) -> float:
         return self.auto_rollback_delay
@@ -1476,7 +1511,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.ping_authors(
                 "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
-        elif self.any_alertmanager_failing() and self.auto_rollbacks_enabled():
+        elif self.any_alertmanager_failing():
             self.ping_authors(
                 "Because an AlertManager alert for this service is currently firing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
