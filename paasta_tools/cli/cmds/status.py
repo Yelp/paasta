@@ -66,6 +66,7 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import POD_EVENT_WINDOW_S
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import format_pod_event_messages
@@ -1267,7 +1268,8 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 
 def recent_container_restart(
-    container: Optional[KubernetesContainerV2], time_window: int = 900
+    container: Optional[KubernetesContainerV2],
+    time_window: int = POD_EVENT_WINDOW_S,
 ) -> bool:
     if container:
         return kubernetes_tools.recent_container_restart(
@@ -1277,6 +1279,16 @@ def recent_container_restart(
             time_window_s=time_window,
         )
     return False
+
+
+def is_recently_deployed(
+    pod: KubernetesPodV2, main_container: KubernetesContainerV2
+) -> bool:
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    return (
+        pod.create_timestamp + main_container.healthcheck_grace_period
+        > datetime.now(timezone.utc).timestamp()
+    )
 
 
 def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
@@ -1315,11 +1327,7 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         #   This logic likely needs refining
         main_container = get_main_container(pod)
         if main_container:
-            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
-            warming_up = (
-                pod.create_timestamp + main_container.healthcheck_grace_period
-                > datetime.now(timezone.utc).timestamp()
-            )
+            warming_up = is_recently_deployed(pod, main_container)
             if pod.mesh_ready is False:
                 if main_container.state != "running":
                     state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
@@ -1442,7 +1450,9 @@ def create_replica_table(
                             f"  Still warming up, {humanized_duration} elapsed, {humanized_remaining} before healthchecking starts"
                         )
                     )
-        if recent_liveness_failure(pod) and state != ReplicaState.TERMINATING:
+        if recent_liveness_failure(pod) and (
+            state.is_unhealthy() or state == ReplicaState.WARNING
+        ):
             healthcheck_string = (
                 "check your healthcheck configuration in yelpsoa_configs"
             )
