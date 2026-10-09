@@ -256,6 +256,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
     )
     list_parser.add_argument(
+        "--alertmanager-auto-rollback-delay",
+        dest="alertmanager_auto_rollback_delay",
+        type=int,
+        default=120,
+        help="After noticing an alert firing, wait this many seconds before automatically rolling back.",
+    )
+    list_parser.add_argument(
         "--author",
         dest="authors",
         default=None,
@@ -657,6 +664,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             auto_certify_delay=args.auto_certify_delay,
             auto_abandon_delay=args.auto_abandon_delay,
             auto_rollback_delay=args.auto_rollback_delay,
+            alertmanager_auto_rollback_delay=args.alertmanager_auto_rollback_delay,
             image_version=deployment_version.image_version,
             old_image_version=old_deployment_version.image_version
             if old_deployment_version
@@ -733,6 +741,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         auto_certify_delay: float,
         auto_abandon_delay: float,
         auto_rollback_delay: float,
+        alertmanager_auto_rollback_delay: float,
         image_version: Optional[str] = None,
         old_image_version: Optional[str] = None,
         authors: Optional[List[str]] = None,
@@ -767,6 +776,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
         self.auto_rollback_delay = auto_rollback_delay
+        self.alertmanager_auto_rollback_delay = alertmanager_auto_rollback_delay
+        self.rollback_trigger: Optional[str] = None
         self.authors = authors
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
@@ -1250,6 +1261,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         return self.auto_rollback
 
     def get_auto_rollback_delay(self) -> float:
+        """This getter gets rollback delay based on whether it was triggered by an SLO or alertmanager alert"""
+        if self.rollback_trigger == "rollback_alertmanager_failure":
+            return self.alertmanager_auto_rollback_delay
         return self.auto_rollback_delay
 
     def get_auto_certify_delay(self) -> float:
@@ -1570,6 +1584,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             button="disable_auto_rollbacks",
             is_active=False,
         )
+        self.rollback_trigger = trigger
         super().start_auto_rollback_countdown(
             trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
         )

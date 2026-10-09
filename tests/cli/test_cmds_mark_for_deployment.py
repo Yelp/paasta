@@ -104,6 +104,7 @@ class FakeArgs:
     auto_certify_delay = 1.0
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
+    alertmanager_auto_rollback_delay = 2.0
     authors = None
     warn = 17
     polling_interval = None
@@ -448,6 +449,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -499,6 +501,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -546,6 +549,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
         authors=["fakeuser1"],
     )
     mfdp.get_authors()
@@ -594,6 +598,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
         authors="fakeuser1",
     )
     mfdp.get_authors()
@@ -644,6 +649,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -699,6 +705,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -749,6 +756,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        alertmanager_auto_rollback_delay=120,
     )
 
     mock_mark_for_deployment.return_value = 1
@@ -831,6 +839,7 @@ def test_MarkForDeployProcess_happy_path(
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        alertmanager_auto_rollback_delay=120,
         authors=None,
     )
 
@@ -885,6 +894,7 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        alertmanager_auto_rollback_delay=120,
         authors=None,
     )
 
@@ -922,6 +932,7 @@ def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_ro
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        alertmanager_auto_rollback_delay=120,
         authors=None,
     )
 
@@ -947,6 +958,7 @@ def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_ro
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        alertmanager_auto_rollback_delay=120,
         authors=None,
     )
 
@@ -977,6 +989,7 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_with_no_old_git_
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1010,6 +1023,7 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_with_old_git_sha
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1044,6 +1058,7 @@ def test_MarkForDeployProcess_send_manual_rollback_instructions_same_version():
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1124,6 +1139,7 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1157,6 +1173,7 @@ def test_MarkForDeployProcess_crashloop_recovery_does_not_cancel(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1196,6 +1213,7 @@ def test_on_crashloop_detected_multi_instance_aggregation(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1255,6 +1273,7 @@ def test_crashloop_auto_rollback_disabled_does_not_pass_crashloop_fn(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1397,6 +1416,7 @@ def test_log_crashloop_rollback():
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1437,6 +1457,7 @@ def test_alertmanager_rollback_config_defaults(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1477,6 +1498,7 @@ def test_alertmanager_rollback_config_from_system_config(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1530,6 +1552,7 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1592,6 +1615,7 @@ def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
             auto_certify_delay=None,
             auto_abandon_delay=600,
             auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
             authors=None,
         )
 
@@ -1604,6 +1628,49 @@ def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
             "deploy_finished",
             "auto_certify",
         ]
+
+
+@pytest.mark.parametrize(
+    "trigger, expected_delay",
+    [
+        ("rollback_slo_failure", 30),
+        ("rollback_crashloop_failure", 30),
+        ("rollback_alertmanager_failure", 120),
+    ],
+)
+def test_start_auto_rollback_countdown_uses_trigger_specific_delay(
+    trigger, expected_delay
+):
+    # Use the default class MarkForDeploymentProcess : WrappedMarkForDeploymentProcess.start_timer forces timeout=0
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch.object(
+        mark_for_deployment.MarkForDeploymentProcess,
+        "start_timer",
+        autospec=True,
+    ) as mock_start_timer:
+        mfdp = mark_for_deployment.MarkForDeploymentProcess(
+            service="service",
+            deploy_info={"pipeline": []},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=True,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            alertmanager_auto_rollback_delay=120,
+        )
+        mfdp.start_auto_rollback_countdown(trigger)
+
+    assert mock_start_timer.call_count == 1
+    assert mock_start_timer.call_args.kwargs["timeout"] == expected_delay
 
 
 def _make_instance_config(instance: str, registrations=None) -> MagicMock:
