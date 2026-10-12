@@ -503,8 +503,13 @@ class TestMain:
         "paasta_tools.reconcile_paasta_service_accounts.load_system_paasta_config",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.reconcile_paasta_service_accounts.metrics_lib.system_timer",
+        autospec=True,
+    )
     def test_dry_run_skips_apply(
         self,
+        mock_system_timer,
         mock_config,
         mock_session,
         mock_collect,
@@ -543,3 +548,6 @@ class TestMain:
         mock_kube.core.create_namespaced_service_account.assert_not_called()
         mock_kube.core.patch_namespaced_service_account.assert_not_called()
         mock_kube.core.delete_namespaced_service_account.assert_not_called()
+        mock_system_timer.return_value.stop.assert_called_once_with(
+            tmp_dimensions={"cluster": "test-cluster", "dry_run": True, "result": 0}
+        )

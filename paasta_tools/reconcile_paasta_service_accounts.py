@@ -50,6 +50,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import get_all_service_accounts
 from paasta_tools.kubernetes_tools import get_service_account_name
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
@@ -421,6 +422,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     if args.verbose:
@@ -430,6 +432,7 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
+    metrics_lib.add_timer_dimensions(cluster=cluster, dry_run=args.dry_run)
 
     configured_namespaces = (
         system_paasta_config.get_reconciled_iam_service_account_namespaces()
