@@ -254,7 +254,6 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # spark accepts
     spark_args: Dict[str, Any]
     force_spark_resource_configs: bool
-    # TODO: TRON-2145: use this to implement timeout for non-spark actions in tron
     max_runtime: str
     mrjob: bool
     idempotent: bool
@@ -595,6 +594,9 @@ class TronActionConfig(InstanceConfig):
 
     def get_expected_runtime(self):
         return self.config_dict.get("expected_runtime")
+
+    def get_max_runtime(self) -> Optional[str]:
+        return self.config_dict.get("max_runtime")
 
     def get_triggered_by(self):
         return self.config_dict.get("triggered_by", None)
@@ -983,6 +985,11 @@ def format_tron_action_dict(action_config: TronActionConfig):
         "retries_delay": action_config.get_retries_delay(),
         "secret_volumes": action_config.get_secret_volumes(),
         "expected_runtime": action_config.get_expected_runtime(),
+        # Spark retains its existing command-level timeout. Passing the native
+        # field too would arm two independent timers for the same attempt.
+        "max_runtime": (
+            action_config.get_max_runtime() if executor != "spark" else None
+        ),
         "trigger_downstreams": action_config.get_trigger_downstreams(),
         "idempotent": action_config.get_idempotent(),
         "triggered_by": action_config.get_triggered_by(),
