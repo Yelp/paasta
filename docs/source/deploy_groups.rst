@@ -190,7 +190,9 @@ Any AlertManager rule that fires for the service during a deployment can trigger
 This is configured per deploy_group in deploy.yaml:
 
 * ``alertmanager_rollback`` (boolean, optional): Enable AlertManager-based auto-rollback
-  for this deploy group.
+  for this deploy group. This is independent of ``auto_rollback`` (which only controls
+  SLO-based auto-rollbacks): either can be enabled without the other.
+  NOTE: this feature may be enabled or disabled at the PaaSTA cluster-level: this value overrides that state
 
 * ``alertmanager_rollback_dry_run`` (boolean, optional): Run the AlertManager polling and
   evaluation logic but only log results without actually triggering a rollback. Useful for
@@ -207,6 +209,11 @@ consecutive polls (currently 2, i.e. ~60 seconds with the default poll interval)
 blips in AlertManager don't cancel an in-progress rollback.
 
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
+
+The "Disable auto rollbacks" Slack button turns off both SLO-based and AlertManager-based auto-rollbacks
+for the current deploy (and cancels any pending rollback countdown); "Enable auto rollbacks" turns both back on,
+even if they weren't configured for this step. If AlertManager-based auto-rollbacks weren't configured, alerts that
+are already firing when "Enable auto rollbacks" is clicked are treated as pre-existing and ignored.
 
 Example:
 
