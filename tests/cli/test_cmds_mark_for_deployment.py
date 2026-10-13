@@ -1598,11 +1598,16 @@ def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
     assert not mock_alertmanager_watcher_threads.called
 
     mfdp.trigger("slos_started_failing")
-    assert mfdp.is_timer_running()
+    assert mfdp.is_timer_running("rollback_slo_failure")
 
     mfdp.trigger("disable_auto_rollbacks_button_clicked")
     assert not mfdp.is_timer_running()
     assert not mfdp.any_auto_rollbacks_enabled()
+    # let the event loop run any timers that are still (incorrectly) scheduled: the cancelled countdown must not
+    # fire and roll us back
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert "rollback_slo_failure" not in mfdp.trigger_history
+    assert mfdp.state == "deploying"
 
     # enabling turns on both SLO-based and AlertManager-based rollbacks, even though
     # AlertManager-based rollbacks weren't configured - so the watcher is started on click
