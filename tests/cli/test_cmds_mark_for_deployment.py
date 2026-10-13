@@ -1126,7 +1126,11 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
-            deploy_info={"pipeline": []},
+            deploy_info={
+                "pipeline": [
+                    {"step": "deploy_group", "enable_crashloop_auto_rollback": True}
+                ]
+            },
             deploy_group="deploy_group",
             commit="commit",
             old_git_sha="old_git_sha",
@@ -1607,6 +1611,9 @@ def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
     # fire and roll us back
     mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
     assert "rollback_slo_failure" not in mfdp.trigger_history
+    assert mfdp.state == "deploying"
+    # ...and even if something does trigger a rollback, we must not roll back once a human has disabled them
+    mfdp.trigger("rollback_slo_failure")
     assert mfdp.state == "deploying"
 
     # enabling turns on both SLO-based and AlertManager-based rollbacks, even though

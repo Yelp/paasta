@@ -922,9 +922,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
 
         system_paasta_config = load_system_paasta_config()
-        self.crashloop_auto_rollback_enabled = self._get_deploy_group_config(
-            "enable_crashloop_auto_rollback",
-            system_paasta_config.get_enable_crashloop_auto_rollback(),
+        self.crashloop_auto_rollback_enabled: bool = (
+            self._get_deploy_group_config(
+                "enable_crashloop_auto_rollback",
+                system_paasta_config.get_enable_crashloop_auto_rollback(),
+            )
+            # without this, a crashloop would start a countdown to a rollback that can't happen
+            and rollback_is_possible
         )
         self.min_restarts_for_crashloop_rollback = self._get_deploy_group_config(
             "min_restarts_for_crashloop_rollback",
@@ -1266,6 +1270,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_slo_failure",
+                # countdowns are cancelled when rollbacks are disabled, but let's be extra careful to never roll
+                # back after a human has told us not to
+                "conditions": [self.auto_rollbacks_enabled],
                 "before": self.log_slo_rollback,
             }
             yield {
@@ -1277,6 +1284,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_alertmanager_failure",
+                "conditions": [self.alertmanager_rollbacks_enabled],
+                "unless": [self._alertmanager_dry_run],
                 "before": self.log_alertmanager_rollback,
             }
             yield {
@@ -1288,6 +1297,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_crashloop_failure",
+                "conditions": [self.crashloop_rollbacks_enabled],
                 "before": self.log_crashloop_rollback,
             }
             yield {
@@ -1403,6 +1413,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "crashloops_started_failing",
+            "conditions": [self.crashloop_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
                 self.start_auto_rollback_countdown, "rollback_crashloop_failure"
@@ -1456,6 +1467,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.alertmanager_rollback_enabled
+
+    def crashloop_rollbacks_enabled(self) -> bool:
+        """Whether crashloop-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.crashloop_auto_rollback_enabled
 
     def any_auto_rollbacks_enabled(self) -> bool:
         return self.auto_rollbacks_enabled() or self.alertmanager_rollbacks_enabled()
