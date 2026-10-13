@@ -1321,7 +1321,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "dest": "complete",
             "trigger": "complete_button_clicked",
         }
-        yield {"source": "deployed", "dest": "complete", "trigger": "auto_certify"}
+        yield {
+            "source": "deployed",
+            "dest": "complete",
+            "trigger": "auto_certify",
+            # starting a rollback countdown cancels auto-certify, but let's be extra careful to never certify a deploy
+            # that we're about to roll back
+            "unless": [self.is_auto_rollback_countdown_running],
+        }
         yield {
             "source": ["rolled_back", "rolling_back"],
             "dest": "abandon",
@@ -1676,17 +1683,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
 
-        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+        reason = self.get_reason_not_to_auto_certify()
+        if reason is not None:
             self.ping_authors(
-                "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
-            )
-        elif self.any_alertmanager_failing():
-            self.ping_authors(
-                "Because an AlertManager alert for this service is currently firing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
-            )
-        elif self.any_crashloop_failing():
-            self.ping_authors(
-                "Because the new deployment has replicas that are repeatedly crashing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+                f"Because {reason}, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1695,6 +1695,18 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 )
                 if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
                     self.ping_authors()
+
+    def get_reason_not_to_auto_certify(self) -> Optional[str]:
+        """If it isn't currently safe to automatically certify this deploy, returns a human-readable reason why."""
+        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+            return "an SLO is currently failing"
+        elif self.any_alertmanager_failing():
+            return "an AlertManager alert for this service is currently firing"
+        elif self.any_crashloop_failing():
+            return "the new deployment has replicas that are repeatedly crashing"
+        elif self.is_auto_rollback_countdown_running():
+            return "an automatic rollback countdown is running"
+        return None
 
     def on_enter_complete(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
@@ -1770,6 +1782,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
     def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
+        # a deploy that we might be about to roll back shouldn't be certified in the meantime
+        self.cancel_timer(trigger="auto_certify")
         cancel_button_text = self.get_button_text(
             button="disable_auto_rollbacks",
             is_active=False,

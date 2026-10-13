@@ -1622,6 +1622,53 @@ def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
     assert not mfdp.is_timer_running()
 
 
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+def test_MarkForDeployProcess_rollback_countdowns_and_auto_certify(
+    mock_log,
+    mock_get_instance_configs,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={"pipeline": []},
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    slo_watcher = MagicMock(
+        spec=SLOWatcher,
+        failing=False,
+        label="some_slo",
+        bad_before_mark=False,
+        bad_after_mark=False,
+    )
+    mfdp.slo_watchers = [slo_watcher]
+    mfdp.state = "deploying"
+    mfdp.trigger("deploy_finished")
+    assert mfdp.is_timer_running("auto_certify")
+
+    # an SLO failing after we've started counting down to certify must stop us from certifying
+    slo_watcher.failing = True
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running("rollback_slo_failure")
+    assert not mfdp.is_timer_running("auto_certify")
+    mfdp.trigger("auto_certify")
+    assert mfdp.state == "deployed"
+
+
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
     mock_periodically_update_slack,
 ):
