@@ -1922,11 +1922,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.restart_auto_certify_if_safe()
 
     def _on_alertmanager_stopped_failing(self) -> None:
-        self.cancel_auto_rollback_countdown("rollback_alertmanager_failure")
+        # only count this if we actually cancelled a countdown (e.g., not when in dry-run mode or when we're
+        # already rolling back)
+        if self.cancel_auto_rollback_countdown("rollback_alertmanager_failure"):
+            self.metrics_interface.create_counter(
+                "alertmanager_rollback_cancelled",
+            ).count()
         self.restart_auto_certify_if_safe()
-        self.metrics_interface.create_counter(
-            "alertmanager_rollback_cancelled",
-        ).count()
 
     def _alertmanager_dry_run(self) -> bool:
         return self.alertmanager_rollback_dry_run
