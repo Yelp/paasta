@@ -1,3 +1,13 @@
+paasta-tools (1.61.1) jammy; urgency=medium
+
+  * 1.61.1 tagged with 'make release'
+    Commit: Updating PaaSTA status to avoid confusion during deploys
+    (#4405)  * updating paasta status  * updating comment  * refactoring
+    based on comments  ---------  Co-authored-by: mbrankin
+    <mbrankin@cm2pxfyy7m.home>
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Fri, 09 Oct 2026 02:51:56 -0700
+
 paasta-tools (1.61.0) jammy; urgency=medium
 
   * 1.61.0 tagged with 'make release'
