@@ -1309,11 +1309,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
+                "before": self.on_forward_button_clicked,
             }
             yield {
                 "source": self.rollforward_states,
-                "dest": None,  # this makes it an "internal transition", effectively a noop.
+                "dest": None,  # this makes it an "internal transition": we stay put, but still clear any countdowns
                 "trigger": "forward_button_clicked",
+                "before": self.on_forward_button_clicked,
             }
             yield {
                 "source": "start_rollback",
@@ -1330,6 +1332,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "deployed",
             "dest": "complete",
             "trigger": "complete_button_clicked",
+            "before": self.on_complete_button_clicked,
         }
         yield {
             "source": "deployed",
@@ -1542,7 +1545,32 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.stop_waiting_for_deployment(self.commit)
         self.cancel_paasta_status_reminder()
 
+    def on_forward_button_clicked(self) -> None:
+        # a human telling us to go forward overrides any pending automatic rollback
+        self.cancel_auto_rollback_countdown()
+        # if we'd rolled back, we're going forward again rather than abandoning: say so (rather than letting
+        # on_exit_rolled_back post a "Countdown to abandon cancelled." that reads as if the deploy has stopped)
+        if self.cancel_timer(trigger="auto_abandon", quiet=True):
+            self.update_slack_thread(
+                f"Not abandoning: rolling forward to `{self.deployment_version.short_sha_repr()}` again instead."
+            )
+
+    def on_complete_button_clicked(self) -> None:
+        # same idea as in on_forward_button_clicked: there's no longer any need to count down to certify, since a
+        # human just did it
+        if self.cancel_timer(trigger="auto_certify", quiet=True):
+            self.update_slack_thread(
+                "Deploy certified, no need to wait for the auto-certify countdown."
+            )
+
+    def on_exit_deployed(self) -> None:
+        # auto_certify can only certify from deployed: once we've left (e.g., to roll back), it must not fire
+        self.cancel_timer(trigger="auto_certify")
+
     def on_enter_start_rollback(self) -> None:
+        # we're already rolling back, so any other countdowns (e.g., for other failing conditions) are moot - and
+        # leaving them running would roll us back *again* if someone then clicked forward
+        self.cancel_auto_rollback_countdown()
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
@@ -1591,6 +1619,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 daemon=True,
             )
             thread.start()
+
+    def on_exit_rolled_back(self) -> None:
+        # auto_abandon can only abandon from rolled_back: once we've left (e.g., to go forward), it must not fire
+        self.cancel_timer(trigger="auto_abandon")
 
     def on_exit_rolling_back(self) -> None:
         self.stop_waiting_for_deployment(self.old_git_sha, self.old_image_version)

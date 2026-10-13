@@ -1675,6 +1675,10 @@ def test_MarkForDeployProcess_rollback_countdowns_and_auto_certify(
     mfdp.trigger("auto_certify")
     assert mfdp.state == "deployed"
 
+    # a human telling us to go forward overrides the pending rollback
+    mfdp.trigger("forward_button_clicked")
+    assert not mfdp.is_auto_rollback_countdown_running()
+
 
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
     mock_periodically_update_slack,
