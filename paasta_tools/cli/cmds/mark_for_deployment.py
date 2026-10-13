@@ -922,7 +922,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
 
         system_paasta_config = load_system_paasta_config()
-        self.crashloop_auto_rollback_enabled: bool = (
+        # whether crashloop-based auto-rollbacks are configured for this step. This never changes during the deploy:
+        # the Slack buttons toggle crashloop_auto_rollback_enabled instead, which "Enable auto rollbacks" resets to this
+        self.crashloop_auto_rollback_available: bool = (
             self._get_deploy_group_config(
                 "enable_crashloop_auto_rollback",
                 system_paasta_config.get_enable_crashloop_auto_rollback(),
@@ -930,6 +932,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             # without this, a crashloop would start a countdown to a rollback that can't happen
             and rollback_is_possible
         )
+        self.crashloop_auto_rollback_enabled = self.crashloop_auto_rollback_available
         self.min_restarts_for_crashloop_rollback = self._get_deploy_group_config(
             "min_restarts_for_crashloop_rollback",
             system_paasta_config.get_min_restarts_for_crashloop_rollback(),
@@ -1364,7 +1367,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "disable_auto_rollbacks_button_clicked",
                 "conditions": [
                     self.any_rollback_condition_failing,
-                    self.any_auto_rollbacks_enabled,
+                    self.any_auto_rollback_kind_enabled,
                 ],
                 "before": self.disable_auto_rollbacks,
             }
@@ -1431,14 +1434,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         }
 
     def disable_auto_rollbacks(self) -> None:
-        self.cancel_auto_rollback_countdown(trigger="rollback_slo_failure")
-        self.cancel_auto_rollback_countdown(trigger="rollback_alertmanager_failure")
+        self.cancel_auto_rollback_countdown()
         self.auto_rollback = False
         self.alertmanager_rollback_enabled = False
+        self.crashloop_auto_rollback_enabled = False
         message = (
-            "Automatic SLO and AlertManager rollback disabled for this deploy. "
+            "Automatic SLO, AlertManager and crashloop rollbacks disabled for this deploy. "
             "To disable this permanently, edit `deploy.yaml` and set `auto_rollback: false` (for SLO-triggered rollbacks) "
-            f"+ `alertmanager_rollback: false` (for AlertManager-triggered rollbacks) for the `{self.deploy_group}` step."
+            "+ `alertmanager_rollback: false` (for AlertManager-triggered rollbacks) "
+            f"+ `enable_crashloop_auto_rollback: false` (for crashloop-triggered rollbacks) for the `{self.deploy_group}` step."
         )
         self.update_slack_status(message)
         self.update_slack_thread(message)
@@ -1446,15 +1450,24 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     def enable_auto_rollbacks(self) -> None:
         self.auto_rollback = True
         self.alertmanager_rollback_enabled = True
+        # unlike SLO/AlertManager rollbacks, we only watch for crashloops if they're configured for this step - so we
+        # can only turn crashloop rollbacks back on if they were configured in the first place
+        self.crashloop_auto_rollback_enabled = self.crashloop_auto_rollback_available
         self.auto_rollbacks_ever_enabled = True
         # NOTE: if AlertManager rollbacks weren't enabled at the start of this deploy, the watcher
         # will only be started now - so any alerts that are already firing will be ignored
         self.start_alertmanager_watcher()
+        enabled = (
+            "SLO, AlertManager and crashloop"
+            if self.crashloop_auto_rollback_enabled
+            else "SLO and AlertManager"
+        )
         message = (
-            "Automatic SLO and AlertManager rollback enabled for this deploy. "
+            f"Automatic {enabled} rollback enabled for this deploy. "
             "Will watch for failures and rollback when necessary. "
             "To set this permanently, edit `deploy.yaml` and set `auto_rollback: true` (for SLO-triggered rollbacks) "
-            f"+ `alertmanager_rollback: true` (for AlertManager-triggered rollbacks) for the `{self.deploy_group}` step."
+            "+ `alertmanager_rollback: true` (for AlertManager-triggered rollbacks) "
+            f"+ `enable_crashloop_auto_rollback: true` (for crashloop-triggered rollbacks) for the `{self.deploy_group}` step."
         )
         self.update_slack_status(message)
         self.update_slack_thread(message)
@@ -1476,6 +1489,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.crashloop_auto_rollback_enabled
+
+    def any_auto_rollback_kind_enabled(self) -> bool:
+        """Whether any kind of auto-rollback (SLO, AlertManager or crashloop) is enabled."""
+        return self.any_auto_rollbacks_enabled() or self.crashloop_rollbacks_enabled()
+
+    def any_rollback_condition_failing(self) -> bool:
+        return super().any_rollback_condition_failing() or (
+            self.crashloop_rollbacks_enabled() and self.any_crashloop_failing()
+        )
 
     def any_auto_rollbacks_enabled(self) -> bool:
         return self.auto_rollbacks_enabled() or self.alertmanager_rollbacks_enabled()
@@ -1683,8 +1705,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     # ...and we can't easily make wait_for_deployment() an instance method 'cause we reuse that in places
                     # where we don't want a MarkForDeploymentProcess (e.g., the `wait-for-deployment` CLI :p)
                     crashloop_fn=self.on_crashloop_detected
-                    if self.crashloop_auto_rollback_enabled
-                    else None,
+                    # NOTE: we watch for crashloops whenever they're configured (rather than only while they're
+                    # enabled), so that "Enable auto rollbacks" can turn them back on mid-deploy
+                    if self.crashloop_auto_rollback_available else None,
                     min_restarts_for_crashloop_rollback=self.min_restarts_for_crashloop_rollback,
                     crashloop_rollback_percentage_threshold=self.crashloop_rollback_percentage_threshold,
                 )
@@ -1751,7 +1774,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             return "an SLO is currently failing"
         elif self.any_alertmanager_failing():
             return "an AlertManager alert for this service is currently firing"
-        elif self.any_crashloop_failing():
+        elif self.crashloop_rollbacks_enabled() and self.any_crashloop_failing():
             return "the new deployment has replicas that are repeatedly crashing"
         elif self.is_auto_rollback_countdown_running():
             return "an automatic rollback countdown is running"
