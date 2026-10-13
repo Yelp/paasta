@@ -1696,9 +1696,18 @@ def test_MarkForDeployProcess_rollback_countdowns_and_auto_certify(
     mfdp.trigger("auto_certify")
     assert mfdp.state == "deployed"
 
-    # a human telling us to go forward overrides the pending rollback
+    # a human telling us to go forward overrides the pending rollback - but the SLO is still failing, so we still
+    # shouldn't certify
     mfdp.trigger("forward_button_clicked")
     assert not mfdp.is_auto_rollback_countdown_running()
+    assert not mfdp.is_timer_running("auto_certify")
+
+    # once the SLO recovers, there's nothing stopping us from certifying anymore
+    slo_watcher.failing = False
+    mfdp.trigger("slos_stopped_failing")
+    assert mfdp.is_timer_running("auto_certify")
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert mfdp.state == "complete"
 
 
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(

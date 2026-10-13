@@ -1385,9 +1385,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "slos_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_slo_failure"
-            ),
+            "before": self.on_slos_stopped_failing,
         }
         yield {
             "source": "*",
@@ -1438,6 +1436,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.auto_rollback = False
         self.alertmanager_rollback_enabled = False
         self.crashloop_auto_rollback_enabled = False
+        self.restart_auto_certify_if_safe()
         message = (
             "Automatic SLO, AlertManager and crashloop rollbacks disabled for this deploy. "
             "To disable this permanently, edit `deploy.yaml` and set `auto_rollback: false` (for SLO-triggered rollbacks) "
@@ -1576,6 +1575,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.update_slack_thread(
                 f"Not abandoning: rolling forward to `{self.deployment_version.short_sha_repr()}` again instead."
             )
+        self.restart_auto_certify_if_safe()
 
     def on_complete_button_clicked(self) -> None:
         # same idea as in on_forward_button_clicked: there's no longer any need to count down to certify, since a
@@ -1758,7 +1758,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         reason = self.get_reason_not_to_auto_certify()
         if reason is not None:
             self.ping_authors(
-                f"Because {reason}, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+                f"Because {reason}, we will not automatically certify. Instead, we will wait until this is resolved or you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1767,6 +1767,21 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 )
                 if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
                     self.ping_authors()
+
+    def restart_auto_certify_if_safe(self) -> None:
+        """If we're waiting in deployed only because of something that has since been resolved (e.g., a failing SLO
+        recovered or a human disabled auto rollbacks), start counting down to certify again."""
+        if (
+            self.state != "deployed"
+            or self.get_auto_certify_delay() <= 0
+            or self.is_timer_running("auto_certify")
+            or self.get_reason_not_to_auto_certify() is not None
+        ):
+            return
+        self.update_slack_thread(
+            "Nothing is preventing us from automatically certifying anymore."
+        )
+        self.start_timer(self.get_auto_certify_delay(), "auto_certify", "certify")
 
     def get_reason_not_to_auto_certify(self) -> Optional[str]:
         """If it isn't currently safe to automatically certify this deploy, returns a human-readable reason why."""
@@ -1902,8 +1917,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
         self._log_rollback(rollback_details)
 
+    def on_slos_stopped_failing(self) -> None:
+        self.cancel_auto_rollback_countdown("rollback_slo_failure")
+        self.restart_auto_certify_if_safe()
+
     def _on_alertmanager_stopped_failing(self) -> None:
         self.cancel_auto_rollback_countdown("rollback_alertmanager_failure")
+        self.restart_auto_certify_if_safe()
         self.metrics_interface.create_counter(
             "alertmanager_rollback_cancelled",
         ).count()
