@@ -38,6 +38,7 @@ from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Set
 from typing import Tuple
@@ -112,6 +113,31 @@ MIN_AUTO_ROLLBACK_DELAY = 30  # seconds
 DEFAULT_SLO_AUTO_ROLLBACK_DELAY = 30  # seconds
 DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY = 120  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
+
+
+class RollbackCountdownReason(NamedTuple):
+    """Why a rollback countdown was started, shown in its messages so that overlapping countdowns can be told apart."""
+
+    # used as "will automatically roll back in N seconds ... because <reason>"
+    reason: str
+    # used as "countdown to automatically roll back cancelled (<cancelled_reason>)"
+    cancelled_reason: str
+
+
+ROLLBACK_COUNTDOWN_REASONS: Dict[str, RollbackCountdownReason] = {
+    "rollback_slo_failure": RollbackCountdownReason(
+        reason="an SLO is failing",
+        cancelled_reason="an SLO was failing",
+    ),
+    "rollback_alertmanager_failure": RollbackCountdownReason(
+        reason="an AlertManager alert is firing",
+        cancelled_reason="an AlertManager alert was firing",
+    ),
+    "rollback_crashloop_failure": RollbackCountdownReason(
+        reason="replicas are crashlooping",
+        cancelled_reason="replicas were crashlooping",
+    ),
+}
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 # Lets a manual run target another table (e.g. a test table) without changing system config
 SLACK_THREAD_TABLE_ENV_VAR = "PAASTA_DEPLOY_SLACK_THREADS_TABLE"
@@ -1875,8 +1901,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             button="disable_auto_rollbacks",
             is_active=False,
         )
+        countdown_reason = ROLLBACK_COUNTDOWN_REASONS.get(
+            trigger, RollbackCountdownReason(reason="", cancelled_reason="")
+        )
         super().start_auto_rollback_countdown(
-            trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
+            trigger=trigger,
+            extra_text=f'Click "{cancel_button_text}" to cancel this!',
+            reason=countdown_reason.reason,
+            cancelled_reason=countdown_reason.cancelled_reason,
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
