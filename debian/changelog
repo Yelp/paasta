@@ -1,3 +1,29 @@
+paasta-tools (1.61.2) jammy; urgency=medium
+
+  * 1.61.2 tagged with 'make release'
+    Commit: Merge pull request #4407 from Yelp/luisp/sticht-bump  Use
+    sticht v2.4.0
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 14 Oct 2026 03:30:55 -0700
+
+paasta-tools (1.61.1) jammy; urgency=medium
+
+  * 1.61.1 tagged with 'make release'
+    Commit: Updating PaaSTA status to avoid confusion during deploys
+    (#4405)  * updating paasta status  * updating comment  * refactoring
+    based on comments  ---------  Co-authored-by: mbrankin
+    <mbrankin@cm2pxfyy7m.home>
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Fri, 09 Oct 2026 02:51:56 -0700
+
+paasta-tools (1.61.0) jammy; urgency=medium
+
+  * 1.61.0 tagged with 'make release'
+    Commit: Merge pull request #4390 from Yelp/u/jfong/reconcile-paasta-
+    service-accounts  Add reconcile_paasta_service_accounts script
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Oct 2026 13:37:58 -0700
+
 paasta-tools (1.60.19) jammy; urgency=medium
 
   * 1.60.19 tagged with 'make release'
