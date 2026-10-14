@@ -201,10 +201,6 @@ This is configured per deploy_group in deploy.yaml:
 * ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
   PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
 
-* ``alertmanager_auto_rollback_delay`` (integer, optional): How long (in seconds) to wait
-  after an AlertManager alert fires before automatically rolling back (default: 120).
-  This is separate from ``auto_rollback_delay``, which applies to SLO-triggered rollbacks.
-
 Alerts that were already firing before the deployment started are ignored, unless they resolve
 and then fire again during the deployment.
 
@@ -235,4 +231,3 @@ Example:
      wait_for_deployment: true
      alertmanager_rollback: true
      alertmanager_poll_interval_s: 60
-     alertmanager_auto_rollback_delay: 300
