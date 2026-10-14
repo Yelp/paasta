@@ -1,3 +1,11 @@
+paasta-tools (1.61.2) jammy; urgency=medium
+
+  * 1.61.2 tagged with 'make release'
+    Commit: Merge pull request #4407 from Yelp/luisp/sticht-bump  Use
+    sticht v2.4.0
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 14 Oct 2026 03:30:55 -0700
+
 paasta-tools (1.61.1) jammy; urgency=medium
 
   * 1.61.1 tagged with 'make release'
