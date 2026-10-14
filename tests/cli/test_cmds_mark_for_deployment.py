@@ -1836,3 +1836,51 @@ def test_default_error_alert_filter_multiple_registrations(
         'paasta_rollback_metric="true"',
         'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
     ]
+
+
+@pytest.mark.parametrize(
+    "auto_rollback, alertmanager_auto_rollback_enabled, auto_rollback_delay, expected_result",
+    [
+        (True, False, None, 30),
+        (False, True, None, 120),
+        (True, False, 100, 100),
+        (False, True, 100, 100),
+    ],
+)
+def test_auto_rollback_delay_defaults(
+    mock_load_system_paasta_config,
+    auto_rollback,
+    alertmanager_auto_rollback_enabled,
+    auto_rollback_delay,
+    expected_result,
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={
+                "pipeline": [
+                    {
+                        "step": "deploy_group",
+                        "alertmanager_rollback": alertmanager_auto_rollback_enabled,
+                    }
+                ]
+            },
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=auto_rollback,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=auto_rollback_delay,
+            authors=None,
+        )
+    assert mfdp.alertmanager_rollback_enabled == alertmanager_auto_rollback_enabled
+    assert mfdp.auto_rollback_delay == expected_result
