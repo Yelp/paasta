@@ -255,6 +255,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         dest="auto_rollback_delay",
         type=int,
         default=None,  # this default is set later depending on which type of rollback is enabled. See MarkForDeploymentProcess.__init__.
+        minimum=30,
         help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
     )
     list_parser.add_argument(
@@ -810,15 +811,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.alertmanager_rollback_dry_run = self._get_deploy_group_config(
             "alertmanager_rollback_dry_run", False
         )
-        self.auto_rollback_delay = (
-            auto_rollback_delay
-            if auto_rollback_delay is not None
-            else (
-                DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY
-                if self.alertmanager_rollback_enabled
-                else DEFAULT_SLO_AUTO_ROLLBACK_DELAY
-            )
-        )
+        if auto_rollback_delay is None:
+            if self.alertmanager_rollback_enabled:
+                auto_rollback_delay = DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY
+            else:
+                auto_rollback_delay = DEFAULT_SLO_AUTO_ROLLBACK_DELAY
+        self.auto_rollback_delay = auto_rollback_delay
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
 
