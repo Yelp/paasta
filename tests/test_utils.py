@@ -402,6 +402,19 @@ def test_SystemPaastaConfig_get_cluster_dne():
         fake_config.get_cluster()
 
 
+def test_SystemPaastaConfig_get_deploy_slack_threads_config():
+    table_config = {"table_name": "deploy-slack-threads", "region": "us-west-2"}
+    fake_config = utils.SystemPaastaConfig(
+        {"deploy_slack_threads": table_config}, "/some/fake/dir"
+    )
+    assert fake_config.get_deploy_slack_threads_config() == table_config
+
+
+def test_SystemPaastaConfig_get_deploy_slack_threads_config_default():
+    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
+    assert fake_config.get_deploy_slack_threads_config() is None
+
+
 def test_SystemPaastaConfig_get_volumes():
     fake_config = utils.SystemPaastaConfig(
         {
