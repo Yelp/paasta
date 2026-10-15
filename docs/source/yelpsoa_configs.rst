@@ -790,9 +790,9 @@ Each Tron **action** of a job MAY specify the following:
   * ``datastore_credentials``: A mapping of datastore type to a list of credential names whose rotated
     credentials should be mounted into the action. Currently only ``mysql`` is supported, e.g.
     ``datastore_credentials: {mysql: [my_db_credential]}``. Each credential is mounted read-only at
-    ``/datastore/<datastore>/<credential>/credentials`` as a JSON document. This is the same opt-in key,
-    Secret and mount layout that long-running services use; the backing Secret is kept up to date by
-    ``paasta_secrets_sync --secret-type datastore-credentials``.
+    ``/datastore/<datastore>/<credential>/credentials`` as a JSON document. 
+    
+    ** NOTE **: This is the same opt-in key and on-disk layout that PaaSTA instances use.
 
 If a Tron **action** of a job is of executor type ``spark``, it MAY specify the following:
 
