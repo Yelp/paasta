@@ -11,6 +11,7 @@ from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.kubernetes_tools import get_datastore_credentials_secret_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_ssm_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -237,6 +238,40 @@ class TestTronActionConfig:
 
     def test_get_ssm_secret_env_empty(self, action_config):
         assert action_config.get_ssm_secret_env() == {}
+
+    def test_get_datastore_credentials_secret_volume_not_opted_in(self, action_config):
+        assert action_config.get_datastore_credentials() == {}
+        assert action_config.get_datastore_credentials_secret_volume() is None
+
+    def test_get_datastore_credentials_secret_volume(self, action_config):
+        action_config.config_dict["datastore_credentials"] = {
+            "mysql": ["cred_one", "cred_two"]
+        }
+        expected_secret_name = get_datastore_credentials_secret_name(
+            "tron", "my_service", "cool_job.print"
+        )
+        assert (
+            action_config.get_datastore_credentials_secret_name()
+            == expected_secret_name
+        )
+        assert action_config.get_datastore_credentials_secret_volume() == {
+            "secret_volume_name": expected_secret_name,
+            "secret_name": expected_secret_name,
+            "container_path": "/datastore",
+            "default_mode": "0444",
+            "items": [
+                {
+                    "key": "secrets-datastore-mysql-cred_one",
+                    "path": "mysql/cred_one/credentials",
+                    "mode": "0444",
+                },
+                {
+                    "key": "secrets-datastore-mysql-cred_two",
+                    "path": "mysql/cred_two/credentials",
+                    "mode": "0444",
+                },
+            ],
+        }
 
 
 class TestTronJobConfig:
@@ -1951,6 +1986,71 @@ class TestTronTools:
         }
         # SSM secret var should be excluded from plain env
         assert "SSM_SECRET" not in result["env"]
+
+    def test_format_tron_action_dict_datastore_credentials(self):
+        action_dict = {
+            "command": "echo hi",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "paasta",
+            "cpus": 1,
+            "mem": 512,
+            "disk": 10,
+            "pool": "default",
+            "secret_volumes": [
+                {
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                }
+            ],
+            "datastore_credentials": {"mysql": ["my_db"]},
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=None,
+            cluster="test-cluster",
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
+
+        expected_secret_name = get_datastore_credentials_secret_name(
+            "tron", "my_service", "my_job.do_something"
+        )
+        # the regular paasta secret volume is untouched and the datastore volume is appended
+        assert [
+            volume["secret_volume_name"] for volume in result["secret_volumes"]
+        ] == [
+            action_config.get_secret_volume_name("secret1"),
+            expected_secret_name,
+        ]
+        assert result["secret_volumes"][1] == {
+            "secret_volume_name": expected_secret_name,
+            "secret_name": expected_secret_name,
+            "container_path": "/datastore",
+            "default_mode": "0444",
+            "items": [
+                {
+                    "key": "secrets-datastore-mysql-my_db",
+                    "path": "mysql/my_db/credentials",
+                    "mode": "0444",
+                }
+            ],
+        }
 
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config(self, mock_read_extra_service_information):
