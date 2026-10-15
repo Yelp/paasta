@@ -974,6 +974,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         # Initialize Slack threads and send the first message
         super().__init__()
+        self.record_slack_thread(system_paasta_config)
         self.print_who_is_running_this()
 
     def start_alertmanager_watcher(self) -> None:
@@ -999,6 +1000,28 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         if not self.block:
             return "Deploying in background, progress not tracked."
         return self.progress.human_readable(summary)
+
+    def record_slack_thread(self, system_paasta_config: SystemPaastaConfig) -> None:
+        """Record this deploy's Slack thread so other tools can reply in it.
+
+        Done here rather than in send_initial_slack_message, which sticht calls again
+        when it falls back to the default channel, so that each deploy writes one record.
+        """
+        # slack_ts is never set when there's no Slack client, and is None if posting failed
+        thread_ts = getattr(self, "slack_ts", None)
+        channel_id = getattr(self, "slack_channel_id", None)
+        if not thread_ts or not channel_id:
+            return
+        record_deploy_slack_thread(
+            system_paasta_config=system_paasta_config,
+            service=self.service,
+            deploy_group=self.deploy_group,
+            commit=self.commit,
+            channel_id=channel_id,
+            channel_name=self.slack_channel,
+            thread_ts=thread_ts,
+            authors=self.authors,
+        )
 
     def print_who_is_running_this(self) -> None:
         build_url = get_jenkins_build_output_url()

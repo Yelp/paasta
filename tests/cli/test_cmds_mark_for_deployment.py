@@ -2031,3 +2031,113 @@ def test_auto_rollback_delay_defaults(
         )
     assert mfdp.alertmanager_rollback_enabled == alertmanager_auto_rollback_enabled
     assert mfdp.auto_rollback_delay == expected_result
+
+
+def test_MarkForDeployProcess_records_slack_thread_once():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+        autospec=True,
+    ) as mock_record_deploy_slack_thread:
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_record_deploy_slack_thread.assert_called_once_with(
+        system_paasta_config=mark_for_deployment.load_system_paasta_config(),
+        service="service",
+        deploy_group="deploy_group",
+        commit="commit",
+        channel_id="FAKE CHANNEL ID",
+        channel_name=mfdp.slack_channel,
+        thread_ts=1234531337,
+        authors=["fakeuser1"],
+    )
+
+
+class NoSlackMarkForDeploymentProcess(WrappedMarkForDeploymentProcess):
+    def get_slack_client(self):
+        return None
+
+
+def test_MarkForDeployProcess_skips_recording_without_slack():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+        autospec=True,
+    ) as mock_record_deploy_slack_thread:
+        NoSlackMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_record_deploy_slack_thread.assert_not_called()
+
+
+def test_MarkForDeployProcess_deploys_when_recording_fails():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch.dict(
+        os.environ,
+        {
+            **JENKINS_ENV,
+            mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads",
+        },
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        mock_put_item = mock_resource.return_value.Table.return_value.put_item
+        mock_put_item.side_effect = Exception("boom")
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            # a real channel name, so the record serializes and reaches put_item
+            deploy_info={"slack_channels": ["#fake-channel"]},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_put_item.assert_called_once()
+    assert mfdp.state == "_begin"
