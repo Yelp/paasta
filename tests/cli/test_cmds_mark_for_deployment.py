@@ -1836,3 +1836,90 @@ def test_default_error_alert_filter_multiple_registrations(
         'paasta_rollback_metric="true"',
         'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
     ]
+
+
+def make_mfdp(process_class=WrappedMarkForDeploymentProcess):
+    return process_class(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=False,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=["fakeuser1"],
+    )
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+    autospec=True,
+)
+def test_MarkForDeployProcess_records_slack_thread_once(
+    mock_record_deploy_slack_thread,
+    mock_get_instance_configs,
+):
+    mfdp = make_mfdp()
+
+    mock_record_deploy_slack_thread.assert_called_once_with(
+        system_paasta_config=mark_for_deployment.load_system_paasta_config(),
+        service="service",
+        deploy_group="deploy_group",
+        commit="commit",
+        channel_id="FAKE CHANNEL ID",
+        channel_name=mfdp.slack_channel,
+        thread_ts=1234531337,
+        authors=["fakeuser1"],
+    )
+
+
+class NoSlackMarkForDeploymentProcess(WrappedMarkForDeploymentProcess):
+    def get_slack_client(self):
+        return None
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+    autospec=True,
+)
+def test_MarkForDeployProcess_skips_recording_without_slack(
+    mock_record_deploy_slack_thread,
+    mock_get_instance_configs,
+):
+    make_mfdp(NoSlackMarkForDeploymentProcess)
+
+    mock_record_deploy_slack_thread.assert_not_called()
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.deploy_slack_threads.boto3.client", autospec=True)
+def test_MarkForDeployProcess_deploys_when_recording_fails(
+    mock_boto3_client,
+    mock_get_instance_configs,
+    monkeypatch,
+):
+    monkeypatch.setenv("PAASTA_DEPLOY_SLACK_THREADS_TABLE", "deploy-slack-threads")
+    mock_boto3_client.return_value.put_item.side_effect = Exception("boom")
+
+    mfdp = make_mfdp()
+
+    mock_boto3_client.return_value.put_item.assert_called_once()
+    assert mfdp.state == "_begin"
