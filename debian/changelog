@@ -1,3 +1,14 @@
+paasta-tools (1.62.0) jammy; urgency=medium
+
+  * 1.62.0 tagged with 'make release'
+    Commit: add --prod-min-instance-count and --non-prod-min-instance-
+    count args for service_shard_update, drop --min-instance-count
+    (#4411)  we will use this to ensure that prod services always have
+    at least 2 instances to prevent spot fleet from killing a shard
+    outright.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 19 Oct 2026 10:57:54 -0700
+
 paasta-tools (1.61.2) jammy; urgency=medium
 
   * 1.61.2 tagged with 'make release'
