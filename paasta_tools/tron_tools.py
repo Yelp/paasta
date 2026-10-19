@@ -45,11 +45,16 @@ from typing import Optional
 
 from paasta_tools import monitoring_tools
 from paasta_tools import spark_tools
+from paasta_tools.kubernetes_tools import DATASTORE_CREDENTIALS_MOUNT_PATH
+from paasta_tools.kubernetes_tools import DatastoreCredentialsConfig
 from paasta_tools.kubernetes_tools import NodeSelectorConfig
 from paasta_tools.kubernetes_tools import SsmSecretConfig
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import contains_zone_label
+from paasta_tools.kubernetes_tools import get_datastore_credentials_secret_items
+from paasta_tools.kubernetes_tools import get_datastore_credentials_secret_name
+from paasta_tools.kubernetes_tools import get_datastore_credentials_signature_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_service_account_name
@@ -74,6 +79,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import ProjectedSAVolume
+from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TronSecretVolume
 from paasta_tools.utils import cached_read_service_configuration
@@ -259,6 +265,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     mrjob: bool
     idempotent: bool
     ssm_secrets: List[SsmSecretConfig]
+    datastore_credentials: DatastoreCredentialsConfig
 
 
 class TronActionConfig(InstanceConfig):
@@ -458,6 +465,54 @@ class TronActionConfig(InstanceConfig):
             self.get_namespace(),
             service,
             secret_name,
+        )
+
+    def get_datastore_credentials(self) -> DatastoreCredentialsConfig:
+        return self.config_dict.get("datastore_credentials", {})
+
+    def get_datastore_credentials_secret_name(self) -> str:
+        """
+        All datastore credentials for an action are stored in a single Kubernetes Secret
+        (synced by paasta_secrets_sync --secret-type datastore-credentials), so they share a name.
+        """
+        return get_datastore_credentials_secret_name(
+            self.get_namespace(),
+            self.get_service(),
+            self.get_instance(),
+        )
+
+    def get_datastore_credentials_signature_name(self) -> str:
+        return get_datastore_credentials_signature_name(
+            self.get_namespace(),
+            self.get_service(),
+            self.get_instance(),
+        )
+
+    def get_datastore_credentials_secret_volume(self) -> Optional[TronSecretVolume]:
+        """
+        Project the datastore_credentials Secret into the action's container, mirroring the
+        long-running service layout: /datastore/<datastore>/<credential>/credentials.
+
+        Unlike KubernetesDeploymentConfig, we don't check for the Secret's signature here since
+        tronfig generation also runs where there is no Kubernetes access (e.g. `paasta validate`).
+        If the Secret has not been synced yet, Kubernetes will refuse to start the Pod.
+        """
+        datastore_credentials = self.get_datastore_credentials()
+        if not datastore_credentials:
+            return None
+
+        secret_name = self.get_datastore_credentials_secret_name()
+        return TronSecretVolume(
+            secret_volume_name=secret_name,
+            secret_name=secret_name,
+            container_path=DATASTORE_CREDENTIALS_MOUNT_PATH,
+            default_mode="0444",
+            items=[
+                SecretVolumeItem(key=key, path=path, mode="0444")
+                for key, path in get_datastore_credentials_secret_items(
+                    datastore_credentials
+                )
+            ],
         )
 
     def get_deploy_group(self) -> Optional[str]:
@@ -1097,6 +1152,17 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         # service account token volumes for service authentication
         result["projected_sa_volumes"] = action_config.get_projected_sa_volumes()
+
+        # Vault-rotated datastore (e.g. MySQL) credentials are mounted from a Secret that is
+        # kept up to date by paasta_secrets_sync rather than from the paasta secrets store
+        datastore_credentials_volume = (
+            action_config.get_datastore_credentials_secret_volume()
+        )
+        if datastore_credentials_volume:
+            result["secret_volumes"] = [
+                *result["secret_volumes"],
+                datastore_credentials_volume,
+            ]
 
         # XXX: now that we're actually passing through extra_volumes correctly (e.g., using get_volumes()),
         # we can get rid of the default_volumes from the Tron master config
