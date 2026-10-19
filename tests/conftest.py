@@ -9,6 +9,7 @@ import pytest
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -99,6 +100,15 @@ def mock_ktools_read_soa_metadata(mock_read_soa_metadata):
         autospec=None,
     ):
         yield mock_read_soa_metadata
+
+
+@pytest.fixture(autouse=True)
+def no_real_metrics():
+    # timed_entry_point builds a real timer, which would otherwise use the host's metrics provider
+    with mock.patch.dict(
+        metrics_lib._metrics_interfaces, {"meteorite": metrics_lib.NoMetrics}
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)

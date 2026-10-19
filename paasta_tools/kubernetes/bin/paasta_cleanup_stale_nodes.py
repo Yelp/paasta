@@ -38,6 +38,7 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_all_nodes
+from paasta_tools.metrics import metrics_lib
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +135,7 @@ def is_node_ready(node: V1Node) -> bool:
     return True
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     if args.verbose:

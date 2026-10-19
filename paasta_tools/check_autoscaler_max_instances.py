@@ -11,6 +11,7 @@ from paasta_tools.instance import kubernetes as pik
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.metrics.metastatus_lib import suffixed_number_value
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -192,9 +193,11 @@ async def check_max_instances(
             )
 
 
+@metrics_lib.timed_entry_point
 def main():
     args = parse_args()
     system_paasta_config = load_system_paasta_config()
+    metrics_lib.add_timer_dimensions(cluster=system_paasta_config.get_cluster())
 
     for instance_type_class in [KubernetesDeploymentConfig, EksDeploymentConfig]:
         asyncio.run(

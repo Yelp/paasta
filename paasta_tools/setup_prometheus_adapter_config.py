@@ -72,6 +72,7 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -1466,8 +1467,10 @@ def restart_prometheus_adapter(kube_client: KubeClient) -> None:
     log.info("Adapter restarted successfully")
 
 
+@metrics_lib.timed_entry_point
 def main() -> int:
     args = parse_args()
+    metrics_lib.add_timer_dimensions(cluster=args.cluster)
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

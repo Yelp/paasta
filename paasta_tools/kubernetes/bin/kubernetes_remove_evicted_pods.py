@@ -32,6 +32,7 @@ from pysensu_yelp import Status
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -147,6 +148,7 @@ def evicted_pods_per_service(
     return evicted_pods_aggregated
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     if args.verbose:

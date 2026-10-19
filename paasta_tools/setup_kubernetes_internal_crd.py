@@ -28,6 +28,7 @@ from kubernetes.client import V1CustomResourceDefinition
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
+from paasta_tools.metrics import metrics_lib
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     if args.verbose:

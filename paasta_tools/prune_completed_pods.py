@@ -11,6 +11,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_pod_condition
 from paasta_tools.kubernetes_tools import is_pod_completed
+from paasta_tools.metrics import metrics_lib
 
 log = logging.getLogger(__name__)
 
@@ -108,9 +109,11 @@ def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
     return (successes, errors)
 
 
+@metrics_lib.timed_entry_point
 def main():
     args = parse_args()
     setup_logging(args.verbose)
+    metrics_lib.add_timer_dimensions(namespace=args.namespace)
 
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, args.namespace)

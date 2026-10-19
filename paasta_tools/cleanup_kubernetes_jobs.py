@@ -58,6 +58,7 @@ from paasta_tools.kubernetes.application.tools import list_all_applications
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
@@ -317,6 +318,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+@metrics_lib.timed_entry_point
 def main(argv=None) -> None:
     args = parse_args(argv)
     soa_dir = args.soa_dir
@@ -324,6 +326,7 @@ def main(argv=None) -> None:
     force = args.force
     cluster = args.cluster
     eks = args.eks
+    metrics_lib.add_timer_dimensions(eks=eks)
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

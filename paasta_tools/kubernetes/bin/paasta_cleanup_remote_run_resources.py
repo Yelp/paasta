@@ -29,6 +29,7 @@ from paasta_tools.kubernetes.remote_run import get_remote_run_roles
 from paasta_tools.kubernetes.remote_run import get_remote_run_service_accounts
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_all_managed_namespaces
+from paasta_tools.metrics import metrics_lib
 
 ListingFuncType = Callable[[KubeClient, str], Sequence[Any]]
 DeletionFuncType = Callable[[str, str], Any]
@@ -113,6 +114,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+@metrics_lib.timed_entry_point
 def main():
     args = parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)

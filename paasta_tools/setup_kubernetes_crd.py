@@ -32,6 +32,7 @@ from kubernetes.client import V1CustomResourceDefinition
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -69,6 +70,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     soa_dir = args.soa_dir
@@ -82,6 +84,8 @@ def main() -> None:
     else:
         system_paasta_config = load_system_paasta_config()
         cluster = system_paasta_config.get_cluster()
+
+    metrics_lib.add_timer_dimensions(cluster=cluster)
 
     kube_client = KubeClient()
 

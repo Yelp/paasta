@@ -13,6 +13,7 @@ from paasta_tools.kubernetes_tools import AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESP
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_namespaced_configmap
 from paasta_tools.kubernetes_tools import replace_namespaced_configmap
+from paasta_tools.metrics import metrics_lib
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ def setup_logging(verbose):
     logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
+@metrics_lib.timed_entry_point
 def main():
     args = parse_args()
     setup_logging(args.verbose)

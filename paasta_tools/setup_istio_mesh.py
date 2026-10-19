@@ -40,6 +40,7 @@ from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
@@ -339,6 +340,7 @@ def setup_istio_mesh(
     return success
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)

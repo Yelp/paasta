@@ -31,6 +31,7 @@ from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
@@ -58,6 +59,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+@metrics_lib.timed_entry_point
 def main() -> None:
     args = parse_args()
     soa_dir = args.soa_dir
@@ -70,6 +72,7 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
+    metrics_lib.add_timer_dimensions(cluster=cluster)
     custom_resource_definitions = load_custom_resource_definitions(system_paasta_config)
     cleanup_kube_succeeded = cleanup_all_custom_resources(
         kube_client=kube_client,
