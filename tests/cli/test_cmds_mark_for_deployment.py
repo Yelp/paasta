@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import importlib.metadata
+import os
 from unittest import mock
 from unittest.mock import ANY
 from unittest.mock import AsyncMock
@@ -21,6 +22,7 @@ from unittest.mock import call
 from unittest.mock import patch
 
 import pytest
+from botocore.exceptions import EndpointConnectionError
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
@@ -1836,3 +1838,139 @@ def test_default_error_alert_filter_multiple_registrations(
         'paasta_rollback_metric="true"',
         'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
     ]
+
+
+def test_build_deploy_slack_thread_record_jenkins():
+    with mock.patch.dict(
+        os.environ, {"BUILD_URL": "https://jenkins.example.com/job/1/"}
+    ):
+        record = mark_for_deployment.build_deploy_slack_thread_record(
+            service="fake_service",
+            deploy_group="prod.everything",
+            commit="abc123",
+            channel_id="C0123",
+            channel_name="#fake-channel",
+            thread_ts="1791500000.123456",
+            authors=["alice", "bob"],
+            ttl_days=30,
+            now_ms=1791500000123,
+        )
+    assert record == {
+        "service_deploy_group": "fake_service#prod.everything",
+        "created_at_ms": 1791500000123,
+        "service": "fake_service",
+        "deploy_group": "prod.everything",
+        "channel": "C0123",
+        "channel_name": "#fake-channel",
+        "thread_ts": "1791500000.123456",
+        "sha": "abc123",
+        "initiator": "jenkins",
+        "initiated_by": "https://jenkins.example.com/job/1/",
+        "authors": ["alice", "bob"],
+        "created_at": 1791500000,
+        "expires_at": 1791500000 + 30 * 86400,
+    }
+
+
+def test_build_deploy_slack_thread_record_human_without_optional_fields():
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_username",
+        autospec=True,
+        return_value="alice",
+    ):
+        record = mark_for_deployment.build_deploy_slack_thread_record(
+            service="fake_service",
+            deploy_group="dev.everything",
+            commit="abc123",
+            channel_id="C0123",
+            channel_name=None,
+            thread_ts="1791500000.123456",
+            authors=None,
+            ttl_days=7,
+            now_ms=1791500000123,
+        )
+    assert record["initiator"] == "human"
+    assert record["initiated_by"] == "alice"
+    assert record["expires_at"] == 1791500000 + 7 * 86400
+    assert "channel_name" not in record
+    assert "authors" not in record
+
+
+def record_fake_deploy_slack_thread(config_dict: utils.SystemPaastaConfigDict) -> None:
+    mark_for_deployment.record_deploy_slack_thread(
+        system_paasta_config=utils.SystemPaastaConfig(config_dict, "/fake/dir"),
+        service="fake_service",
+        deploy_group="prod.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name="#fake-channel",
+        thread_ts="1791500000.123456",
+        authors=["alice"],
+    )
+
+
+WRITER_CONFIG: utils.SystemPaastaConfigDict = {
+    "slack_thread_writer_config": {
+        "table_name": "deploy-slack-threads",
+        "region": "us-west-2",
+    }
+}
+
+
+def test_record_deploy_slack_thread_writes_to_configured_table():
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
+    ) as mock_client:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    assert mock_client.call_args[0] == ("dynamodb",)
+    assert mock_client.call_args[1]["region_name"] == "us-west-2"
+    mock_client.return_value.put_item.assert_called_once_with(
+        TableName="deploy-slack-threads",
+        Item=ANY,
+        ConditionExpression="attribute_not_exists(service_deploy_group)",
+    )
+
+
+def test_record_deploy_slack_thread_env_var_overrides_table():
+    with mock.patch.dict(
+        os.environ,
+        {mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads-test"},
+        clear=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
+    ) as mock_client:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    put_item = mock_client.return_value.put_item
+    assert put_item.call_args[1]["TableName"] == "deploy-slack-threads-test"
+
+
+def test_record_deploy_slack_thread_does_nothing_when_not_configured():
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
+    ) as mock_client:
+        record_fake_deploy_slack_thread({})
+
+    mock_client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        EndpointConnectionError(
+            endpoint_url="https://dynamodb.us-west-2.amazonaws.com"
+        ),
+        Exception("boom"),
+    ],
+)
+def test_record_deploy_slack_thread_swallows_errors(error):
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
+    ) as mock_client, mock.patch.object(
+        mark_for_deployment.log, "warning", autospec=True
+    ) as mock_warning:
+        mock_client.return_value.put_item.side_effect = error
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    mock_warning.assert_called_once()

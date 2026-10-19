@@ -41,9 +41,13 @@ from typing import Mapping
 from typing import Optional
 from typing import Set
 from typing import Tuple
+from typing import TypedDict
 
+import boto3
 import humanize
 import progressbar
+from boto3.dynamodb.types import TypeSerializer
+from botocore.config import Config
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
@@ -82,6 +86,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -106,6 +111,9 @@ DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
+# Lets a manual run target another table (e.g. a test table) without changing system config
+SLACK_THREAD_TABLE_ENV_VAR = "PAASTA_DEPLOY_SLACK_THREADS_TABLE"
+DEFAULT_SLACK_THREAD_TTL_DAYS = 30
 
 
 log = logging.getLogger(__name__)
@@ -519,6 +527,124 @@ def deploy_group_is_set_to_notify(
 def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     file_path = os.path.join(soa_dir, service, "deploy.yaml")
     return read_deploy(file_path)
+
+
+class DeploySlackThreadRecord(TypedDict, total=False):
+    """A record of a deploy's Slack thread, so other tools can reply in it."""
+
+    # hash key: "<service>#<deploy_group>"; all records for a service and deploy group
+    service_deploy_group: str
+    # range key: epoch milliseconds when the record was written, so newest sorts last
+    created_at_ms: int
+    service: str
+    deploy_group: str
+    # Slack channel ID (e.g. C0123), which Slack API calls need along with thread_ts
+    channel: str
+    # the configured channel name (e.g. #my-service-deploys), for readability
+    channel_name: str
+    # ts of the deploy's top-level Slack message, i.e. the thread to reply in
+    thread_ts: str
+    # the commit being deployed, so readers can match a record to a deploy
+    sha: str
+    # "jenkins" when run by a Jenkins pipeline, otherwise "human"
+    initiator: str
+    # the Jenkins build URL, or the username of whoever ran mark-for-deployment
+    initiated_by: str
+    # the --author values: authors of the commits being deployed
+    authors: List[str]
+    # epoch seconds when the record was written
+    created_at: int
+    # epoch seconds after which DynamoDB deletes the record (the table's TTL attribute)
+    expires_at: int
+
+
+def build_deploy_slack_thread_record(
+    service: str,
+    deploy_group: str,
+    commit: str,
+    channel_id: str,
+    channel_name: Optional[str],
+    thread_ts: str,
+    authors: Optional[Collection[str]],
+    ttl_days: int,
+    now_ms: int,
+) -> DeploySlackThreadRecord:
+    jenkins_build_url = os.environ.get("BUILD_URL")
+    created_at = now_ms // 1000
+    record: DeploySlackThreadRecord = {
+        "service_deploy_group": f"{service}#{deploy_group}",
+        "created_at_ms": now_ms,
+        "service": service,
+        "deploy_group": deploy_group,
+        "channel": channel_id,
+        "thread_ts": str(thread_ts),
+        "sha": commit,
+        "initiator": "jenkins" if jenkins_build_url else "human",
+        "initiated_by": jenkins_build_url or get_username(),
+        "created_at": created_at,
+        "expires_at": created_at + ttl_days * 24 * 60 * 60,
+    }
+    if channel_name:
+        record["channel_name"] = channel_name
+    if authors:
+        record["authors"] = list(authors)
+    return record
+
+
+def record_deploy_slack_thread(
+    system_paasta_config: SystemPaastaConfig,
+    service: str,
+    deploy_group: str,
+    commit: str,
+    channel_id: str,
+    channel_name: Optional[str],
+    thread_ts: str,
+    authors: Optional[Collection[str]] = None,
+) -> None:
+    """Best-effort write of a record of the deploy's Slack thread to DynamoDB.
+
+    Never raises: any failure is logged and swallowed, so it can't affect a deploy.
+    """
+    try:
+        config = system_paasta_config.get_slack_thread_writer_config()
+        table_name = os.environ.get(SLACK_THREAD_TABLE_ENV_VAR) or config.get(
+            "table_name"
+        )
+        if not table_name:
+            return
+
+        record = build_deploy_slack_thread_record(
+            service=service,
+            deploy_group=deploy_group,
+            commit=commit,
+            channel_id=channel_id,
+            channel_name=channel_name,
+            thread_ts=thread_ts,
+            authors=authors,
+            ttl_days=config.get("ttl_days", DEFAULT_SLACK_THREAD_TTL_DAYS),
+            now_ms=int(time.time() * 1000),
+        )
+        serializer = TypeSerializer()
+        client = boto3.client(
+            "dynamodb",
+            region_name=config.get("region"),
+            # keep this fast: a slow or unreachable DynamoDB must not hold up a deploy
+            config=Config(
+                connect_timeout=2,
+                read_timeout=2,
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
+        )
+        client.put_item(
+            TableName=table_name,
+            Item={key: serializer.serialize(value) for key, value in record.items()},
+            ConditionExpression="attribute_not_exists(service_deploy_group)",
+        )
+    except Exception:
+        log.warning(
+            "Failed to record the deploy Slack thread; continuing with the deploy",
+            exc_info=True,
+        )
 
 
 def paasta_mark_for_deployment(args: argparse.Namespace) -> int:

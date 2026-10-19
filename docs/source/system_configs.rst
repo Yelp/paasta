@@ -117,11 +117,11 @@ These are the keys that may exist in system configs:
 
     Example: ``"cluster_fqdn_format": "paasta-{cluster:s}.service.dc1.consul"``
 
-  * ``deploy_slack_threads``: Where ``paasta mark-for-deployment`` records the Slack thread it creates for a deploy,
+  * ``slack_thread_writer_config``: Where ``paasta mark-for-deployment`` records the Slack thread it creates for a deploy,
     so other tools can reply in it. A dictionary with the keys ``table_name`` (a DynamoDB table with hash key
     ``service_deploy_group`` and numeric range key ``created_at_ms``), ``region``, and optionally ``ttl_days``
     (how long records are kept, default 30). Recording is best-effort: failures are logged and never affect the deploy.
     If unset, threads are not recorded. The ``PAASTA_DEPLOY_SLACK_THREADS_TABLE`` environment variable overrides
     ``table_name``.
 
-    Example: ``"deploy_slack_threads": {"table_name": "deploy-slack-threads", "region": "us-west-2"}``
+    Example: ``"slack_thread_writer_config": {"table_name": "deploy-slack-threads", "region": "us-west-2"}``
