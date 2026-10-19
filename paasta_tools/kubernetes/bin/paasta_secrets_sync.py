@@ -183,7 +183,7 @@ def main() -> None:
     else:
         cluster = system_paasta_config.get_cluster()
 
-    metrics_lib.add_timer_dimensions(
+    metrics_lib.add_metric_dimensions(
         cluster=cluster,
         secret_type=args.secret_type,
         namespace=args.namespace or "",

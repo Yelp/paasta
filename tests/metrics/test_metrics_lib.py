@@ -171,11 +171,11 @@ def test_timed_entry_point_preserves_exit_message_and_return_value(mock_system_t
     assert metrics_lib.timed_entry_point(lambda: 3)() == 3
 
 
-def test_add_timer_dimensions(mock_system_timer):
+def test_add_metric_dimensions(mock_system_timer):
     @metrics_lib.timed_entry_point
     def main():
-        metrics_lib.add_timer_dimensions(cluster="a_cluster", eks=True)
-        metrics_lib.add_timer_dimensions(result="ignored")
+        metrics_lib.add_metric_dimensions(cluster="a_cluster", eks=True)
+        metrics_lib.add_metric_dimensions(result="ignored")
 
     main()
 
@@ -183,12 +183,12 @@ def test_add_timer_dimensions(mock_system_timer):
         tmp_dimensions={"cluster": "a_cluster", "eks": True, "result": 0}
     )
     # dimensions don't leak outside the decorated call
-    assert metrics_lib._timer_extra_dimensions.get() is None
+    assert metrics_lib._metric_extra_dimensions.get() is None
 
 
-def test_add_timer_dimensions_outside_decorator():
-    metrics_lib.add_timer_dimensions(cluster="a_cluster")
-    assert metrics_lib._timer_extra_dimensions.get() is None
+def test_add_metric_dimensions_outside_decorator():
+    metrics_lib.add_metric_dimensions(cluster="a_cluster")
+    assert metrics_lib._metric_extra_dimensions.get() is None
 
 
 def test_timed_entry_point_metrics_failure_does_not_break_script(mock_system_timer):

@@ -326,7 +326,7 @@ def main(argv=None) -> None:
     force = args.force
     cluster = args.cluster
     eks = args.eks
-    metrics_lib.add_timer_dimensions(eks=eks)
+    metrics_lib.add_metric_dimensions(eks=eks)
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

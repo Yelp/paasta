@@ -204,7 +204,7 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    metrics_lib.add_timer_dimensions(eks=args.eks, cluster=cluster)
+    metrics_lib.add_metric_dimensions(eks=args.eks, cluster=cluster)
 
     if namespace:
         pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)

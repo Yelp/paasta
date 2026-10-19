@@ -113,7 +113,7 @@ def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
 def main():
     args = parse_args()
     setup_logging(args.verbose)
-    metrics_lib.add_timer_dimensions(namespace=args.namespace)
+    metrics_lib.add_metric_dimensions(namespace=args.namespace)
 
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, args.namespace)

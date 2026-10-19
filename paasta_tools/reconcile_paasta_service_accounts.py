@@ -432,7 +432,7 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
-    metrics_lib.add_timer_dimensions(cluster=cluster, dry_run=args.dry_run)
+    metrics_lib.add_metric_dimensions(cluster=cluster, dry_run=args.dry_run)
 
     configured_namespaces = (
         system_paasta_config.get_reconciled_iam_service_account_namespaces()

@@ -1470,7 +1470,7 @@ def restart_prometheus_adapter(kube_client: KubeClient) -> None:
 @metrics_lib.timed_entry_point
 def main() -> int:
     args = parse_args()
-    metrics_lib.add_timer_dimensions(cluster=args.cluster)
+    metrics_lib.add_metric_dimensions(cluster=args.cluster)
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

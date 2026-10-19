@@ -32,9 +32,9 @@ except ImportError:
 
 _metrics_interfaces: Dict[str, Type["BaseMetrics"]] = {}
 
-# extra dimensions for the active @timed_entry_point timer; None outside of one
-_timer_extra_dimensions: ContextVar[Optional[Dict[str, Any]]] = ContextVar(
-    "_timer_extra_dimensions", default=None
+# extra dimensions for the active @timed_entry_point; None outside of one
+_metric_extra_dimensions: ContextVar[Optional[Dict[str, Any]]] = ContextVar(
+    "_metric_extra_dimensions", default=None
 )
 
 _EntryPoint = TypeVar("_EntryPoint", bound=Callable[..., Any])
@@ -267,11 +267,11 @@ def system_timer(
     )
 
 
-def add_timer_dimensions(**dims: Any) -> None:
-    """Add dimensions to the timer of the enclosing @timed_entry_point."""
-    current = _timer_extra_dimensions.get()
+def add_metric_dimensions(**dims: Any) -> None:
+    """Add dimensions to the metrics of the enclosing @timed_entry_point."""
+    current = _metric_extra_dimensions.get()
     if current is None:
-        log.debug(f"No active timed_entry_point, ignoring timer dimensions {dims}")
+        log.debug(f"No active timed_entry_point, ignoring metric dimensions {dims}")
         return
     current.update(dims)
 
@@ -293,7 +293,7 @@ def timed_entry_point(fn: _EntryPoint) -> _EntryPoint:
         # system_timer derives path from its caller's frame, which would be this module
         module = sys.modules.get(fn.__module__)
         path = getattr(module, "__file__", None) or "unknown"
-        token = _timer_extra_dimensions.set({})
+        token = _metric_extra_dimensions.set({})
         timer: Optional[TimerProtocol] = None
         try:
             timer = system_timer(dimensions={"path": path})
@@ -313,8 +313,8 @@ def timed_entry_point(fn: _EntryPoint) -> _EntryPoint:
             exit_code = CRASHED_RESULT
             raise
         finally:
-            extra_dimensions = _timer_extra_dimensions.get() or {}
-            _timer_extra_dimensions.reset(token)
+            extra_dimensions = _metric_extra_dimensions.get() or {}
+            _metric_extra_dimensions.reset(token)
             if timer is not None:
                 try:
                     timer.stop(tmp_dimensions={**extra_dimensions, "result": exit_code})

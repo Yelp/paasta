@@ -126,7 +126,7 @@ def main() -> None:
     deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
     cluster = args.cluster or load_system_paasta_config().get_cluster()
-    metrics_lib.add_timer_dimensions(cluster=cluster, eks=args.eks)
+    metrics_lib.add_metric_dimensions(cluster=cluster, eks=args.eks)
 
     kube_client = KubeClient()
     service_instances_valid = True
