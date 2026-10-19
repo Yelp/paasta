@@ -20,6 +20,7 @@ from typing import cast
 
 from typing_extensions import Protocol
 
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
@@ -230,6 +231,13 @@ def _parse_metric_labels_env() -> Dict[str, str]:
     return result
 
 
+def _get_host_cluster() -> Optional[str]:
+    try:
+        return load_system_paasta_config().get_cluster()
+    except PaastaNotConfiguredError:
+        return None
+
+
 def system_timer(
     name: str = "system_process_duration", dimensions: Dict[str, Any] = {}
 ) -> TimerProtocol:
@@ -249,6 +257,9 @@ def system_timer(
         "parent_pid": parent_pid,
         "pid": pid,
     }
+    cluster = _get_host_cluster()
+    if cluster is not None:
+        default_dimensions["cluster"] = cluster
     default_dimensions.update(_parse_metric_labels_env())
     default_dimensions.update(dimensions)
     return metrics_interface.create_timer(

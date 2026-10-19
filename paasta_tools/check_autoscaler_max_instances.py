@@ -197,7 +197,6 @@ async def check_max_instances(
 def main():
     args = parse_args()
     system_paasta_config = load_system_paasta_config()
-    metrics_lib.add_timer_dimensions(cluster=system_paasta_config.get_cluster())
 
     for instance_type_class in [KubernetesDeploymentConfig, EksDeploymentConfig]:
         asyncio.run(

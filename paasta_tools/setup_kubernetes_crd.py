@@ -85,8 +85,6 @@ def main() -> None:
         system_paasta_config = load_system_paasta_config()
         cluster = system_paasta_config.get_cluster()
 
-    metrics_lib.add_timer_dimensions(cluster=cluster)
-
     kube_client = KubeClient()
 
     success = setup_kube_crd(

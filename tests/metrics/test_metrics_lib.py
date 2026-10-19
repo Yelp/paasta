@@ -194,3 +194,37 @@ def test_add_timer_dimensions_outside_decorator():
 def test_timed_entry_point_metrics_failure_does_not_break_script(mock_system_timer):
     mock_system_timer.side_effect = Exception("no metrics for you")
     assert metrics_lib.timed_entry_point(lambda: 3)() == 3
+
+
+@pytest.mark.parametrize(
+    "dimensions,expected_cluster",
+    [
+        ({}, "host-cluster"),
+        ({"cluster": "other-cluster"}, "other-cluster"),
+    ],
+)
+def test_system_timer_cluster_dimension(dimensions, expected_cluster):
+    with mock.patch(
+        "paasta_tools.metrics.metrics_lib.load_system_paasta_config", autospec=True
+    ) as mock_load_config, mock.patch(
+        "paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True
+    ) as mock_get_metrics_interface:
+        mock_load_config.return_value.get_cluster.return_value = "host-cluster"
+        metrics_lib.system_timer(dimensions=dimensions)
+
+    _, kwargs = mock_get_metrics_interface.return_value.create_timer.call_args
+    assert kwargs["default_dimensions"]["cluster"] == expected_cluster
+
+
+def test_system_timer_no_cluster_when_unconfigured():
+    with mock.patch(
+        "paasta_tools.metrics.metrics_lib.load_system_paasta_config",
+        autospec=True,
+        side_effect=metrics_lib.PaastaNotConfiguredError,
+    ), mock.patch(
+        "paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True
+    ) as mock_get_metrics_interface:
+        metrics_lib.system_timer()
+
+    _, kwargs = mock_get_metrics_interface.return_value.create_timer.call_args
+    assert "cluster" not in kwargs["default_dimensions"]

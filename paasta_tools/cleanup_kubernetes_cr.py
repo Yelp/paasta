@@ -72,7 +72,6 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
-    metrics_lib.add_timer_dimensions(cluster=cluster)
     custom_resource_definitions = load_custom_resource_definitions(system_paasta_config)
     cleanup_kube_succeeded = cleanup_all_custom_resources(
         kube_client=kube_client,
