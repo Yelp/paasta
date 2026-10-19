@@ -63,7 +63,7 @@ def parse_args():
         "--prod-min-instance-count",
         help="If a deploy group is added, the prod min_instance count to create it with",
         required=False,
-        default=1,
+        default=2,
         type=int,
         dest="prod_min_instance_count",
     )
@@ -71,7 +71,7 @@ def parse_args():
         "--non-prod-min-instance-count",
         help="If a deploy group is added, the non-prod min_instance count to create it with",
         required=False,
-        default=2,
+        default=1,
         type=int,
         dest="non_prod_min_instance_count",
     )
