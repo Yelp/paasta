@@ -728,8 +728,12 @@ def sync_datastore_credentials(
                 cluster=cluster, instance_type_class=instance_type_class
             )
         )
-    # config_loader.instance_configs breaks when loading TronConfigs
-    # so we handle them separately
+    # PaastaServiceConfigLoader.instance_configs assumes a flat <type>-<cluster>.yaml
+    # (one top-level key per instance). tron-<cluster>.yaml is job -> actions -> action,
+    # so it would yield one TronActionConfig per *job* with the job dict as config_dict
+    # (no action-level keys like datastore_credentials) and a bogus instance name.
+    # load_tron_instance_configs -> TronJobConfig.get_actions() knows the real shape,
+    # as sync_ssm_secrets does above.
     instance_configs.extend(
         load_tron_instance_configs(
             service=service, cluster=cluster, load_deployments=False, soa_dir=soa_dir
