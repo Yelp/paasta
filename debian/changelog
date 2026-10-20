@@ -1,3 +1,11 @@
+paasta-tools (1.63.0) jammy; urgency=medium
+
+  * 1.63.0 tagged with 'make release'
+    Commit: Merge pull request #4408 from Yelp/dpopes/tron-datastore-
+    credentials  Add datastore_credentials support to Tron actions
+
+ -- Daniel Popescu <dpopes@yelp.com>  Tue, 20 Oct 2026 14:46:32 -0700
+
 paasta-tools (1.62.0) jammy; urgency=medium
 
   * 1.62.0 tagged with 'make release'
