@@ -46,7 +46,6 @@ from typing import TypedDict
 import boto3
 import humanize
 import progressbar
-from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
@@ -624,8 +623,7 @@ def record_deploy_slack_thread(
             ttl_days=config.get("ttl_days", DEFAULT_SLACK_THREAD_TTL_DAYS),
             now_ms=int(time.time() * 1000),
         )
-        serializer = TypeSerializer()
-        client = boto3.client(
+        table = boto3.resource(
             "dynamodb",
             region_name=config.get("region"),
             # keep this fast: a slow or unreachable DynamoDB must not hold up a deploy
@@ -634,10 +632,9 @@ def record_deploy_slack_thread(
                 read_timeout=2,
                 retries={"max_attempts": 2, "mode": "standard"},
             ),
-        )
-        client.put_item(
-            TableName=table_name,
-            Item={key: serializer.serialize(value) for key, value in record.items()},
+        ).Table(table_name)
+        table.put_item(
+            Item=record,
             ConditionExpression="attribute_not_exists(service_deploy_group)",
         )
     except Exception:

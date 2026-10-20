@@ -48,6 +48,16 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
 )
 
 
+# The slack thread writer tests run under mock.patch.dict(os.environ, ..., clear=True) so
+# that Jenkins' BUILD_URL (and any PAASTA_DEPLOY_SLACK_THREADS_TABLE) don't change their behavior
+WRITER_CONFIG: utils.SystemPaastaConfigDict = {
+    "slack_thread_writer_config": {
+        "table_name": "deploy-slack-threads",
+        "region": "us-west-2",
+    }
+}
+
+
 @fixture(autouse=True)
 def mock_load_system_paasta_config():
     with patch(
@@ -1909,24 +1919,16 @@ def record_fake_deploy_slack_thread(config_dict: utils.SystemPaastaConfigDict) -
     )
 
 
-WRITER_CONFIG: utils.SystemPaastaConfigDict = {
-    "slack_thread_writer_config": {
-        "table_name": "deploy-slack-threads",
-        "region": "us-west-2",
-    }
-}
-
-
 def test_record_deploy_slack_thread_writes_to_configured_table():
     with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
-    ) as mock_client:
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
         record_fake_deploy_slack_thread(WRITER_CONFIG)
 
-    assert mock_client.call_args[0] == ("dynamodb",)
-    assert mock_client.call_args[1]["region_name"] == "us-west-2"
-    mock_client.return_value.put_item.assert_called_once_with(
-        TableName="deploy-slack-threads",
+    assert mock_resource.call_args[0] == ("dynamodb",)
+    assert mock_resource.call_args[1]["region_name"] == "us-west-2"
+    mock_resource.return_value.Table.assert_called_once_with("deploy-slack-threads")
+    mock_resource.return_value.Table.return_value.put_item.assert_called_once_with(
         Item=ANY,
         ConditionExpression="attribute_not_exists(service_deploy_group)",
     )
@@ -1938,21 +1940,22 @@ def test_record_deploy_slack_thread_env_var_overrides_table():
         {mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads-test"},
         clear=True,
     ), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
-    ) as mock_client:
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
         record_fake_deploy_slack_thread(WRITER_CONFIG)
 
-    put_item = mock_client.return_value.put_item
-    assert put_item.call_args[1]["TableName"] == "deploy-slack-threads-test"
+    mock_resource.return_value.Table.assert_called_once_with(
+        "deploy-slack-threads-test"
+    )
 
 
 def test_record_deploy_slack_thread_does_nothing_when_not_configured():
     with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
-    ) as mock_client:
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
         record_fake_deploy_slack_thread({})
 
-    mock_client.assert_not_called()
+    mock_resource.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1966,11 +1969,11 @@ def test_record_deploy_slack_thread_does_nothing_when_not_configured():
 )
 def test_record_deploy_slack_thread_swallows_errors(error):
     with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.boto3.client", autospec=True
-    ) as mock_client, mock.patch.object(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource, mock.patch.object(
         mark_for_deployment.log, "warning", autospec=True
     ) as mock_warning:
-        mock_client.return_value.put_item.side_effect = error
+        mock_resource.return_value.Table.return_value.put_item.side_effect = error
         record_fake_deploy_slack_thread(WRITER_CONFIG)
 
     mock_warning.assert_called_once()
