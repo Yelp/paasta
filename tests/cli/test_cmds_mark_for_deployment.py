@@ -1983,8 +1983,8 @@ def test_record_deploy_slack_thread_swallows_errors(error):
         record_fake_deploy_slack_thread(WRITER_CONFIG)
 
     mock_warning.assert_called_once()
-    
-    
+
+
 @pytest.mark.parametrize(
     "auto_rollback, alertmanager_auto_rollback_enabled, auto_rollback_delay, expected_result",
     [
