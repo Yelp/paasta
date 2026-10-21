@@ -49,7 +49,9 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
 
 
 # The slack thread writer tests run under mock.patch.dict(os.environ, ..., clear=True) so
-# that Jenkins' BUILD_URL (and any PAASTA_DEPLOY_SLACK_THREADS_TABLE) don't change their behavior
+# that the real environment (e.g. Jenkins' BUILD_URL) doesn't change their behavior;
+# they set BUILD_URL themselves to simulate running in Jenkins
+JENKINS_ENV = {"BUILD_URL": "https://jenkins.example.com/job/1/"}
 WRITER_CONFIG: utils.SystemPaastaConfigDict = {
     "slack_thread_writer_config": {
         "table_name": "deploy-slack-threads",
@@ -1850,21 +1852,19 @@ def test_default_error_alert_filter_multiple_registrations(
     ]
 
 
-def test_build_deploy_slack_thread_record_jenkins():
-    with mock.patch.dict(
-        os.environ, {"BUILD_URL": "https://jenkins.example.com/job/1/"}
-    ):
-        record = mark_for_deployment.build_deploy_slack_thread_record(
-            service="fake_service",
-            deploy_group="prod.everything",
-            commit="abc123",
-            channel_id="C0123",
-            channel_name="#fake-channel",
-            thread_ts="1791500000.123456",
-            authors=["alice", "bob"],
-            ttl_days=30,
-            now_ms=1791500000123,
-        )
+def test_build_deploy_slack_thread_record():
+    record = mark_for_deployment.build_deploy_slack_thread_record(
+        service="fake_service",
+        deploy_group="prod.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name="#fake-channel",
+        thread_ts="1791500000.123456",
+        authors=["alice", "bob"],
+        jenkins_build_url="https://jenkins.example.com/job/1/",
+        ttl_days=30,
+        now_ms=1791500000123,
+    )
     assert record == {
         "service_deploy_group": "fake_service#prod.everything",
         "created_at_ms": 1791500000123,
@@ -1882,25 +1882,19 @@ def test_build_deploy_slack_thread_record_jenkins():
     }
 
 
-def test_build_deploy_slack_thread_record_human_without_optional_fields():
-    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.get_username",
-        autospec=True,
-        return_value="alice",
-    ):
-        record = mark_for_deployment.build_deploy_slack_thread_record(
-            service="fake_service",
-            deploy_group="dev.everything",
-            commit="abc123",
-            channel_id="C0123",
-            channel_name=None,
-            thread_ts="1791500000.123456",
-            authors=None,
-            ttl_days=7,
-            now_ms=1791500000123,
-        )
-    assert record["initiator"] == "human"
-    assert record["initiated_by"] == "alice"
+def test_build_deploy_slack_thread_record_without_optional_fields():
+    record = mark_for_deployment.build_deploy_slack_thread_record(
+        service="fake_service",
+        deploy_group="dev.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name=None,
+        thread_ts="1791500000.123456",
+        authors=None,
+        jenkins_build_url="https://jenkins.example.com/job/1/",
+        ttl_days=7,
+        now_ms=1791500000123,
+    )
     assert record["expires_at"] == 1791500000 + 7 * 86400
     assert "channel_name" not in record
     assert "authors" not in record
@@ -1920,7 +1914,7 @@ def record_fake_deploy_slack_thread(config_dict: utils.SystemPaastaConfigDict) -
 
 
 def test_record_deploy_slack_thread_writes_to_configured_table():
-    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
     ) as mock_resource:
         record_fake_deploy_slack_thread(WRITER_CONFIG)
@@ -1937,7 +1931,10 @@ def test_record_deploy_slack_thread_writes_to_configured_table():
 def test_record_deploy_slack_thread_env_var_overrides_table():
     with mock.patch.dict(
         os.environ,
-        {mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads-test"},
+        {
+            **JENKINS_ENV,
+            mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads-test",
+        },
         clear=True,
     ), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
@@ -1950,10 +1947,19 @@ def test_record_deploy_slack_thread_env_var_overrides_table():
 
 
 def test_record_deploy_slack_thread_does_nothing_when_not_configured():
-    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
     ) as mock_resource:
         record_fake_deploy_slack_thread({})
+
+    mock_resource.assert_not_called()
+
+
+def test_record_deploy_slack_thread_does_nothing_outside_jenkins():
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
 
     mock_resource.assert_not_called()
 
@@ -1968,7 +1974,7 @@ def test_record_deploy_slack_thread_does_nothing_when_not_configured():
     ],
 )
 def test_record_deploy_slack_thread_swallows_errors(error):
-    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
         "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
     ) as mock_resource, mock.patch.object(
         mark_for_deployment.log, "warning", autospec=True

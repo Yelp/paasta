@@ -545,9 +545,9 @@ class DeploySlackThreadRecord(TypedDict, total=False):
     thread_ts: str
     # the commit being deployed, so readers can match a record to a deploy
     sha: str
-    # "jenkins" when run by a Jenkins pipeline, otherwise "human"
+    # what ran mark-for-deployment; always "jenkins" for now, as only Jenkins runs are recorded
     initiator: str
-    # the Jenkins build URL, or the username of whoever ran mark-for-deployment
+    # the Jenkins build URL
     initiated_by: str
     # the --author values: authors of the commits being deployed
     authors: List[str]
@@ -565,10 +565,10 @@ def build_deploy_slack_thread_record(
     channel_name: Optional[str],
     thread_ts: str,
     authors: Optional[Collection[str]],
+    jenkins_build_url: str,
     ttl_days: int,
     now_ms: int,
 ) -> DeploySlackThreadRecord:
-    jenkins_build_url = os.environ.get("BUILD_URL")
     created_at = now_ms // 1000
     record: DeploySlackThreadRecord = {
         "service_deploy_group": f"{service}#{deploy_group}",
@@ -578,8 +578,8 @@ def build_deploy_slack_thread_record(
         "channel": channel_id,
         "thread_ts": str(thread_ts),
         "sha": commit,
-        "initiator": "jenkins" if jenkins_build_url else "human",
-        "initiated_by": jenkins_build_url or get_username(),
+        "initiator": "jenkins",
+        "initiated_by": jenkins_build_url,
         "created_at": created_at,
         "expires_at": created_at + ttl_days * 24 * 60 * 60,
     }
@@ -611,6 +611,12 @@ def record_deploy_slack_thread(
         )
         if not table_name:
             return
+        # Only Jenkins runs are recorded: only Jenkins roles can write to the table, so
+        # a devbox run would just log an access error. Readers want the latest
+        # Jenkins-initiated thread anyway.
+        jenkins_build_url = os.environ.get("BUILD_URL")
+        if not jenkins_build_url:
+            return
 
         record = build_deploy_slack_thread_record(
             service=service,
@@ -620,6 +626,7 @@ def record_deploy_slack_thread(
             channel_name=channel_name,
             thread_ts=thread_ts,
             authors=authors,
+            jenkins_build_url=jenkins_build_url,
             ttl_days=config.get("ttl_days", DEFAULT_SLACK_THREAD_TTL_DAYS),
             now_ms=int(time.time() * 1000),
         )
