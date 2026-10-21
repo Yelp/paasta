@@ -820,7 +820,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.alertmanager_rollback_dry_run = self._get_deploy_group_config(
             "alertmanager_rollback_dry_run", False
         )
-        if auto_rollback_delay is None or auto_rollback_delay < MIN_AUTO_ROLLBACK_DELAY:
+        if auto_rollback_delay is None:
             if self.alertmanager_rollback_enabled:
                 auto_rollback_delay = DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY
             else:
