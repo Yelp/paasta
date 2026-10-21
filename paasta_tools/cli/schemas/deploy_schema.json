@@ -37,7 +37,8 @@
                     "type": "integer"
                 },
                 "auto_rollback_delay": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 30
                 },
                 "timeout": {
                     "type": "integer"
