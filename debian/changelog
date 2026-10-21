@@ -1,3 +1,19 @@
+paasta-tools (1.64.0) jammy; urgency=medium
+
+  * 1.64.0 tagged with 'make release'
+    Commit: COREJAVA-2880: Add best-effort writer for deploy Slack
+    thread records (#4409)  Adds record_deploy_slack_thread(),
+    whichwrites a record of a  deploy"s Slack thread (channel,
+    thread_ts, sha, initiator) to a DynamoDB table so other tools can
+    reply in that thread.  The table comes from a new optional
+    slack_thread_writer_config system config, with a
+    PAASTA_DEPLOY_SLACK_THREADS_TABLE env override for manual runs. When
+    unset nothing is written. The write uses short timeouts and logs and
+    swallows every failure, so it can never affect a deploy.  Nothing
+    calls it yet; mark-for-deployment will in a follow-up.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 21 Oct 2026 11:42:33 -0700
+
 paasta-tools (1.63.0) jammy; urgency=medium
 
   * 1.63.0 tagged with 'make release'
