@@ -314,13 +314,19 @@ class AutoConfigUpdater:
 
             # otherwise, we can do some pretty rote clamping of resource values
             elif unclamped_resource_value is not None:
-                unclamped_mib = _normalize_resource_value(unclamped_resource_value, limit_type)
-                if min_value and unclamped_mib < _normalize_resource_value(min_value, limit_type):
+                unclamped_mib = _normalize_resource_value(
+                    unclamped_resource_value, limit_type
+                )
+                if min_value and unclamped_mib < _normalize_resource_value(
+                    min_value, limit_type
+                ):
                     log.debug(
                         f"{limit_type} autotune config under configured limit ({min_value}), using autotune limit lower bound."
                     )
                     clamped_recomendation[limit_type] = min_value
-                if max_value and unclamped_mib > _normalize_resource_value(max_value, limit_type):
+                if max_value and unclamped_mib > _normalize_resource_value(
+                    max_value, limit_type
+                ):
                     log.debug(
                         f"{limit_type} autotune config over configured limit ({max_value}), using autotune limit upper bound."
                     )
