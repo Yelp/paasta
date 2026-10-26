@@ -23,6 +23,14 @@ _SUFFIX_RESOURCE_TYPES = {"mem", "disk"}
 
 
 def _normalize_resource_value(value: int | float | str, resource_type: str) -> float:
+    """
+    Normalizes a resource value to a float so recommendations and autotune_limits can be compared.
+
+    Numeric values (e.g. cpus, or mem/disk already in MiB) are returned as-is.
+    For mem/disk, Kubernetes-style strings with a Gi/Mi/Ki suffix (e.g. "4Gi") are converted to MiB.
+
+    Raises ValueError for anything else, including suffixed strings for other resource types.
+    """
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str) and resource_type in _SUFFIX_RESOURCE_TYPES:
