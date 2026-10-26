@@ -28,6 +28,8 @@ def _normalize_resource_value(value: int | float | str, resource_type: str) -> f
 
     Numeric values (e.g. cpus, or mem/disk already in MiB) are returned as-is.
     For mem/disk, Kubernetes-style strings with a Gi/Mi/Ki suffix (e.g. "4Gi") are converted to MiB.
+    This lets instance types like cassandracluster, whose configs and recommendations use these
+    units rather than raw MiB, be clamped against autotune_limits.
 
     Raises ValueError for anything else, including suffixed strings for other resource types.
     """

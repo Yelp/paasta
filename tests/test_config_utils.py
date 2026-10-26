@@ -389,8 +389,8 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
 @pytest.mark.parametrize(
     "value,resource_type,expected",
     [
-        (512, "cpu", 512.0),
-        (1024.0, "cpu", 1024.0),
+        (512, "cpus", 512.0),
+        (1024.0, "cpus", 1024.0),
         ("1Gi", "mem", 1024.0),
         ("2Gi", "mem", 2048.0),
         ("512Mi", "mem", 512.0),
@@ -402,14 +402,16 @@ def test_normalize_resource_value(value, resource_type, expected):
     assert _normalize_resource_value(value, resource_type) == pytest.approx(expected)
 
 
-def test_normalize_resource_value_invalid_suffix():
+@pytest.mark.parametrize(
+    "value,resource_type",
+    [
+        ("4GB", "mem"),
+        ("1Gi", "cpus"),
+    ],
+)
+def test_normalize_resource_value_invalid(value, resource_type):
     with pytest.raises(ValueError):
-        _normalize_resource_value("4GB", "mem")
-
-
-def test_normalize_resource_value_string_cpu_raises():
-    with pytest.raises(ValueError):
-        _normalize_resource_value("1Gi", "cpu")
+        _normalize_resource_value(value, resource_type)
 
 
 def test_auto_config_updater_merge_recommendations_limits_gi_strings(updater):
