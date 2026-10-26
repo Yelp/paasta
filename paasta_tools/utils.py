@@ -189,6 +189,7 @@ CAPS_DROP = [
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
+    AUTOMATIC_ALERTMANAGER_ROLLBACK = "automatic_alertmanager_rollback"
     AUTOMATIC_CRASHLOOP_ROLLBACK = "automatic_crashloop_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
@@ -459,6 +460,15 @@ class InstanceConfig:
             "service": self.service,
         }
 
+    def get_config_path(self) -> str:
+        instance_type = self.get_instance_type()
+        assert instance_type is not None
+        return os.path.join(
+            self.soa_dir,
+            self.service,
+            f"{instance_type}-{self.cluster}.yaml",
+        )
+
     def get_cluster(self) -> str:
         return self.cluster
 
@@ -490,6 +500,9 @@ class InstanceConfig:
         return get_paasta_branch(
             cluster=self.get_cluster(), instance=self.get_instance()
         )
+
+    def get_service_override(self) -> Optional[str]:
+        return self.config_dict.get("service", None)
 
     def get_deploy_group(self) -> str:
         return self.config_dict.get("deploy_group", self.get_branch())
@@ -1896,6 +1909,12 @@ class KubeKindDict(TypedDict, total=False):
     plural: str
 
 
+class SlackThreadWriterConfig(TypedDict, total=False):
+    table_name: str
+    region: str
+    ttl_days: int
+
+
 class KubeCustomResourceDict(TypedDict, total=False):
     version: str
     file_prefix: str
@@ -1915,6 +1934,11 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
     when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
     max_skew: int
     match_label_keys: List[str]
+
+
+class PoolLimits(TypedDict):
+    max_cpus: float
+    recommended_pool: str
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
@@ -1976,6 +2000,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_crashloop_auto_rollback: bool
     min_restarts_for_crashloop_rollback: int
     crashloop_rollback_percentage_threshold: float
+    alertmanager_url: str
+    enable_alertmanager_rollback: bool
+    alertmanager_poll_interval_s: int
+    autorollback_prometheus_shard_region_overrides: Dict[str, str]
+    slack_thread_writer_config: SlackThreadWriterConfig
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -1987,6 +2016,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     pool_node_affinities: Dict[str, Dict[str, List[str]]]
+    # i.e. {cluster: {pool: PoolLimits}}
+    pool_limits: Dict[str, Dict[str, PoolLimits]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2021,6 +2052,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     skip_unique_instance_name_validation: List[str]
+    skip_check_monitoring_file_exists: List[str]
+    common_canary_instance_names: List[str]
     tron_default_pool_override: str
     spark_kubeconfig: str
     spark_iam_user_kubeconfig: str
@@ -2042,7 +2075,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
-    use_raw_ksm_queries: bool
+    reconciled_iam_service_account_namespaces: List[str]
 
 
 def load_system_paasta_config(
@@ -2545,6 +2578,10 @@ class SystemPaastaConfig:
         """Node selectors that will be applied to all Pods in a pool"""
         return self.config_dict.get("pool_node_affinities", {})
 
+    def get_pool_limits(self) -> Dict[str, Dict[str, PoolLimits]]:
+        """Pool limits for each cluster"""
+        return self.config_dict.get("pool_limits", {})
+
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
@@ -2673,6 +2710,24 @@ class SystemPaastaConfig:
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
+    def get_alertmanager_url(self) -> Optional[str]:
+        return self.config_dict.get("alertmanager_url", None)
+
+    def get_enable_alertmanager_rollback(self) -> bool:
+        return self.config_dict.get("enable_alertmanager_rollback", False)
+
+    def get_alertmanager_poll_interval_s(self) -> int:
+        return self.config_dict.get("alertmanager_poll_interval_s", 30)
+
+    def get_slack_thread_writer_config(self) -> SlackThreadWriterConfig:
+        """Where mark-for-deployment records deploy Slack threads; empty to not record them."""
+        return self.config_dict.get("slack_thread_writer_config", {})
+
+    def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
+        return self.config_dict.get(
+            "autorollback_prometheus_shard_region_overrides", {}
+        )
+
     def get_enable_crashloop_auto_rollback(self) -> bool:
         return self.config_dict.get("enable_crashloop_auto_rollback", False)
 
@@ -2705,8 +2760,14 @@ class SystemPaastaConfig:
     def get_skip_cpu_burst_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_burst_validation", [])
 
+    def get_skip_check_monitoring_file_exists(self) -> List[str]:
+        return self.config_dict.get("skip_check_monitoring_file_exists", [])
+
     def get_skip_unique_instance_name_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_unique_instance_name_validation", [])
+
+    def get_common_canary_instance_names(self) -> List[str]:
+        return self.config_dict.get("common_canary_instance_names", ["canary"])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
@@ -2795,8 +2856,8 @@ class SystemPaastaConfig:
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
 
-    def get_use_raw_ksm_queries(self) -> bool:
-        return self.config_dict.get("use_raw_ksm_queries", False)
+    def get_reconciled_iam_service_account_namespaces(self) -> List[str]:
+        return self.config_dict.get("reconciled_iam_service_account_namespaces", [])
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)

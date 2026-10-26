@@ -39,6 +39,16 @@ from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import build_image_identifier
 from paasta_tools.utils import get_service_docker_registry
 
+# Unless we show that we accept these, they will not be sent to us
+DOCKER_REGISTRY_MANIFEST_ACCEPT_HEADER = ", ".join(
+    (
+        "application/vnd.oci.image.index.v1+json",
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.list.v2+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
+    )
+)
+
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
@@ -256,6 +266,7 @@ def is_docker_image_already_in_registry(service: str, soa_dir: str, sha: str, im
     uri = f"{registry_uri}/v2/{repository}/manifests/{tag}"
 
     with requests.Session() as s:
+        s.headers["Accept"] = DOCKER_REGISTRY_MANIFEST_ACCEPT_HEADER
         try:
             url = "https://" + uri
             r = (

@@ -49,7 +49,7 @@ manhole==1.5.0
 MarkupSafe==1.1.1
 monotonic==1.4
 msgpack-python==0.5.6
-multidict==4.7.6
+multidict==6.0.5
 mypy-extensions==1.0.0
 nats-py==2.8.0
 networkx==2.4
@@ -63,7 +63,7 @@ ply==3.4
 progressbar2==4.3.2
 prometheus-client==0.7.1
 protobuf==3.15.0
-py==1.5.2
+py==1.11.0
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
 pyformance==0.4
@@ -96,10 +96,9 @@ signalfx==1.0.17
 simplejson==3.10.0
 six==1.15.0
 slackclient==1.2.1
-splunk-sdk==1.7.0
 sseclient-py==1.7
 # make sure you bump sticht in extra_requirements_yelp.txt as well
-sticht==1.2.1
+sticht==2.4.0
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
@@ -116,6 +115,6 @@ WebOb==1.8.7
 websocket-client==0.44.0
 ws4py==0.5.1
 wsgicors==0.7.0
-yarl==1.1.1
+yarl==1.9.3
 zope.deprecation==4.2.0
 zope.interface==7.2
