@@ -675,6 +675,13 @@ instance MAY have:
     See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
     NOTE: this key is ignored for ``paasta local-run``.
 
+  * ``datastore_credentials``: A mapping of datastore type to a list of credential names whose rotated
+    credentials should be mounted into the instance. Currently only ``mysql`` is supported, e.g.
+    ``datastore_credentials: {mysql: [my_db_credential]}``. Each credential is mounted read-only at
+    ``/datastore/<datastore>/<credential>/credentials`` as a JSON document, backed by a Secret kept up to
+    date by ``paasta_secrets_sync --secret-type datastore-credentials``. Since clients typically only read
+    these credentials at startup, the instance is bounced whenever the Secret's contents change.
+
   * ``ssm_secrets``: A list of configurations for syncing secrets from the AWS SSM Parameter Store to the service as environment variables. Each entry requires:
 
     * ``source``: The name of the parameter in AWS SSM (e.g., ``/my-service/prod/db_password``).

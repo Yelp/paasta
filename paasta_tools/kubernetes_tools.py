@@ -2788,6 +2788,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             environment_variables=self.get_env(),
             namespace=self.get_namespace(),
         )
+        # Rotated datastore credentials are only read by clients at startup, so
+        # bounce when they change. Only add the key for instances that use them,
+        # so everyone else's config hash (and pods) stay as they are.
+        if self.get_datastore_credentials():
+            ahash[
+                "datastore_credentials_secret"
+            ] = self.get_datastore_credentials_secret_hash()
 
         # remove data we dont want used to hash configs
         # replica count

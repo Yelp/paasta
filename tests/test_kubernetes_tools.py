@@ -173,6 +173,7 @@ from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
 from paasta_tools.utils import TopologySpreadConstraintDict
+from paasta_tools.utils import get_config_hash
 
 # Expected pre-stop command for smartstack services waiting for connections on port 8888
 EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT = [
@@ -3484,6 +3485,41 @@ class TestKubernetesDeploymentConfig:
         # this means that with or without a SOA sha env var, the config SHA will
         # not be affected. if this is no longer true, this will cause a big bounce.
         assert no_sha_ret == with_sha_ret
+        # instances without datastore_credentials must hash exactly as before
+        assert "datastore_credentials_secret" not in no_sha_ret
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
+        autospec=True,
+    )
+    def test_sanitize_for_config_hash_datastore_credentials(
+        self, mock_get_kubernetes_secret_hashes
+    ):
+        mock_get_kubernetes_secret_hashes.return_value = {}
+        config = V1Deployment(
+            metadata=V1ObjectMeta(name="qwe"),
+            spec=V1DeploymentSpec(
+                selector=V1LabelSelector(match_labels={"freq": "108.9"}),
+                template=V1PodTemplateSpec(
+                    spec=V1PodSpec(containers=[V1Container(name="c", env=[])]),
+                ),
+            ),
+        )
+        self.deployment.config_dict["datastore_credentials"] = {"mysql": ["db"]}
+        with mock.patch.object(
+            self.deployment,
+            "get_datastore_credentials_secret_hash",
+            autospec=True,
+            side_effect=["sig-1", "sig-1", "sig-2"],
+        ):
+            first = self.deployment.sanitize_for_config_hash(config)
+            same = self.deployment.sanitize_for_config_hash(config)
+            rotated = self.deployment.sanitize_for_config_hash(config)
+
+        assert first["datastore_credentials_secret"] == "sig-1"
+        assert get_config_hash(first) == get_config_hash(same)
+        # a rotated secret changes the config hash, so the instance bounces
+        assert get_config_hash(first) != get_config_hash(rotated)
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
