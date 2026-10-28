@@ -1,3 +1,23 @@
+paasta-tools (1.64.1) jammy; urgency=medium
+
+  * 1.64.1 tagged with 'make release'
+    Commit: PEREL-5643: support Gi/Mi strings in autotune_limits
+    mem/disk clamping (#4348)  ## Summary  - Add
+    `_resource_value_to_mib()` to normalize resource values (int/float
+    MiB or K8s strings like `"4Gi"`/`"512Mi"`) to a common unit before
+    comparing - Update `_clamp_recommendations()` to use it so Cassandra
+    clusters can set mem/disk floors via `autotune_limits` without
+    TypeError on string comparisons - Fix pre-existing log bug: max-
+    clamping branch was logging `min_value` instead of `max_value`
+    Cassandra autotune recommendations use Gi strings for mem/disk.
+    Direct `<`/`>` comparisons against integer limits would raise
+    TypeError. This is the paasta-side change; a follow-up yelpsoa-
+    configs PR will update the `cassandra_k8s/validate.py` schema from
+    `integer` to `string` pattern once this is deployed.  Jira:
+    https://jira.yelpcorp.com/browse/PEREL-5643
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 28 Oct 2026 07:39:38 -0700
+
 paasta-tools (1.64.0) jammy; urgency=medium
 
   * 1.64.0 tagged with 'make release'
