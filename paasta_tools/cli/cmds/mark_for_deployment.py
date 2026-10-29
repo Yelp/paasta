@@ -705,6 +705,11 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
+    # NOTE: this should happen before any calls to functions that write git tags
+    deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
+    if not can_user_deploy_service(deploy_info, service):
+        sys.exit(1)
+
     commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
     deployment_version = DeploymentVersion(commit, args.image_version)
 
@@ -712,11 +717,22 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         service=service, deploy_group=deploy_group, soa_dir=args.soa_dir
     )
     if deployment_version == old_deployment_version:
+        print(f"Warning: {deploy_group} already set to {deployment_version}")
+        if not args.block:
+            ret = mark_for_deployment(
+                service=service,
+                deploy_group=deploy_group,
+                commit=commit,
+                git_url=args.git_url,
+                image_version=args.image_version,
+            )
+            if ret != 0:
+                print("Failed to write deploy tag", file=sys.stderr)
+                return ret
+            return 0
         print(
-            "Warning: The image asked to be deployed already matches what is set to be deployed:"
+            "Waiting for instances to be healthy (--wait-for-deployment/wait_for_deployment: true is set)."
         )
-        print(deployment_version)
-        print("Continuing anyway.")
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(
@@ -749,10 +765,6 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             )
     except remote_git.LSRemoteException:
         log.debug("Could not check for rollback tags; skipping warning", exc_info=True)
-
-    deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    if not can_user_deploy_service(deploy_info, service):
-        sys.exit(1)
 
     metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
     # only time if wait for deployment and we are actually deploying a new image
