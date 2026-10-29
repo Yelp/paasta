@@ -705,6 +705,11 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
+    # NOTE: this should happen before any calls to functions that write git tags
+    deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
+    if not can_user_deploy_service(deploy_info, service):
+        sys.exit(1)
+
     commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
     deployment_version = DeploymentVersion(commit, args.image_version)
 
@@ -760,10 +765,6 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             )
     except remote_git.LSRemoteException:
         log.debug("Could not check for rollback tags; skipping warning", exc_info=True)
-
-    deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    if not can_user_deploy_service(deploy_info, service):
-        sys.exit(1)
 
     metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
     # only time if wait for deployment and we are actually deploying a new image
