@@ -1,3 +1,344 @@
+paasta-tools (1.64.1) jammy; urgency=medium
+
+  * 1.64.1 tagged with 'make release'
+    Commit: PEREL-5643: support Gi/Mi strings in autotune_limits
+    mem/disk clamping (#4348)  ## Summary  - Add
+    `_resource_value_to_mib()` to normalize resource values (int/float
+    MiB or K8s strings like `"4Gi"`/`"512Mi"`) to a common unit before
+    comparing - Update `_clamp_recommendations()` to use it so Cassandra
+    clusters can set mem/disk floors via `autotune_limits` without
+    TypeError on string comparisons - Fix pre-existing log bug: max-
+    clamping branch was logging `min_value` instead of `max_value`
+    Cassandra autotune recommendations use Gi strings for mem/disk.
+    Direct `<`/`>` comparisons against integer limits would raise
+    TypeError. This is the paasta-side change; a follow-up yelpsoa-
+    configs PR will update the `cassandra_k8s/validate.py` schema from
+    `integer` to `string` pattern once this is deployed.  Jira:
+    https://jira.yelpcorp.com/browse/PEREL-5643
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 28 Oct 2026 07:39:38 -0700
+
+paasta-tools (1.64.0) jammy; urgency=medium
+
+  * 1.64.0 tagged with 'make release'
+    Commit: COREJAVA-2880: Add best-effort writer for deploy Slack
+    thread records (#4409)  Adds record_deploy_slack_thread(),
+    whichwrites a record of a  deploy"s Slack thread (channel,
+    thread_ts, sha, initiator) to a DynamoDB table so other tools can
+    reply in that thread.  The table comes from a new optional
+    slack_thread_writer_config system config, with a
+    PAASTA_DEPLOY_SLACK_THREADS_TABLE env override for manual runs. When
+    unset nothing is written. The write uses short timeouts and logs and
+    swallows every failure, so it can never affect a deploy.  Nothing
+    calls it yet; mark-for-deployment will in a follow-up.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 21 Oct 2026 11:42:33 -0700
+
+paasta-tools (1.63.0) jammy; urgency=medium
+
+  * 1.63.0 tagged with 'make release'
+    Commit: Merge pull request #4408 from Yelp/dpopes/tron-datastore-
+    credentials  Add datastore_credentials support to Tron actions
+
+ -- Daniel Popescu <dpopes@yelp.com>  Tue, 20 Oct 2026 14:46:32 -0700
+
+paasta-tools (1.62.0) jammy; urgency=medium
+
+  * 1.62.0 tagged with 'make release'
+    Commit: add --prod-min-instance-count and --non-prod-min-instance-
+    count args for service_shard_update, drop --min-instance-count
+    (#4411)  we will use this to ensure that prod services always have
+    at least 2 instances to prevent spot fleet from killing a shard
+    outright.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 19 Oct 2026 10:57:54 -0700
+
+paasta-tools (1.61.2) jammy; urgency=medium
+
+  * 1.61.2 tagged with 'make release'
+    Commit: Merge pull request #4407 from Yelp/luisp/sticht-bump  Use
+    sticht v2.4.0
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 14 Oct 2026 03:30:55 -0700
+
+paasta-tools (1.61.1) jammy; urgency=medium
+
+  * 1.61.1 tagged with 'make release'
+    Commit: Updating PaaSTA status to avoid confusion during deploys
+    (#4405)  * updating paasta status  * updating comment  * refactoring
+    based on comments  ---------  Co-authored-by: mbrankin
+    <mbrankin@cm2pxfyy7m.home>
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Fri, 09 Oct 2026 02:51:56 -0700
+
+paasta-tools (1.61.0) jammy; urgency=medium
+
+  * 1.61.0 tagged with 'make release'
+    Commit: Merge pull request #4390 from Yelp/u/jfong/reconcile-paasta-
+    service-accounts  Add reconcile_paasta_service_accounts script
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Oct 2026 13:37:58 -0700
+
+paasta-tools (1.60.19) jammy; urgency=medium
+
+  * 1.60.19 tagged with 'make release'
+    Commit: Update slack thread in on_enter_rolled_back (#4402)  ...and
+    not just the status (i.e., the parent message) since unless you
+    happen to be watching Slack way too closely, it"s easy to miss that
+    the rollback was successful  Trying to look at the thread messages
+    to reconstruct what happened is somewhat hard to understand if
+    you"re not on CI since we really just say "marked $SHA for
+    deployment" and normal people aren"t keeping track of SHAs that
+    closely and will almost certainly be left wondering if the rollback
+    was successful or not :p
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 02 Oct 2026 06:13:57 -0700
+
+paasta-tools (1.60.18) jammy; urgency=medium
+
+  * 1.60.18 tagged with 'make release'
+    Commit: Merge pull request #4403 from Yelp/u/luisp/alertmanager-
+    rollback-docs  Bump sticht to show existing alerts + update docs
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 02 Oct 2026 03:37:17 -0700
+
+paasta-tools (1.60.17) jammy; urgency=medium
+
+  * 1.60.17 tagged with 'make release'
+    Commit: Use latest sticht version (#4401)  Which includes fixes for
+    various issues we"ve seen with alertmanager autorollbacks :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 28 Sep 2026 11:01:48 -0700
+
+paasta-tools (1.60.16) jammy; urgency=medium
+
+  * 1.60.16 tagged with 'make release'
+    Commit: Merge pull request #4398 from Yelp/u/abubakarrj/bump-sticht-
+    2.1.1  Bump sticht to v2.1.1
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 25 Sep 2026 09:03:44 -0700
+
+paasta-tools (1.60.15) jammy; urgency=medium
+
+  * 1.60.15 tagged with 'make release'
+    Commit: Revert "Change spark DNS pod template to spark executor pod
+    template" (#4397)
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 24 Sep 2026 14:58:55 -0700
+
+paasta-tools (1.60.14) jammy; urgency=medium
+
+  * 1.60.14 tagged with 'make release'
+    Commit: Fix deployment filtering for same service Tron Actions
+    (#4396)
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Thu, 24 Sep 2026 13:05:07 -0700
+
+paasta-tools (1.60.13) jammy; urgency=medium
+
+  * 1.60.13 tagged with 'make release'
+    Commit: Merge pull request #4392 from usamakunwar/u/ukunwar/change-
+    spark-executor-pod-template  Change spark DNS pod template to spark
+    executor pod template
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Thu, 24 Sep 2026 04:25:27 -0700
+
+paasta-tools (1.60.12) jammy; urgency=medium
+
+  * 1.60.12 tagged with 'make release'
+    Commit: spark-run: do not load tronfig IAM role when force-pod-
+    identity is provided (#4393)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 24 Sep 2026 01:57:21 -0700
+
+paasta-tools (1.60.11) jammy; urgency=medium
+
+  * 1.60.11 tagged with 'make release'
+    Commit: Exclude gpgme in dh_strip (#4395)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 23 Sep 2026 15:53:15 -0700
+
+paasta-tools (1.60.10) jammy; urgency=medium
+
+  * 1.60.10 tagged with 'make release'
+    Commit: Merge pull request #4387 from Yelp/u/abubakarrj/PAASTA-18819
+    Upgrade paasta to python 3.11
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 23 Sep 2026 08:55:31 -0700
+
+paasta-tools (1.60.9) jammy; urgency=medium
+
+  * 1.60.9 tagged with 'make release'
+    Commit: Merge pull request #4389 from Yelp/u/abubakarrj/PAASTA-18976
+    PAASTA-18976: Update alerting region for norcal-devc cluster
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Tue, 15 Sep 2026 05:20:01 -0700
+
+paasta-tools (1.60.8) jammy; urgency=medium
+
+  * 1.60.8 tagged with 'make release'
+    Commit: Merge pull request #4371 from Yelp/u/mbrankin/PAASTA-18934-2
+    creating single replica commit hook
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Tue, 15 Sep 2026 03:16:14 -0700
+
+paasta-tools (1.60.7) jammy; urgency=medium
+
+  * 1.60.7 tagged with 'make release'
+    Commit: Merge pull request #4381 from Yelp/u/abubakarrj/PAASTA-18970
+    PAASTA-18970: Update docs to include Alert Manager auto-rollbacks
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Mon, 07 Sep 2026 02:54:57 -0700
+
+paasta-tools (1.60.6) jammy; urgency=medium
+
+  * 1.60.6 tagged with 'make release'
+    Commit: filter instances with service override from deployments
+    (#4382)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 03 Sep 2026 01:06:59 -0700
+
+paasta-tools (1.60.5) jammy; urgency=medium
+
+  * 1.60.5 tagged with 'make release'
+    Commit: Merge pull request #4384 from Yelp/build-arm64-release-debs
+    Build arm64 paasta-tools debs in the release pipeline - COMPINFRA-
+    6038
+
+ -- Evan Krall <krall@yelp.com>  Wed, 02 Sep 2026 17:48:29 -0700
+
+paasta-tools (1.60.4) jammy; urgency=medium
+
+  * 1.60.4 tagged with 'make release'
+    Commit: Build paasta-tools for arm64 - COMPINFRA-5995 (#4383)  ##
+    Summary  Use dpkg --print-architecture instead of hardcoded amd64
+    references in the build system so paasta-tools can be built natively
+    on both amd64 and arm64.  ## Changes  ### yelp_package/Makefile -
+    Added DPKG_ARCH variable using dpkg --print-architecture - Changed
+    itest target to reference the dynamic arch instead of hardcoded
+    amd64  ### yelp_package/dockerfiles/itest/k8s/Dockerfile - Changed
+    kubectl download URL to use dpkg --print-architecture instead of
+    hardcoded amd64  ### yelp_package/extra_requirements_yelp.txt -
+    bumped cryptography/pyopenssl/cffi to versions with arm64 wheels  ##
+    How it works  debian/control already has Architecture: any, so dpkg-
+    buildpackage produces a .deb named with the native architecture. The
+    only issue was the itest target that hardcoded amd64.deb in the
+    expected filename.  ## Testing  Tested on an arm64 build host: -
+    make itest_jammy completes successfully producing paasta-
+    tools_1.60.3-yelp1_arm64.deb - The deb installs correctly and all
+    itest checks pass - Architecture metadata verified: both filename
+    and metadata report arm64  ## Notes  - Noble/resolute: No additional
+    changes needed, the architecture detection applies to all distros.
+    Jira: COMPINFRA-5995
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 02 Sep 2026 12:54:55 -0700
+
+paasta-tools (1.60.3) jammy; urgency=medium
+
+  * 1.60.3 tagged with 'make release'
+    Commit: Add resolute .deb to releases (#4378)  @vulpine says I"ll be
+    their new best friend if I do this  real description: Yelp/nerve-
+    tools tests currently grab paasta-tools debs from our releases for
+    GHA builds. this is fine, but what is not fine is that we are only
+    uploading (and testing against) a jammy deb - which doesn"t quite
+    work out so well if you"re trying to add a resolute build to nerve-
+    tools
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 21 Aug 2026 08:35:51 -0700
+
+paasta-tools (1.60.2) jammy; urgency=medium
+
+  * 1.60.2 tagged with 'make release'
+    Commit: Only create spark_kube_client if it"s necessary, to avoid
+    errors on clusters where we don"t have the spark kubeconfig.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 15:24:52 -0700
+
+paasta-tools (1.60.1) jammy; urgency=medium
+
+  * 1.60.1 tagged with 'make release'
+    Commit: Only call ensure_service_account once per iam_role per
+    service.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Aug 2026 12:40:01 -0700
+
+paasta-tools (1.60.0) jammy; urgency=medium
+
+  * 1.60.0 tagged with 'make release'
+    Commit: Add alertmanager rollback dry-run support (#4367)  * Add
+    alertmanager rollback dry-run support  This is the PaaSTA side of
+    https://github.com/Yelp/sticht/pull/67 - i.e,. how we"ll allow folks
+    to experiment with alertmanager rollbacks without needing to fully
+    commit (and/or for testing new rollback alerts)  As usual, config
+    mostly lives in deploy.yaml per-deploy-group :)  That said, this
+    1000% requires the sticht PR linked above, since that"s essentially
+    where all the logic actually lives  * ...and then add tests
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 17 Aug 2026 10:06:59 -0700
+
+paasta-tools (1.59.7) jammy; urgency=medium
+
+  * 1.59.7 tagged with 'make release'
+    Commit: Pin thriftpy2 in extra_requirements_yelp (#4374)  not sure
+    how we missed this
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:54:54 -0700
+
+paasta-tools (1.59.6) jammy; urgency=medium
+
+  * 1.59.6 tagged with 'make release'
+    Commit: Accept OCI manifests for checking image existence (#4372)  #
+    Problem  Image verification check incorrectly claims image is not
+    already there, because the newly pushed image was pushed as OCI
+    rather than Docker.  Good thing we don"t actually care about that,
+    so just need to advertise that we are OK with getting OCI format
+    stuff for manifests  # Solution  Advertise that in headers
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Aug 2026 07:01:46 -0700
+
+paasta-tools (1.59.5) jammy; urgency=medium
+
+  * 1.59.5 tagged with 'make release'
+    Commit: Merge pull request #4358 from Yelp/u/sidtuladhar/PAASTA-
+    18929/validate-stable-pool  feat: New config to configure CPU limits
+    per cluster per pool
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 11 Aug 2026 04:03:35 -0700
+
+paasta-tools (1.59.4) jammy; urgency=medium
+
+  * 1.59.4 tagged with 'make release'
+    Commit: Merge pull request #4370 from Yelp/u/mbrankin/revert-single-
+    replica-check  Revert "Merge pull request #4355 from
+    Yelp/u/mbrankin/PAASTA-18934"
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Thu, 06 Aug 2026 10:51:33 -0700
+
+paasta-tools (1.59.3) jammy; urgency=medium
+
+  * 1.59.3 tagged with 'make release'
+    Commit: Merge pull request #4368 from Yelp/luisp/DAR-2992-handle-
+    piscina-setpoint  Correctly handle setpoint for Piscina autoscaling
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Thu, 06 Aug 2026 06:33:39 -0700
+
+paasta-tools (1.59.2) jammy; urgency=medium
+
+  * 1.59.2 tagged with 'make release'
+    Commit: Merge pull request #4365 from Yelp/u/sidtuladhar/PAASTA-
+    18905/fix-hpa-query-all  feat: use_raw_ksm query for all autoscaling
+    types
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Tue, 04 Aug 2026 06:57:42 -0700
+
+paasta-tools (1.59.1) jammy; urgency=medium
+
+  * 1.59.1 tagged with 'make release'
+    Commit: Merge pull request #4364 from Yelp/u/sidtuladhar/cleanup
+    chore: cleanup configmap flags
+
+ -- Sid Tuladhar <sidtuladhar@yelp.com>  Mon, 03 Aug 2026 08:40:46 -0700
+
 paasta-tools (1.59.0) jammy; urgency=medium
 
   * 1.59.0 tagged with 'make release'

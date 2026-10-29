@@ -402,6 +402,22 @@ def test_SystemPaastaConfig_get_cluster_dne():
         fake_config.get_cluster()
 
 
+def test_SystemPaastaConfig_get_slack_thread_writer_config():
+    writer_config: utils.SlackThreadWriterConfig = {
+        "table_name": "deploy-slack-threads",
+        "region": "us-west-2",
+    }
+    fake_config = utils.SystemPaastaConfig(
+        {"slack_thread_writer_config": writer_config}, "/some/fake/dir"
+    )
+    assert fake_config.get_slack_thread_writer_config() == writer_config
+
+
+def test_SystemPaastaConfig_get_slack_thread_writer_config_default():
+    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
+    assert fake_config.get_slack_thread_writer_config() == {}
+
+
 def test_SystemPaastaConfig_get_volumes():
     fake_config = utils.SystemPaastaConfig(
         {

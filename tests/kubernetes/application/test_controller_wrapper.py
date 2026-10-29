@@ -33,7 +33,7 @@ def mock_load_system_paasta_config():
 @pytest.fixture(autouse=True)
 def mock_kubernetes_tools_load_system_paasta_config():
     config = SystemPaastaConfig(
-        SystemPaastaConfigDict({"use_prometheus_adapter_shared_rules": False}),
+        SystemPaastaConfigDict({}),
         "/mock/system/configs",
     )
     with mock.patch(

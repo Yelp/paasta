@@ -236,6 +236,8 @@ DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
 DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS = 3600
 PROJECTED_SA_TOKEN_PATH = "token"
 
+POD_EVENT_WINDOW_S = 300
+
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAME = "paasta-autoscaling-overrides"
 AUTOSCALING_OVERRIDES_CONFIGMAP_NAMESPACE = "paasta"
 
@@ -340,6 +342,12 @@ class KubeWeightedAffinityCondition(KubeAffinityCondition):
 
 class DatastoreCredentialsConfig(TypedDict, total=False):
     mysql: List[str]
+
+
+# Where the datastore_credentials Secret is mounted in both long-running
+# services and Tron actions: /datastore/<datastore>/<credential>/credentials
+DATASTORE_CREDENTIALS_MOUNT_PATH = "/datastore"
+DATASTORE_CREDENTIALS_SECRET_IDENTIFIER = "datastore-credentials"
 
 
 class HpaOverride(TypedDict):
@@ -843,13 +851,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         name: str,
         namespace: str,
         provider: MetricsProviderDict,
-        use_shared_rules: bool = False,
     ) -> Optional[V2MetricSpec]:
         target = provider["setpoint"]
         prometheus_hpa_metric_name = self.namespace_custom_prometheus_metric_name(
             provider["type"]
         )
-        if use_shared_rules and provider["type"] in TEMPLATEABLE_PROVIDERS:
+        if provider["type"] in TEMPLATEABLE_PROVIDERS:
             window = provider.get(
                 "moving_average_window_seconds",
                 DEFAULT_MOVING_AVERAGE_WINDOW_BY_PROVIDER[provider["type"]],
@@ -882,8 +889,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
             METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_ACTIVE_REQUESTS,
         }:
+            return V2MetricSpec(
+                type="Object",
+                object=V2ObjectMetricSource(
+                    metric=V2MetricIdentifier(
+                        name=prometheus_hpa_metric_name,
+                        selector=metric_selector,
+                    ),
+                    described_object=V2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2MetricTarget(
+                        type="Value",
+                        # shared rules return avg load per replica (total_load / replicas);
+                        # HPA scales when metric > target, so target = setpoint.
+                        value=target,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
             return V2MetricSpec(
                 type="Object",
                 object=V2ObjectMetricSource(
@@ -984,14 +1009,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        use_shared_rules = (
-            load_system_paasta_config().get_use_prometheus_adapter_shared_rules()
-        )
         metrics = []
         for provider in autoscaling_params["metrics_providers"]:
-            spec = self.get_autoscaling_provider_spec(
-                name, namespace, provider, use_shared_rules
-            )
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
             if spec is not None:
                 metrics.append(spec)
         scaling_policy = self.get_autoscaling_scaling_policy(
@@ -1765,9 +1785,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return datastore_credentials
 
     def get_datastore_credentials_secret_name(self) -> str:
-        return _get_secret_name(
+        return get_datastore_credentials_secret_name(
             self.get_namespace(),
-            "datastore-credentials",
             self.get_service(),
             self.get_instance(),
         )
@@ -1798,21 +1817,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        secrets_with_custom_mountpaths = []
-
-        for datastore, credentials in datastore_credentials.items():
-            # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
-            # https://github.com/python/mypy/issues/7178
-            for credential in credentials:  # type: ignore
-                secrets_with_custom_mountpaths.append(
-                    {
-                        "key": get_vault_key_secret_name(
-                            f"secrets/datastore/{datastore}/{credential}"
-                        ),
-                        "mode": mode_to_int("0444"),
-                        "path": f"{datastore}/{credential}/credentials",
-                    }
-                )
+        secrets_with_custom_mountpaths = [
+            {
+                "key": key,
+                "mode": mode_to_int("0444"),
+                "path": path,
+            }
+            for key, path in get_datastore_credentials_secret_items(
+                datastore_credentials
+            )
+        ]
 
         return V1Volume(
             name=self.get_datastore_secret_volume_name(),
@@ -1983,7 +1997,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if self.get_datastore_credentials_secret_hash():
                 volume_mounts.append(
                     V1VolumeMount(
-                        mount_path="/datastore",
+                        mount_path=DATASTORE_CREDENTIALS_MOUNT_PATH,
                         name=self.get_datastore_secret_volume_name(),
                         read_only=True,
                     )
@@ -2024,12 +2038,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         All datastore credentials are stored in a single Kubernetes secret, so they share a name
         """
-        return _get_secret_signature_name(
+        return get_datastore_credentials_signature_name(
             self.get_namespace(),
-            "datastore-credentials",
             self.get_service(),
             # key is on instances, which get their own configurations
-            key_name=self.get_instance(),
+            self.get_instance(),
         )
 
     def get_boto_secret_hash(self) -> Optional[str]:
@@ -3315,7 +3328,7 @@ def recent_container_restart(
     restart_count: int,
     last_state: Optional[str],
     last_timestamp: Optional[int],
-    time_window_s: int = 900,  # 15 mins
+    time_window_s: int = POD_EVENT_WINDOW_S,
 ) -> bool:
     min_timestamp = datetime.now(timezone.utc).timestamp() - time_window_s
     return (
@@ -4519,9 +4532,13 @@ def ensure_service_account(
     namespace: str,
     kube_client: KubeClient,
     k8s_role: Optional[str] = None,
+    managed: bool = False,
 ) -> None:
     role_annotation = "eks.amazonaws.com/role-arn"
     sa_name = get_service_account_name(iam_role, k8s_role)
+    managed_label = paasta_prefixed("managed")
+
+    labels = {managed_label: "true"} if managed else {}
 
     existing_sa = None
     for sa in get_all_service_accounts(kube_client, namespace):
@@ -4534,19 +4551,29 @@ def ensure_service_account(
             metadata=V1ObjectMeta(
                 name=sa_name,
                 namespace=namespace,
+                labels=labels or None,
                 annotations={role_annotation: iam_role},
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
     if existing_sa:
+        needs_update = False
         if (
             not sa.metadata.annotations
             or sa.metadata.annotations.get(role_annotation, None) != iam_role
         ):
-            # NOTE: we don't annotate SAs apart with anything other
-            # than the pod identity role ARN, so this will remove
-            # any annotations that folks may have manually added
-            sa.metadata.annotations = {role_annotation: iam_role}
+            sa.metadata.annotations = {
+                **(sa.metadata.annotations or {}),
+                role_annotation: iam_role,
+            }
+            needs_update = True
+        if managed and (sa.metadata.labels or {}).get(managed_label) != "true":
+            sa.metadata.labels = {
+                **(sa.metadata.labels or {}),
+                managed_label: "true",
+            }
+            needs_update = True
+        if needs_update:
             kube_client.core.patch_namespaced_service_account(
                 namespace=namespace, body=sa, name=sa.metadata.name
             )
@@ -4777,6 +4804,71 @@ def get_ssm_secret_signature_name(
         service_name=deployment_name,
         key_name=key_name,
     )
+
+
+def get_datastore_credentials_secret_name(
+    namespace: str, service_name: str, instance_name: str
+) -> str:
+    """
+    Used whenever creating or referencing the datastore_credentials Secret.
+    All datastore credentials for an instance are stored in a single Secret.
+
+    :param namespace: Unsanitised namespace of the instance that will use the secret
+    :param service_name: Unsanitised service name
+    :param instance_name: Unsanitised instance name (e.g. "main" or "job.action" for Tron)
+    :return: Sanitised datastore credentials secret name
+    """
+    return _get_secret_name(
+        namespace=namespace,
+        secret_identifier=DATASTORE_CREDENTIALS_SECRET_IDENTIFIER,
+        service_name=service_name,
+        key_name=instance_name,
+    )
+
+
+def get_datastore_credentials_signature_name(
+    namespace: str, service_name: str, instance_name: str
+) -> str:
+    """
+    Get the datastore_credentials signature name stored as a kubernetes configmap
+
+    :param namespace: Unsanitised namespace of the instance that will use the signature
+    :param service_name: Unsanitised service name
+    :param instance_name: Unsanitised instance name (e.g. "main" or "job.action" for Tron)
+    :return: Sanitised datastore credentials signature name
+    """
+    return _get_secret_signature_name(
+        namespace=namespace,
+        secret_identifier=DATASTORE_CREDENTIALS_SECRET_IDENTIFIER,
+        service_name=service_name,
+        key_name=instance_name,
+    )
+
+
+def get_datastore_credentials_secret_items(
+    datastore_credentials: DatastoreCredentialsConfig,
+) -> List[Tuple[str, str]]:
+    """
+    Map each requested datastore credential to the (secret key, mount sub-path) pair
+    used to project it out of the datastore_credentials Secret.
+
+    The secret key mirrors the Vault KV path the credential is synced from and the
+    sub-path is relative to DATASTORE_CREDENTIALS_MOUNT_PATH.
+    """
+    items = []
+    for datastore, credentials in datastore_credentials.items():
+        # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+        # https://github.com/python/mypy/issues/7178
+        for credential in credentials:  # type: ignore
+            items.append(
+                (
+                    get_vault_key_secret_name(
+                        f"secrets/datastore/{datastore}/{credential}"
+                    ),
+                    f"{datastore}/{credential}/credentials",
+                )
+            )
+    return items
 
 
 def get_secret(

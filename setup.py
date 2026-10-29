@@ -42,7 +42,7 @@ setup(
     description="Tools for Yelps SOA infrastructure",
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
-    python_requires=">=3.10.0",
+    python_requires=">=3.11.0",
     install_requires=get_install_requires(),
     scripts=[
         "paasta_tools/apply_external_resources.py",
@@ -69,6 +69,7 @@ setup(
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/paasta_execute_docker_command.py",
+        "paasta_tools/reconcile_paasta_service_accounts.py",
         "paasta_tools/setup_istio_mesh.py",
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_kubernetes_crd.py",

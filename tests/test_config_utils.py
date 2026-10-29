@@ -5,6 +5,7 @@ import pytest
 
 import paasta_tools.config_utils as config_utils
 from paasta_tools import yaml_tools as yaml
+from paasta_tools.config_utils import _normalize_resource_value
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
@@ -383,3 +384,70 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
                 },
             }
         }
+
+
+@pytest.mark.parametrize(
+    "value,resource_type,expected",
+    [
+        (512, "cpus", 512.0),
+        (1024.0, "cpus", 1024.0),
+        ("1Gi", "mem", 1024.0),
+        ("2Gi", "mem", 2048.0),
+        ("512Mi", "mem", 512.0),
+        ("1024Mi", "disk", 1024.0),
+        ("1Ki", "disk", 1.0 / 1024),
+    ],
+)
+def test_normalize_resource_value(value, resource_type, expected):
+    assert _normalize_resource_value(value, resource_type) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "value,resource_type",
+    [
+        ("4GB", "mem"),
+        ("1Gi", "cpus"),
+    ],
+)
+def test_normalize_resource_value_invalid(value, resource_type):
+    with pytest.raises(ValueError):
+        _normalize_resource_value(value, resource_type)
+
+
+def test_auto_config_updater_merge_recommendations_limits_gi_strings(updater):
+    service = "foo"
+    conf_file = "cassandracluster-norcal-devc"
+    instance = "activity-feed"
+    autotune_data = {instance: {"cpus": 1.5, "mem": "2Gi", "disk": "5Gi"}}
+    user_data = {
+        instance: {
+            "autotune_limits": {
+                "cpus": {"min": 1},
+                "mem": {"min": "4Gi"},
+                "disk": {"max": "10Gi"},
+            }
+        }
+    }
+    recs = {
+        (service, conf_file): {
+            instance: {"mem": "2Gi", "disk": "5Gi", "cpus": 0.5},
+        }
+    }
+
+    with mock.patch.object(
+        updater,
+        "get_existing_configs",
+        autospec=True,
+        side_effect=[autotune_data, user_data, {}],
+    ):
+        result = updater.merge_recommendations(recs)
+
+    assert result == {
+        (service, conf_file): {
+            instance: {
+                "mem": "4Gi",
+                "disk": "5Gi",
+                "cpus": 1,
+            }
+        }
+    }
