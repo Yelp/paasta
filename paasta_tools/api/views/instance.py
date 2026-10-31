@@ -17,11 +17,9 @@ PaaSTA service instance status/start/stop etc.
 """
 import asyncio
 import logging
-import re
 import traceback
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -29,18 +27,14 @@ from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.view import view_config
 
-import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.async_utils import run_sync
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
-from paasta_tools.mesos_tools import get_all_frameworks as get_all_mesos_frameworks
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import validate_service_instance
 
@@ -95,41 +89,6 @@ def tron_instance_status(
     return status
 
 
-def legacy_remote_run_filter_frameworks(service, instance, frameworks=None):
-    if frameworks is None:
-        frameworks = get_all_mesos_frameworks(active_only=True)
-
-    prefix = f"paasta-remote {service}.{instance}"
-    return [f for f in frameworks if f.name.startswith(prefix)]
-
-
-def adhoc_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> List[Dict[str, Any]]:
-    status = []
-    filtered = legacy_remote_run_filter_frameworks(service, instance)
-    filtered.sort(key=lambda x: x.name)
-    for f in filtered:
-        launch_time, run_id = re.match(
-            r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
-        ).groups()
-        status.append(
-            {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
-        )
-    return status
-
-
-async def _task_result_or_error(future):
-    try:
-        return {"value": await future}
-    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
-        return {"error_message": "None"}
-    except TimeoutError:
-        return {"error_message": "Timed Out"}
-    except Exception:
-        return {"error_message": "Unknown"}
-
-
 def no_configuration_for_service_message(cluster, service, instance):
     return (
         f"No instance named '{compose_job_id(service, instance)}' has been "
@@ -152,10 +111,6 @@ def instance_status(
     include_envoy = request.swagger_data.get("include_envoy")
     if include_envoy is None:
         include_envoy = True
-    include_mesos = request.swagger_data.get("include_mesos")
-    if include_mesos is None:
-        include_mesos = True
-
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
     instance_status["instance"] = instance
@@ -198,11 +153,7 @@ def instance_status(
         instance_status["version"] = ""
         instance_status["git_sha"] = ""
     try:
-        if instance_type == "adhoc":
-            instance_status["adhoc"] = adhoc_instance_status(
-                instance_status, service, instance, verbose
-            )
-        elif pik.can_handle(instance_type):
+        if pik.can_handle(instance_type):
             instance_status.update(
                 pik.instance_status(
                     service=service,
@@ -330,19 +281,6 @@ def bounce_status(request):
             raise ApiFailure(error_message, 404)
         # for all others, treat as a 500
         raise ApiFailure(error_message, 500)
-
-
-def add_executor_info(task):
-    task._Task__items["executor"] = run_sync(task.executor).copy()
-    task._Task__items["executor"].pop("tasks", None)
-    task._Task__items["executor"].pop("completed_tasks", None)
-    task._Task__items["executor"].pop("queued_tasks", None)
-    return task
-
-
-def add_slave_info(task):
-    task._Task__items["slave"] = run_sync(task.slave)._MesosSlave__items.copy()
-    return task
 
 
 def get_deployment_version(
