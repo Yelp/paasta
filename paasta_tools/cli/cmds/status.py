@@ -1231,6 +1231,7 @@ class ReplicaState(Enum):
     EVICTED = "Evicted", PaastaColors.red
     ALL_CONTAINERS_WAITING = "All Containers Waiting", PaastaColors.red
     FAILED = "Failed", PaastaColors.red
+    EXITED = "Exited", PaastaColors.red
     MAIN_CONTAINER_NOT_RUNNING = "Main Container Not Running", PaastaColors.red
     NO_CONTAINERS_YET = "No Containers Yet", PaastaColors.red
     NOT_READY = "Not Ready", PaastaColors.red
@@ -1310,6 +1311,11 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         state = ReplicaState.EVICTED
     elif phase == "Failed":
         state = ReplicaState.FAILED
+    elif phase == "Succeeded":
+        # NOTE: this shouldn't really happen as we expect anything that `paasta status`
+        # will see to be a long-running service that continues running until k8s terminates
+        # it
+        state = ReplicaState.EXITED
     elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
