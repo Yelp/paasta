@@ -1141,7 +1141,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("mfd_failed")
         else:
             self.update_slack_thread(
-                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}."
+                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}. Waiting for it to "
+                "roll out..."
                 + (
                     "\n" + self.get_authors()
                     if self.deploy_group_is_set_to_notify("notify_after_mark")
