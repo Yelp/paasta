@@ -3633,6 +3633,13 @@ def create_network_policy(
     network_policy: V1NetworkPolicy,
     namespace: str,
 ) -> None:
+    """
+    Create a k8s NetworkPolicy in specified namespace.
+
+    :param kube_client: k8s client
+    :param network_policy: V1NetworkPolicy object to create
+    :param namespace: Namespace to create NetworkPolicy in
+    """
     return kube_client.networking.create_namespaced_network_policy(
         namespace=namespace, body=network_policy
     )
@@ -3645,14 +3652,17 @@ _FIREWALL_RULE_KEYS = {
 
 
 def _validate_firewall_config(firewall_config: Dict[str, Any]) -> bool:
-    # Config must be non-empty dict
+    """
+    Validate a firewall block from an instance's soa config.
+
+    :param firewall_config: parsed contents of the `firewall` key
+    :returns: True if the block is safe to translate, False otherwise
+    """
     if not isinstance(firewall_config, dict) or not firewall_config:
         return False
-    # Valid keys (should be egress or ingress)
     if not all(key in ("egress", "ingress") for key in firewall_config):
         return False
     for direction, rules in firewall_config.items():
-        # Each direction must be list of rules
         if not isinstance(rules, list):
             return False
         if not all(_validate_firewall_rule(direction, rule) for rule in rules):
@@ -3661,17 +3671,20 @@ def _validate_firewall_config(firewall_config: Dict[str, Any]) -> bool:
 
 
 def _validate_firewall_rule(direction: str, rule: Dict[str, Any]) -> bool:
-    # Rule isn't a dict
+    """
+    Validate one egress or ingress rule from a firewall block.
+
+    :param direction: "egress" or "ingress"
+    :param rule: one entry from the direction's rule list
+    :returns: True if rule is safe to translate, False otherwise
+    """
     if not isinstance(rule, dict):
         return False
     destination_keys = _FIREWALL_RULE_KEYS[direction]
-    # Rule has non-empty key(s)
     if not any(rule.get(key) for key in destination_keys):
         return False
-    # Valid keys (to_services, to_cidrs, from_services, from_cidrs)
     if not all(key in ("ports", *destination_keys) for key in rule):
         return False
-    # Destination keys are lists of strings
     for key in destination_keys:
         destinations = rule.get(key, [])
         if not isinstance(destinations, list) or not all(
@@ -3679,17 +3692,13 @@ def _validate_firewall_rule(direction: str, rule: Dict[str, Any]) -> bool:
         ):
             return False
     ports = rule.get("ports", [])
-    # ports should be a list of dicts
     if not isinstance(ports, list):
         return False
     for port_dict in ports:
-        # Exactly {protocol, port}
         if not isinstance(port_dict, dict) or set(port_dict) != {"protocol", "port"}:
             return False
-        # Only three protocols k8s NetworkPolicy supports
         if port_dict["protocol"] not in ("TCP", "UDP", "SCTP"):
             return False
-        # Port must be an int
         if not isinstance(port_dict["port"], int):
             return False
     return True
