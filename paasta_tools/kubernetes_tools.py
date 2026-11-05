@@ -3699,7 +3699,9 @@ def _validate_firewall_rule(direction: str, rule: Dict[str, Any]) -> bool:
             return False
         if port_dict["protocol"] not in ("TCP", "UDP", "SCTP"):
             return False
-        if not isinstance(port_dict["port"], int):
+        # bool is excluded because YAML yes/no parse as bool and
+        # isinstance(True, int) would otherwise let them through
+        if not isinstance(port_dict["port"], int) or isinstance(port_dict["port"], bool):
             return False
     return True
 
