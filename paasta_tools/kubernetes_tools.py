@@ -3616,10 +3616,13 @@ def network_policy_for_service_instance(
     instance: str,
     namespace: str,
     firewall_config: Dict[str, Any],
-    baseline_egress: Dict[str, Any],
-    baseline_ingress: Dict[str, Any],
+    baseline_egress: List[Dict[str, Any]],
+    baseline_ingress: List[Dict[str, Any]],
 ) -> V1NetworkPolicy:
     # parse firewall block, translate rules, append baseline, return V1NetworkPolicy object
+    if not _validate_firewall_config(firewall_config):
+        raise ValueError(f"Invalid firewall config: {firewall_config}")
+
     network_policy = V1NetworkPolicy()
 
     return network_policy
@@ -3633,6 +3636,63 @@ def create_network_policy(
     return kube_client.networking.create_namespaced_network_policy(
         namespace=namespace, body=network_policy
     )
+
+
+_FIREWALL_RULE_KEYS = {
+    "egress": ("to_services", "to_cidrs"),
+    "ingress": ("from_services", "from_cidrs"),
+}
+
+
+def _validate_firewall_config(firewall_config: Dict[str, Any]) -> bool:
+    # Config must be non-empty dict
+    if not isinstance(firewall_config, dict) or not firewall_config:
+        return False
+    # Valid keys (should be egress or ingress)
+    if not all(key in ("egress", "ingress") for key in firewall_config):
+        return False
+    for direction, rules in firewall_config.items():
+        # Each direction must be list of rules
+        if not isinstance(rules, list):
+            return False
+        if not all(_validate_firewall_rule(direction, rule) for rule in rules):
+            return False
+    return True
+
+
+def _validate_firewall_rule(direction: str, rule: Dict[str, Any]) -> bool:
+    # Rule isn't a dict
+    if not isinstance(rule, dict):
+        return False
+    destination_keys = _FIREWALL_RULE_KEYS[direction]
+    # Rule has non-empty key(s)
+    if not any(rule.get(key) for key in destination_keys):
+        return False
+    # Valid keys (to_services, to_cidrs, from_services, from_cidrs)
+    if not all(key in ("ports", *destination_keys) for key in rule):
+        return False
+    # Destination keys are lists of strings
+    for key in destination_keys:
+        destinations = rule.get(key, [])
+        if not isinstance(destinations, list) or not all(
+            isinstance(destination, str) for destination in destinations
+        ):
+            return False
+    ports = rule.get("ports", [])
+    # ports should be a list of dicts
+    if not isinstance(ports, list):
+        return False
+    for port_dict in ports:
+        # Exactly {protocol, port}
+        if not isinstance(port_dict, dict) or set(port_dict) != {"protocol", "port"}:
+            return False
+        # Only three protocols k8s NetworkPolicy supports
+        if port_dict["protocol"] not in ("TCP", "UDP", "SCTP"):
+            return False
+        # Port must be an int
+        if not isinstance(port_dict["port"], int):
+            return False
+    return True
 
 
 def set_instances_for_kubernetes_service(
