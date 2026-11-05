@@ -34,6 +34,7 @@ from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
+from kubernetes.client import V1NetworkPolicy
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -44,7 +45,6 @@ from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
-from kubernetes.client import V1NetworkPolicy
 from kubernetes.client import V1PodDisruptionBudget
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
@@ -97,9 +97,9 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
-from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import _validate_firewall_config
 from paasta_tools.kubernetes_tools import _validate_firewall_rule
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
@@ -4314,7 +4314,7 @@ def test_create_network_policy():
 
 
 def test_validate_firewall_config_valid():
-    assert _validate_firewall_config(
+    _validate_firewall_config(
         {
             "egress": [
                 {
@@ -4337,109 +4337,137 @@ def test_validate_firewall_config_valid():
 
 
 def test_validate_firewall_config_rejects_empty_and_non_dict():
-    assert not _validate_firewall_config({})
-    assert not _validate_firewall_config(["egress"])
-    assert not _validate_firewall_config(None)
+    with pytest.raises(ValueError):
+        _validate_firewall_config({})
+    with pytest.raises(ValueError):
+        _validate_firewall_config(["egress"])
+    with pytest.raises(ValueError):
+        _validate_firewall_config(None)
 
 
 def test_validate_firewall_config_allows_empty_rule_lists():
-    assert _validate_firewall_config({"egress": []})
-    assert _validate_firewall_config({"egress": [], "ingress": []})
+    _validate_firewall_config({"egress": []})
+    _validate_firewall_config({"egress": [], "ingress": []})
 
 
 def test_validate_firewall_config_rejects_unknown_top_level_keys():
-    assert not _validate_firewall_config({"egress": [], "wonderwall": []})
+    with pytest.raises(ValueError):
+        _validate_firewall_config({"egress": [], "wonderwall": []})
     # ports is legal inside a rule, not at top level
-    assert not _validate_firewall_config({"ports": []})
+    with pytest.raises(ValueError):
+        _validate_firewall_config({"ports": []})
 
 
 def test_validate_firewall_config_rejects_non_list_direction():
-    assert not _validate_firewall_config({"egress": {"to_services": ["some-service"]}})
-    assert not _validate_firewall_config({"egress": "some-service"})
+    with pytest.raises(ValueError):
+        _validate_firewall_config({"egress": {"to_services": ["some-service"]}})
+    with pytest.raises(ValueError):
+        _validate_firewall_config({"egress": "some-service"})
 
 
 def test_validate_firewall_config_rejects_bad_rule():
-    assert not _validate_firewall_config(
-        {"egress": [{"ports": [{"protocol": "TCP", "port": 443}]}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_config(
+            {"egress": [{"ports": [{"protocol": "TCP", "port": 443}]}]}
+        )
 
 
 def test_validate_firewall_rule_valid():
-    assert _validate_firewall_rule("egress", {"to_services": ["some-service"]})
-    assert _validate_firewall_rule(
+    _validate_firewall_rule("egress", {"to_services": ["some-service"]})
+    _validate_firewall_rule(
         "egress",
         {
             "to_services": ["some-service.main"],
             "ports": [{"protocol": "TCP", "port": 443}],
         },
     )
-    assert _validate_firewall_rule("ingress", {"from_cidrs": ["10.0.0.0/8"]})
-    assert _validate_firewall_rule("egress", {"to_cidrs": ["52.94.0.0/16"]})
+    _validate_firewall_rule("ingress", {"from_cidrs": ["10.0.0.0/8"]})
+    _validate_firewall_rule("egress", {"to_cidrs": ["52.94.0.0/16"]})
 
 
 def test_validate_firewall_rule_rejects_non_dict():
-    assert not _validate_firewall_rule("egress", "some-service")
-    assert not _validate_firewall_rule("egress", None)
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", "some-service")
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", None)
 
 
 def test_validate_firewall_rule_requires_a_destination():
-    assert not _validate_firewall_rule("egress", {})
-    assert not _validate_firewall_rule("egress", {"to_services": [], "to_cidrs": []})
-    assert not _validate_firewall_rule(
-        "egress", {"ports": [{"protocol": "TCP", "port": 443}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"to_services": [], "to_cidrs": []})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"ports": [{"protocol": "TCP", "port": 443}]})
 
 
 def test_validate_firewall_rule_rejects_wrong_direction_keys():
-    assert not _validate_firewall_rule("egress", {"from_services": ["some-api"]})
-    assert not _validate_firewall_rule("ingress", {"to_services": ["some-service"]})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"from_services": ["some-api"]})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("ingress", {"to_services": ["some-service"]})
 
 
 def test_validate_firewall_rule_rejects_unknown_keys():
-    assert not _validate_firewall_rule("egress", {"to_services": ["x"], "extra": 1})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"to_services": ["x"], "extra": 1})
 
 
 def test_validate_firewall_rule_rejects_bad_destinations():
-    assert not _validate_firewall_rule("egress", {"to_services": "some-service"})
-    assert not _validate_firewall_rule("egress", {"to_cidrs": [52.94]})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"to_services": "some-service"})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"to_cidrs": [52.94]})
 
 
 def test_validate_firewall_rule_rejects_bad_ports():
     # ports not a list
-    assert not _validate_firewall_rule("egress", {"to_services": ["x"], "ports": 443})
+    with pytest.raises(ValueError):
+        _validate_firewall_rule("egress", {"to_services": ["x"], "ports": 443})
     # missing protocol
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"port": 443}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress", {"to_services": ["x"], "ports": [{"port": 443}]}
+        )
     # missing port
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"protocol": "TCP"}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress", {"to_services": ["x"], "ports": [{"protocol": "TCP"}]}
+        )
     # extra key
-    assert not _validate_firewall_rule(
-        "egress",
-        {
-            "to_services": ["x"],
-            "ports": [{"protocol": "TCP", "port": 443, "extra": 1}],
-        },
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress",
+            {
+                "to_services": ["x"],
+                "ports": [{"protocol": "TCP", "port": 443, "extra": 1}],
+            },
+        )
     # unsupported protocol
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"protocol": "ICMP", "port": 443}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress",
+            {"to_services": ["x"], "ports": [{"protocol": "ICMP", "port": 443}]},
+        )
     # lowercase protocol
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"protocol": "tcp", "port": 443}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress",
+            {"to_services": ["x"], "ports": [{"protocol": "tcp", "port": 443}]},
+        )
     # port as YAML-quoted string
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": "443"}]}
-    )
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress",
+            {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": "443"}]},
+        )
     # port as YAML bool (yes/no), which isinstance(int) would otherwise allow
-    assert not _validate_firewall_rule(
-        "egress", {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": True}]}
-    )
-    assert _validate_firewall_rule(
+    with pytest.raises(ValueError):
+        _validate_firewall_rule(
+            "egress",
+            {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": True}]},
+        )
+    _validate_firewall_rule(
         "egress", {"to_services": ["x"], "ports": [{"protocol": "UDP", "port": 53}]}
     )
 
