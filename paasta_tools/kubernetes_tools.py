@@ -69,6 +69,7 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1IPBlock
 from kubernetes.client import V1Job
 from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
@@ -79,6 +80,12 @@ from kubernetes.client import V1LimitRange
 from kubernetes.client import V1LimitRangeItem
 from kubernetes.client import V1LimitRangeSpec
 from kubernetes.client import V1Namespace
+from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyEgressRule
+from kubernetes.client import V1NetworkPolicyIngressRule
+from kubernetes.client import V1NetworkPolicyPeer
+from kubernetes.client import V1NetworkPolicyPort
+from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
@@ -652,6 +659,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.batches = kube_client.BatchV1Api(self.api_client)
+        self.networking = kube_client.NetworkingV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
@@ -3600,6 +3608,30 @@ def create_pod_disruption_budget(
 ) -> None:
     return kube_client.policy.create_namespaced_pod_disruption_budget(
         namespace=namespace, body=pod_disruption_budget
+    )
+
+
+def network_policy_for_service_instance(
+    service: str,
+    instance: str,
+    namespace: str,
+    firewall_config: Dict[str, Any],
+    baseline_egress: Dict[str, Any],
+    baseline_ingress: Dict[str, Any],
+) -> V1NetworkPolicy:
+    # parse firewall block, translate rules, append baseline, return V1NetworkPolicy object
+    network_policy = V1NetworkPolicy()
+
+    return network_policy
+
+
+def create_network_policy(
+    kube_client: KubeClient,
+    network_policy: V1NetworkPolicy,
+    namespace: str,
+) -> None:
+    return kube_client.networking.create_namespaced_network_policy(
+        namespace=namespace, body=network_policy
     )
 
 
