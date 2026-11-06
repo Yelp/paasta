@@ -3682,10 +3682,19 @@ def create_network_policy(
     )
 
 
-_FIREWALL_RULE_KEYS = {
-    "egress": ("to_services", "to_cidrs"),
-    "ingress": ("from_services", "from_cidrs"),
-}
+def _peer_for_service_ref(service_ref: str) -> V1NetworkPolicyPeer:
+    service, _, instance = service_ref.partition(".")
+    pod_labels = {"paasta.yelp.com/service": service}
+    if instance:
+        pod_labels["paasta.yelp.com/instance"] = instance
+    return V1NetworkPolicyPeer(
+        namespace_selector=V1LabelSelector(
+            match_labels={
+                "kubernetes.io/metadata.name": f"paastasvc-{sanitise_kubernetes_name(service)}",
+            }
+        ),
+        pod_selector=V1LabelSelector(match_labels=pod_labels),
+    )
 
 
 def set_instances_for_kubernetes_service(

@@ -97,6 +97,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
+from paasta_tools.kubernetes_tools import _peer_for_service_ref
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
@@ -4309,6 +4310,39 @@ def test_create_network_policy():
     mock_client.networking.create_namespaced_network_policy.assert_called_with(
         namespace="paasta", body=mock_policy
     )
+
+
+def test_peer_for_service_ref_bare_name():
+    # A bare name means all instances: service label only, no instance label
+    peer = _peer_for_service_ref("some-service")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-some-service"
+    }
+    assert peer.pod_selector.match_labels == {"paasta.yelp.com/service": "some-service"}
+
+
+def test_peer_for_service_ref_dotted_name():
+    # A dotted name means one instance: both labels, raw service name
+    peer = _peer_for_service_ref("some-service.main")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-some-service"
+    }
+    assert peer.pod_selector.match_labels == {
+        "paasta.yelp.com/service": "some-service",
+        "paasta.yelp.com/instance": "main",
+    }
+
+
+def test_peer_for_service_ref_underscores():
+    # Namespace uses the sanitised name, pod label uses the raw name
+    peer = _peer_for_service_ref("service_with_underscores.main")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-service--with--underscores"
+    }
+    assert peer.pod_selector.match_labels == {
+        "paasta.yelp.com/service": "service_with_underscores",
+        "paasta.yelp.com/instance": "main",
+    }
 
 
 def test_create_deployment():
