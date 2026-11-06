@@ -3637,8 +3637,6 @@ def network_policy_for_service_instance(
     baseline_egress: List[FirewallRuleDict],
     baseline_ingress: List[FirewallRuleDict],
 ) -> V1NetworkPolicy:
-    _validate_firewall_config(firewall_config)
-
     network_policy = V1NetworkPolicy(
         api_version="networking.k8s.io/v1",
         kind="NetworkPolicy",
@@ -3688,75 +3686,6 @@ _FIREWALL_RULE_KEYS = {
     "egress": ("to_services", "to_cidrs"),
     "ingress": ("from_services", "from_cidrs"),
 }
-
-
-def _validate_firewall_config(firewall_config: FirewallConfigDict) -> None:
-    """
-    Validate a firewall block from an instance's soa config.
-
-    :param firewall_config: parsed contents of the `firewall` key
-    :raises ValueError: if the block is not safe to translate
-    """
-    if not isinstance(firewall_config, dict) or not firewall_config:
-        raise ValueError(
-            "firewall block must be either non-existent or a non-empty dict"
-        )
-    for key in firewall_config:
-        if key not in ("egress", "ingress"):
-            raise ValueError(
-                f"unknown key '{key}' in firewall block (legal keys: egress, ingress)"
-            )
-    for direction, rules in firewall_config.items():
-        if not isinstance(rules, list):
-            raise ValueError(f"firewall '{direction}' must be a list of rules")
-        for rule in rules:
-            _validate_firewall_rule(direction, rule)
-
-
-def _validate_firewall_rule(direction: str, rule: FirewallRuleDict) -> None:
-    """
-    Validate one egress or ingress rule from a firewall block.
-
-    :param direction: "egress" or "ingress"
-    :param rule: one entry from the direction's rule list
-    :raises ValueError: if the rule is not safe to translate
-    """
-    if not isinstance(rule, dict):
-        raise ValueError(f"firewall '{direction}' rule must be a mapping")
-    destination_keys = _FIREWALL_RULE_KEYS[direction]
-    if not any(rule.get(key) for key in destination_keys):
-        raise ValueError(
-            f"firewall '{direction}' rule must have at least one non-empty destination"
-        )
-    for key in rule:
-        if key not in ("ports", *destination_keys):
-            raise ValueError(f"unknown key '{key}' in firewall '{direction}' rule ")
-    for key in destination_keys:
-        destinations = rule.get(key, [])
-        if not isinstance(destinations, list) or not all(
-            isinstance(destination, str) for destination in destinations
-        ):
-            raise ValueError(
-                f"firewall '{direction}' rule '{key}' must be a list of strings"
-            )
-    ports = rule.get("ports", [])
-    if not isinstance(ports, list):
-        raise ValueError(f"firewall '{direction}' rule 'ports' must be a list")
-    for port_dict in ports:
-        if not isinstance(port_dict, dict) or set(port_dict) != {"protocol", "port"}:
-            raise ValueError(
-                f"firewall '{direction}' rule 'ports' must be a mapping with exactly protocol and port"
-            )
-        if port_dict["protocol"] not in ("TCP", "UDP", "SCTP"):
-            raise ValueError(
-                f"firewall '{direction}' rule 'ports' has invalid protocol, can only be TCP, UDP, or SCTP"
-            )
-        # bool is excluded because YAML yes/no parse as bool and
-        # isinstance(True, int) would otherwise let them through
-        if not isinstance(port_dict["port"], int) or isinstance(
-            port_dict["port"], bool
-        ):
-            raise ValueError(f"firewall '{direction}' rule 'ports' must be an integer")
 
 
 def set_instances_for_kubernetes_service(
