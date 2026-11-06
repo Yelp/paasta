@@ -34,6 +34,8 @@ from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
+from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyPort
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -96,10 +98,14 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
+from paasta_tools.kubernetes_tools import _network_policy_ports
+from paasta_tools.kubernetes_tools import _peer_for_cidr
+from paasta_tools.kubernetes_tools import _peer_for_service_ref
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_network_policy
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
@@ -4298,6 +4304,69 @@ def test_create_pod_disruption_budget():
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
         namespace="paasta", body=mock_pdr
     )
+
+
+def test_create_network_policy():
+    mock_client = mock.Mock()
+    mock_policy = V1NetworkPolicy()
+    create_network_policy(mock_client, mock_policy, "paasta")
+    mock_client.networking.create_namespaced_network_policy.assert_called_with(
+        namespace="paasta", body=mock_policy
+    )
+
+
+def test_peer_for_service_ref_bare_name():
+    # A bare name means all instances: service label only, no instance label
+    peer = _peer_for_service_ref("some-service")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-some-service"
+    }
+    assert peer.pod_selector.match_labels == {"paasta.yelp.com/service": "some-service"}
+
+
+def test_peer_for_service_ref_dotted_name():
+    # A dotted name means one instance: both labels, raw service name
+    peer = _peer_for_service_ref("some-service.main")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-some-service"
+    }
+    assert peer.pod_selector.match_labels == {
+        "paasta.yelp.com/service": "some-service",
+        "paasta.yelp.com/instance": "main",
+    }
+
+
+def test_peer_for_service_ref_underscores():
+    # Namespace uses the sanitised name, pod label uses the raw name
+    peer = _peer_for_service_ref("service_with_underscores.main")
+    assert peer.namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "paastasvc-service--with--underscores"
+    }
+    assert peer.pod_selector.match_labels == {
+        "paasta.yelp.com/service": "service_with_underscores",
+        "paasta.yelp.com/instance": "main",
+    }
+
+
+def test_peer_for_cidr():
+    peer = _peer_for_cidr("52.94.0.0/16")
+    assert peer.ip_block.cidr == "52.94.0.0/16"
+
+
+def test_peer_for_cidr_invalid():
+    with pytest.raises(ValueError):
+        _peer_for_cidr("not-a-cidr")
+
+
+def test_network_policy_ports():
+    rule = {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": 443}]}
+    assert _network_policy_ports(rule) == [
+        V1NetworkPolicyPort(protocol="TCP", port=443)
+    ]
+
+
+def test_network_policy_ports_empty():
+    assert _network_policy_ports({"to_services": ["x"]}) == []
 
 
 def test_create_deployment():

@@ -14,6 +14,7 @@ import asyncio
 import base64
 import functools
 import hashlib
+import ipaddress
 import itertools
 import json
 import logging
@@ -69,6 +70,7 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1IPBlock
 from kubernetes.client import V1Job
 from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
@@ -79,6 +81,12 @@ from kubernetes.client import V1LimitRange
 from kubernetes.client import V1LimitRangeItem
 from kubernetes.client import V1LimitRangeSpec
 from kubernetes.client import V1Namespace
+from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyEgressRule
+from kubernetes.client import V1NetworkPolicyIngressRule
+from kubernetes.client import V1NetworkPolicyPeer
+from kubernetes.client import V1NetworkPolicyPort
+from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
@@ -652,6 +660,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.batches = kube_client.BatchV1Api(self.api_client)
+        self.networking = kube_client.NetworkingV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
@@ -3601,6 +3610,109 @@ def create_pod_disruption_budget(
     return kube_client.policy.create_namespaced_pod_disruption_budget(
         namespace=namespace, body=pod_disruption_budget
     )
+
+
+class FirewallPortDict(TypedDict):
+    protocol: Literal["TCP", "UDP", "SCTP"]
+    port: int
+
+
+class FirewallRuleDict(TypedDict, total=False):
+    to_services: List[str]
+    from_services: List[str]
+    to_cidrs: List[str]
+    from_cidrs: List[str]
+    ports: List[FirewallPortDict]
+
+
+class FirewallConfigDict(TypedDict, total=False):
+    egress: List[FirewallRuleDict]
+    ingress: List[FirewallRuleDict]
+
+
+def network_policy_for_service_instance(
+    service: str,
+    instance: str,
+    namespace: str,
+    firewall_config: FirewallConfigDict,
+    baseline_egress: List[FirewallRuleDict],
+    baseline_ingress: List[FirewallRuleDict],
+) -> V1NetworkPolicy:
+    network_policy = V1NetworkPolicy(
+        api_version="networking.k8s.io/v1",
+        kind="NetworkPolicy",
+        metadata=V1ObjectMeta(
+            name=get_kubernetes_app_name(service, instance),
+            namespace=namespace,
+            labels={
+                "paasta.yelp.com/managed": "true",
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": instance,
+            },
+        ),
+        spec=V1NetworkPolicySpec(
+            pod_selector=V1LabelSelector(
+                match_labels={
+                    "paasta.yelp.com/service": service,
+                    "paasta.yelp.com/instance": instance,
+                }
+            ),
+            policy_types=["Egress", "Ingress"],
+            ingress=[],
+            egress=[],
+        ),
+    )
+
+    return network_policy
+
+
+def create_network_policy(
+    kube_client: KubeClient,
+    network_policy: V1NetworkPolicy,
+    namespace: str,
+) -> None:
+    """
+    Create a k8s NetworkPolicy in specified namespace.
+
+    :param kube_client: k8s client
+    :param network_policy: V1NetworkPolicy object to create
+    :param namespace: Namespace to create NetworkPolicy in
+    """
+    return kube_client.networking.create_namespaced_network_policy(
+        namespace=namespace, body=network_policy
+    )
+
+
+def _peer_for_service_ref(service_ref: str) -> V1NetworkPolicyPeer:
+    service, _, instance = service_ref.partition(".")
+    pod_labels = {"paasta.yelp.com/service": service}
+    if instance:
+        pod_labels["paasta.yelp.com/instance"] = instance
+    return V1NetworkPolicyPeer(
+        namespace_selector=V1LabelSelector(
+            match_labels={
+                "kubernetes.io/metadata.name": f"paastasvc-{sanitise_kubernetes_name(service)}",
+            }
+        ),
+        pod_selector=V1LabelSelector(match_labels=pod_labels),
+    )
+
+
+def _peer_for_cidr(cidr: str) -> V1NetworkPolicyPeer:
+    ipaddress.ip_network(cidr)  # will raise ValueError if bad CIDR
+    return V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr=cidr))
+
+
+def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
+    ports = []
+    for port in rule.get("ports", []):
+        ports.append(
+            V1NetworkPolicyPort(
+                protocol=port["protocol"],
+                port=port["port"],
+            )
+        )
+    return ports
 
 
 def set_instances_for_kubernetes_service(
