@@ -35,6 +35,7 @@ from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyPort
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -97,6 +98,8 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
+from paasta_tools.kubernetes_tools import _network_policy_ports
+from paasta_tools.kubernetes_tools import _peer_for_cidr
 from paasta_tools.kubernetes_tools import _peer_for_service_ref
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
@@ -4343,6 +4346,27 @@ def test_peer_for_service_ref_underscores():
         "paasta.yelp.com/service": "service_with_underscores",
         "paasta.yelp.com/instance": "main",
     }
+
+
+def test_peer_for_cidr():
+    peer = _peer_for_cidr("52.94.0.0/16")
+    assert peer.ip_block.cidr == "52.94.0.0/16"
+
+
+def test_peer_for_cidr_invalid():
+    with pytest.raises(ValueError):
+        _peer_for_cidr("not-a-cidr")
+
+
+def test_network_policy_ports():
+    rule = {"to_services": ["x"], "ports": [{"protocol": "TCP", "port": 443}]}
+    assert _network_policy_ports(rule) == [
+        V1NetworkPolicyPort(protocol="TCP", port=443)
+    ]
+
+
+def test_network_policy_ports_empty():
+    assert _network_policy_ports({"to_services": ["x"]}) == []
 
 
 def test_create_deployment():

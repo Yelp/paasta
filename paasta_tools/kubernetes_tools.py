@@ -14,6 +14,7 @@ import asyncio
 import base64
 import functools
 import hashlib
+import ipaddress
 import itertools
 import json
 import logging
@@ -3695,6 +3696,23 @@ def _peer_for_service_ref(service_ref: str) -> V1NetworkPolicyPeer:
         ),
         pod_selector=V1LabelSelector(match_labels=pod_labels),
     )
+
+
+def _peer_for_cidr(cidr: str) -> V1NetworkPolicyPeer:
+    ipaddress.ip_network(cidr)  # will raise ValueError if bad CIDR
+    return V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr=cidr))
+
+
+def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
+    ports = []
+    for port in rule.get("ports", []):
+        ports.append(
+            V1NetworkPolicyPort(
+                protocol=port["protocol"],
+                port=port["port"],
+            )
+        )
+    return ports
 
 
 def set_instances_for_kubernetes_service(
