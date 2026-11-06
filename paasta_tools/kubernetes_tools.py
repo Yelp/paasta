@@ -3611,19 +3611,58 @@ def create_pod_disruption_budget(
     )
 
 
+class FirewallPortDict(TypedDict):
+    protocol: Literal["TCP", "UDP", "SCTP"]
+    port: int
+
+
+class FirewallRuleDict(TypedDict, total=False):
+    to_services: List[str]
+    from_services: List[str]
+    to_cidrs: List[str]
+    from_cidrs: List[str]
+    ports: List[FirewallPortDict]
+
+
+class FirewallConfigDict(TypedDict, total=False):
+    egress: List[FirewallRuleDict]
+    ingress: List[FirewallRuleDict]
+
+
 def network_policy_for_service_instance(
     service: str,
     instance: str,
     namespace: str,
-    firewall_config: Dict[str, Any],
-    baseline_egress: List[Dict[str, Any]],
-    baseline_ingress: List[Dict[str, Any]],
+    firewall_config: FirewallConfigDict,
+    baseline_egress: List[FirewallRuleDict],
+    baseline_ingress: List[FirewallRuleDict],
 ) -> V1NetworkPolicy:
-    # parse firewall block, translate rules, append baseline, return V1NetworkPolicy object
-    if not _validate_firewall_config(firewall_config):
-        raise ValueError(f"Invalid firewall config: {firewall_config}")
+    _validate_firewall_config(firewall_config)
 
-    network_policy = V1NetworkPolicy()
+    network_policy = V1NetworkPolicy(
+        api_version="networking.k8s.io/v1",
+        kind="NetworkPolicy",
+        metadata=V1ObjectMeta(
+            name=get_kubernetes_app_name(service, instance),
+            namespace=namespace,
+            labels={
+                "paasta.yelp.com/managed": "true",
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": instance,
+            },
+        ),
+        spec=V1NetworkPolicySpec(
+            pod_selector=V1LabelSelector(
+                match_labels={
+                    "paasta.yelp.com/service": service,
+                    "paasta.yelp.com/instance": instance,
+                }
+            ),
+            policy_types=["Egress", "Ingress"],
+            ingress=[],
+            egress=[],
+        ),
+    )
 
     return network_policy
 
@@ -3651,7 +3690,7 @@ _FIREWALL_RULE_KEYS = {
 }
 
 
-def _validate_firewall_config(firewall_config: Dict[str, Any]) -> None:
+def _validate_firewall_config(firewall_config: FirewallConfigDict) -> None:
     """
     Validate a firewall block from an instance's soa config.
 
@@ -3674,7 +3713,7 @@ def _validate_firewall_config(firewall_config: Dict[str, Any]) -> None:
             _validate_firewall_rule(direction, rule)
 
 
-def _validate_firewall_rule(direction: str, rule: Dict[str, Any]) -> None:
+def _validate_firewall_rule(direction: str, rule: FirewallRuleDict) -> None:
     """
     Validate one egress or ingress rule from a firewall block.
 
