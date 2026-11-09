@@ -3638,6 +3638,17 @@ def network_policy_for_service_instance(
     baseline_egress: List[FirewallRuleDict],
     baseline_ingress: List[FirewallRuleDict],
 ) -> V1NetworkPolicy:
+    """
+    Create NetworkPolicy for service instance from its firewall config.
+
+    :param service: service name
+    :param instance: instance name
+    :param namespace: namespace to create NetworkPolicy in
+    :param firewall_config: parsed contents of `firewall` key
+    :param baseline_egress: baseline egress rules (from system config)
+    :param baseline_ingress: baseline ingress rules (from system config)
+    :return: V1NetworkPolicy object for service instance
+    """
     network_policy = V1NetworkPolicy(
         api_version="networking.k8s.io/v1",
         kind="NetworkPolicy",
@@ -3672,7 +3683,7 @@ def create_network_policy(
     namespace: str,
 ) -> None:
     """
-    Create a k8s NetworkPolicy in specified namespace.
+    Create k8s NetworkPolicy in specified namespace.
 
     :param kube_client: k8s client
     :param network_policy: V1NetworkPolicy object to create
@@ -3684,6 +3695,15 @@ def create_network_policy(
 
 
 def _peer_for_service_ref(service_ref: str) -> V1NetworkPolicyPeer:
+    """
+    Translate service reference into NetworkPolicyPeer.
+
+    A bare name ("some-service") = all instances of service.
+    Dotted name ("some-service.main") = one instance.
+
+    :param service_ref: service name from a to_services/from_services list
+    :return: V1NetworkPolicyPeer object for service reference
+    """
     service, _, instance = service_ref.partition(".")
     pod_labels = {"paasta.yelp.com/service": service}
     if instance:
@@ -3699,11 +3719,26 @@ def _peer_for_service_ref(service_ref: str) -> V1NetworkPolicyPeer:
 
 
 def _peer_for_cidr(cidr: str) -> V1NetworkPolicyPeer:
+    """
+    Translate a CIDR block into a NetworkPolicyPeer.
+
+    :param cidr: CIDR block from a to_cidrs/from_cidrs list
+    :raises ValueError: if the CIDR is invalid
+    :return: V1NetworkPolicyPeer object for CIDR block
+    """
     ipaddress.ip_network(cidr)  # will raise ValueError if bad CIDR
     return V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr=cidr))
 
 
 def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
+    """
+    Translate rule's ports list into V1NetworkPolicyPort objects.
+
+    No ports = all ports, returns empty list.
+
+    :param rule: rule from the firewall config
+    :return: List of V1NetworkPolicyPort objects for the rule
+    """
     ports = []
     for port in rule.get("ports", []):
         ports.append(
