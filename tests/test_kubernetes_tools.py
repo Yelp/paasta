@@ -35,6 +35,8 @@ from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyEgressRule
+from kubernetes.client import V1NetworkPolicyIngressRule
 from kubernetes.client import V1NetworkPolicyPort
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
@@ -98,9 +100,12 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
+from paasta_tools.kubernetes_tools import _egress_rule_for_firewall_rule
+from paasta_tools.kubernetes_tools import _ingress_rule_for_firewall_rule
 from paasta_tools.kubernetes_tools import _network_policy_ports
 from paasta_tools.kubernetes_tools import _peer_for_cidr
 from paasta_tools.kubernetes_tools import _peer_for_service_ref
+from paasta_tools.kubernetes_tools import _peers_for_firewall_rule
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
@@ -4367,6 +4372,36 @@ def test_network_policy_ports():
 
 def test_network_policy_ports_empty():
     assert _network_policy_ports({"to_services": ["x"]}) == []
+
+
+def test_egress_rule_for_firewall_rule():
+    rule = {
+        "to_services": ["some-service"],
+        "ports": [{"protocol": "TCP", "port": 3306}],
+    }
+    egress_rule = _egress_rule_for_firewall_rule(rule)
+    assert egress_rule.to == [_peer_for_service_ref("some-service")]
+    assert egress_rule.ports == [V1NetworkPolicyPort(protocol="TCP", port=3306)]
+
+
+def test_ingress_rule_for_firewall_rule():
+    rule = {"from_services": ["some-api.main"]}
+    ingress_rule = _ingress_rule_for_firewall_rule(rule)
+    assert ingress_rule._from == [_peer_for_service_ref("some-api.main")]
+    assert ingress_rule.ports == []
+
+
+def test_firewall_rule_with_no_destinations_raises():
+    # The fail-closed guard: an empty peer list would mean "allow to
+    # anywhere", so it must raise instead of building a rule
+    with pytest.raises(ValueError):
+        _peers_for_firewall_rule(
+            "egress", {"ports": [{"protocol": "TCP", "port": 443}]}
+        )
+    with pytest.raises(ValueError):
+        _peers_for_firewall_rule("ingress", {"to_services": []})
+    with pytest.raises(ValueError):
+        _peers_for_firewall_rule("egress", {})
 
 
 def test_create_deployment():

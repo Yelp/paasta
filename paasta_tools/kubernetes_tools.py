@@ -3750,6 +3750,63 @@ def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
     return ports
 
 
+_FIREWALL_RULE_KEYS = {
+    "egress": ("to_services", "to_cidrs"),
+    "ingress": ("from_services", "from_cidrs"),
+}
+
+
+def _peers_for_firewall_rule(
+    direction: str, rule: FirewallRuleDict
+) -> List[V1NetworkPolicyPeer]:
+    """
+    Translate a rule's destinations into NetworkPolicyPeers.
+
+    :param direction: "egress" or "ingress"; decides the destination keys
+    :param rule: rule from the firewall config
+    :raises ValueError: if the rule has no destinations, which would allow traffic to anywhere
+    """
+    services_key, cidrs_key = _FIREWALL_RULE_KEYS[direction]
+    peers = []
+    for service_ref in cast(List[str], rule.get(services_key, [])):
+        peers.append(_peer_for_service_ref(service_ref))
+    for cidr in cast(List[str], rule.get(cidrs_key, [])):
+        peers.append(_peer_for_cidr(cidr))
+    if not peers:
+        raise ValueError(
+            f"firewall {direction} rule has no destinations, which would allow traffic to anywhere"
+        )
+    return peers
+
+
+def _egress_rule_for_firewall_rule(rule: FirewallRuleDict) -> V1NetworkPolicyEgressRule:
+    """
+    Translate firewall rule into V1NetworkPolicyEgressRule.
+
+    :param rule: rule from firewall config
+    :return: V1NetworkPolicyEgressRule object for the rule
+    """
+    return V1NetworkPolicyEgressRule(
+        to=_peers_for_firewall_rule("egress", rule),
+        ports=_network_policy_ports(rule),
+    )
+
+
+def _ingress_rule_for_firewall_rule(
+    rule: FirewallRuleDict,
+) -> V1NetworkPolicyIngressRule:
+    """
+    Translate firewall rule into V1NetworkPolicyIngressRule.
+
+    :param rule: rule from firewall config
+    :return: V1NetworkPolicyIngressRule object for the rule
+    """
+    return V1NetworkPolicyIngressRule(
+        _from=_peers_for_firewall_rule("ingress", rule),
+        ports=_network_policy_ports(rule),
+    )
+
+
 def set_instances_for_kubernetes_service(
     kube_client: KubeClient,
     service_config: KubernetesDeploymentConfig,
