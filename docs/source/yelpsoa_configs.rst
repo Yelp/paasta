@@ -529,6 +529,29 @@ instance MAY have:
     percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
+  * ``firewall``: Optional. If present, PaaSTA generates a NetworkPolicy for this
+    instance that denies all egress and ingress traffic except what the rules below
+    allow, plus a baseline (egress: DNS, IMDS, internal ranges; ingress: kubelet
+    probes, monitoring, sidecars) sourced from system config. Rules are lists under
+    ``egress`` and/or ``ingress``, and each rule needs at least one destination:
+
+    .. code-block:: yaml
+
+        main:
+          firewall:
+            egress:
+              - to_services: [some-service]            # or [some-service.main]
+                ports: [{protocol: TCP, port: 3306}]
+              - to_cidrs: [52.94.0.0/16]               # vendor-published ranges, no domains
+            ingress:
+              - from_services: [some-api.main]
+                ports: [{protocol: TCP, port: 8080}]
+
+    A bare service name means all instances of that service; a dotted name
+    (``some-service.main``) means one instance. A rule with no ``ports`` allows
+    all ports. Port entries must have exactly ``protocol`` (``TCP``, ``UDP``, or
+    ``SCTP``) and an integer ``port``. An empty ``firewall`` block is invalid.
+
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
     If set to ``http`` or ``https``, a ``curl`` command will be executed
     inside the container.

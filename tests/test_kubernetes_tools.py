@@ -35,8 +35,6 @@ from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NetworkPolicy
-from kubernetes.client import V1NetworkPolicyEgressRule
-from kubernetes.client import V1NetworkPolicyIngressRule
 from kubernetes.client import V1NetworkPolicyPort
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
@@ -90,6 +88,9 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.contrib.get_running_task_allocation import (
     get_pod_pool as task_allocation_get_pod_pool,
 )
+from paasta_tools.kubernetes_tools import FirewallConfigDict
+from paasta_tools.kubernetes_tools import FirewallPortDict
+from paasta_tools.kubernetes_tools import FirewallRuleDict
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeAffinityCondition
 from paasta_tools.kubernetes_tools import KubeClient
@@ -152,6 +153,7 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import mode_to_int
+from paasta_tools.kubernetes_tools import network_policy_for_service_instance
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
@@ -4402,6 +4404,107 @@ def test_firewall_rule_with_no_destinations_raises():
         _peers_for_firewall_rule("ingress", {"to_services": []})
     with pytest.raises(ValueError):
         _peers_for_firewall_rule("egress", {})
+
+
+def test_network_policy_for_service_instance():
+    firewall_config = FirewallConfigDict(
+        egress=[
+            FirewallRuleDict(
+                to_services=["some-service"],
+                ports=[FirewallPortDict(protocol="TCP", port=3306)],
+            )
+        ],
+        ingress=[
+            FirewallRuleDict(
+                from_services=["some-api.main"],
+                ports=[FirewallPortDict(protocol="TCP", port=8080)],
+            )
+        ],
+    )
+    baseline_egress = [
+        FirewallRuleDict(
+            to_cidrs=["10.0.0.0/8"], ports=[FirewallPortDict(protocol="UDP", port=53)]
+        )
+    ]
+    baseline_ingress = [
+        FirewallRuleDict(
+            from_cidrs=["10.0.0.0/8"],
+            ports=[FirewallPortDict(protocol="TCP", port=8080)],
+        )
+    ]
+
+    policy = network_policy_for_service_instance(
+        service="some-service",
+        instance="main",
+        namespace="paastasvc-some-service",
+        firewall_config=firewall_config,
+        baseline_egress=baseline_egress,
+        baseline_ingress=baseline_ingress,
+    )
+
+    assert policy.api_version == "networking.k8s.io/v1"
+    assert policy.kind == "NetworkPolicy"
+    assert policy.metadata.name == "some-service-main"
+    assert policy.metadata.namespace == "paastasvc-some-service"
+    assert policy.metadata.labels == {
+        "paasta.yelp.com/managed": "true",
+        "paasta.yelp.com/service": "some-service",
+        "paasta.yelp.com/instance": "main",
+    }
+    assert policy.spec.pod_selector.match_labels == {
+        "paasta.yelp.com/service": "some-service",
+        "paasta.yelp.com/instance": "main",
+    }
+    assert policy.spec.policy_types == ["Egress", "Ingress"]
+    # owner rules first, then baselines
+    assert policy.spec.egress == [
+        _egress_rule_for_firewall_rule(firewall_config["egress"][0]),
+        _egress_rule_for_firewall_rule(baseline_egress[0]),
+    ]
+    assert policy.spec.ingress == [
+        _ingress_rule_for_firewall_rule(firewall_config["ingress"][0]),
+        _ingress_rule_for_firewall_rule(baseline_ingress[0]),
+    ]
+
+
+def test_network_policy_for_service_instance_baselines():
+    # An egress-only config still gets the ingress baseline appended
+    firewall_config = FirewallConfigDict(
+        egress=[FirewallRuleDict(to_services=["some-service"])]
+    )
+    baseline_ingress = [FirewallRuleDict(from_cidrs=["10.0.0.0/8"])]
+
+    policy = network_policy_for_service_instance(
+        service="some-service",
+        instance="main",
+        namespace="paastasvc-some-service",
+        firewall_config=firewall_config,
+        baseline_egress=[],
+        baseline_ingress=baseline_ingress,
+    )
+
+    assert policy.spec.egress == [
+        _egress_rule_for_firewall_rule(firewall_config["egress"][0])
+    ]
+    assert policy.spec.ingress == [_ingress_rule_for_firewall_rule(baseline_ingress[0])]
+
+
+def test_network_policy_for_service_instance_invalid_rule_raises():
+    # A destinationless rule triggers the fail-closed guard, which the
+    # function wraps in InvalidKubernetesConfig
+    with pytest.raises(InvalidKubernetesConfig):
+        network_policy_for_service_instance(
+            service="some-service",
+            instance="main",
+            namespace="paasta",
+            firewall_config=FirewallConfigDict(
+                egress=[
+                    FirewallRuleDict(ports=[FirewallPortDict(protocol="TCP", port=443)])
+                ]
+            ),
+            baseline_egress=[],
+            baseline_ingress=[],
+        )
 
 
 def test_create_deployment():

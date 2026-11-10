@@ -3649,30 +3649,39 @@ def network_policy_for_service_instance(
     :param baseline_ingress: baseline ingress rules (from system config)
     :return: V1NetworkPolicy object for service instance
     """
-    network_policy = V1NetworkPolicy(
-        api_version="networking.k8s.io/v1",
-        kind="NetworkPolicy",
-        metadata=V1ObjectMeta(
-            name=get_kubernetes_app_name(service, instance),
-            namespace=namespace,
-            labels={
-                "paasta.yelp.com/managed": "true",
-                "paasta.yelp.com/service": service,
-                "paasta.yelp.com/instance": instance,
-            },
-        ),
-        spec=V1NetworkPolicySpec(
-            pod_selector=V1LabelSelector(
-                match_labels={
+    try:
+        network_policy = V1NetworkPolicy(
+            api_version="networking.k8s.io/v1",
+            kind="NetworkPolicy",
+            metadata=V1ObjectMeta(
+                name=get_kubernetes_app_name(service, instance),
+                namespace=namespace,
+                labels={
+                    "paasta.yelp.com/managed": "true",
                     "paasta.yelp.com/service": service,
                     "paasta.yelp.com/instance": instance,
-                }
+                },
             ),
-            policy_types=["Egress", "Ingress"],
-            ingress=[],
-            egress=[],
-        ),
-    )
+            spec=V1NetworkPolicySpec(
+                pod_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": service,
+                        "paasta.yelp.com/instance": instance,
+                    }
+                ),
+                policy_types=["Egress", "Ingress"],
+                ingress=[
+                    _ingress_rule_for_firewall_rule(rule)
+                    for rule in firewall_config.get("ingress", []) + baseline_ingress
+                ],
+                egress=[
+                    _egress_rule_for_firewall_rule(rule)
+                    for rule in firewall_config.get("egress", []) + baseline_egress
+                ],
+            ),
+        )
+    except Exception as e:
+        raise InvalidKubernetesConfig(e, service, instance)
 
     return network_policy
 
