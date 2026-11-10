@@ -160,11 +160,11 @@ image when the service's ``jenkins.yaml`` lists more than one architecture in ``
        image_architectures: [amd64, arm64]
 
 Jenkins will then build and push 3 tags:
-* 2 architecture-suffixed images (``paasta-<sha>[-<image version>]-arch``)
-* a combined manifest at the standard tag (``paasta-<sha>[-<image version>]-arch``)
+* 2 architecture-suffixed images (``paasta-<sha>[-<image version>]-<arch>``)
+* a combined manifest at the standard tag (``paasta-<sha>[-<image version>]``)
 
-Because each image is built natively, whichever target builds the image (``make cook-image`` and/or ``make itest``)
-) should build for the architecture of the host it runs on (i.e. not hard-code ``amd64`` or pass
+Because Jenkins will run your build pipeline once per architecture, your ``make cook-image`` and/or ``make itest`` targets
+should build for the architecture of the host it is currently running on (i.e. not hard-code ``amd64`` or pass
 ``--platform`` as a Docker/Podman CLI flag).
 
 Crashloop auto-rollback
