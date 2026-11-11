@@ -46,584 +46,588 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
-def test_dry_run(
-    mock_get_instance_config,
-    mock_validate_service_instance,
-    mock_paasta_cook_image,
-    mock_load_system_paasta_config,
-    mock_figure_out_service_name,
-    mock_should_reexec_as_root,
-    capfd,
-    system_paasta_config,
-):
-    mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
-    mock_validate_service_instance.return_value = "marathon"
-    mock_paasta_cook_image.return_value = 0
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_should_reexec_as_root.return_value = False
+def test_dry_run(capfd, system_paasta_config):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True
+    ) as mock_paasta_cook_image, mock.patch(
+        "paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, mock.patch(
+        "paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True
+    ) as mock_should_reexec_as_root:
+        mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
+        mock_validate_service_instance.return_value = "marathon"
+        mock_paasta_cook_image.return_value = 0
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_should_reexec_as_root.return_value = False
 
-    # Should pass and produce something
-    with raises(SystemExit) as excinfo:
-        main(
-            (
-                "local-run",
-                "--dry-run",
-                "--cluster",
-                "fake_cluster",
-                "--instance",
-                "fake_instance",
+        # Should pass and produce something
+        with raises(SystemExit) as excinfo:
+            main(
+                (
+                    "local-run",
+                    "--dry-run",
+                    "--cluster",
+                    "fake_cluster",
+                    "--instance",
+                    "fake_instance",
+                )
             )
+        ret = excinfo.value.code
+        out, err = capfd.readouterr()
+        assert ret == 0
+
+        # We don't care what the contents are, we just care that it is json loadable.
+        expected_out = json.loads(out)
+        assert isinstance(expected_out, list)
+
+
+def test_dry_run_json_dict(capfd, system_paasta_config):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True
+    ) as mock_paasta_cook_image, mock.patch(
+        "paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, mock.patch(
+        "paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True
+    ) as mock_should_reexec_as_root:
+        mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
+        mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
+        mock_get_instance_config.return_value.get_env.return_value = {}
+        mock_get_instance_config.return_value.get_mem.return_value = 123
+        mock_get_instance_config.return_value.get_disk.return_value = 123
+        mock_get_instance_config.return_value.get_cpu.return_value = 123
+        mock_get_instance_config.return_value.get_cluster.return_value = "fake_cluster"
+        mock_get_instance_config.return_value.get_net.return_value = "fake_net"
+        mock_get_instance_config.return_value.get_docker_image.return_value = (
+            "fake_docker_image"
         )
-    ret = excinfo.value.code
-    out, err = capfd.readouterr()
-    assert ret == 0
+        mock_get_instance_config.return_value.get_docker_url.return_value = (
+            "fake_registry/fake_docker_image"
+        )
+        mock_get_instance_config.return_value.get_container_port.return_value = 8888
+        mock_validate_service_instance.return_value = "marathon"
+        mock_paasta_cook_image.return_value = 0
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_should_reexec_as_root.return_value = False
 
-    # We don't care what the contents are, we just care that it is json loadable.
-    expected_out = json.loads(out)
-    assert isinstance(expected_out, list)
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
-def test_dry_run_json_dict(
-    mock_get_instance_config,
-    mock_validate_service_instance,
-    mock_paasta_cook_image,
-    mock_load_system_paasta_config,
-    mock_figure_out_service_name,
-    mock_should_reexec_as_root,
-    capfd,
-    system_paasta_config,
-):
-    mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
-    mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
-    mock_get_instance_config.return_value.get_env.return_value = {}
-    mock_get_instance_config.return_value.get_mem.return_value = 123
-    mock_get_instance_config.return_value.get_disk.return_value = 123
-    mock_get_instance_config.return_value.get_cpu.return_value = 123
-    mock_get_instance_config.return_value.get_cluster.return_value = "fake_cluster"
-    mock_get_instance_config.return_value.get_net.return_value = "fake_net"
-    mock_get_instance_config.return_value.get_docker_image.return_value = (
-        "fake_docker_image"
-    )
-    mock_get_instance_config.return_value.get_docker_url.return_value = (
-        "fake_registry/fake_docker_image"
-    )
-    mock_get_instance_config.return_value.get_container_port.return_value = 8888
-    mock_validate_service_instance.return_value = "marathon"
-    mock_paasta_cook_image.return_value = 0
-    mock_load_system_paasta_config.return_value = system_paasta_config
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_should_reexec_as_root.return_value = False
-
-    # Should pass and produce something
-    with raises(SystemExit) as excinfo:
-        main(
-            (
-                "local-run",
-                "--dry-run",
-                "--cluster",
-                "fake_cluster",
-                "--instance",
-                "fake_instance",
-                "--json-dict",
+        # Should pass and produce something
+        with raises(SystemExit) as excinfo:
+            main(
+                (
+                    "local-run",
+                    "--dry-run",
+                    "--cluster",
+                    "fake_cluster",
+                    "--instance",
+                    "fake_instance",
+                    "--json-dict",
+                )
             )
+        ret = excinfo.value.code
+        out, err = capfd.readouterr()
+        assert ret == 0
+
+        # Ensure it's a dict and check some keys
+        print("Output", out)
+        expected_out = json.loads(out)
+        assert isinstance(expected_out, dict)
+        assert "docker_hash" in expected_out
+        assert "interactive" in expected_out
+
+
+def test_perform_cmd_healthcheck_success():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.execute_in_container", autospec=True
+    ) as mock_exec_container:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_cmd = "/bin/false"
+        fake_timeout = 10
+        mock_exec_container.return_value = ("fake_output", 0)
+        assert perform_cmd_healthcheck(
+            mock_docker_client, fake_container_id, fake_cmd, fake_timeout
         )
-    ret = excinfo.value.code
-    out, err = capfd.readouterr()
-    assert ret == 0
-
-    # Ensure it's a dict and check some keys
-    print("Output", out)
-    expected_out = json.loads(out)
-    assert isinstance(expected_out, dict)
-    assert "docker_hash" in expected_out
-    assert "interactive" in expected_out
+        mock_exec_container.assert_called_with(
+            mock_docker_client, fake_container_id, fake_cmd, fake_timeout
+        )
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.execute_in_container", autospec=True)
-def test_perform_cmd_healthcheck_success(mock_exec_container):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_cmd = "/bin/false"
-    fake_timeout = 10
-    mock_exec_container.return_value = ("fake_output", 0)
-    assert perform_cmd_healthcheck(
-        mock_docker_client, fake_container_id, fake_cmd, fake_timeout
-    )
-    mock_exec_container.assert_called_with(
-        mock_docker_client, fake_container_id, fake_cmd, fake_timeout
-    )
+def test_perform_tcp_healthcheck_success():
+    with mock.patch("socket.socket.connect_ex", autospec=True) as mock_socket_connect:
+        fake_tcp_url = "tcp://fakehost:1234"
+        fake_timeout = 10
+        mock_socket_connect.return_value = 0
+        assert perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
+        mock_socket_connect.assert_called_with(("fakehost", 1234))
 
 
-@mock.patch("socket.socket.connect_ex", autospec=True)
-def test_perform_tcp_healthcheck_success(mock_socket_connect):
-    fake_tcp_url = "tcp://fakehost:1234"
-    fake_timeout = 10
-    mock_socket_connect.return_value = 0
-    assert perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
-    mock_socket_connect.assert_called_with(("fakehost", 1234))
+def test_perform_tcp_healthcheck_failure():
+    with mock.patch("socket.socket.connect_ex", autospec=True) as mock_socket_connect:
+        fake_tcp_url = "tcp://fakehost:1234"
+        fake_timeout = 10
+        mock_socket_connect.return_value = 1
+        actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
+        assert actual[0] is False
+        assert "timeout" in actual[1]
+        assert "10 seconds" in actual[1]
 
 
-@mock.patch("socket.socket.connect_ex", autospec=True)
-def test_perform_tcp_healthcheck_failure(mock_socket_connect):
-    fake_tcp_url = "tcp://fakehost:1234"
-    fake_timeout = 10
-    mock_socket_connect.return_value = 1
-    actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
-    assert actual[0] is False
-    assert "timeout" in actual[1]
-    assert "10 seconds" in actual[1]
+def test_perform_http_healthcheck_success():
+    with mock.patch("requests.get", autospec=True) as mock_http_conn:
+        fake_http_url = "http://fakehost:1234/fake_status_path"
+        fake_timeout = 10
+
+        mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
+        assert perform_http_healthcheck(fake_http_url, fake_timeout)
+        mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
-@mock.patch("requests.get", autospec=True)
-def test_perform_http_healthcheck_success(mock_http_conn):
-    fake_http_url = "http://fakehost:1234/fake_status_path"
-    fake_timeout = 10
+def test_perform_http_healthcheck_failure_known_high():
+    with mock.patch("requests.get", autospec=True) as mock_http_conn:
+        fake_http_url = "http://fakehost:1234/fake_status_path"
+        fake_timeout = 10
 
-    mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
-    assert perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
-
-
-@mock.patch("requests.get", autospec=True)
-def test_perform_http_healthcheck_failure_known_high(mock_http_conn):
-    fake_http_url = "http://fakehost:1234/fake_status_path"
-    fake_timeout = 10
-
-    mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
-    result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert result is False
-    assert "400" in reason
-    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
+        mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
+        result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
+        assert result is False
+        assert "400" in reason
+        mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
-@mock.patch("requests.get", autospec=True)
-def test_perform_http_healthcheck_failure_known_low(mock_http_conn):
-    fake_http_url = "http://fakehost:1234/fake_status_path"
-    fake_timeout = 10
+def test_perform_http_healthcheck_failure_known_low():
+    with mock.patch("requests.get", autospec=True) as mock_http_conn:
+        fake_http_url = "http://fakehost:1234/fake_status_path"
+        fake_timeout = 10
 
-    mock_http_conn.return_value = mock.Mock(status_code=100, headers={})
-    result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert result is False
-    assert "100" in reason
-    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
-
-
-@mock.patch("requests.get", side_effect=TimeoutError, autospec=True)
-def test_perform_http_healthcheck_timeout(mock_http_conn):
-    fake_http_url = "http://fakehost:1234/fake_status_path"
-    fake_timeout = 10
-
-    actual = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert actual[0] is False
-    assert "10" in actual[1]
-    assert "timed out" in actual[1]
-    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
+        mock_http_conn.return_value = mock.Mock(status_code=100, headers={})
+        result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
+        assert result is False
+        assert "100" in reason
+        mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
-@mock.patch("requests.get", autospec=True)
-def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_conn):
-    fake_http_url = "http://fakehost:1234/fake_status_path"
-    fake_timeout = 10
+def test_perform_http_healthcheck_timeout():
+    with mock.patch(
+        "requests.get", side_effect=TimeoutError, autospec=True
+    ) as mock_http_conn:
+        fake_http_url = "http://fakehost:1234/fake_status_path"
+        fake_timeout = 10
 
-    mock_http_conn.return_value = mock.Mock(
-        status_code=200,
-        headers={"content-type": "fake_content_type_1, fake_content_type_2"},
-    )
-    actual = perform_http_healthcheck(fake_http_url, fake_timeout)
-    assert actual[0] is False
-    assert "200" in actual[1]
-    mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fakehost:666/fake_status_path"
-    fake_timeout = 10
-
-    mock_perform_http_healthcheck.return_value = True
-    assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
-    )
-    mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
+        actual = perform_http_healthcheck(fake_http_url, fake_timeout)
+        assert actual[0] is False
+        assert "10" in actual[1]
+        assert "timed out" in actual[1]
+        mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fakehost:666/fake_status_path"
-    fake_timeout = 10
+def test_perform_http_healthcheck_failure_with_multiple_content_type():
+    with mock.patch("requests.get", autospec=True) as mock_http_conn:
+        fake_http_url = "http://fakehost:1234/fake_status_path"
+        fake_timeout = 10
 
-    mock_perform_http_healthcheck.return_value = False
-    assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
-    )
-    mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "tcp"
-    fake_url = "tcp://fakehost:666"
-    fake_timeout = 10
-
-    mock_perform_tcp_healthcheck.return_value = True
-    assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
-    )
-    assert mock_perform_tcp_healthcheck.call_count == 1
-    mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
+        mock_http_conn.return_value = mock.Mock(
+            status_code=200,
+            headers={"content-type": "fake_content_type_1, fake_content_type_2"},
+        )
+        actual = perform_http_healthcheck(fake_http_url, fake_timeout)
+        assert actual[0] is False
+        assert "200" in actual[1]
+        mock_http_conn.assert_called_once_with(fake_http_url, verify=False)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "tcp"
-    fake_url = "tcp://fakehost:666"
-    fake_timeout = 10
+def test_run_healthcheck_http_success():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True
+    ) as mock_perform_http_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fakehost:666/fake_status_path"
+        fake_timeout = 10
 
-    mock_perform_tcp_healthcheck.return_value = False
-    assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
-    )
-    assert mock_perform_tcp_healthcheck.call_count == 1
-    mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "cmd"
-    fake_cmd = "/bin/true"
-    fake_timeout = 10
-
-    mock_perform_cmd_healthcheck.return_value = True
-    assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout
-    )
-    assert mock_perform_cmd_healthcheck.call_count == 1
-    mock_perform_cmd_healthcheck.assert_called_once_with(
-        mock_docker_client, fake_container_id, fake_cmd, fake_timeout
-    )
+        mock_perform_http_healthcheck.return_value = True
+        assert run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
+        )
+        mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True)
-@mock.patch("time.sleep", autospec=True)
-def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    fake_container_id = "fake_container_id"
-    fake_mode = "cmd"
-    fake_cmd = "/bin/true"
-    fake_timeout = 10
+def test_run_healthcheck_http_fails():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_http_healthcheck", autospec=True
+    ) as mock_perform_http_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fakehost:666/fake_status_path"
+        fake_timeout = 10
 
-    mock_perform_cmd_healthcheck.return_value = False
-    assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout
-    )
-    assert mock_perform_cmd_healthcheck.call_count == 1
-    mock_perform_cmd_healthcheck.assert_called_once_with(
-        mock_docker_client, fake_container_id, fake_cmd, fake_timeout
-    )
+        mock_perform_http_healthcheck.return_value = False
+        assert not run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
+        )
+        mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.randint", autospec=True, return_value=543534
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_username",
-    autospec=True,
-    return_value="fsmonste",
-)
-def test_get_container_name(mock_get_username, mock_randint):
-    expected = "paasta_local_run_{}_{}".format(
-        mock_get_username.return_value, mock_randint.return_value
-    )
-    actual = get_container_name()
-    assert actual == expected
+def test_run_healthcheck_tcp_success():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True
+    ) as mock_perform_tcp_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "tcp"
+        fake_url = "tcp://fakehost:666"
+        fake_timeout = 10
+
+        mock_perform_tcp_healthcheck.return_value = True
+        assert run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
+        )
+        assert mock_perform_tcp_healthcheck.call_count == 1
+        mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
-def test_configure_and_run_command_uses_cmd_from_config(
-    mock_validate_service_instance,
-    mock_get_instance_config,
-    mock_run_docker_container,
-    system_paasta_config,
-):
-    mock_validate_service_instance.return_value = "marathon"
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
-    mock_run_docker_container.return_value = 0
+def test_run_healthcheck_tcp_fails():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_tcp_healthcheck", autospec=True
+    ) as mock_perform_tcp_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "tcp"
+        fake_url = "tcp://fakehost:666"
+        fake_timeout = 10
 
-    fake_service = "fake_service"
-    docker_url = "8" * 40
-    args = mock.MagicMock()
-    args.cmd = ""
-    args.service = fake_service
-    args.instance = "fake_instance"
-    args.healthcheck = False
-    args.healthcheck_only = False
-    args.user_port = None
-    args.interactive = False
-    args.dry_run_json_dict = False
-    args.vault_auth_method = "ldap"
-    args.vault_token_file = "/blah/token"
-    args.skip_secrets = False
-    args.decrypt_secrets = True
-    args.volumes = []
-    args.assume_role_arn = ""
-    args.assume_pod_identity = False
-    args.use_okta_role = False
-    args.use_service_auth_token = False
-    args.use_sso_service_auth_token = False
-    args.secrets_from_kube = False
-
-    mock_secret_provider_kwargs = {
-        "vault_cluster_config": {},
-        "vault_auth_method": "ldap",
-        "vault_token_file": "/blah/token",
-    }
-
-    return_code = configure_and_run_docker_container(
-        docker_client=mock_docker_client,
-        docker_url=docker_url,
-        docker_sha=None,
-        service=fake_service,
-        instance="fake_instance",
-        cluster="fake_cluster",
-        system_paasta_config=system_paasta_config,
-        args=args,
-        assume_role_aws_account=None,
-    )
-    assert return_code == 0
-    mock_run_docker_container.assert_called_once_with(
-        docker_client=mock_docker_client,
-        service=fake_service,
-        instance=args.instance,
-        framework="marathon",
-        docker_url=docker_url,
-        volumes=[],
-        interactive=args.interactive,
-        command=mock_get_instance_config.return_value.get_cmd.return_value,
-        healthcheck=args.healthcheck,
-        healthcheck_only=args.healthcheck_only,
-        user_port=args.user_port,
-        instance_config=mock_get_instance_config.return_value,
-        secret_provider_name="paasta_tools.secret_providers",
-        soa_dir=args.yelpsoa_config_root,
-        dry_run=False,
-        json_dict=False,
-        secret_provider_kwargs=mock_secret_provider_kwargs,
-        skip_secrets=False,
-        assume_role_arn="",
-        assume_pod_identity=False,
-        assume_role_aws_account=None,
-        use_okta_role=False,
-        use_service_auth_token=False,
-        use_sso_service_auth_token=False,
-        secrets_from_kube=False,
-    )
+        mock_perform_tcp_healthcheck.return_value = False
+        assert not run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout
+        )
+        assert mock_perform_tcp_healthcheck.call_count == 1
+        mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
-def test_configure_and_run_uses_bash_by_default_when_interactive(
-    mock_validate_service_instance,
-    mock_get_instance_config,
-    mock_run_docker_container,
-    system_paasta_config,
-):
-    mock_validate_service_instance.return_value = "marathon"
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_run_docker_container.return_value = 0
+def test_run_healthcheck_cmd_success():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True
+    ) as mock_perform_cmd_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "cmd"
+        fake_cmd = "/bin/true"
+        fake_timeout = 10
 
-    fake_service = "fake_service"
-    docker_url = "8" * 40
-    args = mock.MagicMock()
-    args.cmd = None
-    args.service = fake_service
-    args.healthcheck = False
-    args.healthcheck_only = False
-    args.user_port = None
-    args.instance = "fake_instance"
-    args.interactive = True
-    args.dry_run_json_dict = False
-    args.vault_auth_method = "ldap"
-    args.vault_token_file = "/blah/token"
-    args.skip_secrets = False
-    args.decrypt_secrets = True
-    args.volumes = []
-    args.assume_role_arn = ""
-    args.assume_pod_identity = False
-    args.use_okta_role = False
-    args.use_service_auth_token = False
-    args.use_sso_service_auth_token = False
-    args.secrets_from_kube = False
-
-    return_code = configure_and_run_docker_container(
-        docker_client=mock_docker_client,
-        docker_url=docker_url,
-        docker_sha=None,
-        service=fake_service,
-        instance="fake_instance",
-        cluster="fake_cluster",
-        system_paasta_config=system_paasta_config,
-        args=args,
-        assume_role_aws_account="dev",
-    )
-    assert return_code == 0
-    mock_secret_provider_kwargs = {
-        "vault_cluster_config": {},
-        "vault_auth_method": "ldap",
-        "vault_token_file": "/blah/token",
-    }
-    mock_run_docker_container.assert_called_once_with(
-        docker_client=mock_docker_client,
-        service=fake_service,
-        instance=args.instance,
-        framework="marathon",
-        docker_url=docker_url,
-        volumes=[],
-        interactive=args.interactive,
-        command="bash",
-        healthcheck=args.healthcheck,
-        healthcheck_only=args.healthcheck_only,
-        user_port=args.user_port,
-        instance_config=mock_get_instance_config.return_value,
-        secret_provider_name="paasta_tools.secret_providers",
-        soa_dir=args.yelpsoa_config_root,
-        dry_run=False,
-        json_dict=False,
-        secret_provider_kwargs=mock_secret_provider_kwargs,
-        skip_secrets=False,
-        assume_role_arn="",
-        assume_role_aws_account="dev",
-        assume_pod_identity=False,
-        use_okta_role=False,
-        use_service_auth_token=False,
-        use_sso_service_auth_token=False,
-        secrets_from_kube=False,
-    )
+        mock_perform_cmd_healthcheck.return_value = True
+        assert run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout
+        )
+        assert mock_perform_cmd_healthcheck.call_count == 1
+        mock_perform_cmd_healthcheck.assert_called_once_with(
+            mock_docker_client, fake_container_id, fake_cmd, fake_timeout
+        )
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.docker_pull_image", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
-def test_configure_and_run_pulls_image_when_asked(
-    mock_validate_service_instance,
-    mock_get_instance_config,
-    mock_run_docker_container,
-    mock_docker_pull_image,
-    system_paasta_config,
-):
-    mock_validate_service_instance.return_value = "marathon"
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_run_docker_container.return_value = 0
+def test_run_healthcheck_cmd_fails():
+    with mock.patch("time.sleep", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.perform_cmd_healthcheck", autospec=True
+    ) as mock_perform_cmd_healthcheck:
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        fake_container_id = "fake_container_id"
+        fake_mode = "cmd"
+        fake_cmd = "/bin/true"
+        fake_timeout = 10
 
-    fake_instance_config = mock.MagicMock(InstanceConfig)
-    fake_instance_config.get_docker_registry.return_value = "fake_registry"
-    fake_instance_config.get_docker_image.return_value = "fake_image"
-    fake_instance_config.get_docker_url.return_value = "fake_registry/fake_image"
-    mock_get_instance_config.return_value = fake_instance_config
-    fake_service = "fake_service"
-    args = mock.MagicMock()
-    args.cmd = None
-    args.service = fake_service
-    args.instance = "fake_instance"
-    args.healthcheck = False
-    args.healthcheck_only = False
-    args.user_port = None
-    args.interactive = True
-    args.dry_run_json_dict = False
-    args.vault_auth_method = "ldap"
-    args.vault_token_file = "/blah/token"
-    args.skip_secrets = False
-    args.decrypt_secrets = True
-    args.volumes = []
-    args.assume_role_arn = ""
-    args.assume_pod_identity = False
-    args.use_okta_role = False
-    args.use_service_auth_token = False
-    args.use_sso_service_auth_token = False
-    args.secrets_from_kube = False
+        mock_perform_cmd_healthcheck.return_value = False
+        assert not run_healthcheck_on_container(
+            mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout
+        )
+        assert mock_perform_cmd_healthcheck.call_count == 1
+        mock_perform_cmd_healthcheck.assert_called_once_with(
+            mock_docker_client, fake_container_id, fake_cmd, fake_timeout
+        )
 
-    return_code = configure_and_run_docker_container(
-        docker_client=mock_docker_client,
-        docker_url=None,
-        docker_sha=None,
-        service=fake_service,
-        instance="fake_instance",
-        cluster="fake_cluster",
-        args=args,
-        system_paasta_config=system_paasta_config,
-        pull_image=True,
-        assume_role_aws_account="dev",
-    )
-    assert return_code == 0
-    mock_docker_pull_image.assert_called_once_with(
-        mock_docker_client, "fake_registry/fake_image"
-    )
-    mock_secret_provider_kwargs = {
-        "vault_cluster_config": {},
-        "vault_auth_method": "ldap",
-        "vault_token_file": "/blah/token",
-    }
-    mock_run_docker_container.assert_called_once_with(
-        docker_client=mock_docker_client,
-        service=fake_service,
-        instance=args.instance,
-        framework="marathon",
-        docker_url="fake_registry/fake_image",
-        volumes=[],
-        interactive=args.interactive,
-        command="bash",
-        healthcheck=args.healthcheck,
-        healthcheck_only=args.healthcheck_only,
-        user_port=args.user_port,
-        instance_config=mock_get_instance_config.return_value,
-        secret_provider_name="paasta_tools.secret_providers",
-        soa_dir=args.yelpsoa_config_root,
-        dry_run=False,
-        json_dict=False,
-        secret_provider_kwargs=mock_secret_provider_kwargs,
-        skip_secrets=False,
-        assume_role_arn="",
-        assume_pod_identity=False,
-        assume_role_aws_account="dev",
-        use_okta_role=False,
-        use_service_auth_token=False,
-        use_sso_service_auth_token=False,
-        secrets_from_kube=False,
-    )
+
+def test_get_container_name():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_username",
+        autospec=True,
+        return_value="fsmonste",
+    ) as mock_get_username, mock.patch(
+        "paasta_tools.cli.cmds.local_run.randint",
+        autospec=True,
+        return_value=543534,
+    ) as mock_randint:
+        expected = "paasta_local_run_{}_{}".format(
+            mock_get_username.return_value, mock_randint.return_value
+        )
+        actual = get_container_name()
+        assert actual == expected
+
+
+def test_configure_and_run_command_uses_cmd_from_config(system_paasta_config):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
+    ) as mock_run_docker_container:
+        mock_validate_service_instance.return_value = "marathon"
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
+        mock_run_docker_container.return_value = 0
+
+        fake_service = "fake_service"
+        docker_url = "8" * 40
+        args = mock.MagicMock()
+        args.cmd = ""
+        args.service = fake_service
+        args.instance = "fake_instance"
+        args.healthcheck = False
+        args.healthcheck_only = False
+        args.user_port = None
+        args.interactive = False
+        args.dry_run_json_dict = False
+        args.vault_auth_method = "ldap"
+        args.vault_token_file = "/blah/token"
+        args.skip_secrets = False
+        args.decrypt_secrets = True
+        args.volumes = []
+        args.assume_role_arn = ""
+        args.assume_pod_identity = False
+        args.use_okta_role = False
+        args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
+        args.secrets_from_kube = False
+
+        mock_secret_provider_kwargs = {
+            "vault_cluster_config": {},
+            "vault_auth_method": "ldap",
+            "vault_token_file": "/blah/token",
+        }
+
+        return_code = configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_url=docker_url,
+            docker_sha=None,
+            service=fake_service,
+            instance="fake_instance",
+            cluster="fake_cluster",
+            system_paasta_config=system_paasta_config,
+            args=args,
+            assume_role_aws_account=None,
+        )
+        assert return_code == 0
+        mock_run_docker_container.assert_called_once_with(
+            docker_client=mock_docker_client,
+            service=fake_service,
+            instance=args.instance,
+            framework="marathon",
+            docker_url=docker_url,
+            volumes=[],
+            interactive=args.interactive,
+            command=mock_get_instance_config.return_value.get_cmd.return_value,
+            healthcheck=args.healthcheck,
+            healthcheck_only=args.healthcheck_only,
+            user_port=args.user_port,
+            instance_config=mock_get_instance_config.return_value,
+            secret_provider_name="paasta_tools.secret_providers",
+            soa_dir=args.yelpsoa_config_root,
+            dry_run=False,
+            json_dict=False,
+            secret_provider_kwargs=mock_secret_provider_kwargs,
+            skip_secrets=False,
+            assume_role_arn="",
+            assume_pod_identity=False,
+            assume_role_aws_account=None,
+            use_okta_role=False,
+            use_service_auth_token=False,
+            use_sso_service_auth_token=False,
+            secrets_from_kube=False,
+        )
+
+
+def test_configure_and_run_uses_bash_by_default_when_interactive(system_paasta_config):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
+    ) as mock_run_docker_container:
+        mock_validate_service_instance.return_value = "marathon"
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_run_docker_container.return_value = 0
+
+        fake_service = "fake_service"
+        docker_url = "8" * 40
+        args = mock.MagicMock()
+        args.cmd = None
+        args.service = fake_service
+        args.healthcheck = False
+        args.healthcheck_only = False
+        args.user_port = None
+        args.instance = "fake_instance"
+        args.interactive = True
+        args.dry_run_json_dict = False
+        args.vault_auth_method = "ldap"
+        args.vault_token_file = "/blah/token"
+        args.skip_secrets = False
+        args.decrypt_secrets = True
+        args.volumes = []
+        args.assume_role_arn = ""
+        args.assume_pod_identity = False
+        args.use_okta_role = False
+        args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
+        args.secrets_from_kube = False
+
+        return_code = configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_url=docker_url,
+            docker_sha=None,
+            service=fake_service,
+            instance="fake_instance",
+            cluster="fake_cluster",
+            system_paasta_config=system_paasta_config,
+            args=args,
+            assume_role_aws_account="dev",
+        )
+        assert return_code == 0
+        mock_secret_provider_kwargs = {
+            "vault_cluster_config": {},
+            "vault_auth_method": "ldap",
+            "vault_token_file": "/blah/token",
+        }
+        mock_run_docker_container.assert_called_once_with(
+            docker_client=mock_docker_client,
+            service=fake_service,
+            instance=args.instance,
+            framework="marathon",
+            docker_url=docker_url,
+            volumes=[],
+            interactive=args.interactive,
+            command="bash",
+            healthcheck=args.healthcheck,
+            healthcheck_only=args.healthcheck_only,
+            user_port=args.user_port,
+            instance_config=mock_get_instance_config.return_value,
+            secret_provider_name="paasta_tools.secret_providers",
+            soa_dir=args.yelpsoa_config_root,
+            dry_run=False,
+            json_dict=False,
+            secret_provider_kwargs=mock_secret_provider_kwargs,
+            skip_secrets=False,
+            assume_role_arn="",
+            assume_role_aws_account="dev",
+            assume_pod_identity=False,
+            use_okta_role=False,
+            use_service_auth_token=False,
+            use_sso_service_auth_token=False,
+            secrets_from_kube=False,
+        )
+
+
+def test_configure_and_run_pulls_image_when_asked(system_paasta_config):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
+    ) as mock_run_docker_container, mock.patch(
+        "paasta_tools.cli.cmds.local_run.docker_pull_image", autospec=True
+    ) as mock_docker_pull_image:
+        mock_validate_service_instance.return_value = "marathon"
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_run_docker_container.return_value = 0
+
+        fake_instance_config = mock.MagicMock(InstanceConfig)
+        fake_instance_config.get_docker_registry.return_value = "fake_registry"
+        fake_instance_config.get_docker_image.return_value = "fake_image"
+        fake_instance_config.get_docker_url.return_value = "fake_registry/fake_image"
+        mock_get_instance_config.return_value = fake_instance_config
+        fake_service = "fake_service"
+        args = mock.MagicMock()
+        args.cmd = None
+        args.service = fake_service
+        args.instance = "fake_instance"
+        args.healthcheck = False
+        args.healthcheck_only = False
+        args.user_port = None
+        args.interactive = True
+        args.dry_run_json_dict = False
+        args.vault_auth_method = "ldap"
+        args.vault_token_file = "/blah/token"
+        args.skip_secrets = False
+        args.decrypt_secrets = True
+        args.volumes = []
+        args.assume_role_arn = ""
+        args.assume_pod_identity = False
+        args.use_okta_role = False
+        args.use_service_auth_token = False
+        args.use_sso_service_auth_token = False
+        args.secrets_from_kube = False
+
+        return_code = configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_url=None,
+            docker_sha=None,
+            service=fake_service,
+            instance="fake_instance",
+            cluster="fake_cluster",
+            args=args,
+            system_paasta_config=system_paasta_config,
+            pull_image=True,
+            assume_role_aws_account="dev",
+        )
+        assert return_code == 0
+        mock_docker_pull_image.assert_called_once_with(
+            mock_docker_client, "fake_registry/fake_image"
+        )
+        mock_secret_provider_kwargs = {
+            "vault_cluster_config": {},
+            "vault_auth_method": "ldap",
+            "vault_token_file": "/blah/token",
+        }
+        mock_run_docker_container.assert_called_once_with(
+            docker_client=mock_docker_client,
+            service=fake_service,
+            instance=args.instance,
+            framework="marathon",
+            docker_url="fake_registry/fake_image",
+            volumes=[],
+            interactive=args.interactive,
+            command="bash",
+            healthcheck=args.healthcheck,
+            healthcheck_only=args.healthcheck_only,
+            user_port=args.user_port,
+            instance_config=mock_get_instance_config.return_value,
+            secret_provider_name="paasta_tools.secret_providers",
+            soa_dir=args.yelpsoa_config_root,
+            dry_run=False,
+            json_dict=False,
+            secret_provider_kwargs=mock_secret_provider_kwargs,
+            skip_secrets=False,
+            assume_role_arn="",
+            assume_pod_identity=False,
+            assume_role_aws_account="dev",
+            use_okta_role=False,
+            use_service_auth_token=False,
+            use_sso_service_auth_token=False,
+            secrets_from_kube=False,
+        )
 
 
 def test_configure_and_run_docker_container_defaults_to_interactive_instance(
@@ -773,45 +777,42 @@ def test_configure_and_run_docker_container_respects_docker_sha(
         assert return_code == 0
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_docker_client",
-    spec_set=docker.APIClient,
-    autospec=None,
-)
-@mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.cook_image.makefile_responds_to", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.cook_image._run", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.os.geteuid", autospec=True)
-def test_run_success(
-    mock_os_geteuid,
-    mock_run,
-    mock_makefile_responds_to,
-    mock_validate_service_name,
-    mock_Client,
-    mock_run_docker_container,
-    mock_figure_out_service_name,
-    mock_should_reexec_as_root,
-):
-    mock_os_geteuid.return_value = 0
-    mock_run.return_value = (0, "Output")
-    mock_makefile_responds_to.return_value = True
-    mock_validate_service_name.return_value = True
-    mock_Client.return_value = None
-    mock_run_docker_container.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_should_reexec_as_root.return_value = False
+def test_run_success():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.os.geteuid", autospec=True
+    ) as mock_os_geteuid, mock.patch(
+        "paasta_tools.cli.cmds.cook_image._run", autospec=True
+    ) as mock_run, mock.patch(
+        "paasta_tools.cli.cmds.cook_image.makefile_responds_to", autospec=True
+    ) as mock_makefile_responds_to, mock.patch(
+        "paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True
+    ) as mock_validate_service_name, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_client",
+        spec_set=docker.APIClient,
+        autospec=None,
+    ) as mock_Client, mock.patch(
+        "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container",
+        autospec=True,
+    ) as mock_run_docker_container, mock.patch(
+        "paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, mock.patch(
+        "paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True
+    ) as mock_should_reexec_as_root:
+        mock_os_geteuid.return_value = 0
+        mock_run.return_value = (0, "Output")
+        mock_makefile_responds_to.return_value = True
+        mock_validate_service_name.return_value = True
+        mock_Client.return_value = None
+        mock_run_docker_container.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_should_reexec_as_root.return_value = False
 
-    args = mock.MagicMock()
-    args.service = "fake_service"
-    args.healthcheck = False
-    args.interactive = False
-    args.action = "pull"
-    assert paasta_local_run(args) is None
+        args = mock.MagicMock()
+        args.service = "fake_service"
+        args.healthcheck = False
+        args.interactive = False
+        args.action = "pull"
+        assert paasta_local_run(args) is None
 
 
 @pytest.mark.parametrize(
@@ -823,68 +824,62 @@ def test_run_success(
         ("pnw-prod", "dev", "dev"),
     ],
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
-)
 def test_assume_role_aws_account(
-    mock_run_docker_container,
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_system_paasta_config,
-    mock_should_reexec_as_root,
-    cluster,
-    aws_account,
-    expected_aws_account,
-    system_paasta_config,
+    cluster, aws_account, expected_aws_account, system_paasta_config
 ):
-    mock_system_paasta_config.return_value = system_paasta_config
-    mock_should_reexec_as_root.return_value = False
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container",
+        autospec=True,
+    ) as mock_run_docker_container, mock.patch(
+        "paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True
+    ) as mock_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True
+    ) as mock_should_reexec_as_root:
+        mock_system_paasta_config.return_value = system_paasta_config
+        mock_should_reexec_as_root.return_value = False
 
-    args = mock.MagicMock()
-    args.cluster = cluster
-    args.assume_role_aws_account = aws_account
+        args = mock.MagicMock()
+        args.cluster = cluster
+        args.assume_role_aws_account = aws_account
 
-    paasta_local_run(args)
+        paasta_local_run(args)
 
-    _, kwargs = mock_run_docker_container.call_args
-    assert kwargs.get("assume_role_aws_account", "") == expected_aws_account
+        _, kwargs = mock_run_docker_container.call_args
+        assert kwargs.get("assume_role_aws_account", "") == expected_aws_account
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_docker_client",
-    spec_set=docker.APIClient,
-    autospec=None,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
-def test_run_cook_image_fails(
-    mock_paasta_cook_image,
-    mock_Client,
-    mock_run_docker_container,
-    mock_figure_out_service_name,
-    mock_should_reexec_as_root,
-):
-    mock_paasta_cook_image.return_value = 1
-    mock_Client.return_value = None
-    mock_run_docker_container.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_should_reexec_as_root.return_value = False
+def test_run_cook_image_fails():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True
+    ) as mock_paasta_cook_image, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_client",
+        spec_set=docker.APIClient,
+        autospec=None,
+    ) as mock_Client, mock.patch(
+        "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container",
+        autospec=True,
+    ) as mock_run_docker_container, mock.patch(
+        "paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True
+    ) as mock_figure_out_service_name, mock.patch(
+        "paasta_tools.cli.cmds.local_run.should_reexec_as_root", autospec=True
+    ) as mock_should_reexec_as_root:
+        mock_paasta_cook_image.return_value = 1
+        mock_Client.return_value = None
+        mock_run_docker_container.return_value = None
+        mock_figure_out_service_name.return_value = "fake_service"
+        mock_should_reexec_as_root.return_value = False
 
-    args = mock.MagicMock()
-    args.service = "fake_service"
-    args.healthcheck = False
-    args.interactive = False
-    args.action = "build"
-    assert paasta_local_run(args) == 1
-    assert not mock_run_docker_container.called
+        args = mock.MagicMock()
+        args.service = "fake_service"
+        args.healthcheck = False
+        args.interactive = False
+        args.action = "build"
+        assert paasta_local_run(args) == 1
+        assert not mock_run_docker_container.called
 
 
 def test_get_docker_run_cmd_without_additional_args():
@@ -1176,215 +1171,148 @@ def test_get_container_id_name_not_found():
         get_container_id(mock_docker_client, container_name)
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_non_interactive_no_healthcheck(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_docker_client.inspect_container.return_value = {
-        "State": {"ExitCode": 666, "Running": True}
-    }
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=False,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-    )
-    mock_service_manifest.get_mem.assert_called_once_with()
-    mock_pick_random_port.assert_called_once_with("fake_service")
-    assert mock_get_docker_run_cmd.call_count == 1
-    assert mock_get_healthcheck_for_instance.call_count == 1
-    assert mock_execlpe.call_count == 1
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_interactive(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    return_code = run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=True,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-    )
-    mock_service_manifest.get_mem.assert_called_once_with()
-    mock_pick_random_port.assert_called_once_with("fake_service")
-    assert mock_get_docker_run_cmd.call_count == 1
-    assert mock_get_healthcheck_for_instance.call_count == 1
-    assert mock_execlpe.call_count == 1
-    assert mock_run.call_count == 0
-    assert mock_get_container_id.call_count == 0
-    assert mock_docker_client.attach.call_count == 0
-    assert mock_docker_client.stop.call_count == 0
-    assert mock_docker_client.remove_container.call_count == 0
-    assert return_code == 0
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
-)
-def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthcheck(
-    mock_run_healthcheck_on_container,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(
-        spec_set=docker.APIClient.attach, side_effect=KeyboardInterrupt
-    )
-    mock_run_healthcheck_on_container.return_value = (True, "Good to go")
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    mock_docker_client.inspect_container.return_value = {
-        "State": {"ExitCode": 99, "Running": True}
-    }
-    return_code = run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=False,
-        command="fake_command",
-        healthcheck=True,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-    )
-    assert mock_docker_client.stop.call_count == 1
-    assert mock_docker_client.remove_container.call_count == 1
-    assert return_code == 99
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(42, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_non_interactive_run_returns_nonzero(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_docker_client.inspect_container.return_value = {
-        "State": {"ExitCode": 99, "Running": True}
-    }
-    mock_service_manifest.cluster = "fake_cluster"
-    with raises(SystemExit) as excinfo:
+def test_run_docker_container_non_interactive_no_healthcheck():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ) as mock_get_healthcheck_for_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ) as mock_execlpe, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port:
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_docker_client.inspect_container.return_value = {
+            "State": {"ExitCode": 666, "Running": True}
+        }
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
         run_docker_container(
+            docker_client=mock_docker_client,
+            service="fake_service",
+            instance="fake_instance",
+            docker_url="fake_hash",
+            volumes=[],
+            interactive=False,
+            command="fake_command",
+            healthcheck=False,
+            healthcheck_only=False,
+            user_port=None,
+            instance_config=mock_service_manifest,
+            secret_provider_name="vault",
+        )
+        mock_service_manifest.get_mem.assert_called_once_with()
+        mock_pick_random_port.assert_called_once_with("fake_service")
+        assert mock_get_docker_run_cmd.call_count == 1
+        assert mock_get_healthcheck_for_instance.call_count == 1
+        assert mock_execlpe.call_count == 1
+
+
+def test_run_docker_container_interactive():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ) as mock_get_healthcheck_for_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ) as mock_get_container_id, mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ) as mock_run, mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ) as mock_execlpe, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port:
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        return_code = run_docker_container(
+            docker_client=mock_docker_client,
+            service="fake_service",
+            instance="fake_instance",
+            docker_url="fake_hash",
+            volumes=[],
+            interactive=True,
+            command="fake_command",
+            healthcheck=False,
+            healthcheck_only=False,
+            user_port=None,
+            instance_config=mock_service_manifest,
+            secret_provider_name="vault",
+        )
+        mock_service_manifest.get_mem.assert_called_once_with()
+        mock_pick_random_port.assert_called_once_with("fake_service")
+        assert mock_get_docker_run_cmd.call_count == 1
+        assert mock_get_healthcheck_for_instance.call_count == 1
+        assert mock_execlpe.call_count == 1
+        assert mock_run.call_count == 0
+        assert mock_get_container_id.call_count == 0
+        assert mock_docker_client.attach.call_count == 0
+        assert mock_docker_client.stop.call_count == 0
+        assert mock_docker_client.remove_container.call_count == 0
+        assert return_code == 0
+
+
+def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthcheck():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+    ) as mock_run_healthcheck_on_container, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port:
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(
+            spec_set=docker.APIClient.attach, side_effect=KeyboardInterrupt
+        )
+        mock_run_healthcheck_on_container.return_value = (True, "Good to go")
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        mock_docker_client.inspect_container.return_value = {
+            "State": {"ExitCode": 99, "Running": True}
+        }
+        return_code = run_docker_container(
             docker_client=mock_docker_client,
             service="fake_service",
             instance="fake_instance",
@@ -1398,116 +1326,259 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             instance_config=mock_service_manifest,
             secret_provider_name="vault",
         )
-    # Cleanup wont' be necessary and the function should bail out early.
-    assert mock_docker_client.stop.call_count == 0
-    assert mock_docker_client.remove_container.call_count == 0
-    assert excinfo.value.code == 1
+        assert mock_docker_client.stop.call_count == 1
+        assert mock_docker_client.remove_container.call_count == 1
+        assert return_code == 99
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
-    autospec=True,
-    return_value=True,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_with_custom_soadir_uses_healthcheck(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    mock_simulate_healthcheck,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach.return_value = ["line1", "line2"]
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    with raises(SystemExit) as excinfo:
-        run_docker_container(
-            docker_client=mock_docker_client,
-            service="fake_service",
-            instance="fake_instance",
-            docker_url="fake_hash",
-            volumes=[],
-            interactive=False,
-            command="fake_command",
-            healthcheck=True,
-            healthcheck_only=True,
-            user_port=None,
-            instance_config=mock_service_manifest,
-            soa_dir="fake_soa_dir",
-            secret_provider_name="vault",
+def test_run_docker_container_non_interactive_run_returns_nonzero():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(42, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port:
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
         )
-    assert mock_docker_client.stop.call_count == 1
-    assert mock_docker_client.remove_container.call_count == 1
-    assert excinfo.value.code == 0
-    mock_get_healthcheck_for_instance.assert_called_with(
-        "fake_service",
-        "fake_instance",
-        mock_service_manifest,
-        mock_pick_random_port.return_value,
-        soa_dir="fake_soa_dir",
-    )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_docker_client.inspect_container.return_value = {
+            "State": {"ExitCode": 99, "Running": True}
+        }
+        mock_service_manifest.cluster = "fake_cluster"
+        with raises(SystemExit) as excinfo:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=False,
+                command="fake_command",
+                healthcheck=True,
+                healthcheck_only=False,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                secret_provider_name="vault",
+            )
+        # Cleanup wont' be necessary and the function should bail out early.
+        assert mock_docker_client.stop.call_count == 0
+        assert mock_docker_client.remove_container.call_count == 0
+        assert excinfo.value.code == 1
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
-    autospec=True,
-    return_value=True,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("cmd", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_terminates_with_healthcheck_only_success(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    mock_simulate_healthcheck,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach.return_value = "line1"
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 0}}
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    with raises(SystemExit) as excinfo:
+def test_run_docker_container_with_custom_soadir_uses_healthcheck():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ) as mock_get_healthcheck_for_instance, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port, mock.patch(
+        "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
+        autospec=True,
+        return_value=True,
+    ):
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach.return_value = ["line1", "line2"]
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        with raises(SystemExit) as excinfo:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=False,
+                command="fake_command",
+                healthcheck=True,
+                healthcheck_only=True,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                soa_dir="fake_soa_dir",
+                secret_provider_name="vault",
+            )
+        assert mock_docker_client.stop.call_count == 1
+        assert mock_docker_client.remove_container.call_count == 1
+        assert excinfo.value.code == 0
+        mock_get_healthcheck_for_instance.assert_called_with(
+            "fake_service",
+            "fake_instance",
+            mock_service_manifest,
+            mock_pick_random_port.return_value,
+            soa_dir="fake_soa_dir",
+        )
+
+
+def test_run_docker_container_terminates_with_healthcheck_only_success():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("cmd", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port, mock.patch(
+        "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
+        autospec=True,
+        return_value=True,
+    ):
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach.return_value = "line1"
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 0}}
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        with raises(SystemExit) as excinfo:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=False,
+                command="fake_command",
+                healthcheck=False,
+                healthcheck_only=True,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                secret_provider_name="vault",
+            )
+        assert mock_docker_client.stop.call_count == 1
+        assert mock_docker_client.remove_container.call_count == 1
+        assert excinfo.value.code == 0
+
+
+def test_run_docker_container_terminates_with_healthcheck_only_fail(capfd):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("cmd", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port, mock.patch(
+        "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
+        autospec=True,
+        return_value=False,
+    ):
+        mock_pick_random_port.return_value = 666
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        ATTACH_OUTPUT = "I'm the stdout / stderr!\n"
+        mock_docker_client.attach = mock.MagicMock(
+            spec_set=docker.APIClient.attach, return_value=ATTACH_OUTPUT
+        )
+        mock_docker_client.inspect_container = mock.MagicMock(
+            spec_set=docker.APIClient.inspect_container
+        )
+        mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 42}}
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        with raises(SystemExit) as excinfo:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=False,
+                command="fake_command",
+                healthcheck=True,
+                healthcheck_only=True,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                secret_provider_name="vault",
+            )
+        assert mock_docker_client.stop.call_count == 1
+        assert mock_docker_client.remove_container.call_count == 1
+        assert excinfo.value.code == 1
+        assert (
+            ATTACH_OUTPUT not in capfd.readouterr()[0]
+        )  # streamed by docker lgos thread instead
+
+
+def test_run_docker_container_with_user_specified_port():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.check_if_port_free", autospec=True
+    ) as mock_check_if_port_free, mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ) as mock_execlpe, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True
+    ) as mock_pick_random_port:
+        mock_pick_random_port.return_value = 666  # we dont want it running on this port
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.get_net.return_value = "bridge"
+        mock_service_manifest.get_env.return_value = {}
+        mock_service_manifest.get_container_port.return_value = 8888
+        mock_service_manifest.cluster = "blah"
         run_docker_container(
             docker_client=mock_docker_client,
             service="fake_service",
@@ -1517,335 +1588,216 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             interactive=False,
             command="fake_command",
             healthcheck=False,
-            healthcheck_only=True,
-            user_port=None,
+            healthcheck_only=False,
+            user_port=1234,
             instance_config=mock_service_manifest,
             secret_provider_name="vault",
         )
-    assert mock_docker_client.stop.call_count == 1
-    assert mock_docker_client.remove_container.call_count == 1
-    assert excinfo.value.code == 0
+        mock_service_manifest.get_mem.assert_called_once_with()
+        assert mock_check_if_port_free.call_count == 1
+        assert (
+            mock_pick_random_port.called is False
+        )  # Don't pick a random port, use the user chosen one
+        assert mock_execlpe.call_count == 1
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service",
-    autospec=True,
-    return_value=False,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("cmd", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_terminates_with_healthcheck_only_fail(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    mock_simulate_healthcheck,
-    capfd,
-):
-    mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    ATTACH_OUTPUT = "I'm the stdout / stderr!\n"
-    mock_docker_client.attach = mock.MagicMock(
-        spec_set=docker.APIClient.attach, return_value=ATTACH_OUTPUT
-    )
-    mock_docker_client.inspect_container = mock.MagicMock(
-        spec_set=docker.APIClient.inspect_container
-    )
-    mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 42}}
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    with raises(SystemExit) as excinfo:
-        run_docker_container(
-            docker_client=mock_docker_client,
-            service="fake_service",
+def test_simulate_healthcheck_on_service_disabled():
+    with mock.patch("time.sleep", autospec=True):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        assert simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            False,
+        )
+
+
+def test_simulate_healthcheck_on_service_enabled_success():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+    ) as mock_run_healthcheck_on_container, mock.patch("time.sleep", autospec=True):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = KubernetesDeploymentConfig(
+            service="fake_name",
+            cluster="fake_cluster",
             instance="fake_instance",
-            docker_url="fake_hash",
-            volumes=[],
-            interactive=False,
-            command="fake_command",
-            healthcheck=True,
-            healthcheck_only=True,
-            user_port=None,
-            instance_config=mock_service_manifest,
-            secret_provider_name="vault",
+            config_dict={"healthcheck_grace_period_seconds": 0},
+            branch_dict=None,
         )
-    assert mock_docker_client.stop.call_count == 1
-    assert mock_docker_client.remove_container.call_count == 1
-    assert excinfo.value.code == 1
-    assert (
-        ATTACH_OUTPUT not in capfd.readouterr()[0]
-    )  # streamed by docker lgos thread instead
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        mock_run_healthcheck_on_container.return_value = (True, "it works")
+        assert simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            True,
+        )
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.check_if_port_free", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-def test_run_docker_container_with_user_specified_port(
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_check_if_port_free,
-    mock_run,
-    mock_execlpe,
-    mock_pick_random_port,
-):
-    mock_pick_random_port.return_value = 666  # we dont want it running on this port
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.get_net.return_value = "bridge"
-    mock_service_manifest.get_env.return_value = {}
-    mock_service_manifest.get_container_port.return_value = 8888
-    mock_service_manifest.cluster = "blah"
-    run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=False,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=1234,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-    )
-    mock_service_manifest.get_mem.assert_called_once_with()
-    assert mock_check_if_port_free.call_count == 1
-    assert (
-        mock_pick_random_port.called is False
-    )  # Don't pick a random port, use the user chosen one
-    assert mock_execlpe.call_count == 1
+def test_simulate_healthcheck_on_service_enabled_failure():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+    ) as mock_run_healthcheck_on_container, mock.patch("time.sleep", autospec=True):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = KubernetesDeploymentConfig(
+            service="fake_name",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"healthcheck_grace_period_seconds": 0},
+            branch_dict=None,
+        )
+        mock_service_manifest
+
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        mock_run_healthcheck_on_container.return_value = (False, "it failed")
+        actual = simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            True,
+        )
+        assert actual is False
 
 
-@mock.patch("time.sleep", autospec=True)
-def test_simulate_healthcheck_on_service_disabled(mock_sleep):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    assert simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        False,
-    )
+def test_simulate_healthcheck_on_service_enabled_partial_failure():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+    ) as mock_run_healthcheck_on_container, mock.patch(
+        "time.sleep", autospec=True
+    ) as mock_sleep:
+        mock_run_healthcheck_on_container.side_effect = [
+            (False, ""),
+            (False, ""),
+            (False, ""),
+            (False, ""),
+            (True, ""),
+        ]
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = KubernetesDeploymentConfig(
+            service="fake_name",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"healthcheck_grace_period_seconds": 0},
+            branch_dict=None,
+        )
+
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        assert simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            True,
+        )
+        # First run_healthcheck_on_container call happens silently
+        assert mock_run_healthcheck_on_container.call_count == 5
+        assert mock_sleep.call_count == 4
 
 
-@mock.patch("time.sleep", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
-)
-def test_simulate_healthcheck_on_service_enabled_success(
-    mock_run_healthcheck_on_container, mock_sleep
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = KubernetesDeploymentConfig(
-        service="fake_name",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"healthcheck_grace_period_seconds": 0},
-        branch_dict=None,
-    )
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    mock_run_healthcheck_on_container.return_value = (True, "it works")
-    assert simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        True,
-    )
+def test_simulate_healthcheck_on_service_enabled_during_grace_period():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+        return_value=(True, "healthcheck status"),
+    ) as mock_run_healthcheck_on_container, mock.patch(
+        "time.time", autospec=True
+    ) as mock_time, mock.patch(
+        "time.sleep", autospec=True
+    ) as mock_sleep:
+        # prevent grace period from ending
+        mock_time.side_effect = [0, 0]
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = KubernetesDeploymentConfig(
+            service="fake_name",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"healthcheck_grace_period_seconds": 1},
+            branch_dict=None,
+        )
+
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        assert simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            True,
+        )
+        assert mock_sleep.call_count == 0
+        assert mock_run_healthcheck_on_container.call_count == 1
 
 
-@mock.patch("time.sleep", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
-)
-def test_simulate_healthcheck_on_service_enabled_failure(
-    mock_run_healthcheck_on_container, mock_sleep
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = KubernetesDeploymentConfig(
-        service="fake_name",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"healthcheck_grace_period_seconds": 0},
-        branch_dict=None,
-    )
-    mock_service_manifest
+def test_simulate_healthcheck_on_service_enabled_honors_grace_period(capfd):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
+        autospec=True,
+    ) as mock_run_healthcheck_on_container, mock.patch(
+        "time.time", autospec=True
+    ) as mock_time, mock.patch(
+        "time.sleep", autospec=True
+    ) as mock_sleep:
+        # change time to make sure we are sufficiently past grace period
+        mock_run_healthcheck_on_container.side_effect = [
+            (False, "400 noop"),
+            (False, "400 noop"),
+            (True, "200 noop"),
+        ]
 
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    mock_run_healthcheck_on_container.return_value = (False, "it failed")
-    actual = simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        True,
-    )
-    assert actual is False
+        mock_time.side_effect = [0, 1, 5]
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_service_manifest = KubernetesDeploymentConfig(
+            service="fake_name",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={
+                # only one healthcheck will be performed silently
+                "healthcheck_grace_period_seconds": 2
+            },
+            branch_dict=None,
+        )
 
-
-@mock.patch("time.sleep", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
-)
-def test_simulate_healthcheck_on_service_enabled_partial_failure(
-    mock_run_healthcheck_on_container, mock_sleep
-):
-    mock_run_healthcheck_on_container.side_effect = [
-        (False, ""),
-        (False, ""),
-        (False, ""),
-        (False, ""),
-        (True, ""),
-    ]
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = KubernetesDeploymentConfig(
-        service="fake_name",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"healthcheck_grace_period_seconds": 0},
-        branch_dict=None,
-    )
-
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    assert simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        True,
-    )
-    # First run_healthcheck_on_container call happens silently
-    assert mock_run_healthcheck_on_container.call_count == 5
-    assert mock_sleep.call_count == 4
-
-
-@mock.patch("time.sleep", autospec=True)
-@mock.patch("time.time", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container",
-    autospec=True,
-    return_value=(True, "healthcheck status"),
-)
-def test_simulate_healthcheck_on_service_enabled_during_grace_period(
-    mock_run_healthcheck_on_container, mock_time, mock_sleep
-):
-    # prevent grace period from ending
-    mock_time.side_effect = [0, 0]
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = KubernetesDeploymentConfig(
-        service="fake_name",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"healthcheck_grace_period_seconds": 1},
-        branch_dict=None,
-    )
-
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    assert simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        True,
-    )
-    assert mock_sleep.call_count == 0
-    assert mock_run_healthcheck_on_container.call_count == 1
-
-
-@mock.patch("time.sleep", autospec=True)
-@mock.patch("time.time", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
-)
-def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
-    mock_run_healthcheck_on_container, mock_time, mock_sleep, capfd
-):
-    # change time to make sure we are sufficiently past grace period
-    mock_run_healthcheck_on_container.side_effect = [
-        (False, "400 noop"),
-        (False, "400 noop"),
-        (True, "200 noop"),
-    ]
-
-    mock_time.side_effect = [0, 1, 5]
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_service_manifest = KubernetesDeploymentConfig(
-        service="fake_name",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={
-            # only one healthcheck will be performed silently
-            "healthcheck_grace_period_seconds": 2
-        },
-        branch_dict=None,
-    )
-
-    fake_container_id = "fake_container_id"
-    fake_mode = "http"
-    fake_url = "http://fake_host/fake_status_path"
-    assert simulate_healthcheck_on_service(
-        mock_service_manifest,
-        mock_docker_client,
-        fake_container_id,
-        fake_mode,
-        fake_url,
-        True,
-    )
-    assert mock_sleep.call_count == 2
-    assert mock_run_healthcheck_on_container.call_count == 3
-    out, _ = capfd.readouterr()
-    assert out.count("Healthcheck failed! (disregarded due to grace period)") == 1
-    assert out.count("Healthcheck failed! (Attempt") == 1
-    assert out.count("200 noop") == 1
-    assert out.count("400 noop") == 2
-    assert out.count("Healthcheck succeeded!") == 1
+        fake_container_id = "fake_container_id"
+        fake_mode = "http"
+        fake_url = "http://fake_host/fake_status_path"
+        assert simulate_healthcheck_on_service(
+            mock_service_manifest,
+            mock_docker_client,
+            fake_container_id,
+            fake_mode,
+            fake_url,
+            True,
+        )
+        assert mock_sleep.call_count == 2
+        assert mock_run_healthcheck_on_container.call_count == 3
+        out, _ = capfd.readouterr()
+        assert out.count("Healthcheck failed! (disregarded due to grace period)") == 1
+        assert out.count("Healthcheck failed! (Attempt") == 1
+        assert out.count("200 noop") == 1
+        assert out.count("400 noop") == 2
+        assert out.count("Healthcheck succeeded!") == 1
 
 
 def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd):
@@ -1911,67 +1863,67 @@ def test_format_command_for_type_for_marathon():
     assert actual == "foo"
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.parse_time_variables", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.datetime", autospec=True)
-def test_format_command_for_tron(mock_datetime, mock_parse_time_variables):
-    fake_date = mock.Mock()
-    mock_datetime.datetime.now.return_value = fake_date
-    mock_parse_time_variables.return_value = "foo"
-    actual = format_command_for_type("{foo}", "tron", fake_date)
-    mock_parse_time_variables.assert_called_once_with("{foo}", fake_date)
-    assert actual == "foo"
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.socket.getfqdn",
-    autospec=True,
-    return_value="fake_host",
-)
-def test_get_local_run_environment_vars_kubernetes(
-    mock_getfqdn,
-):
-    mock_instance_config = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
-    mock_instance_config.get_mem.return_value = 123
-    mock_instance_config.get_disk.return_value = 123
-    mock_instance_config.get_cpus.return_value = 123
-    mock_instance_config.get_cluster.return_value = "fake_cluster"
-    mock_instance_config.get_docker_image.return_value = "fake_docker_image"
-
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="not-marathon"
-    )
-    assert actual["PAASTA_CLUSTER"] == "fake_cluster"
-    assert "MARATHON_PORT" not in actual
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.socket.getfqdn",
-    autospec=True,
-    return_value="fake_host",
-)
-def test_get_local_run_environment_vars_adhoc(
-    mock_getfqdn,
-):
-    mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
-    mock_instance_config.get_mem.return_value = 123
-    mock_instance_config.get_disk.return_value = 123
-    mock_instance_config.get_cpus.return_value = 123
-    mock_instance_config.get_cluster.return_value = "fake_cluster"
-    mock_instance_config.get_docker_image.return_value = "fake_docker_image"
-
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="adhoc"
-    )
-    assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
-    assert actual["PAASTA_CLUSTER"] == "fake_cluster"
-    assert "PAASTA_PORT" not in actual
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=True, autospec=True
-)
-def test_volumes_are_deduped(mock_exists):
+def test_format_command_for_tron():
     with mock.patch(
+        "paasta_tools.cli.cmds.local_run.datetime", autospec=True
+    ) as mock_datetime, mock.patch(
+        "paasta_tools.cli.cmds.local_run.parse_time_variables", autospec=True
+    ) as mock_parse_time_variables:
+        fake_date = mock.Mock()
+        mock_datetime.datetime.now.return_value = fake_date
+        mock_parse_time_variables.return_value = "foo"
+        actual = format_command_for_type("{foo}", "tron", fake_date)
+        mock_parse_time_variables.assert_called_once_with("{foo}", fake_date)
+        assert actual == "foo"
+
+
+def test_get_local_run_environment_vars_kubernetes():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.socket.getfqdn",
+        autospec=True,
+        return_value="fake_host",
+    ):
+        mock_instance_config = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
+        mock_instance_config.get_mem.return_value = 123
+        mock_instance_config.get_disk.return_value = 123
+        mock_instance_config.get_cpus.return_value = 123
+        mock_instance_config.get_cluster.return_value = "fake_cluster"
+        mock_instance_config.get_docker_image.return_value = "fake_docker_image"
+
+        actual = get_local_run_environment_vars(
+            instance_config=mock_instance_config, port0=1234, framework="not-marathon"
+        )
+        assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+        assert "MARATHON_PORT" not in actual
+
+
+def test_get_local_run_environment_vars_adhoc():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.socket.getfqdn",
+        autospec=True,
+        return_value="fake_host",
+    ):
+        mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
+        mock_instance_config.get_mem.return_value = 123
+        mock_instance_config.get_disk.return_value = 123
+        mock_instance_config.get_cpus.return_value = 123
+        mock_instance_config.get_cluster.return_value = "fake_cluster"
+        mock_instance_config.get_docker_image.return_value = "fake_docker_image"
+
+        actual = get_local_run_environment_vars(
+            instance_config=mock_instance_config, port0=1234, framework="adhoc"
+        )
+        assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
+        assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+        assert "PAASTA_PORT" not in actual
+
+
+def test_volumes_are_deduped():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.os.path.exists",
+        return_value=True,
+        autospec=True,
+    ), mock.patch(
         "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
@@ -2024,11 +1976,12 @@ def test_volumes_are_deduped(mock_exists):
         assert kwargs["volumes"] == ["/hostPath:/containerPath:ro"]
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=False, autospec=True
-)
-def test_missing_volumes_skipped(mock_exists):
+def test_missing_volumes_skipped():
     with mock.patch(
+        "paasta_tools.cli.cmds.local_run.os.path.exists",
+        return_value=False,
+        autospec=True,
+    ), mock.patch(
         "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
@@ -2080,363 +2033,62 @@ def test_missing_volumes_skipped(mock_exists):
         assert kwargs["volumes"] == []
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.pick_random_port",
-    autospec=True,
-    return_value=666,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
-    autospec=True,
-    return_value={},
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.open",
-    new_callable=mock.mock_open(),
-    autospec=None,
-)
-@mock.patch("os.makedirs", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.assume_aws_role",
-    autospec=True,
-    return_value={"access_key": "abcdefg", "secret_key": "abcdefg"},
-)
-def test_run_docker_container_assume_aws_role(
-    mock_assume_aws_role,
-    mock_os_makedirs,
-    mock_open,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_decrypt_secret_volumes,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
+def test_run_docker_container_assume_aws_role():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.assume_aws_role",
+        autospec=True,
+        return_value={"access_key": "abcdefg", "secret_key": "abcdefg"},
+    ), mock.patch("os.makedirs", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.open",
+        new_callable=mock.mock_open(),
+        autospec=None,
+    ) as mock_open, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+        autospec=True,
+        return_value={},
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port",
+        autospec=True,
+        return_value=666,
+    ):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
 
-    # Coverage for binary file vs non-binary file
-    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
-    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
-    # So we raise once, implying that the first file is binary and let the second write() succeed
-    # For the second file, we imply the file is non-binary and only need to mock success once
-    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+        # Coverage for binary file vs non-binary file
+        mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+        # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+        # So we raise once, implying that the first file is binary and let the second write() succeed
+        # For the second file, we imply the file is non-binary and only need to mock success once
+        mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
 
-    # Magic to make the context manager return the mock that we actually want
-    # Otherwise it just returns a new mock_open each time
-    mock_open.return_value = mock_open
-    mock_open.__enter__.return_value = mock_text_io_wrapper
+        # Magic to make the context manager return the mock that we actually want
+        # Otherwise it just returns a new mock_open each time
+        mock_open.return_value = mock_open
+        mock_open.__enter__.return_value = mock_text_io_wrapper
 
-    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
-    os.environ["TMPDIR"] = "/tmp/"
-    return_code = run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=True,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-        assume_pod_identity=True,
-    )
-    assert 1 == mock_get_docker_run_cmd.call_count
-
-    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
-    environment = the_kwargs["env"]
-    assert 3 == environment.update.call_count
-    assert {
-        "access_key": "abcdefg",
-        "secret_key": "abcdefg",
-    } == environment.update.call_args_list[1][0][0]
-    assert 0 == return_code
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.pick_random_port",
-    autospec=True,
-    return_value=666,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
-    autospec=True,
-    return_value={
-        "/the/container/path/the_secret_name1": b"the_secret_content1",
-        "/the/container/path/the_secret_name2": b"the_secret_content2",
-    },
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.open",
-    new_callable=mock.mock_open(),
-    autospec=None,
-)
-@mock.patch("os.makedirs", autospec=True)
-@mark.parametrize(
-    "original_service_name, override_service_name",
-    (
-        ("fake_service", "fake_service"),  # no service override
-        ("fake_service", "super_fake_service"),  # service override
-    ),
-)
-def test_run_docker_container_secret_volumes(
-    mock_os_makedirs,
-    mock_open,
-    mock_decrypt_secret_volumes,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    original_service_name,
-    override_service_name,
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-    mock_service_manifest.get_service = mock.MagicMock(
-        return_value=override_service_name
-    )
-
-    # Coverage for binary file vs non-binary file
-    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
-    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
-    # So we raise once, implying that the first file is binary and let the second write() succeed
-    # For the second file, we imply the file is non-binary and only need to mock success once
-    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
-
-    # Magic to make the context manager return the mock that we actually want
-    # Otherwise it just returns a new mock_open each time
-    mock_open.return_value = mock_open
-    mock_open.__enter__.return_value = mock_text_io_wrapper
-
-    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
-    os.environ["TMPDIR"] = "/tmp/"
-    return_code = run_docker_container(
-        docker_client=mock_docker_client,
-        service=original_service_name,
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=True,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-    )
-    assert 1 == mock_get_docker_run_cmd.call_count
-
-    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
-    assert "volumes" in the_kwargs
-    assert re.match(
-        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
-        the_kwargs["volumes"][0],
-    ), "Did not find the expected secret file volume mount"
-    assert re.match(
-        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
-        the_kwargs["volumes"][1],
-    ), "Did not find the expected secret file volume mount"
-
-    _, decrypt_kwargs = mock_decrypt_secret_volumes.call_args_list[0]
-    assert decrypt_kwargs["service_name"] == override_service_name
-
-    assert 0 == return_code
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.pick_random_port",
-    autospec=True,
-    return_value=666,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
-    autospec=True,
-    return_value={
-        "/the/container/path/the_secret_name1": b"the_secret_content1",
-        "/the/container/path/the_secret_name2": b"the_secret_content2",
-    },
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.open",
-    new_callable=mock.mock_open(),
-    autospec=None,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
-@mock.patch("os.makedirs", autospec=True)
-def test_run_docker_container_secret_volumes_from_kube(
-    mock_os_makedirs,
-    mock_kube_client,
-    mock_open,
-    mock_get_kubernetes_secret_volumes,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-
-    # Coverage for binary file vs non-binary file
-    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
-    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
-    # So we raise once, implying that the first file is binary and let the second write() succeed
-    # For the second file, we imply the file is non-binary and only need to mock success once
-    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
-
-    # Magic to make the context manager return the mock that we actually want
-    # Otherwise it just returns a new mock_open each time
-    mock_open.return_value = mock_open
-    mock_open.__enter__.return_value = mock_text_io_wrapper
-
-    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
-    os.environ["TMPDIR"] = "/tmp/"
-    return_code = run_docker_container(
-        docker_client=mock_docker_client,
-        service="fake_service",
-        instance="fake_instance",
-        docker_url="fake_hash",
-        volumes=[],
-        interactive=True,
-        command="fake_command",
-        healthcheck=False,
-        healthcheck_only=False,
-        user_port=None,
-        instance_config=mock_service_manifest,
-        secret_provider_name="vault",
-        secrets_from_kube=True,
-    )
-    assert 1 == mock_get_docker_run_cmd.call_count
-
-    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
-    assert "volumes" in the_kwargs
-    assert re.match(
-        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
-        the_kwargs["volumes"][0],
-    ), "Did not find the expected secret file volume mount"
-    assert re.match(
-        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
-        the_kwargs["volumes"][1],
-    ), "Did not find the expected secret file volume mount"
-
-    assert 0 == return_code
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.pick_random_port",
-    autospec=True,
-    return_value=666,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
-    autospec=True,
-    side_effect=Exception("Simulate failure decrypting secret volumes"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.open",
-    new_callable=mock.mock_open(),
-    autospec=None,
-)
-def test_run_docker_container_secret_volumes_raises(
-    mock_open,
-    mock_decrypt_secret_volumes,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    capsys,
-):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
-
-    with raises(SystemExit) as sys_exit:
-        run_docker_container(
+        # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+        os.environ["TMPDIR"] = "/tmp/"
+        return_code = run_docker_container(
             docker_client=mock_docker_client,
             service="fake_service",
             instance="fake_instance",
@@ -2449,68 +2101,177 @@ def test_run_docker_container_secret_volumes_raises(
             user_port=None,
             instance_config=mock_service_manifest,
             secret_provider_name="vault",
+            assume_pod_identity=True,
         )
-    assert 0 == mock_get_docker_run_cmd.call_count
-    assert 1 == sys_exit.value.code
-    output, _ = capsys.readouterr()
-    assert (
-        "Failed to decrypt secrets with Exception: Simulate failure decrypting secret volumes"
-        in output
-    )
+        assert 1 == mock_get_docker_run_cmd.call_count
+
+        _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+        environment = the_kwargs["env"]
+        assert 3 == environment.update.call_count
+        assert {
+            "access_key": "abcdefg",
+            "secret_key": "abcdefg",
+        } == environment.update.call_args_list[1][0][0]
+        assert 0 == return_code
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.pick_random_port",
-    autospec=True,
-    return_value=666,
+@mark.parametrize(
+    "original_service_name, override_service_name",
+    (
+        ("fake_service", "fake_service"),  # no service override
+        ("fake_service", "super_fake_service"),  # service override
+    ),
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run._run",
-    autospec=True,
-    return_value=(0, "fake _run output"),
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
-    autospec=True,
-    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
-    autospec=True,
-    side_effect=Exception("Simulate failure decrypting secret volumes"),
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.open",
-    new_callable=mock.mock_open(),
-    autospec=None,
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
-def test_run_docker_container_secret_volumes_from_kube_raises(
-    mock_kube_client,
-    mock_open,
-    mock_get_kubernetes_secret_volumes,
-    mock_get_healthcheck_for_instance,
-    mock_get_container_id,
-    mock_run,
-    mock_execlpe,
-    mock_get_docker_run_cmd,
-    mock_pick_random_port,
-    capsys,
+def test_run_docker_container_secret_volumes(
+    original_service_name, override_service_name
 ):
-    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
-    mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
-    mock_docker_client.remove_container = mock.MagicMock(
-        spec_set=docker.APIClient.remove_container
-    )
-    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
-    mock_service_manifest.cluster = "fake_cluster"
+    with mock.patch("os.makedirs", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.open",
+        new_callable=mock.mock_open(),
+        autospec=None,
+    ) as mock_open, mock.patch(
+        "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+        autospec=True,
+        return_value={
+            "/the/container/path/the_secret_name1": b"the_secret_content1",
+            "/the/container/path/the_secret_name2": b"the_secret_content2",
+        },
+    ) as mock_decrypt_secret_volumes, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port",
+        autospec=True,
+        return_value=666,
+    ):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
 
-    with raises(SystemExit) as sys_exit:
-        run_docker_container(
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+        mock_service_manifest.get_service = mock.MagicMock(
+            return_value=override_service_name
+        )
+
+        # Coverage for binary file vs non-binary file
+        mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+        # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+        # So we raise once, implying that the first file is binary and let the second write() succeed
+        # For the second file, we imply the file is non-binary and only need to mock success once
+        mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+        # Magic to make the context manager return the mock that we actually want
+        # Otherwise it just returns a new mock_open each time
+        mock_open.return_value = mock_open
+        mock_open.__enter__.return_value = mock_text_io_wrapper
+
+        # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+        os.environ["TMPDIR"] = "/tmp/"
+        return_code = run_docker_container(
+            docker_client=mock_docker_client,
+            service=original_service_name,
+            instance="fake_instance",
+            docker_url="fake_hash",
+            volumes=[],
+            interactive=True,
+            command="fake_command",
+            healthcheck=False,
+            healthcheck_only=False,
+            user_port=None,
+            instance_config=mock_service_manifest,
+            secret_provider_name="vault",
+        )
+        assert 1 == mock_get_docker_run_cmd.call_count
+
+        _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+        assert "volumes" in the_kwargs
+        assert re.match(
+            r"^/[^:]*:/the/container/path/the_secret_name1:ro",
+            the_kwargs["volumes"][0],
+        ), "Did not find the expected secret file volume mount"
+        assert re.match(
+            r"^/[^:]*:/the/container/path/the_secret_name2:ro",
+            the_kwargs["volumes"][1],
+        ), "Did not find the expected secret file volume mount"
+
+        _, decrypt_kwargs = mock_decrypt_secret_volumes.call_args_list[0]
+        assert decrypt_kwargs["service_name"] == override_service_name
+
+        assert 0 == return_code
+
+
+def test_run_docker_container_secret_volumes_from_kube():
+    with mock.patch("os.makedirs", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.local_run.KubeClient", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.open",
+        new_callable=mock.mock_open(),
+        autospec=None,
+    ) as mock_open, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+        autospec=True,
+        return_value={
+            "/the/container/path/the_secret_name1": b"the_secret_content1",
+            "/the/container/path/the_secret_name2": b"the_secret_content2",
+        },
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port",
+        autospec=True,
+        return_value=666,
+    ):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+
+        # Coverage for binary file vs non-binary file
+        mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+        # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+        # So we raise once, implying that the first file is binary and let the second write() succeed
+        # For the second file, we imply the file is non-binary and only need to mock success once
+        mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+        # Magic to make the context manager return the mock that we actually want
+        # Otherwise it just returns a new mock_open each time
+        mock_open.return_value = mock_open
+        mock_open.__enter__.return_value = mock_text_io_wrapper
+
+        # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+        os.environ["TMPDIR"] = "/tmp/"
+        return_code = run_docker_container(
             docker_client=mock_docker_client,
             service="fake_service",
             instance="fake_instance",
@@ -2525,13 +2286,145 @@ def test_run_docker_container_secret_volumes_from_kube_raises(
             secret_provider_name="vault",
             secrets_from_kube=True,
         )
-    assert 0 == mock_get_docker_run_cmd.call_count
-    assert 1 == sys_exit.value.code
-    output, _ = capsys.readouterr()
-    assert (
-        "Failed to retrieve kubernetes secrets with Exception: Simulate failure decrypting secret volumes"
-        in output
-    )
+        assert 1 == mock_get_docker_run_cmd.call_count
+
+        _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+        assert "volumes" in the_kwargs
+        assert re.match(
+            r"^/[^:]*:/the/container/path/the_secret_name1:ro",
+            the_kwargs["volumes"][0],
+        ), "Did not find the expected secret file volume mount"
+        assert re.match(
+            r"^/[^:]*:/the/container/path/the_secret_name2:ro",
+            the_kwargs["volumes"][1],
+        ), "Did not find the expected secret file volume mount"
+
+        assert 0 == return_code
+
+
+def test_run_docker_container_secret_volumes_raises(capsys):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.open",
+        new_callable=mock.mock_open(),
+        autospec=None,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+        autospec=True,
+        side_effect=Exception("Simulate failure decrypting secret volumes"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port",
+        autospec=True,
+        return_value=666,
+    ):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+
+        with raises(SystemExit) as sys_exit:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=True,
+                command="fake_command",
+                healthcheck=False,
+                healthcheck_only=False,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                secret_provider_name="vault",
+            )
+        assert 0 == mock_get_docker_run_cmd.call_count
+        assert 1 == sys_exit.value.code
+        output, _ = capsys.readouterr()
+        assert (
+            "Failed to decrypt secrets with Exception: Simulate failure decrypting secret volumes"
+            in output
+        )
+
+
+def test_run_docker_container_secret_volumes_from_kube_raises(capsys):
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.KubeClient", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.open",
+        new_callable=mock.mock_open(),
+        autospec=None,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+        autospec=True,
+        side_effect=Exception("Simulate failure decrypting secret volumes"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+        autospec=True,
+        return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_container_id", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "fake _run output"),
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.execlpe", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True
+    ) as mock_get_docker_run_cmd, mock.patch(
+        "paasta_tools.cli.cmds.local_run.pick_random_port",
+        autospec=True,
+        return_value=666,
+    ):
+        mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
+        mock_docker_client.attach = mock.MagicMock(spec_set=docker.APIClient.attach)
+        mock_docker_client.stop = mock.MagicMock(spec_set=docker.APIClient.stop)
+        mock_docker_client.remove_container = mock.MagicMock(
+            spec_set=docker.APIClient.remove_container
+        )
+        mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
+        mock_service_manifest.cluster = "fake_cluster"
+
+        with raises(SystemExit) as sys_exit:
+            run_docker_container(
+                docker_client=mock_docker_client,
+                service="fake_service",
+                instance="fake_instance",
+                docker_url="fake_hash",
+                volumes=[],
+                interactive=True,
+                command="fake_command",
+                healthcheck=False,
+                healthcheck_only=False,
+                user_port=None,
+                instance_config=mock_service_manifest,
+                secret_provider_name="vault",
+                secrets_from_kube=True,
+            )
+        assert 0 == mock_get_docker_run_cmd.call_count
+        assert 1 == sys_exit.value.code
+        output, _ = capsys.readouterr()
+        assert (
+            "Failed to retrieve kubernetes secrets with Exception: Simulate failure decrypting secret volumes"
+            in output
+        )
 
 
 @mark.parametrize(
@@ -2554,53 +2447,61 @@ def test_run_docker_container_secret_volumes_from_kube_raises(
         ("", False, False, False, False),
     ],
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.os.getuid", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.get_username", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
 def test_assume_aws_role(
-    mock_boto,
-    mock_get_username,
-    mock_getuid,
-    mock_subprocess_run,
-    assume_role,
-    assume_pod_identity,
-    use_okta_role,
-    as_root,
-    config_has_iam,
+    assume_role, assume_pod_identity, use_okta_role, as_root, config_has_iam
 ):
-    mock_config = mock.MagicMock()
-    role_arn = "arn:aws:iam::123456789:role/mock_role"
-    if config_has_iam:
-        mock_config.get_iam_role.return_value = role_arn
-    else:
-        mock_config.get_iam_role.return_value = None
-    mock_service = "mockservice"
-    if as_root:
-        mock_getuid.return_value = 0
-    else:
-        mock_getuid.return_value = 1234
-    mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
-    mock_subprocess_run.return_value.returncode = 0
-    mock_subprocess_run.return_value.stdout = mock_creds_json
-    mock_boto_client = mock.MagicMock()
-    mock_boto.return_value.client.return_value = mock_boto_client
-    mock_boto_client.assume_role.return_value = {
-        "Credentials": {
-            "AccessKeyId": "AKIAFOOBAR2",
-            "SecretAccessKey": "SECRETKEY2",
-            "SessionToken": "SESSIONTOKEN2",
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True
+    ) as mock_boto, mock.patch(
+        "paasta_tools.cli.cmds.local_run.get_username", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.local_run.os.getuid", autospec=True
+    ) as mock_getuid, mock.patch(
+        "paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True
+    ) as mock_subprocess_run:
+        mock_config = mock.MagicMock()
+        role_arn = "arn:aws:iam::123456789:role/mock_role"
+        if config_has_iam:
+            mock_config.get_iam_role.return_value = role_arn
+        else:
+            mock_config.get_iam_role.return_value = None
+        mock_service = "mockservice"
+        if as_root:
+            mock_getuid.return_value = 0
+        else:
+            mock_getuid.return_value = 1234
+        mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
+        mock_subprocess_run.return_value.returncode = 0
+        mock_subprocess_run.return_value.stdout = mock_creds_json
+        mock_boto_client = mock.MagicMock()
+        mock_boto.return_value.client.return_value = mock_boto_client
+        mock_boto_client.assume_role.return_value = {
+            "Credentials": {
+                "AccessKeyId": "AKIAFOOBAR2",
+                "SecretAccessKey": "SECRETKEY2",
+                "SessionToken": "SESSIONTOKEN2",
+            }
         }
-    }
 
-    expect_exit = False
-    if assume_pod_identity and not config_has_iam:
-        expect_exit = True
-    elif not assume_pod_identity and not assume_role and not use_okta_role:
-        expect_exit = True
+        expect_exit = False
+        if assume_pod_identity and not config_has_iam:
+            expect_exit = True
+        elif not assume_pod_identity and not assume_role and not use_okta_role:
+            expect_exit = True
 
-    if expect_exit:
-        with raises(SystemExit) as sys_exit:
+        if expect_exit:
+            with raises(SystemExit) as sys_exit:
+                env = assume_aws_role(
+                    mock_config,
+                    mock_service,
+                    assume_role,
+                    assume_pod_identity,
+                    use_okta_role,
+                    "dev",
+                )
+            assert sys_exit.value.code == 1
+            return
+        else:
             env = assume_aws_role(
                 mock_config,
                 mock_service,
@@ -2609,60 +2510,50 @@ def test_assume_aws_role(
                 use_okta_role,
                 "dev",
             )
-        assert sys_exit.value.code == 1
-        return
-    else:
-        env = assume_aws_role(
-            mock_config,
-            mock_service,
-            assume_role,
-            assume_pod_identity,
-            use_okta_role,
-            "dev",
-        )
 
-    if as_root:
-        assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
-    assert "AWS_ACCESS_KEY_ID" in env
-    assert "AWS_SECRET_ACCESS_KEY" in env
-    assert "AWS_SESSION_TOKEN" in env
+        if as_root:
+            assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
+        assert "AWS_ACCESS_KEY_ID" in env
+        assert "AWS_SECRET_ACCESS_KEY" in env
+        assert "AWS_SESSION_TOKEN" in env
 
-    if assume_role:
-        assert (
-            mock_boto_client.assume_role.call_args_list[0][1]["RoleArn"] == assume_role
-        )
+        if assume_role:
+            assert (
+                mock_boto_client.assume_role.call_args_list[0][1]["RoleArn"]
+                == assume_role
+            )
 
-    if use_okta_role:
+        if use_okta_role:
+            assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
+        else:
+            assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR2"
+
+
+def test_assume_aws_role_with_web_identity():
+    with mock.patch(
+        "paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True
+    ) as mock_boto, mock.patch(
+        "paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True
+    ):
+        mock_config = mock.MagicMock()
+        mock_config.get_iam_role.return_value = None
+        mock_service = "mockservice"
+
+        mock_credentials = mock.MagicMock()
+        mock_credentials.access_key = "AKIAFOOBAR"
+        mock_credentials.secret_key = "SECRETKEY"
+        mock_credentials.token = "SESSION_TOKEN"
+        mock_boto.return_value.get_credentials.return_value = mock_credentials
+
+        os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
+        os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
+
+        env = assume_aws_role(mock_config, mock_service, False, False, False, "dev")
+
+        os.environ.pop("AWS_ROLE_ARN")
+        os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")
+
+        assert "AWS_ACCESS_KEY_ID" in env
+        assert "AWS_SECRET_ACCESS_KEY" in env
+        assert "AWS_SESSION_TOKEN" in env
         assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
-    else:
-        assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR2"
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
-def test_assume_aws_role_with_web_identity(
-    mock_boto,
-    mock_subprocess_run,
-):
-    mock_config = mock.MagicMock()
-    mock_config.get_iam_role.return_value = None
-    mock_service = "mockservice"
-
-    mock_credentials = mock.MagicMock()
-    mock_credentials.access_key = "AKIAFOOBAR"
-    mock_credentials.secret_key = "SECRETKEY"
-    mock_credentials.token = "SESSION_TOKEN"
-    mock_boto.return_value.get_credentials.return_value = mock_credentials
-
-    os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
-    os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
-
-    env = assume_aws_role(mock_config, mock_service, False, False, False, "dev")
-
-    os.environ.pop("AWS_ROLE_ARN")
-    os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")
-
-    assert "AWS_ACCESS_KEY_ID" in env
-    assert "AWS_SECRET_ACCESS_KEY" in env
-    assert "AWS_SESSION_TOKEN" in env
-    assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"

@@ -49,10 +49,6 @@ def mock_get_oapi_client(fake_backend_location):
         yield m
 
 
-@mock.patch("paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human", autospec=True
-)
 @pytest.mark.parametrize(
     "instance_type_class",
     (
@@ -61,40 +57,40 @@ def mock_get_oapi_client(fake_backend_location):
     ),
 )
 def test_paasta_mesh_status_on_api_endpoint(
-    mock_smtstk_status_human,
-    mock_envoy_status_human,
     mock_get_oapi_client,
     fake_backend_location,
     system_paasta_config,
     instance_type_class,
 ):
-    envoy_output = mock.Mock()
-    mock_envoy_status_human.return_value = [envoy_output]
     with mock.patch(
-        "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
-        return_value=iter([mock.Mock(__class__=instance_type_class)]),
+        "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human",
         autospec=True,
-    ):
-        code, output = mesh_status.paasta_mesh_status_on_api_endpoint(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            system_paasta_config=system_paasta_config,
-            soa_dir="/fake/path",
-        )
+    ) as mock_smtstk_status_human, mock.patch(
+        "paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True
+    ) as mock_envoy_status_human:
+        envoy_output = mock.Mock()
+        mock_envoy_status_human.return_value = [envoy_output]
+        with mock.patch(
+            "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
+            return_value=iter([mock.Mock(__class__=instance_type_class)]),
+            autospec=True,
+        ):
+            code, output = mesh_status.paasta_mesh_status_on_api_endpoint(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                system_paasta_config=system_paasta_config,
+                soa_dir="/fake/path",
+            )
 
-    assert code == 0
-    assert output == [envoy_output]
-    assert mock_smtstk_status_human.call_args_list == []
-    assert mock_envoy_status_human.call_args_list == [
-        mock.call("fake_envoy_reg", 2, [fake_backend_location]),
-    ]
+        assert code == 0
+        assert output == [envoy_output]
+        assert mock_smtstk_status_human.call_args_list == []
+        assert mock_envoy_status_human.call_args_list == [
+            mock.call("fake_envoy_reg", 2, [fake_backend_location]),
+        ]
 
 
-@mock.patch("paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human", autospec=True
-)
 @pytest.mark.parametrize(
     "instance_type_class",
     (
@@ -103,64 +99,65 @@ def test_paasta_mesh_status_on_api_endpoint(
     ),
 )
 def test_paasta_mesh_status_on_api_endpoint_error(
-    mock_smtstk_status_human,
-    mock_envoy_status_human,
     mock_get_oapi_client,
     fake_backend_location,
     system_paasta_config,
     instance_type_class,
 ):
-    client = mock_get_oapi_client.return_value
-    api_error = ApiException(
-        status=405,
-        reason="api error",
-    )
-    api_error.body = "fake_body"
-
-    test_cases = [
-        (api_error, 405, "fake_body"),
-        (Exception(), 1, "Exception when talking to the API"),
-    ]
-    for exc, expected_code, expected_msg in test_cases:
-        client.service.mesh_instance.side_effect = [exc]
-
     with mock.patch(
-        "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
-        return_value=iter([mock.Mock(__class__=instance_type_class)]),
+        "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human",
         autospec=True,
-    ):
-        code, output = mesh_status.paasta_mesh_status_on_api_endpoint(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            system_paasta_config=system_paasta_config,
-            soa_dir="/fake/path",
+    ) as mock_smtstk_status_human, mock.patch(
+        "paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True
+    ) as mock_envoy_status_human:
+        client = mock_get_oapi_client.return_value
+        api_error = ApiException(
+            status=405,
+            reason="api error",
         )
+        api_error.body = "fake_body"
 
-        assert expected_code == code
-        assert expected_msg in output[0]
+        test_cases = [
+            (api_error, 405, "fake_body"),
+            (Exception(), 1, "Exception when talking to the API"),
+        ]
+        for exc, expected_code, expected_msg in test_cases:
+            client.service.mesh_instance.side_effect = [exc]
 
-    assert mock_smtstk_status_human.call_args_list == []
-    assert mock_envoy_status_human.call_args_list == []
+        with mock.patch(
+            "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
+            return_value=iter([mock.Mock(__class__=instance_type_class)]),
+            autospec=True,
+        ):
+            code, output = mesh_status.paasta_mesh_status_on_api_endpoint(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                system_paasta_config=system_paasta_config,
+                soa_dir="/fake/path",
+            )
+
+            assert expected_code == code
+            assert expected_msg in output[0]
+
+        assert mock_smtstk_status_human.call_args_list == []
+        assert mock_envoy_status_human.call_args_list == []
 
 
-@mock.patch("paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human", autospec=True
-)
 def test_paasta_mesh_status_on_api_endpoint_error_no_config(
-    mock_smtstk_status_human,
-    mock_envoy_status_human,
-    mock_get_oapi_client,
-    fake_backend_location,
-    system_paasta_config,
+    mock_get_oapi_client, fake_backend_location, system_paasta_config
 ):
     with mock.patch(
-        "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
-        return_value=iter(()),
+        "paasta_tools.cli.cmds.mesh_status.get_smartstack_status_human",
         autospec=True,
-    ):
-        with pytest.raises(SystemExit):
+    ) as mock_smtstk_status_human, mock.patch(
+        "paasta_tools.cli.cmds.mesh_status.get_envoy_status_human", autospec=True
+    ) as mock_envoy_status_human:
+        with mock.patch(
+            "paasta_tools.cli.cmds.mesh_status.get_instance_configs_for_service",
+            return_value=iter(()),
+            autospec=True,
+        ), pytest.raises(SystemExit):
             mesh_status.paasta_mesh_status_on_api_endpoint(
                 cluster="fake_cluster",
                 service="fake_service",
@@ -169,5 +166,5 @@ def test_paasta_mesh_status_on_api_endpoint_error_no_config(
                 soa_dir="/fake/path",
             )
 
-    assert mock_smtstk_status_human.call_args_list == []
-    assert mock_envoy_status_human.call_args_list == []
+        assert mock_smtstk_status_human.call_args_list == []
+        assert mock_envoy_status_human.call_args_list == []
