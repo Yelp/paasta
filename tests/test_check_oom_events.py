@@ -169,26 +169,25 @@ def test_latest_oom_events_interval(mock_scribereader, scribereader_output):
     assert len(events) == 0
 
 
-@mock.patch("paasta_tools.check_oom_events.latest_oom_events", autospec=True)
-@mock.patch("paasta_tools.check_oom_events.get_services_for_cluster", autospec=True)
-@mock.patch("paasta_tools.check_oom_events.send_sensu_event", autospec=True)
-@mock.patch("paasta_tools.check_oom_events.get_instance_config", autospec=True)
-def test_main(
-    mock_get_instance_config,
-    mock_send_sensu_event,
-    mock_get_services_for_cluster,
-    mock_latest_oom_events,
-    scribereader_output,
-):
-    mock_get_services_for_cluster.return_value = [
-        ("fake_service1", "fake_instance1"),
-        ("fake_service2", "fake_instance2"),
-        ("fake_service3", "fake_instance3"),
-    ]
-    main(["", "-s", "some_superregion", "-d", "soa_dir", "--check-interval", "3"])
-    assert mock_send_sensu_event.call_count == 3
-    mock_latest_oom_events.assert_called_once_with(
-        cluster="fake_cluster",
-        superregion="some_superregion",
-        interval=180,
-    )
+def test_main(scribereader_output):
+    with mock.patch(
+        "paasta_tools.check_oom_events.get_instance_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.check_oom_events.send_sensu_event", autospec=True
+    ) as mock_send_sensu_event, mock.patch(
+        "paasta_tools.check_oom_events.get_services_for_cluster", autospec=True
+    ) as mock_get_services_for_cluster, mock.patch(
+        "paasta_tools.check_oom_events.latest_oom_events", autospec=True
+    ) as mock_latest_oom_events:
+        mock_get_services_for_cluster.return_value = [
+            ("fake_service1", "fake_instance1"),
+            ("fake_service2", "fake_instance2"),
+            ("fake_service3", "fake_instance3"),
+        ]
+        main(["", "-s", "some_superregion", "-d", "soa_dir", "--check-interval", "3"])
+        assert mock_send_sensu_event.call_count == 3
+        mock_latest_oom_events.assert_called_once_with(
+            cluster="fake_cluster",
+            superregion="some_superregion",
+            interval=180,
+        )

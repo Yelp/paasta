@@ -125,45 +125,57 @@ def instance_status_kwargs():
     )
 
 
-@mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
-def test_instance_status_invalid_instance_type(mock_kubernetes_status, mock_cr_status):
-    kwargs = instance_status_kwargs()
-    with pytest.raises(RuntimeError) as excinfo:
+def test_instance_status_invalid_instance_type():
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_status", autospec=True
+    ) as mock_kubernetes_status, mock.patch(
+        "paasta_tools.instance.kubernetes.cr_status", autospec=True
+    ) as mock_cr_status:
+        kwargs = instance_status_kwargs()
+        with pytest.raises(RuntimeError) as excinfo:
+            pik.instance_status(**kwargs)
+        assert "Unknown instance type" in str(excinfo.value)
+        assert len(mock_cr_status.mock_calls) == 0
+        assert len(mock_kubernetes_status.mock_calls) == 0
+
+
+def test_instance_status_kubernetes_only():
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_status", autospec=True
+    ) as mock_kubernetes_status, mock.patch(
+        "paasta_tools.instance.kubernetes.cr_status", autospec=True
+    ) as mock_cr_status:
+        kwargs = instance_status_kwargs()
+        kwargs.update(instance_type="kubernetes")
         pik.instance_status(**kwargs)
-    assert "Unknown instance type" in str(excinfo.value)
-    assert len(mock_cr_status.mock_calls) == 0
-    assert len(mock_kubernetes_status.mock_calls) == 0
+        assert len(mock_cr_status.mock_calls) == 0
+        assert len(mock_kubernetes_status.mock_calls) == 1
 
 
-@mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
-def test_instance_status_kubernetes_only(mock_kubernetes_status, mock_cr_status):
-    kwargs = instance_status_kwargs()
-    kwargs.update(instance_type="kubernetes")
-    pik.instance_status(**kwargs)
-    assert len(mock_cr_status.mock_calls) == 0
-    assert len(mock_kubernetes_status.mock_calls) == 1
+def test_instance_status_cr_only():
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_status", autospec=True
+    ) as mock_kubernetes_status, mock.patch(
+        "paasta_tools.instance.kubernetes.cr_status", autospec=True
+    ) as mock_cr_status:
+        kwargs = instance_status_kwargs()
+        kwargs.update(instance_type="flink")
+        pik.instance_status(**kwargs)
+        assert len(mock_cr_status.mock_calls) == 1
+        assert len(mock_kubernetes_status.mock_calls) == 0
 
 
-@mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
-def test_instance_status_cr_only(mock_kubernetes_status, mock_cr_status):
-    kwargs = instance_status_kwargs()
-    kwargs.update(instance_type="flink")
-    pik.instance_status(**kwargs)
-    assert len(mock_cr_status.mock_calls) == 1
-    assert len(mock_kubernetes_status.mock_calls) == 0
-
-
-@mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
-def test_instance_status_cr_and_kubernetes(mock_kubernetes_status, mock_cr_status):
-    kwargs = instance_status_kwargs()
-    kwargs.update(instance_type="cassandracluster")
-    pik.instance_status(**kwargs)
-    assert len(mock_cr_status.mock_calls) == 1
-    assert len(mock_kubernetes_status.mock_calls) == 1
+def test_instance_status_cr_and_kubernetes():
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_status", autospec=True
+    ) as mock_kubernetes_status, mock.patch(
+        "paasta_tools.instance.kubernetes.cr_status", autospec=True
+    ) as mock_cr_status:
+        kwargs = instance_status_kwargs()
+        kwargs.update(instance_type="cassandracluster")
+        pik.instance_status(**kwargs)
+        assert len(mock_cr_status.mock_calls) == 1
+        assert len(mock_kubernetes_status.mock_calls) == 1
 
 
 def test_kubernetes_status():
@@ -699,21 +711,23 @@ class TestKubernetesStatusV2:
         assert get_rs_kwargs["namespaces"] == ["paasta"]
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
-def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_name):
-    kstatus = {}
-    run_sync(
-        pik.job_status,
-        kstatus=kstatus,
-        client=mock.Mock(),
-        job_config=mock.Mock(),
-        pod_list=[],
-        replicaset_list=[mock.Mock(), mock.Mock(), mock.Mock()],
-        verbose=0,
-        namespace=mock.Mock(),
-    )
+def test_job_status_include_replicaset_non_verbose():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True
+    ):
+        kstatus = {}
+        run_sync(
+            pik.job_status,
+            kstatus=kstatus,
+            client=mock.Mock(),
+            job_config=mock.Mock(),
+            pod_list=[],
+            replicaset_list=[mock.Mock(), mock.Mock(), mock.Mock()],
+            verbose=0,
+            namespace=mock.Mock(),
+        )
 
-    assert len(kstatus["replicasets"]) == 3
+        assert len(kstatus["replicasets"]) == 3
 
 
 def test_cr_status_bad_instance_type():
@@ -728,20 +742,22 @@ def test_cr_status_bad_instance_type():
     assert "Unknown instance type" in str(excinfo.value)
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_cr", autospec=True)
-def test_cr_status_happy_path(mock_get_cr):
-    mock_status = mock.Mock()
-    mock_metadata = mock.Mock()
-    mock_return = dict(status=mock_status, metadata=mock_metadata)
-    mock_get_cr.return_value = mock_return
-    status = pik.cr_status(
-        service="",
-        instance="",
-        verbose=0,
-        instance_type="flink",
-        kube_client=mock.Mock(),
-    )
-    assert status == mock_return
+def test_cr_status_happy_path():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_cr", autospec=True
+    ) as mock_get_cr:
+        mock_status = mock.Mock()
+        mock_metadata = mock.Mock()
+        mock_return = dict(status=mock_status, metadata=mock_metadata)
+        mock_get_cr.return_value = mock_return
+        status = pik.cr_status(
+            service="",
+            instance="",
+            verbose=0,
+            instance_type="flink",
+            kube_client=mock.Mock(),
+        )
+        assert status == mock_return
 
 
 def test_set_cr_desired_state_invalid_instance_type():
@@ -756,16 +772,18 @@ def test_set_cr_desired_state_invalid_instance_type():
     assert "Unknown instance type" in str(excinfo.value)
 
 
-@mock.patch("paasta_tools.kubernetes_tools.set_cr_desired_state", autospec=True)
-def test_set_cr_desired_state_calls_k8s_tools(mock_set_cr_desired_state):
-    pik.set_cr_desired_state(
-        kube_client=mock.Mock(),
-        service=mock.Mock(),
-        instance=mock.Mock(),
-        instance_type="flink",
-        desired_state=mock.Mock(),
-    )
-    assert len(mock_set_cr_desired_state.mock_calls) == 1
+def test_set_cr_desired_state_calls_k8s_tools():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.set_cr_desired_state", autospec=True
+    ) as mock_set_cr_desired_state:
+        pik.set_cr_desired_state(
+            kube_client=mock.Mock(),
+            service=mock.Mock(),
+            instance=mock.Mock(),
+            instance_type="flink",
+            desired_state=mock.Mock(),
+        )
+        assert len(mock_set_cr_desired_state.mock_calls) == 1
 
 
 def test_can_set_state():
@@ -927,24 +945,6 @@ def test_kubernetes_mesh_status_include_envoy():
         assert "No mesh types specified" in str(excinfo.value)
 
 
-@mock.patch(
-    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.mesh_status",
-    new_callable=AsyncMock,
-    autospec=None,
-)
-@mock.patch(
-    "paasta_tools.kubernetes_tools.pods_for_service_instance",
-    mock.Mock(return_value=("pod_1")),
-    autospec=False,
-)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    {"flink": mock.Mock()},
-    autospec=False,
-)
 @pytest.mark.parametrize(
     "include_mesh,inst_type,service_ns_conf,expected_msg",
     [
@@ -954,27 +954,37 @@ def test_kubernetes_mesh_status_include_envoy():
     ],
 )
 def test_kubernetes_mesh_status_error(
-    mock_mesh_status,
-    mock_load_service_namespace_config,
-    include_mesh,
-    inst_type,
-    service_ns_conf,
-    expected_msg,
+    include_mesh, inst_type, service_ns_conf, expected_msg
 ):
-    mock_load_service_namespace_config.return_value = service_ns_conf
-    mock_settings = mock.Mock()
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        {"flink": mock.Mock()},
+        autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        mock.Mock(return_value=("pod_1")),
+        autospec=False,
+    ), mock.patch(
+        "paasta_tools.instance.kubernetes.mesh_status",
+        new_callable=AsyncMock,
+        autospec=None,
+    ) as mock_mesh_status, mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+    ) as mock_load_service_namespace_config:
+        mock_load_service_namespace_config.return_value = service_ns_conf
+        mock_settings = mock.Mock()
 
-    with pytest.raises(RuntimeError) as excinfo:
-        pik.kubernetes_mesh_status(
-            service="fake_service",
-            instance="fake_instance",
-            instance_type=inst_type,
-            settings=mock_settings,
-            include_envoy=include_mesh,
-        )
+        with pytest.raises(RuntimeError) as excinfo:
+            pik.kubernetes_mesh_status(
+                service="fake_service",
+                instance="fake_instance",
+                instance_type=inst_type,
+                settings=mock_settings,
+                include_envoy=include_mesh,
+            )
 
-    assert expected_msg in excinfo.value.args[0]
-    assert mock_mesh_status.call_args_list == []
+        assert expected_msg in excinfo.value.args[0]
+        assert mock_mesh_status.call_args_list == []
 
 
 @pytest.mark.asyncio
@@ -1379,100 +1389,99 @@ def test_can_restart_replica(test_type, expected):
     assert pik.can_restart_replica(test_type) is expected
 
 
-@mock.patch("paasta_tools.instance.kubernetes.ServiceNamespaceConfig", autospec=True)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_restart_replica_by_name_success(
-    mock_handlers, mock_delete_pod, mock_service_namespace_config
-):
+def test_restart_replica_by_name_success():
     """Test successful replica restart by name."""
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ) as mock_handlers, mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+        autospec=True,
+    ) as mock_delete_pod, mock.patch(
+        "paasta_tools.instance.kubernetes.ServiceNamespaceConfig", autospec=True
+    ) as mock_service_namespace_config:
 
-    mock_settings = mock.Mock()
-    mock_settings.cluster = "test-cluster"
-    mock_settings.soa_dir = "/test/soa/dir"
-    mock_settings.kubernetes_client = mock.Mock()
+        mock_settings = mock.Mock()
+        mock_settings.cluster = "test-cluster"
+        mock_settings.soa_dir = "/test/soa/dir"
+        mock_settings.kubernetes_client = mock.Mock()
 
-    mock_loader = mock.Mock()
-    mock_job_config = mock.Mock()
-    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
-    mock_job_config.get_termination_grace_period.return_value = None
-    mock_loader.return_value = mock_job_config
+        mock_loader = mock.Mock()
+        mock_job_config = mock.Mock()
+        mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+        mock_job_config.get_termination_grace_period.return_value = None
+        mock_loader.return_value = mock_job_config
 
-    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
-    mock_delete_pod.return_value = True
+        mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+        mock_delete_pod.return_value = True
 
-    # Mock ServiceNamespaceConfig
-    mock_service_namespace_config_instance = mock.Mock()
-    mock_service_namespace_config.return_value = mock_service_namespace_config_instance
+        # Mock ServiceNamespaceConfig
+        mock_service_namespace_config_instance = mock.Mock()
+        mock_service_namespace_config.return_value = (
+            mock_service_namespace_config_instance
+        )
 
-    result = pik.restart_replica_by_name(
-        service="test-service",
-        instance="main",
-        instance_type="kubernetes",
-        replica_name="test-pod-12345",
-        settings=mock_settings,
-    )
+        result = pik.restart_replica_by_name(
+            service="test-service",
+            instance="main",
+            instance_type="kubernetes",
+            replica_name="test-pod-12345",
+            settings=mock_settings,
+        )
 
-    assert result is True
+        assert result is True
 
-    mock_loader.assert_called_once_with(
-        service="test-service",
-        instance="main",
-        cluster="test-cluster",
-        soa_dir="/test/soa/dir",
-        load_deployments=False,
-    )
+        mock_loader.assert_called_once_with(
+            service="test-service",
+            instance="main",
+            cluster="test-cluster",
+            soa_dir="/test/soa/dir",
+            load_deployments=False,
+        )
 
-    mock_delete_pod.assert_called_once_with(
-        pod_name="test-pod-12345",
-        service="test-service",
-        instance="main",
-        namespace="test-namespace",
-        kube_client=mock_settings.kubernetes_client,
-        grace_period_seconds=None,
-    )
+        mock_delete_pod.assert_called_once_with(
+            pod_name="test-pod-12345",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_settings.kubernetes_client,
+            grace_period_seconds=None,
+        )
 
 
-@mock.patch(
-    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_restart_replica_by_name_pod_not_found(mock_handlers, mock_delete_pod):
+def test_restart_replica_by_name_pod_not_found():
     """Test replica restart when pod is not found."""
-    mock_settings = mock.Mock()
-    mock_settings.cluster = "test-cluster"
-    mock_settings.soa_dir = "/test/soa/dir"
-    mock_settings.kubernetes_client = mock.Mock()
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ) as mock_handlers, mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+        autospec=True,
+    ) as mock_delete_pod:
+        mock_settings = mock.Mock()
+        mock_settings.cluster = "test-cluster"
+        mock_settings.soa_dir = "/test/soa/dir"
+        mock_settings.kubernetes_client = mock.Mock()
 
-    mock_loader = mock.Mock()
-    mock_job_config = mock.Mock()
-    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
-    mock_loader.return_value = mock_job_config
+        mock_loader = mock.Mock()
+        mock_job_config = mock.Mock()
+        mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+        mock_loader.return_value = mock_job_config
 
-    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+        mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
 
-    # delete_pod's False return value implies pod not found
-    mock_delete_pod.return_value = False
+        # delete_pod's False return value implies pod not found
+        mock_delete_pod.return_value = False
 
-    result = pik.restart_replica_by_name(
-        service="test-service",
-        instance="main",
-        instance_type="kubernetes",
-        replica_name="nonexistent-pod-99999",
-        settings=mock_settings,
-    )
+        result = pik.restart_replica_by_name(
+            service="test-service",
+            instance="main",
+            instance_type="kubernetes",
+            replica_name="nonexistent-pod-99999",
+            settings=mock_settings,
+        )
 
-    assert result is False
+        assert result is False
 
 
 def test_restart_replica_by_name_unsupported_instance_type():
@@ -1491,34 +1500,34 @@ def test_restart_replica_by_name_unsupported_instance_type():
         )
 
 
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_restart_replica_by_name_no_kubernetes_client(mock_handlers):
+def test_restart_replica_by_name_no_kubernetes_client():
     """Test replica restart when Kubernetes client is not available."""
-    # Mock the settings without kubernetes client
-    mock_settings = mock.Mock()
-    mock_settings.cluster = "test-cluster"
-    mock_settings.soa_dir = "/test/soa/dir"
-    mock_settings.kubernetes_client = None
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ) as mock_handlers:
+        # Mock the settings without kubernetes client
+        mock_settings = mock.Mock()
+        mock_settings.cluster = "test-cluster"
+        mock_settings.soa_dir = "/test/soa/dir"
+        mock_settings.kubernetes_client = None
 
-    # Mock the job config loader and job config
-    mock_loader = mock.Mock()
-    mock_job_config = mock.Mock()
-    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
-    mock_loader.return_value = mock_job_config
+        # Mock the job config loader and job config
+        mock_loader = mock.Mock()
+        mock_job_config = mock.Mock()
+        mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+        mock_loader.return_value = mock_job_config
 
-    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+        mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
 
-    with pytest.raises(RuntimeError, match="Kubernetes client not available"):
-        pik.restart_replica_by_name(
-            service="test-service",
-            instance="main",
-            instance_type="kubernetes",
-            replica_name="test-pod-12345",
-            settings=mock_settings,
-        )
+        with pytest.raises(RuntimeError, match="Kubernetes client not available"):
+            pik.restart_replica_by_name(
+                service="test-service",
+                instance="main",
+                instance_type="kubernetes",
+                replica_name="test-pod-12345",
+                settings=mock_settings,
+            )
 
 
 @pytest.mark.parametrize(
@@ -1528,51 +1537,45 @@ def test_restart_replica_by_name_no_kubernetes_client(mock_handlers):
         (False, None),
     ],
 )
-@mock.patch(
-    "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_restart_replica_by_name_force_parameter(
-    mock_handlers,
-    mock_delete_pod,
-    force,
-    expected_grace_period,
-):
+def test_restart_replica_by_name_force_parameter(force, expected_grace_period):
     """Test restart_replica_by_name with different force parameter values."""
-    mock_settings = mock.Mock()
-    mock_settings.cluster = "test-cluster"
-    mock_settings.soa_dir = "/test/soa/dir"
-    mock_settings.kubernetes_client = mock.Mock()
+    with mock.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ) as mock_handlers, mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_tools.delete_pod_by_name",
+        autospec=True,
+    ) as mock_delete_pod:
+        mock_settings = mock.Mock()
+        mock_settings.cluster = "test-cluster"
+        mock_settings.soa_dir = "/test/soa/dir"
+        mock_settings.kubernetes_client = mock.Mock()
 
-    mock_loader = mock.Mock()
-    mock_job_config = mock.Mock()
-    mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
-    mock_loader.return_value = mock_job_config
+        mock_loader = mock.Mock()
+        mock_job_config = mock.Mock()
+        mock_job_config.get_kubernetes_namespace.return_value = "test-namespace"
+        mock_loader.return_value = mock_job_config
 
-    mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
-    mock_delete_pod.return_value = True
+        mock_handlers.__getitem__.return_value = mock.Mock(loader=mock_loader)
+        mock_delete_pod.return_value = True
 
-    result = pik.restart_replica_by_name(
-        service="test-service",
-        instance="main",
-        instance_type="kubernetes",
-        replica_name="test-pod-12345",
-        settings=mock_settings,
-        force=force,
-    )
+        result = pik.restart_replica_by_name(
+            service="test-service",
+            instance="main",
+            instance_type="kubernetes",
+            replica_name="test-pod-12345",
+            settings=mock_settings,
+            force=force,
+        )
 
-    assert result is True
+        assert result is True
 
-    # Should call delete_pod_by_name with expected grace period
-    mock_delete_pod.assert_called_once_with(
-        pod_name="test-pod-12345",
-        service="test-service",
-        instance="main",
-        namespace="test-namespace",
-        kube_client=mock_settings.kubernetes_client,
-        grace_period_seconds=expected_grace_period,
-    )
+        # Should call delete_pod_by_name with expected grace period
+        mock_delete_pod.assert_called_once_with(
+            pod_name="test-pod-12345",
+            service="test-service",
+            instance="main",
+            namespace="test-namespace",
+            kube_client=mock_settings.kubernetes_client,
+            grace_period_seconds=expected_grace_period,
+        )

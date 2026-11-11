@@ -129,37 +129,37 @@ async def test_kubernetes_smartstack_status(mock_job_config):
         }
 
 
-@mock.patch("paasta_tools.api.views.instance.adhoc_instance_status", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.get_actual_deployments", autospec=True)
-def test_instances_status_adhoc(
-    mock_get_actual_deployments,
-    mock_validate_service_instance,
-    mock_adhoc_instance_status,
-):
-    settings.cluster = "fake_cluster"
-    mock_deployment_version = DeploymentVersion("GIT_SHA", "20220101T000000")
-    mock_get_actual_deployments.return_value = {
-        "fake_cluster.fake_instance": mock_deployment_version,
-        "fake_cluster.fake_instance2": mock_deployment_version,
-        "fake_cluster2.fake_instance": mock_deployment_version,
-        "fake_cluster2.fake_instance2": mock_deployment_version,
-    }
-    mock_validate_service_instance.return_value = "adhoc"
-    mock_adhoc_instance_status.return_value = {}
+def test_instances_status_adhoc():
+    with mock.patch(
+        "paasta_tools.api.views.instance.get_actual_deployments", autospec=True
+    ) as mock_get_actual_deployments, mock.patch(
+        "paasta_tools.api.views.instance.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.api.views.instance.adhoc_instance_status", autospec=True
+    ) as mock_adhoc_instance_status:
+        settings.cluster = "fake_cluster"
+        mock_deployment_version = DeploymentVersion("GIT_SHA", "20220101T000000")
+        mock_get_actual_deployments.return_value = {
+            "fake_cluster.fake_instance": mock_deployment_version,
+            "fake_cluster.fake_instance2": mock_deployment_version,
+            "fake_cluster2.fake_instance": mock_deployment_version,
+            "fake_cluster2.fake_instance2": mock_deployment_version,
+        }
+        mock_validate_service_instance.return_value = "adhoc"
+        mock_adhoc_instance_status.return_value = {}
 
-    request = testing.DummyRequest()
-    request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
+        request = testing.DummyRequest()
+        request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
 
-    response = instance.instance_status(request)
-    assert mock_adhoc_instance_status.called
-    assert response == {
-        "service": "fake_service",
-        "instance": "fake_instance",
-        "git_sha": "GIT_SHA",
-        "version": mock_deployment_version.short_sha_repr(),
-        "adhoc": {},
-    }
+        response = instance.instance_status(request)
+        assert mock_adhoc_instance_status.called
+        assert response == {
+            "service": "fake_service",
+            "instance": "fake_instance",
+            "git_sha": "GIT_SHA",
+            "version": mock_deployment_version.short_sha_repr(),
+            "adhoc": {},
+        }
 
 
 def test_add_executor_info():
@@ -192,54 +192,54 @@ def test_add_slave_info():
     assert instance.add_slave_info(mock_task)._Task__items == expected
 
 
-@mock.patch(
-    "paasta_tools.api.views.instance.tron_tools.get_tron_dashboard_for_cluster",
-    autospec=True,
-)
-@mock.patch("paasta_tools.api.views.instance.tron_tools.TronClient", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.tron_tools.get_tron_client", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-def test_tron_instance_status(
-    mock_validate_service_instance,
-    mock_get_tron_client,
-    mock_tron_client,
-    mock_get_tron_dashboard_for_cluster,
-):
-    settings.cluster = "fake_cluster"
-    mock_validate_service_instance.return_value = "tron"
-    mock_client = mock_tron_client("fake_url")
-    mock_get_tron_client.return_value = mock_client
-    mock_client.get_job_content.return_value = {
-        "status": "fake_status",
-        "scheduler": {"type": "daily", "value": "1 2 3"},
-    }
-    mock_client.get_action_run.return_value = {
-        "state": "fake_state",
-        "start_time": "fake_start_time",
-        "raw_command": "fake_raw_command",
-        "command": "fake_command",
-        "stdout": ["fake_stdout"],
-        "stderr": ["fake_stderr"],
-    }
-    mock_get_tron_dashboard_for_cluster.return_value = "http://fake_url/"
+def test_tron_instance_status():
+    with mock.patch(
+        "paasta_tools.api.views.instance.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.api.views.instance.tron_tools.get_tron_client", autospec=True
+    ) as mock_get_tron_client, mock.patch(
+        "paasta_tools.api.views.instance.tron_tools.TronClient", autospec=True
+    ) as mock_tron_client, mock.patch(
+        "paasta_tools.api.views.instance.tron_tools.get_tron_dashboard_for_cluster",
+        autospec=True,
+    ) as mock_get_tron_dashboard_for_cluster:
+        settings.cluster = "fake_cluster"
+        mock_validate_service_instance.return_value = "tron"
+        mock_client = mock_tron_client("fake_url")
+        mock_get_tron_client.return_value = mock_client
+        mock_client.get_job_content.return_value = {
+            "status": "fake_status",
+            "scheduler": {"type": "daily", "value": "1 2 3"},
+        }
+        mock_client.get_action_run.return_value = {
+            "state": "fake_state",
+            "start_time": "fake_start_time",
+            "raw_command": "fake_raw_command",
+            "command": "fake_command",
+            "stdout": ["fake_stdout"],
+            "stderr": ["fake_stderr"],
+        }
+        mock_get_tron_dashboard_for_cluster.return_value = "http://fake_url/"
 
-    request = testing.DummyRequest()
-    request.swagger_data = {
-        "service": "fake_service",
-        "instance": "fake_job.fake_action",
-    }
-    response = instance.instance_status(request)
-    assert response["tron"]["job_name"] == "fake_job"
-    assert response["tron"]["job_status"] == "fake_status"
-    assert response["tron"]["job_schedule"] == "daily 1 2 3"
-    assert response["tron"]["job_url"] == "http://fake_url/#job/fake_service.fake_job"
-    assert response["tron"]["action_name"] == "fake_action"
-    assert response["tron"]["action_state"] == "fake_state"
-    assert response["tron"]["action_raw_command"] == "fake_raw_command"
-    assert response["tron"]["action_command"] == "fake_command"
-    assert response["tron"]["action_start_time"] == "fake_start_time"
-    assert response["tron"]["action_stdout"] == "fake_stdout"
-    assert response["tron"]["action_stderr"] == "fake_stderr"
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "fake_service",
+            "instance": "fake_job.fake_action",
+        }
+        response = instance.instance_status(request)
+        assert response["tron"]["job_name"] == "fake_job"
+        assert response["tron"]["job_status"] == "fake_status"
+        assert response["tron"]["job_schedule"] == "daily 1 2 3"
+        assert (
+            response["tron"]["job_url"] == "http://fake_url/#job/fake_service.fake_job"
+        )
+        assert response["tron"]["action_name"] == "fake_action"
+        assert response["tron"]["action_state"] == "fake_state"
+        assert response["tron"]["action_raw_command"] == "fake_raw_command"
+        assert response["tron"]["action_command"] == "fake_command"
+        assert response["tron"]["action_start_time"] == "fake_start_time"
+        assert response["tron"]["action_stdout"] == "fake_stdout"
+        assert response["tron"]["action_stderr"] == "fake_stderr"
 
 
 def test_kubernetes_instance_status_bounce_method():
@@ -323,44 +323,42 @@ def test_kubernetes_instance_status_evicted_nodes():
         assert instance_status["evicted_count"] == 1
 
 
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-def test_instance_mesh_status(
-    mock_validate_service_instance,
-    mock_kubernetes_mesh_status,
-):
-    mock_validate_service_instance.return_value = "flink"
-    mock_kubernetes_mesh_status.return_value = {
-        "smartstack": "smtstk status",
-        "envoy": "envoy status",
-    }
+def test_instance_mesh_status():
+    with mock.patch(
+        "paasta_tools.api.views.instance.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True
+    ) as mock_kubernetes_mesh_status:
+        mock_validate_service_instance.return_value = "flink"
+        mock_kubernetes_mesh_status.return_value = {
+            "smartstack": "smtstk status",
+            "envoy": "envoy status",
+        }
 
-    request = testing.DummyRequest()
-    request.swagger_data = {
-        "service": "fake_service",
-        "instance": "fake_inst",
-    }
-    instance_mesh = instance.instance_mesh_status(request)
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "fake_service",
+            "instance": "fake_inst",
+        }
+        instance_mesh = instance.instance_mesh_status(request)
 
-    assert instance_mesh == {
-        "service": "fake_service",
-        "instance": "fake_inst",
-        "smartstack": "smtstk status",
-        "envoy": "envoy status",
-    }
-    assert mock_kubernetes_mesh_status.call_args_list == [
-        mock.call(
-            service="fake_service",
-            instance="fake_inst",
-            instance_type="flink",
-            settings=settings,
-            include_envoy=None,  # default of true in api specs
-        ),
-    ]
+        assert instance_mesh == {
+            "service": "fake_service",
+            "instance": "fake_inst",
+            "smartstack": "smtstk status",
+            "envoy": "envoy status",
+        }
+        assert mock_kubernetes_mesh_status.call_args_list == [
+            mock.call(
+                service="fake_service",
+                instance="fake_inst",
+                instance_type="flink",
+                settings=settings,
+                include_envoy=None,  # default of true in api specs
+            ),
+        ]
 
 
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 @pytest.mark.parametrize(
     "validate_side_eft,mesh_status_side_eft,expected_msg,expected_code",
     [
@@ -376,31 +374,29 @@ def test_instance_mesh_status(
     ],
 )
 def test_instance_mesh_status_error(
-    mock_validate_service_instance,
-    mock_kubernetes_mesh_status,
-    validate_side_eft,
-    mesh_status_side_eft,
-    expected_msg,
-    expected_code,
+    validate_side_eft, mesh_status_side_eft, expected_msg, expected_code
 ):
-    mock_validate_service_instance.side_effect = [validate_side_eft]
-    mock_kubernetes_mesh_status.side_effect = [mesh_status_side_eft]
+    with mock.patch(
+        "paasta_tools.api.views.instance.validate_service_instance", autospec=True
+    ) as mock_validate_service_instance, mock.patch(
+        "paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True
+    ) as mock_kubernetes_mesh_status:
+        mock_validate_service_instance.side_effect = [validate_side_eft]
+        mock_kubernetes_mesh_status.side_effect = [mesh_status_side_eft]
 
-    request = testing.DummyRequest()
-    request.swagger_data = {
-        "service": "fake_service",
-        "instance": "fake_inst",
-    }
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "fake_service",
+            "instance": "fake_inst",
+        }
 
-    with pytest.raises(ApiFailure) as excinfo:
-        instance.instance_mesh_status(request)
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.instance_mesh_status(request)
 
-    assert expected_msg in excinfo.value.msg
-    assert expected_code == excinfo.value.err
+        assert expected_msg in excinfo.value.msg
+        assert expected_code == excinfo.value.err
 
 
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.pik.bounce_status", autospec=True)
 class TestBounceStatus:
     @pytest.fixture(autouse=True)
     def mock_settings(self):
@@ -426,73 +422,71 @@ class TestBounceStatus:
             "eks",
         ),
     )
-    def test_success(
-        self,
-        mock_pik_bounce_status,
-        mock_validate_service_instance,
-        mock_request,
-        instance_type,
-    ):
-        mock_validate_service_instance.return_value = instance_type
-        response = instance.bounce_status(mock_request)
-        assert response == mock_pik_bounce_status.return_value
+    def test_success(self, mock_request, instance_type):
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.bounce_status", autospec=True
+        ) as mock_pik_bounce_status, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = instance_type
+            response = instance.bounce_status(mock_request)
+            assert response == mock_pik_bounce_status.return_value
 
-    def test_not_found(
-        self,
-        mock_pik_bounce_status,
-        mock_validate_service_instance,
-        mock_request,
-    ):
-        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.bounce_status(mock_request)
-        assert excinfo.value.err == 404
+    def test_not_found(self, mock_request):
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.bounce_status", autospec=True
+        ), mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.bounce_status(mock_request)
+            assert excinfo.value.err == 404
 
-    def test_app_not_found(
-        self,
-        mock_pik_bounce_status,
-        mock_validate_service_instance,
-        mock_request,
-    ):
-        mock_validate_service_instance.return_value = "kubernetes"
-        mock_pik_bounce_status.side_effect = [ApiException(status=404)]
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.bounce_status(mock_request)
-        assert excinfo.value.err == 404
+    def test_app_not_found(self, mock_request):
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.bounce_status", autospec=True
+        ) as mock_pik_bounce_status, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "kubernetes"
+            mock_pik_bounce_status.side_effect = [ApiException(status=404)]
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.bounce_status(mock_request)
+            assert excinfo.value.err == 404
 
-    def test_not_kubernetes(
-        self,
-        mock_pik_bounce_status,
-        mock_validate_service_instance,
-        mock_request,
-    ):
-        mock_validate_service_instance.return_value = "not_kubernetes"
-        response = instance.bounce_status(mock_request)
-        assert response.status_code == 204
+    def test_not_kubernetes(self, mock_request):
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.bounce_status", autospec=True
+        ), mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "not_kubernetes"
+            response = instance.bounce_status(mock_request)
+            assert response.status_code == 204
 
-    def test_timeout(
-        self,
-        mock_pik_bounce_status,
-        mock_validate_service_instance,
-        mock_request,
-        mock_settings,
-    ):
-        mock_pik_bounce_status.side_effect = [asyncio.TimeoutError]
-        mock_validate_service_instance.return_value = "kubernetes"
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.bounce_status(mock_request)
-        assert excinfo.value.err == 599
-        assert (
-            excinfo.value.msg
-            == "Temporary issue fetching bounce status. Please try again."
-        )
+    def test_timeout(self, mock_request, mock_settings):
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.bounce_status", autospec=True
+        ) as mock_pik_bounce_status, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_pik_bounce_status.side_effect = [asyncio.TimeoutError]
+            mock_validate_service_instance.return_value = "kubernetes"
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.bounce_status(mock_request)
+            assert excinfo.value.err == 599
+            assert (
+                excinfo.value.msg
+                == "Temporary issue fetching bounce status. Please try again."
+            )
 
 
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.restart_replica_by_name", autospec=True
-)
-@mock.patch("paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True)
 class TestInstanceReplicaRestart:
     @pytest.fixture(autouse=True)
     def mock_settings(self):
@@ -514,139 +508,157 @@ class TestInstanceReplicaRestart:
         return request
 
     @pytest.mark.parametrize("force_flag", [False, True])
-    def test_success(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        force_flag,
-    ):
+    def test_success(self, force_flag):
         """Test successful replica restart with and without force flag."""
-        mock_validate_service_instance.return_value = "kubernetes"
-        mock_can_restart_replica.return_value = True
-        mock_restart_replica_by_name.return_value = True
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ) as mock_can_restart_replica, mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ) as mock_restart_replica_by_name, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "kubernetes"
+            mock_can_restart_replica.return_value = True
+            mock_restart_replica_by_name.return_value = True
 
-        # Create request with optional force flag
-        request = testing.DummyRequest()
-        request.swagger_data = {
-            "service": "test_service",
-            "instance": "test_instance",
-            "replica_name": "test-pod-12345",
-        }
-        if force_flag:
-            request.swagger_data["force"] = force_flag
+            # Create request with optional force flag
+            request = testing.DummyRequest()
+            request.swagger_data = {
+                "service": "test_service",
+                "instance": "test_instance",
+                "replica_name": "test-pod-12345",
+            }
+            if force_flag:
+                request.swagger_data["force"] = force_flag
 
-        response = instance.instance_replica_restart(request)
+            response = instance.instance_replica_restart(request)
 
-        expected_response = {
-            "message": "Initiated replica restart of test-pod-12345 successfully",
-            "service": "test_service",
-            "instance": "test_instance",
-            "replica_name": "test-pod-12345",
-        }
-        assert response == expected_response
+            expected_response = {
+                "message": "Initiated replica restart of test-pod-12345 successfully",
+                "service": "test_service",
+                "instance": "test_instance",
+                "replica_name": "test-pod-12345",
+            }
+            assert response == expected_response
 
-        mock_validate_service_instance.assert_called_once_with(
-            "test_service", "test_instance", "test_cluster", "/test/soa/dir"
-        )
-        mock_can_restart_replica.assert_called_once_with("kubernetes")
-        mock_restart_replica_by_name.assert_called_once_with(
-            service="test_service",
-            instance="test_instance",
-            instance_type="kubernetes",
-            replica_name="test-pod-12345",
-            settings=mock.ANY,
-            force=force_flag,
-        )
+            mock_validate_service_instance.assert_called_once_with(
+                "test_service", "test_instance", "test_cluster", "/test/soa/dir"
+            )
+            mock_can_restart_replica.assert_called_once_with("kubernetes")
+            mock_restart_replica_by_name.assert_called_once_with(
+                service="test_service",
+                instance="test_instance",
+                instance_type="kubernetes",
+                replica_name="test-pod-12345",
+                settings=mock.ANY,
+                force=force_flag,
+            )
 
-    def test_service_not_found(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        mock_request,
-    ):
+    def test_service_not_found(self, mock_request):
         """Test replica restart when service/instance doesn't exist."""
-        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ), mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.side_effect = NoConfigurationForServiceError
 
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.instance_replica_restart(mock_request)
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.instance_replica_restart(mock_request)
 
-        assert excinfo.value.err == 404
+            assert excinfo.value.err == 404
         # Functions should not be called when validation fails early
 
-    def test_replica_not_found(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        mock_request,
-    ):
+    def test_replica_not_found(self, mock_request):
         """Test replica restart when replica doesn't exist."""
-        mock_validate_service_instance.return_value = "kubernetes"
-        mock_can_restart_replica.return_value = True
-        mock_restart_replica_by_name.return_value = False
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ) as mock_can_restart_replica, mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ) as mock_restart_replica_by_name, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "kubernetes"
+            mock_can_restart_replica.return_value = True
+            mock_restart_replica_by_name.return_value = False
 
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.instance_replica_restart(mock_request)
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.instance_replica_restart(mock_request)
 
-        assert excinfo.value.err == 404
-        assert (
-            "Replica test-pod-12345 not found in service test_service.test_instance"
-            in excinfo.value.msg
-        )
+            assert excinfo.value.err == 404
+            assert (
+                "Replica test-pod-12345 not found in service test_service.test_instance"
+                in excinfo.value.msg
+            )
 
-    def test_instance_type_not_supported(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        mock_request,
-    ):
+    def test_instance_type_not_supported(self, mock_request):
         """Test replica restart with unsupported instance type."""
-        mock_validate_service_instance.return_value = "tron"
-        mock_can_restart_replica.return_value = False
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ) as mock_can_restart_replica, mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "tron"
+            mock_can_restart_replica.return_value = False
 
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.instance_replica_restart(mock_request)
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.instance_replica_restart(mock_request)
 
-        assert excinfo.value.err == 500
-        assert (
-            "instance_type tron of test_service.test_instance doesn't support replica restart"
-            in excinfo.value.msg
-        )
+            assert excinfo.value.err == 500
+            assert (
+                "instance_type tron of test_service.test_instance doesn't support replica restart"
+                in excinfo.value.msg
+            )
 
-    def test_runtime_error(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        mock_request,
-    ):
+    def test_runtime_error(self, mock_request):
         """Test replica restart when operation fails."""
-        mock_validate_service_instance.return_value = "kubernetes"
-        mock_can_restart_replica.return_value = True
-        mock_restart_replica_by_name.side_effect = RuntimeError(
-            "Kubernetes client not available"
-        )
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ) as mock_can_restart_replica, mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ) as mock_restart_replica_by_name, mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.return_value = "kubernetes"
+            mock_can_restart_replica.return_value = True
+            mock_restart_replica_by_name.side_effect = RuntimeError(
+                "Kubernetes client not available"
+            )
 
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.instance_replica_restart(mock_request)
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.instance_replica_restart(mock_request)
 
-        assert excinfo.value.err == 500
-        assert "Kubernetes client not available" in excinfo.value.msg
+            assert excinfo.value.err == 500
+            assert "Kubernetes client not available" in excinfo.value.msg
 
-    def test_generic_exception(
-        self,
-        mock_can_restart_replica,
-        mock_restart_replica_by_name,
-        mock_validate_service_instance,
-        mock_request,
-    ):
+    def test_generic_exception(self, mock_request):
         """Test replica restart with generic validation exception throws ApiFailure."""
-        mock_validate_service_instance.side_effect = Exception("Unexpected error")
+        with mock.patch(
+            "paasta_tools.api.views.instance.pik.can_restart_replica", autospec=True
+        ), mock.patch(
+            "paasta_tools.api.views.instance.pik.restart_replica_by_name",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.api.views.instance.validate_service_instance",
+            autospec=True,
+        ) as mock_validate_service_instance:
+            mock_validate_service_instance.side_effect = Exception("Unexpected error")
 
-        with pytest.raises(ApiFailure) as excinfo:
-            instance.instance_replica_restart(mock_request)
+            with pytest.raises(ApiFailure) as excinfo:
+                instance.instance_replica_restart(mock_request)
 
-        assert excinfo.value.err == 500
+            assert excinfo.value.err == 500

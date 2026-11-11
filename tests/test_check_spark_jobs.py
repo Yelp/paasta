@@ -95,29 +95,30 @@ def test_guess_service(properties, expected):
     assert check_spark_jobs.guess_service(properties) == expected
 
 
-@mock.patch("paasta_tools.check_spark_jobs.get_spark_properties", autospec=True)
-@mock.patch("paasta_tools.check_spark_jobs.guess_service", autospec=True)
-def test_get_matching_framework_info(
-    mock_guess_service, mock_get_spark_properties, mock_get_frameworks
-):
-    mock_get_spark_properties.return_value = None
+def test_get_matching_framework_info(mock_get_frameworks):
+    with mock.patch(
+        "paasta_tools.check_spark_jobs.guess_service", autospec=True
+    ) as mock_guess_service, mock.patch(
+        "paasta_tools.check_spark_jobs.get_spark_properties", autospec=True
+    ) as mock_get_spark_properties:
+        mock_get_spark_properties.return_value = None
 
-    more_than_20_hours = check_spark_jobs.get_matching_framework_info(min_hours=20)
-    assert len(more_than_20_hours) == 1
-    assert more_than_20_hours == [
-        {
-            "id": "uuid3",
-            "name": "spark_25_hours",
-            "webui_url": "url3",
-            "service": mock_guess_service.return_value,
-            "user": "test_user",
-            "time_running": "1 day, 1:00:00",
-        }
-    ]
+        more_than_20_hours = check_spark_jobs.get_matching_framework_info(min_hours=20)
+        assert len(more_than_20_hours) == 1
+        assert more_than_20_hours == [
+            {
+                "id": "uuid3",
+                "name": "spark_25_hours",
+                "webui_url": "url3",
+                "service": mock_guess_service.return_value,
+                "user": "test_user",
+                "time_running": "1 day, 1:00:00",
+            }
+        ]
 
-    more_than_one_hour = check_spark_jobs.get_matching_framework_info(min_hours=1)
-    result_names = [result["name"] for result in more_than_one_hour]
-    assert result_names == ["spark_2_hours", "spark_25_hours"]
+        more_than_one_hour = check_spark_jobs.get_matching_framework_info(min_hours=1)
+        result_names = [result["name"] for result in more_than_one_hour]
+        assert result_names == ["spark_2_hours", "spark_25_hours"]
 
 
 @pytest.mark.parametrize(
@@ -148,61 +149,64 @@ def test_email_user(mock_smtp, framework_user, framework_name, expected):
         assert mock_send_message.call_count == 0
 
 
-@mock.patch("paasta_tools.check_spark_jobs.email_user", autospec=True)
-@mock.patch("paasta_tools.check_spark_jobs.list_services", autospec=True)
-@mock.patch("paasta_tools.check_spark_jobs.get_matching_framework_info", autospec=True)
-@mock.patch("paasta_tools.check_spark_jobs.update_check_status", autospec=True)
 @pytest.mark.parametrize("no_notify", [True, False])
-def test_report_spark_jobs(
-    mock_check, mock_get_info, mock_list_services, mock_email_user, no_notify
-):
-    mock_list_services.return_value = ["service1", "service2", "other_service"]
-    mock_get_info.return_value = [
-        {
-            "id": "uuid1",
-            "name": "spark1",
-            "webui_url": "url1",
-            "service": "service1",
-            "user": "test_user",
-            "time_running": "7:00:00",
-        },
-        {
-            "id": "uuid2",
-            "name": "spark2",
-            "webui_url": "url2",
-            "service": "service2",
-            "user": "test_user",
-            "time_running": "7:00:00",
-        },
-        {
-            "id": "uuid3",
-            "name": "spark3",
-            "webui_url": "url3",
-            "service": "service2",
-            "user": "test_user",
-            "time_running": "7:00:00",
-        },
-        {
-            "id": "uuid3",
-            "name": "spark3",
-            "webui_url": "url3",
-            "service": "service_dne",
-            "user": "test_user",
-            "time_running": "7:00:00",
-        },
-    ]
-    assert check_spark_jobs.report_spark_jobs(1, no_notify, "test.com") == 1
-    assert mock_get_info.call_args_list == [mock.call(min_hours=1)]
-    if no_notify:
-        assert mock_check.call_count == 0
-    else:
-        assert sorted(mock_check.call_args_list) == sorted(
-            [
-                mock.call("service1", mock.ANY, 1),
-                mock.call("service2", mock.ANY, 1),
-                mock.call("other_service", mock.ANY, 0),
-            ]
-        )
-        assert mock_email_user.call_args_list == [
-            mock.call(info, "test.com") for info in mock_get_info.return_value
+def test_report_spark_jobs(no_notify):
+    with mock.patch(
+        "paasta_tools.check_spark_jobs.update_check_status", autospec=True
+    ) as mock_check, mock.patch(
+        "paasta_tools.check_spark_jobs.get_matching_framework_info", autospec=True
+    ) as mock_get_info, mock.patch(
+        "paasta_tools.check_spark_jobs.list_services", autospec=True
+    ) as mock_list_services, mock.patch(
+        "paasta_tools.check_spark_jobs.email_user", autospec=True
+    ) as mock_email_user:
+        mock_list_services.return_value = ["service1", "service2", "other_service"]
+        mock_get_info.return_value = [
+            {
+                "id": "uuid1",
+                "name": "spark1",
+                "webui_url": "url1",
+                "service": "service1",
+                "user": "test_user",
+                "time_running": "7:00:00",
+            },
+            {
+                "id": "uuid2",
+                "name": "spark2",
+                "webui_url": "url2",
+                "service": "service2",
+                "user": "test_user",
+                "time_running": "7:00:00",
+            },
+            {
+                "id": "uuid3",
+                "name": "spark3",
+                "webui_url": "url3",
+                "service": "service2",
+                "user": "test_user",
+                "time_running": "7:00:00",
+            },
+            {
+                "id": "uuid3",
+                "name": "spark3",
+                "webui_url": "url3",
+                "service": "service_dne",
+                "user": "test_user",
+                "time_running": "7:00:00",
+            },
         ]
+        assert check_spark_jobs.report_spark_jobs(1, no_notify, "test.com") == 1
+        assert mock_get_info.call_args_list == [mock.call(min_hours=1)]
+        if no_notify:
+            assert mock_check.call_count == 0
+        else:
+            assert sorted(mock_check.call_args_list) == sorted(
+                [
+                    mock.call("service1", mock.ANY, 1),
+                    mock.call("service2", mock.ANY, 1),
+                    mock.call("other_service", mock.ANY, 0),
+                ]
+            )
+            assert mock_email_user.call_args_list == [
+                mock.call(info, "test.com") for info in mock_get_info.return_value
+            ]

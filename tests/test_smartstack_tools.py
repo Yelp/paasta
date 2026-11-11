@@ -168,38 +168,40 @@ def test_match_backends_and_pods():
     assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
 
 
-@mock.patch("paasta_tools.smartstack_tools.get_multiple_backends", autospec=True)
-def test_get_replication_for_all_services(mock_get_multiple_backends):
-    mock_get_multiple_backends.return_value = [
-        {
-            "pxname": "servicename.main",
-            "svname": "10.50.2.4:31000_box4",
-            "status": "UP",
-        },
-        {
-            "pxname": "servicename.main",
-            "svname": "10.50.2.5:31001_box5",
-            "status": "UP",
-        },
-        {
-            "pxname": "servicename.main",
-            "svname": "10.50.2.6:31001_box6",
-            "status": "UP",
-        },
-        {
-            "pxname": "servicename.main",
-            "svname": "10.50.2.6:31002_box7",
-            "status": "UP",
-        },
-        {
-            "pxname": "servicename.main",
-            "svname": "10.50.2.8:31000_box8",
-            "status": "UP",
-        },
-    ]
-    assert {"servicename.main": 5} == smartstack_tools.get_replication_for_all_services(
-        "", 8888, ""
-    )
+def test_get_replication_for_all_services():
+    with mock.patch(
+        "paasta_tools.smartstack_tools.get_multiple_backends", autospec=True
+    ) as mock_get_multiple_backends:
+        mock_get_multiple_backends.return_value = [
+            {
+                "pxname": "servicename.main",
+                "svname": "10.50.2.4:31000_box4",
+                "status": "UP",
+            },
+            {
+                "pxname": "servicename.main",
+                "svname": "10.50.2.5:31001_box5",
+                "status": "UP",
+            },
+            {
+                "pxname": "servicename.main",
+                "svname": "10.50.2.6:31001_box6",
+                "status": "UP",
+            },
+            {
+                "pxname": "servicename.main",
+                "svname": "10.50.2.6:31002_box7",
+                "status": "UP",
+            },
+            {
+                "pxname": "servicename.main",
+                "svname": "10.50.2.8:31000_box8",
+                "status": "UP",
+            },
+        ]
+        assert {
+            "servicename.main": 5
+        } == smartstack_tools.get_replication_for_all_services("", 8888, "")
 
 
 def test_are_services_up_on_port():

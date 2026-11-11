@@ -19,11 +19,11 @@ from slackclient import SlackClient
 from paasta_tools.slack import PaastaSlackClient
 
 
-@mock.patch("slackclient.SlackClient", autospec=True)
-def test_slack_client_doesnt_post_with_no_token(mock_SlackClient):
-    psc = PaastaSlackClient(token=None)
-    assert psc.post(channels=["foo"], message="bar") == []
-    assert mock_SlackClient.api_call.call_count == 0
+def test_slack_client_doesnt_post_with_no_token():
+    with mock.patch("slackclient.SlackClient", autospec=True) as mock_SlackClient:
+        psc = PaastaSlackClient(token=None)
+        assert psc.post(channels=["foo"], message="bar") == []
+        assert mock_SlackClient.api_call.call_count == 0
 
 
 def test_slack_client_posts_to_multiple_channels():

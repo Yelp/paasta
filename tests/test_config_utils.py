@@ -90,24 +90,30 @@ def test_write_auto_config_data_file_exists(tmpdir):
         assert yaml.safe_load(f) == {"a": 2}
 
 
-@mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
-def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
-    for config_type in (
-        "kubernetes",
-        "deploy",
-        "smartstack",
-        "cassandracluster",
-    ):
-        filepath = f"service/{config_type}-cluster.yaml"
-        assert config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
-        mock_validate.assert_called_with(filepath, f"autotuned_defaults/{config_type}")
+def test_validate_auto_config_file_config_types(tmpdir):
+    with mock.patch(
+        "paasta_tools.config_utils.validate_schema", autospec=True
+    ) as mock_validate:
+        for config_type in (
+            "kubernetes",
+            "deploy",
+            "smartstack",
+            "cassandracluster",
+        ):
+            filepath = f"service/{config_type}-cluster.yaml"
+            assert config_utils.validate_auto_config_file(
+                filepath, AUTO_SOACONFIG_SUBDIR
+            )
+            mock_validate.assert_called_with(
+                filepath, f"autotuned_defaults/{config_type}"
+            )
 
 
-@mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
-def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
-    assert not config_utils.validate_auto_config_file(
-        "service/unknown-thing.yaml", AUTO_SOACONFIG_SUBDIR
-    )
+def test_validate_auto_config_file_unknown_type(tmpdir):
+    with mock.patch("paasta_tools.config_utils.validate_schema", autospec=True):
+        assert not config_utils.validate_auto_config_file(
+            "service/unknown-thing.yaml", AUTO_SOACONFIG_SUBDIR
+        )
 
 
 @pytest.mark.parametrize(
@@ -228,14 +234,16 @@ def test_auto_config_updater_context_no_clone(
 
 
 @pytest.mark.parametrize("all_valid", [True, False])
-@mock.patch("paasta_tools.config_utils.validate_auto_config_file", autospec=True)
-def test_auto_config_updater_validate(mock_validate_file, all_valid, updater):
-    mock_validate_file.side_effect = [True, all_valid, True]
+def test_auto_config_updater_validate(all_valid, updater):
+    with mock.patch(
+        "paasta_tools.config_utils.validate_auto_config_file", autospec=True
+    ) as mock_validate_file:
+        mock_validate_file.side_effect = [True, all_valid, True]
 
-    updater.write_configs("foo", "kubernetes-norcal-devc", {"a": 2})
-    updater.write_configs("foo", "eks-pnw-devc", {"a": 2})
-    assert updater.validate() == all_valid
-    assert mock_validate_file.call_count == 2
+        updater.write_configs("foo", "kubernetes-norcal-devc", {"a": 2})
+        updater.write_configs("foo", "eks-pnw-devc", {"a": 2})
+        assert updater.validate() == all_valid
+        assert mock_validate_file.call_count == 2
 
 
 def test_auto_config_updater_read_write(updater):
@@ -289,33 +297,39 @@ bar: foo
         )
 
 
-@mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)
-@mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
-def test_auto_config_updater_commit_validate_fails(mock_push, mock_commit, updater):
-    updater.files_changed = {"a", "b"}
-    with mock.patch.object(
-        updater, "validate", autospec=True, return_value=False
-    ), pytest.raises(config_utils.ValidationError):
-        updater.commit_to_remote()
+def test_auto_config_updater_commit_validate_fails(updater):
+    with mock.patch(
+        "paasta_tools.config_utils._commit_files", autospec=True
+    ) as mock_push, mock.patch(
+        "paasta_tools.config_utils._push_to_remote", autospec=True
+    ) as mock_commit:
+        updater.files_changed = {"a", "b"}
+        with mock.patch.object(
+            updater, "validate", autospec=True, return_value=False
+        ), pytest.raises(config_utils.ValidationError):
+            updater.commit_to_remote()
 
-    assert mock_commit.call_count == 0
-    assert mock_push.call_count == 0
+        assert mock_commit.call_count == 0
+        assert mock_push.call_count == 0
 
 
 @pytest.mark.parametrize("did_commit", [True, False])
-@mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
-@mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)
-def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater):
-    updater.files_changed = {"a", "b"}
-    mock_commit.return_value = did_commit
-    with mock.patch.object(updater, "validate", autospec=True, return_value=True):
-        updater.commit_to_remote()
+def test_auto_config_updater_commit(did_commit, updater):
+    with mock.patch(
+        "paasta_tools.config_utils._push_to_remote", autospec=True
+    ) as mock_push, mock.patch(
+        "paasta_tools.config_utils._commit_files", autospec=True
+    ) as mock_commit:
+        updater.files_changed = {"a", "b"}
+        mock_commit.return_value = did_commit
+        with mock.patch.object(updater, "validate", autospec=True, return_value=True):
+            updater.commit_to_remote()
 
-    assert mock_commit.call_count == 1
-    if did_commit:
-        mock_push.assert_called_once_with(updater.branch)
-    else:
-        assert mock_push.call_count == 0
+        assert mock_commit.call_count == 1
+        if did_commit:
+            mock_push.assert_called_once_with(updater.branch)
+        else:
+            assert mock_push.call_count == 0
 
 
 def test_auto_config_updater_merge_recommendations_limits(updater):

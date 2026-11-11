@@ -57,16 +57,16 @@ def test_inject_spark_conf_str(cmd, expected):
         ),
     ],
 )
-@mock.patch.object(sys, "exit")
-def test_get_volumes_from_spark_k8s_configs(mock_sys, spark_conf, expected):
-    result = spark_tools.get_volumes_from_spark_k8s_configs(spark_conf)
-    if (
-        "spark.kubernetes.executor.volumes.hostPath.NAILsrv-123.mount.path"
-        in spark_conf
-    ):
-        mock_sys.assert_called_with(1)
-    else:
-        assert result == expected
+def test_get_volumes_from_spark_k8s_configs(spark_conf, expected):
+    with mock.patch.object(sys, "exit") as mock_sys:
+        result = spark_tools.get_volumes_from_spark_k8s_configs(spark_conf)
+        if (
+            "spark.kubernetes.executor.volumes.hostPath.NAILsrv-123.mount.path"
+            in spark_conf
+        ):
+            mock_sys.assert_called_with(1)
+        else:
+            assert result == expected
 
 
 @pytest.mark.parametrize(

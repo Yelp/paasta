@@ -1083,15 +1083,17 @@ class TestKubernetesDeploymentConfig:
         service_namespace_config.is_in_smartstack.return_value = True
         assert self.deployment.get_readiness_probe(service_namespace_config) is None
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_liveness_probe",
-        autospec=True,
-    )
-    def test_get_readiness_probe_not_in_mesh(self, mock_get_liveness_probe):
-        service_namespace_config = mock.Mock()
-        service_namespace_config.is_in_smartstack.return_value = False
-        readiness_probe = self.deployment.get_readiness_probe(service_namespace_config)
-        assert readiness_probe == mock_get_liveness_probe.return_value
+    def test_get_readiness_probe_not_in_mesh(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_liveness_probe",
+            autospec=True,
+        ) as mock_get_liveness_probe:
+            service_namespace_config = mock.Mock()
+            service_namespace_config.is_in_smartstack.return_value = False
+            readiness_probe = self.deployment.get_readiness_probe(
+                service_namespace_config
+            )
+            assert readiness_probe == mock_get_liveness_probe.return_value
 
     def test_get_security_context_without_cap_add(self):
         expected_security_context = V1SecurityContext(
@@ -1575,11 +1577,11 @@ class TestKubernetesDeploymentConfig:
                 "paasta.yelp.com/job_type": "foobar",
             }
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl", autospec=True
-    )
-    def test_format_kubernetes_app_dict(self, _):
+    def test_format_kubernetes_app_dict(self):
         with mock.patch(
+            "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl",
+            autospec=True,
+        ), mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None
         ) as mock_load_system_config, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
@@ -1727,39 +1729,6 @@ class TestKubernetesDeploymentConfig:
                 in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-        autospec=True,
-        return_value=[],
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
-        autospec=True,
-    )
     @pytest.mark.parametrize(
         "autoscaling_metric_provider",
         [
@@ -1804,14 +1773,6 @@ class TestKubernetesDeploymentConfig:
     )
     def test_get_pod_template_spec(
         self,
-        mock_create_pod_topology_spread_constraints,
-        mock_get_pod_anti_affinity,
-        mock_get_termination_grace_period,
-        mock_load_service_namespace_config,
-        mock_get_node_affinity,
-        mock_get_pod_volumes,
-        mock_get_kubernetes_containers,
-        mock_get_volumes,
         mock_load_system_paasta_config,
         in_smtstk,
         routable_ip,
@@ -1822,155 +1783,156 @@ class TestKubernetesDeploymentConfig:
         termination_grace_period,
         autoscaling_metric_provider,
     ):
-        mock_service_namespace_config = mock.Mock()
-        mock_load_service_namespace_config.return_value = mock_service_namespace_config
-        mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
-        mock_get_node_affinity.return_value = node_affinity
-        mock_get_pod_anti_affinity.return_value = anti_affinity
-        mock_create_pod_topology_spread_constraints.return_value = pod_topology
-        mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            True
-        )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
-        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
-        mock_get_termination_grace_period.return_value = termination_grace_period
-
-        if autoscaling_metric_provider:
-            mock_config_dict = KubernetesDeploymentConfigDict(
-                min_instances=1,
-                max_instances=3,
-                autoscaling={
-                    "metrics_providers": [{"type": autoscaling_metric_provider}]
-                },
-                deploy_group="brentford.fm",
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+            autospec=True,
+        ) as mock_create_pod_topology_spread_constraints, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+            autospec=True,
+        ) as mock_get_pod_anti_affinity, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+            autospec=True,
+        ) as mock_get_termination_grace_period, mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            autospec=True,
+        ) as mock_load_service_namespace_config, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+            autospec=True,
+        ) as mock_get_node_affinity, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+            autospec=True,
+            return_value=[],
+        ) as mock_get_pod_volumes, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+            autospec=True,
+        ) as mock_get_kubernetes_containers, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+            autospec=True,
+        ) as mock_get_volumes:
+            mock_service_namespace_config = mock.Mock()
+            mock_load_service_namespace_config.return_value = (
+                mock_service_namespace_config
             )
-            autoscaled_deployment = KubernetesDeploymentConfig(
-                service="kurupt",
-                instance="fm",
-                cluster="brentford",
-                config_dict=mock_config_dict,
-                branch_dict=None,
+            mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
+            mock_get_node_affinity.return_value = node_affinity
+            mock_get_pod_anti_affinity.return_value = anti_affinity
+            mock_create_pod_topology_spread_constraints.return_value = pod_topology
+            mock_system_paasta_config = mock.Mock()
+            mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+                True
             )
-            ret = autoscaled_deployment.get_pod_template_spec(
-                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+            mock_system_paasta_config.get_pod_defaults.return_value = dict(
+                dns_policy="foo"
             )
-        else:
-            ret = self.deployment.get_pod_template_spec(
-                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            mock_load_system_paasta_config.return_value = mock_system_paasta_config
+            mock_system_paasta_config.get_service_auth_token_volume_config.return_value = (
+                {}
             )
+            mock_get_termination_grace_period.return_value = termination_grace_period
 
-        assert mock_load_service_namespace_config.called
-        assert mock_service_namespace_config.is_in_smartstack.called
-        assert mock_get_pod_volumes.called
-        assert mock_get_volumes.called
-        assert mock_load_system_paasta_config.called
-        pod_spec_kwargs = dict(
-            service_account_name=None,
-            containers=mock_get_kubernetes_containers.return_value,
-            share_process_namespace=True,
-            node_selector={"yelp.com/pool": "default"},
-            restart_policy="Always",
-            volumes=[],
-            dns_policy="foo",
-            termination_grace_period_seconds=termination_grace_period,
-        )
-        pod_spec_kwargs.update(spec_affinity)
+            if autoscaling_metric_provider:
+                mock_config_dict = KubernetesDeploymentConfigDict(
+                    min_instances=1,
+                    max_instances=3,
+                    autoscaling={
+                        "metrics_providers": [{"type": autoscaling_metric_provider}]
+                    },
+                    deploy_group="brentford.fm",
+                )
+                autoscaled_deployment = KubernetesDeploymentConfig(
+                    service="kurupt",
+                    instance="fm",
+                    cluster="brentford",
+                    config_dict=mock_config_dict,
+                    branch_dict=None,
+                )
+                ret = autoscaled_deployment.get_pod_template_spec(
+                    git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+                )
+            else:
+                ret = self.deployment.get_pod_template_spec(
+                    git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+                )
 
-        expected_labels = {
-            "paasta.yelp.com/pool": "default",
-            "yelp.com/paasta_git_sha": "aaaa123",
-            "yelp.com/paasta_instance": "fm",
-            "yelp.com/paasta_service": "kurupt",
-            "paasta.yelp.com/git_sha": "aaaa123",
-            "paasta.yelp.com/instance": "fm",
-            "paasta.yelp.com/service": "kurupt",
-            "paasta.yelp.com/autoscaled": "true"
-            if autoscaling_metric_provider
-            else "false",
-            "paasta.yelp.com/cluster": "brentford",
-            "registrations.paasta.yelp.com/kurupt.fm": "true",
-            "yelp.com/owner": "compute_infra_platform_experience",
-            "paasta.yelp.com/managed": "true",
-            "paasta.yelp.com/deploy_group": "brentford.fm",
-        }
+            assert mock_load_service_namespace_config.called
+            assert mock_service_namespace_config.is_in_smartstack.called
+            assert mock_get_pod_volumes.called
+            assert mock_get_volumes.called
+            assert mock_load_system_paasta_config.called
+            pod_spec_kwargs = dict(
+                service_account_name=None,
+                containers=mock_get_kubernetes_containers.return_value,
+                share_process_namespace=True,
+                node_selector={"yelp.com/pool": "default"},
+                restart_policy="Always",
+                volumes=[],
+                dns_policy="foo",
+                termination_grace_period_seconds=termination_grace_period,
+            )
+            pod_spec_kwargs.update(spec_affinity)
 
-        if autoscaling_metric_provider in (
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
-        ):
-            expected_labels[
-                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
-            ] = "true"
-        elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
-            expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
-
-        if autoscaling_metric_provider in (
-            METRICS_PROVIDER_UWSGI,
-            METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_WORKER_LOAD,
-        ):
-            routable_ip = "true"
-
-        if in_smtstk:
-            expected_labels["paasta.yelp.com/weight"] = "10"
-            expected_annotations = {
-                "smartstack_registrations": '["kurupt.fm"]',
-                "paasta.yelp.com/routable_ip": routable_ip,
-                "iam.amazonaws.com/role": "",
+            expected_labels = {
+                "paasta.yelp.com/pool": "default",
+                "yelp.com/paasta_git_sha": "aaaa123",
+                "yelp.com/paasta_instance": "fm",
+                "yelp.com/paasta_service": "kurupt",
+                "paasta.yelp.com/git_sha": "aaaa123",
+                "paasta.yelp.com/instance": "fm",
+                "paasta.yelp.com/service": "kurupt",
+                "paasta.yelp.com/autoscaled": "true"
+                if autoscaling_metric_provider
+                else "false",
+                "paasta.yelp.com/cluster": "brentford",
+                "registrations.paasta.yelp.com/kurupt.fm": "true",
+                "yelp.com/owner": "compute_infra_platform_experience",
+                "paasta.yelp.com/managed": "true",
+                "paasta.yelp.com/deploy_group": "brentford.fm",
             }
-        else:
-            expected_annotations = {
-                "paasta.yelp.com/routable_ip": routable_ip,
-                "iam.amazonaws.com/role": "",
-            }
 
-        if autoscaling_metric_provider == METRICS_PROVIDER_UWSGI:
-            expected_annotations["autoscaling"] = "uwsgi"
+            if autoscaling_metric_provider in (
+                METRICS_PROVIDER_PISCINA,
+                METRICS_PROVIDER_GUNICORN,
+            ):
+                expected_labels[
+                    f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
+                ] = "true"
+            elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
+                expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
-        expected = V1PodTemplateSpec(
-            metadata=V1ObjectMeta(
-                labels=expected_labels,
-                annotations=expected_annotations,
-            ),
-            spec=V1PodSpec(**pod_spec_kwargs),
-        )
+            if autoscaling_metric_provider in (
+                METRICS_PROVIDER_UWSGI,
+                METRICS_PROVIDER_GUNICORN,
+                METRICS_PROVIDER_WORKER_LOAD,
+            ):
+                routable_ip = "true"
 
-        assert ret == expected
+            if in_smtstk:
+                expected_labels["paasta.yelp.com/weight"] = "10"
+                expected_annotations = {
+                    "smartstack_registrations": '["kurupt.fm"]',
+                    "paasta.yelp.com/routable_ip": routable_ip,
+                    "iam.amazonaws.com/role": "",
+                }
+            else:
+                expected_annotations = {
+                    "paasta.yelp.com/routable_ip": routable_ip,
+                    "iam.amazonaws.com/role": "",
+                }
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
-        autospec=True,
-    )
+            if autoscaling_metric_provider == METRICS_PROVIDER_UWSGI:
+                expected_annotations["autoscaling"] = "uwsgi"
+
+            expected = V1PodTemplateSpec(
+                metadata=V1ObjectMeta(
+                    labels=expected_labels,
+                    annotations=expected_annotations,
+                ),
+                spec=V1PodSpec(**pod_spec_kwargs),
+            )
+
+            assert ret == expected
+
     @pytest.mark.parametrize(
         "metrics_providers,expected_labels",
         [
@@ -2082,90 +2044,107 @@ class TestKubernetesDeploymentConfig:
     )
     def test_get_pod_template_spec_multiple_metrics_providers(
         self,
-        mock_create_pod_topology_spread_constraints,
-        mock_get_pod_anti_affinity,
-        mock_get_termination_grace_period,
-        mock_load_service_namespace_config,
-        mock_get_node_affinity,
-        mock_get_pod_volumes,
-        mock_get_kubernetes_containers,
-        mock_get_volumes,
         mock_load_system_paasta_config,
         metrics_providers: List[str],
         expected_labels: Dict[str, str],
     ):
         """Test get_pod_template_spec with multiple metrics providers in all combinations."""
-        mock_service_namespace_config = mock.Mock()
-        mock_load_service_namespace_config.return_value = mock_service_namespace_config
-        mock_service_namespace_config.is_in_smartstack.return_value = True
-        mock_get_node_affinity.return_value = None
-        mock_get_pod_anti_affinity.return_value = None
-        mock_create_pod_topology_spread_constraints.return_value = []
-        mock_get_termination_grace_period.return_value = None
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+            autospec=True,
+        ) as mock_create_pod_topology_spread_constraints, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+            autospec=True,
+        ) as mock_get_pod_anti_affinity, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+            autospec=True,
+        ) as mock_get_termination_grace_period, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+            autospec=True,
+        ) as mock_load_service_namespace_config, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+            autospec=True,
+        ) as mock_get_node_affinity, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            autospec=True,
+        ):
+            mock_service_namespace_config = mock.Mock()
+            mock_load_service_namespace_config.return_value = (
+                mock_service_namespace_config
+            )
+            mock_service_namespace_config.is_in_smartstack.return_value = True
+            mock_get_node_affinity.return_value = None
+            mock_get_pod_anti_affinity.return_value = None
+            mock_create_pod_topology_spread_constraints.return_value = []
+            mock_get_termination_grace_period.return_value = None
 
-        mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            True
-        )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = {"dns_policy": "foo"}
-        mock_system_paasta_config.get_hacheck_sidecar_volumes.return_value = []
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
-        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
-
-        # Deployment config with multiple metrics providers
-        mock_config_dict = KubernetesDeploymentConfigDict(
-            min_instances=1,
-            max_instances=3,
-            autoscaling={
-                "metrics_providers": [
-                    {"type": provider} for provider in metrics_providers
-                ]
-            },
-            deploy_group="fake_group",
-        )
-        deployment = KubernetesDeploymentConfig(
-            service="kurupt",
-            instance="fm",
-            cluster="brentford",
-            config_dict=mock_config_dict,
-            branch_dict=None,
-        )
-
-        ret = deployment.get_pod_template_spec(
-            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
-        )
-
-        assert mock_load_system_paasta_config.called
-
-        # Each metric provider has its own set of labels. We expect to see all of them.
-        actual_labels = ret.metadata.labels
-        for expected_label, expected_value in expected_labels.items():
-            assert actual_labels.get(expected_label) == expected_value, (
-                f"Expected label {expected_label}={expected_value}, "
-                f"but got {actual_labels.get(expected_label)}"
+            mock_system_paasta_config = mock.Mock()
+            mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+                True
+            )
+            mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+            mock_system_paasta_config.get_pod_defaults.return_value = {
+                "dns_policy": "foo"
+            }
+            mock_system_paasta_config.get_hacheck_sidecar_volumes.return_value = []
+            mock_load_system_paasta_config.return_value = mock_system_paasta_config
+            mock_system_paasta_config.get_service_auth_token_volume_config.return_value = (
+                {}
             )
 
-        # Deploy group label is only set when specific metrics providers are used
-        deploy_group_providers = {
-            METRICS_PROVIDER_UWSGI,
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
-        }
-        if any(provider in deploy_group_providers for provider in metrics_providers):
-            assert actual_labels.get("paasta.yelp.com/deploy_group") == "fake_group"
+            # Deployment config with multiple metrics providers
+            mock_config_dict = KubernetesDeploymentConfigDict(
+                min_instances=1,
+                max_instances=3,
+                autoscaling={
+                    "metrics_providers": [
+                        {"type": provider} for provider in metrics_providers
+                    ]
+                },
+                deploy_group="fake_group",
+            )
+            deployment = KubernetesDeploymentConfig(
+                service="kurupt",
+                instance="fm",
+                cluster="brentford",
+                config_dict=mock_config_dict,
+                branch_dict=None,
+            )
 
-        # Autoscaled label is always set
-        assert actual_labels.get("paasta.yelp.com/autoscaled") == "true"
+            ret = deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_use_metrics_provider",
-        autospec=True,
-    )
+            assert mock_load_system_paasta_config.called
+
+            # Each metric provider has its own set of labels. We expect to see all of them.
+            actual_labels = ret.metadata.labels
+            for expected_label, expected_value in expected_labels.items():
+                assert actual_labels.get(expected_label) == expected_value, (
+                    f"Expected label {expected_label}={expected_value}, "
+                    f"but got {actual_labels.get(expected_label)}"
+                )
+
+            # Deploy group label is only set when specific metrics providers are used
+            deploy_group_providers = {
+                METRICS_PROVIDER_UWSGI,
+                METRICS_PROVIDER_PISCINA,
+                METRICS_PROVIDER_GUNICORN,
+            }
+            if any(
+                provider in deploy_group_providers for provider in metrics_providers
+            ):
+                assert actual_labels.get("paasta.yelp.com/deploy_group") == "fake_group"
+
+            # Autoscaled label is always set
+            assert actual_labels.get("paasta.yelp.com/autoscaled") == "true"
+
     @pytest.mark.parametrize(
         "ip_configured,in_smtstk,prometheus_port,should_use_uwsgi_provider,should_use_gunicorn_provider,expected",
         [
@@ -2180,8 +2159,6 @@ class TestKubernetesDeploymentConfig:
     )
     def test_routable_ip(
         self,
-        mock_should_use_metrics_provider,
-        mock_get_prometheus_port,
         ip_configured,
         in_smtstk,
         prometheus_port,
@@ -2189,25 +2166,33 @@ class TestKubernetesDeploymentConfig:
         should_use_gunicorn_provider,
         expected,
     ):
-        def mock_should_use_metrics_provider_fn(p: str) -> bool:
-            if p == METRICS_PROVIDER_UWSGI:
-                return should_use_uwsgi_provider
-            elif p == METRICS_PROVIDER_GUNICORN:
-                return should_use_gunicorn_provider
-            return False
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_use_metrics_provider",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
+            autospec=True,
+        ) as mock_get_prometheus_port:
 
-        mock_get_prometheus_port.return_value = prometheus_port
-        self.deployment.should_use_metrics_provider = mock_should_use_metrics_provider_fn  # type: ignore
-        mock_service_namespace_config = mock.Mock()
-        mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
-        mock_system_paasta_config = mock.Mock()
+            def mock_should_use_metrics_provider_fn(p: str) -> bool:
+                if p == METRICS_PROVIDER_UWSGI:
+                    return should_use_uwsgi_provider
+                elif p == METRICS_PROVIDER_GUNICORN:
+                    return should_use_gunicorn_provider
+                return False
 
-        self.deployment.config_dict["routable_ip"] = ip_configured
-        ret = self.deployment.has_routable_ip(
-            mock_service_namespace_config, mock_system_paasta_config
-        )
+            mock_get_prometheus_port.return_value = prometheus_port
+            self.deployment.should_use_metrics_provider = mock_should_use_metrics_provider_fn  # type: ignore
+            mock_service_namespace_config = mock.Mock()
+            mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
+            mock_system_paasta_config = mock.Mock()
 
-        assert ret == expected
+            self.deployment.config_dict["routable_ip"] = ip_configured
+            ret = self.deployment.has_routable_ip(
+                mock_service_namespace_config, mock_system_paasta_config
+            )
+
+            assert ret == expected
 
     def test_create_pod_topology_spread_constraints(self):
         configured_constraints: List[TopologySpreadConstraintDict] = [
@@ -3426,10 +3411,6 @@ class TestKubernetesDeploymentConfig:
             assert metric_spec.object.target.value == 0.5
             assert metric_spec.object.target.average_value is None
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
-        autospec=True,
-    )
     @pytest.mark.parametrize(
         "app_type,app_spec_type",
         [
@@ -3440,50 +3421,51 @@ class TestKubernetesDeploymentConfig:
             ),
         ],
     )
-    def test_sanitize_for_config_hash(
-        self,
-        mock_get_kubernetes_secret_hashes,
-        app_type,
-        app_spec_type,
-    ):
-        def make_deployment_config():
-            return app_type(
-                metadata=V1ObjectMeta(name="qwe", labels={"mc": "grindah"}),
-                spec=app_spec_type(
-                    replicas=2,
-                    selector=V1LabelSelector(match_labels={"freq": "108.9"}),
-                    template=V1PodTemplateSpec(
-                        spec=V1PodSpec(
-                            containers=[
-                                V1Container(name="fake_container", env=[]),
-                            ],
+    def test_sanitize_for_config_hash(self, app_type, app_spec_type):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
+            autospec=True,
+        ) as mock_get_kubernetes_secret_hashes:
+
+            def make_deployment_config():
+                return app_type(
+                    metadata=V1ObjectMeta(name="qwe", labels={"mc": "grindah"}),
+                    spec=app_spec_type(
+                        replicas=2,
+                        selector=V1LabelSelector(match_labels={"freq": "108.9"}),
+                        template=V1PodTemplateSpec(
+                            spec=V1PodSpec(
+                                containers=[
+                                    V1Container(name="fake_container", env=[]),
+                                ],
+                            ),
                         ),
                     ),
-                ),
+                )
+
+            mock_config = make_deployment_config()
+            mock_config_with_soa_sha = make_deployment_config()
+            mock_config_with_soa_sha.spec.template.spec.containers[0].env.append(
+                V1EnvVar(name="PAASTA_SOA_CONFIGS_SHA", value="fake_soa_git_sha"),
             )
 
-        mock_config = make_deployment_config()
-        mock_config_with_soa_sha = make_deployment_config()
-        mock_config_with_soa_sha.spec.template.spec.containers[0].env.append(
-            V1EnvVar(name="PAASTA_SOA_CONFIGS_SHA", value="fake_soa_git_sha"),
-        )
+            no_sha_ret = self.deployment.sanitize_for_config_hash(mock_config)
+            with_sha_ret = self.deployment.sanitize_for_config_hash(
+                mock_config_with_soa_sha
+            )
 
-        no_sha_ret = self.deployment.sanitize_for_config_hash(mock_config)
-        with_sha_ret = self.deployment.sanitize_for_config_hash(
-            mock_config_with_soa_sha
-        )
-
-        assert "replicas" not in no_sha_ret["spec"].keys()
-        assert (
-            no_sha_ret["paasta_secrets"]
-            == mock_get_kubernetes_secret_hashes.return_value
-        )
-        assert (
-            len(with_sha_ret["spec"]["template"]["spec"]["containers"][0]["env"]) == 0
-        )
-        # this means that with or without a SOA sha env var, the config SHA will
-        # not be affected. if this is no longer true, this will cause a big bounce.
-        assert no_sha_ret == with_sha_ret
+            assert "replicas" not in no_sha_ret["spec"].keys()
+            assert (
+                no_sha_ret["paasta_secrets"]
+                == mock_get_kubernetes_secret_hashes.return_value
+            )
+            assert (
+                len(with_sha_ret["spec"]["template"]["spec"]["containers"][0]["env"])
+                == 0
+            )
+            # this means that with or without a SOA sha env var, the config SHA will
+            # not be affected. if this is no longer true, this will cause a big bounce.
+            assert no_sha_ret == with_sha_ret
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
@@ -4330,30 +4312,40 @@ def test_update_deployment():
     )
 
 
-@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
-def test_set_instances_for_kubernetes_service_deployment(mock_kube_deploy_config):
-    replicas = 5
-    mock_client = mock.Mock()
-    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
-        "fake_deployment"
-    )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = False
-    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
-    set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
-    assert mock_client.deployments.patch_namespaced_deployment_scale.call_count == 1
+def test_set_instances_for_kubernetes_service_deployment():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
+    ) as mock_kube_deploy_config:
+        replicas = 5
+        mock_client = mock.Mock()
+        mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+            "fake_deployment"
+        )
+        mock_kube_deploy_config.get_persistent_volumes.return_value = False
+        mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+        set_instances_for_kubernetes_service(
+            mock_client, mock_kube_deploy_config, replicas
+        )
+        assert mock_client.deployments.patch_namespaced_deployment_scale.call_count == 1
 
 
-@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
-def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_config):
-    replicas = 5
-    mock_client = mock.Mock()
-    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
-        "fake_stateful_set"
-    )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = True
-    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
-    set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
-    assert mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
+def test_set_instances_for_kubernetes_service_statefulset():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
+    ) as mock_kube_deploy_config:
+        replicas = 5
+        mock_client = mock.Mock()
+        mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+            "fake_stateful_set"
+        )
+        mock_kube_deploy_config.get_persistent_volumes.return_value = True
+        mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+        set_instances_for_kubernetes_service(
+            mock_client, mock_kube_deploy_config, replicas
+        )
+        assert (
+            mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
+        )
 
 
 @pytest.mark.parametrize(
@@ -4369,26 +4361,30 @@ def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_confi
         ),
     ],
 )
-@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
 def test_get_annotations_for_kubernetes_service(
-    mock_kube_deploy_config, has_persistent_volumes, expected_annotations
+    has_persistent_volumes, expected_annotations
 ):
-    mock_client = mock.Mock()
-    mock_client.deployments.read_namespaced_stateful_set.return_value = V1StatefulSet(
-        metadata=V1ObjectMeta(annotations={"I-am": "stateful_set"})
-    )
-    mock_client.deployments.read_namespaced_deployment.return_value = V1Deployment(
-        metadata=V1ObjectMeta(annotations={"I-am": "deployment"})
-    )
-    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
-        "fake_k8s_service"
-    )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = has_persistent_volumes
-    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
-    annotations = get_annotations_for_kubernetes_service(
-        mock_client, mock_kube_deploy_config
-    )
-    assert annotations == expected_annotations
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
+    ) as mock_kube_deploy_config:
+        mock_client = mock.Mock()
+        mock_client.deployments.read_namespaced_stateful_set.return_value = (
+            V1StatefulSet(metadata=V1ObjectMeta(annotations={"I-am": "stateful_set"}))
+        )
+        mock_client.deployments.read_namespaced_deployment.return_value = V1Deployment(
+            metadata=V1ObjectMeta(annotations={"I-am": "deployment"})
+        )
+        mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+            "fake_k8s_service"
+        )
+        mock_kube_deploy_config.get_persistent_volumes.return_value = (
+            has_persistent_volumes
+        )
+        mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+        annotations = get_annotations_for_kubernetes_service(
+            mock_client, mock_kube_deploy_config
+        )
+        assert annotations == expected_annotations
 
 
 def test_create_custom_resource():
@@ -4573,15 +4569,17 @@ def test_parse_container_resources():
     ) == KubeContainerResources(2, 100, None)
 
 
-@mock.patch.object(kubernetes_tools, "sanitise_kubernetes_name", autospec=True)
-def test_get_kubernetes_app_name(mock_sanitise):
-    mock_sanitise.side_effect = ["sanitised--service", "sanitised--instance"]
-    app_name = kubernetes_tools.get_kubernetes_app_name("a_service", "an_instance")
-    assert app_name == "sanitised--service-sanitised--instance"
-    assert mock_sanitise.call_args_list == [
-        mock.call("a_service"),
-        mock.call("an_instance"),
-    ]
+def test_get_kubernetes_app_name():
+    with mock.patch.object(
+        kubernetes_tools, "sanitise_kubernetes_name", autospec=True
+    ) as mock_sanitise:
+        mock_sanitise.side_effect = ["sanitised--service", "sanitised--instance"]
+        app_name = kubernetes_tools.get_kubernetes_app_name("a_service", "an_instance")
+        assert app_name == "sanitised--service-sanitised--instance"
+        assert mock_sanitise.call_args_list == [
+            mock.call("a_service"),
+            mock.call("an_instance"),
+        ]
 
 
 def test_get_kubernetes_app_by_name():
@@ -5965,26 +5963,27 @@ def test_get_kubernetes_secret_volumes_single_file():
         ),
     ),
 )
-@mock.patch("paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None)
-@mock.patch("paasta_tools.kubernetes_tools.get_authenticating_services", autospec=None)
-def test_add_volumes_for_authenticating_services(
-    mock_get_auth_services, mock_system_config, service, existing_config, expected
-):
-    mock_get_auth_services.return_value = {"service_auth", "service_foobar"}
-    mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
-        "audience": "foo.bar",
-        "container_path": "/var/secret/something",
-    }
-    existing_config_copy = deepcopy(existing_config)
-    assert (
-        add_volumes_for_authenticating_services(
-            service, existing_config, "/mock/soa/dir"
+def test_add_volumes_for_authenticating_services(service, existing_config, expected):
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_authenticating_services", autospec=None
+    ) as mock_get_auth_services, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None
+    ) as mock_system_config:
+        mock_get_auth_services.return_value = {"service_auth", "service_foobar"}
+        mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
+            "audience": "foo.bar",
+            "container_path": "/var/secret/something",
+        }
+        existing_config_copy = deepcopy(existing_config)
+        assert (
+            add_volumes_for_authenticating_services(
+                service, existing_config, "/mock/soa/dir"
+            )
+            == expected
         )
-        == expected
-    )
-    mock_get_auth_services.assert_called_once_with("/mock/soa/dir")
-    # verifying that the method does not do in-place updates
-    assert existing_config == existing_config_copy
+        mock_get_auth_services.assert_called_once_with("/mock/soa/dir")
+        # verifying that the method does not do in-place updates
+        assert existing_config == existing_config_copy
 
 
 def create_pod(name: str, labels: Dict[str, str]) -> V1Pod:
@@ -6172,205 +6171,172 @@ def test_delete_pod_by_name_no_pods():
 
 
 class TestCostOwnerLabel:
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-        autospec=True,
-        return_value=[],
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
-        autospec=True,
-    )
-    def test_cost_owner_label_present_when_enabled(
-        self,
-        mock_create_pod_topology_spread_constraints,
-        mock_get_node_affinity,
-        mock_get_pod_volumes,
-        mock_get_volumes,
-        mock_get_kubernetes_containers,
-        mock_load_service_namespace_config,
-        mock_load_system_paasta_config,
-    ):
-        mock_service_namespace_config = mock.Mock()
-        mock_service_namespace_config.is_in_smartstack.return_value = False
-        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+    def test_cost_owner_label_present_when_enabled(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+            autospec=True,
+            return_value=[],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            autospec=True,
+        ) as mock_load_service_namespace_config, mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_paasta_config:
+            mock_service_namespace_config = mock.Mock()
+            mock_service_namespace_config.is_in_smartstack.return_value = False
+            mock_load_service_namespace_config.return_value = (
+                mock_service_namespace_config
+            )
 
-        mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            False
-        )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = {}
-        mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
-        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+            mock_system_paasta_config = mock.Mock()
+            mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+                False
+            )
+            mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+            mock_system_paasta_config.get_pod_defaults.return_value = {}
+            mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
+            mock_system_paasta_config.get_service_auth_token_volume_config.return_value = (
+                {}
+            )
+            mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
-        deployment = KubernetesDeploymentConfig(
-            service="myservice",
-            instance="main",
-            cluster="testcluster",
-            config_dict=KubernetesDeploymentConfigDict(
-                cost_owner="compute-infra-batch",
-                deploy_group="testcluster.main",
-            ),
-            branch_dict=None,
-        )
-        ret = deployment.get_pod_template_spec(
-            git_sha="abc123", system_paasta_config=mock_system_paasta_config
-        )
-        assert ret.metadata.labels["yelp.com/cost_owner"] == "compute-infra-batch"
+            deployment = KubernetesDeploymentConfig(
+                service="myservice",
+                instance="main",
+                cluster="testcluster",
+                config_dict=KubernetesDeploymentConfigDict(
+                    cost_owner="compute-infra-batch",
+                    deploy_group="testcluster.main",
+                ),
+                branch_dict=None,
+            )
+            ret = deployment.get_pod_template_spec(
+                git_sha="abc123", system_paasta_config=mock_system_paasta_config
+            )
+            assert ret.metadata.labels["yelp.com/cost_owner"] == "compute-infra-batch"
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-        autospec=True,
-        return_value=[],
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
-        autospec=True,
-    )
-    def test_cost_owner_label_absent_when_gate_disabled(
-        self,
-        mock_create_pod_topology_spread_constraints,
-        mock_get_node_affinity,
-        mock_get_pod_volumes,
-        mock_get_volumes,
-        mock_get_kubernetes_containers,
-        mock_load_service_namespace_config,
-        mock_load_system_paasta_config,
-    ):
-        mock_service_namespace_config = mock.Mock()
-        mock_service_namespace_config.is_in_smartstack.return_value = False
-        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+    def test_cost_owner_label_absent_when_gate_disabled(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+            autospec=True,
+            return_value=[],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            autospec=True,
+        ) as mock_load_service_namespace_config, mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_paasta_config:
+            mock_service_namespace_config = mock.Mock()
+            mock_service_namespace_config.is_in_smartstack.return_value = False
+            mock_load_service_namespace_config.return_value = (
+                mock_service_namespace_config
+            )
 
-        mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            False
-        )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = {}
-        mock_system_paasta_config.get_enable_cost_owner_label.return_value = False
-        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+            mock_system_paasta_config = mock.Mock()
+            mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+                False
+            )
+            mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+            mock_system_paasta_config.get_pod_defaults.return_value = {}
+            mock_system_paasta_config.get_enable_cost_owner_label.return_value = False
+            mock_system_paasta_config.get_service_auth_token_volume_config.return_value = (
+                {}
+            )
+            mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
-        deployment = KubernetesDeploymentConfig(
-            service="myservice",
-            instance="main",
-            cluster="testcluster",
-            config_dict=KubernetesDeploymentConfigDict(
-                cost_owner="compute-infra-batch",
-                deploy_group="testcluster.main",
-            ),
-            branch_dict=None,
-        )
-        ret = deployment.get_pod_template_spec(
-            git_sha="abc123", system_paasta_config=mock_system_paasta_config
-        )
-        assert "yelp.com/cost_owner" not in ret.metadata.labels
+            deployment = KubernetesDeploymentConfig(
+                service="myservice",
+                instance="main",
+                cluster="testcluster",
+                config_dict=KubernetesDeploymentConfigDict(
+                    cost_owner="compute-infra-batch",
+                    deploy_group="testcluster.main",
+                ),
+                branch_dict=None,
+            )
+            ret = deployment.get_pod_template_spec(
+                git_sha="abc123", system_paasta_config=mock_system_paasta_config
+            )
+            assert "yelp.com/cost_owner" not in ret.metadata.labels
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_system_paasta_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-        autospec=True,
-        return_value=[],
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
-        autospec=True,
-    )
-    def test_cost_owner_label_absent_when_not_configured(
-        self,
-        mock_create_pod_topology_spread_constraints,
-        mock_get_node_affinity,
-        mock_get_pod_volumes,
-        mock_get_volumes,
-        mock_get_kubernetes_containers,
-        mock_load_service_namespace_config,
-        mock_load_system_paasta_config,
-    ):
-        mock_service_namespace_config = mock.Mock()
-        mock_service_namespace_config.is_in_smartstack.return_value = False
-        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+    def test_cost_owner_label_absent_when_not_configured(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+            autospec=True,
+            return_value=[],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_service_namespace_config",
+            autospec=True,
+        ) as mock_load_service_namespace_config, mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
+        ) as mock_load_system_paasta_config:
+            mock_service_namespace_config = mock.Mock()
+            mock_service_namespace_config.is_in_smartstack.return_value = False
+            mock_load_service_namespace_config.return_value = (
+                mock_service_namespace_config
+            )
 
-        mock_system_paasta_config = mock.Mock()
-        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
-            False
-        )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
-        mock_system_paasta_config.get_pod_defaults.return_value = {}
-        mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
-        mock_system_paasta_config.get_service_auth_token_volume_config.return_value = {}
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+            mock_system_paasta_config = mock.Mock()
+            mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+                False
+            )
+            mock_system_paasta_config.get_topology_spread_constraints.return_value = []
+            mock_system_paasta_config.get_pod_defaults.return_value = {}
+            mock_system_paasta_config.get_enable_cost_owner_label.return_value = True
+            mock_system_paasta_config.get_service_auth_token_volume_config.return_value = (
+                {}
+            )
+            mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
-        deployment = KubernetesDeploymentConfig(
-            service="myservice",
-            instance="main",
-            cluster="testcluster",
-            config_dict=KubernetesDeploymentConfigDict(
-                deploy_group="testcluster.main",
-            ),
-            branch_dict=None,
-        )
-        ret = deployment.get_pod_template_spec(
-            git_sha="abc123", system_paasta_config=mock_system_paasta_config
-        )
-        assert "yelp.com/cost_owner" not in ret.metadata.labels
+            deployment = KubernetesDeploymentConfig(
+                service="myservice",
+                instance="main",
+                cluster="testcluster",
+                config_dict=KubernetesDeploymentConfigDict(
+                    deploy_group="testcluster.main",
+                ),
+                branch_dict=None,
+            )
+            ret = deployment.get_pod_template_spec(
+                git_sha="abc123", system_paasta_config=mock_system_paasta_config
+            )
+            assert "yelp.com/cost_owner" not in ret.metadata.labels

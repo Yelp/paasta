@@ -87,10 +87,11 @@ def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_fir
     assert len(list(calls)) == 0
 
 
-@mock.patch("time.sleep", autospec=True)
-@mock.patch("paasta_tools.setup_istio_mesh.process_kube_services", autospec=True)
-def test_setup_istio_mesh_iterates(mock_process_kube_services, mock_sleep):
-    mock_yielded = mock.Mock()
-    mock_process_kube_services.return_value = iter([mock_yielded])
-    setup_istio_mesh(mock.Mock())
-    assert len(mock_yielded.mock_calls) == 1
+def test_setup_istio_mesh_iterates():
+    with mock.patch(
+        "paasta_tools.setup_istio_mesh.process_kube_services", autospec=True
+    ) as mock_process_kube_services, mock.patch("time.sleep", autospec=True):
+        mock_yielded = mock.Mock()
+        mock_process_kube_services.return_value = iter([mock_yielded])
+        setup_istio_mesh(mock.Mock())
+        assert len(mock_yielded.mock_calls) == 1
