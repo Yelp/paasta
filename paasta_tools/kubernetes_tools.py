@@ -258,6 +258,11 @@ TEMPLATEABLE_PROVIDERS = {
     METRICS_PROVIDER_GUNICORN,
 }
 
+FIREWALL_RULE_KEYS = {
+    "egress": ("to_services", "to_cidrs"),
+    "ingress": ("from_services", "from_cidrs"),
+}
+
 
 def get_prometheus_metric_name(metric_name: str, moving_average_window: int) -> str:
     return f"{metric_name}-prom-{moving_average_window}"
@@ -3794,12 +3799,6 @@ def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
     return ports
 
 
-_FIREWALL_RULE_KEYS = {
-    "egress": ("to_services", "to_cidrs"),
-    "ingress": ("from_services", "from_cidrs"),
-}
-
-
 def _peers_for_firewall_rule(
     direction: str, rule: FirewallRuleDict, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[V1NetworkPolicyPeer]:
@@ -3812,7 +3811,7 @@ def _peers_for_firewall_rule(
     :param soa_dir: soa config dir to load peer configs from
     :raises ValueError: if the rule has no destinations, which would allow traffic to anywhere
     """
-    services_key, cidrs_key = _FIREWALL_RULE_KEYS[direction]
+    services_key, cidrs_key = FIREWALL_RULE_KEYS[direction]
     peers = []
     for service_ref in cast(List[str], rule.get(services_key, [])):
         peers.extend(_peers_for_service_ref(service_ref, cluster, soa_dir))
