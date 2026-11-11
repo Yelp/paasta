@@ -29,40 +29,40 @@ def test_format_tag():
     assert actual == expected
 
 
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.trigger_deploys", autospec=True)
-@mock.patch("paasta_tools.utils.get_git_url", autospec=True)
-@mock.patch("dulwich.client.get_transport_and_path", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.log_event", autospec=True)
-def test_issue_state_change_for_service(
-    mock_log_event,
-    get_transport_and_path,
-    get_git_url,
-    mock_trigger_deploys,
-):
-    fake_git_url = "BLOORGRGRGRGR.yelpcorp.com"
-    fake_path = "somepath"
+def test_issue_state_change_for_service():
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.log_event", autospec=True
+    ) as mock_log_event, mock.patch(
+        "dulwich.client.get_transport_and_path", autospec=True
+    ) as get_transport_and_path, mock.patch(
+        "paasta_tools.utils.get_git_url", autospec=True
+    ) as get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.trigger_deploys", autospec=True
+    ) as mock_trigger_deploys:
+        fake_git_url = "BLOORGRGRGRGR.yelpcorp.com"
+        fake_path = "somepath"
 
-    get_git_url.return_value = fake_git_url
+        get_git_url.return_value = fake_git_url
 
-    mock_git_client = mock.Mock()
-    get_transport_and_path.return_value = (mock_git_client, fake_path)
+        mock_git_client = mock.Mock()
+        get_transport_and_path.return_value = (mock_git_client, fake_path)
 
-    start_stop_restart.issue_state_change_for_service(
-        KubernetesDeploymentConfig(
-            cluster="fake_cluster",
-            instance="fake_instance",
-            service="fake_service",
-            config_dict={},
-            branch_dict=None,
-        ),
-        "0",
-        "stop",
-    )
+        start_stop_restart.issue_state_change_for_service(
+            KubernetesDeploymentConfig(
+                cluster="fake_cluster",
+                instance="fake_instance",
+                service="fake_service",
+                config_dict={},
+                branch_dict=None,
+            ),
+            "0",
+            "stop",
+        )
 
-    get_transport_and_path.assert_called_once_with(fake_git_url)
-    mock_git_client.send_pack.assert_called_once_with(fake_path, mock.ANY, mock.ANY)
-    assert mock_log_event.call_count == 1
-    mock_trigger_deploys.assert_called_once_with("fake_service")
+        get_transport_and_path.assert_called_once_with(fake_git_url)
+        mock_git_client.send_pack.assert_called_once_with(fake_path, mock.ANY, mock.ANY)
+        assert mock_log_event.call_count == 1
+        mock_trigger_deploys.assert_called_once_with("fake_service")
 
 
 def test_make_mutate_refs_func():
@@ -133,467 +133,423 @@ def test_log_event():
         )
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
-    autospec=True,
-)
-@mock.patch("paasta_tools.utils.format_timestamp", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_paasta_start_or_stop(
-    mock_list_clusters,
-    mock_get_git_url,
-    mock_get_instance_config,
-    mock_instance_config,
-    get_remote_refs,
-    mock_get_latest_deployment_tag,
-    mock_format_timestamp,
-    mock_issue_state_change_for_service,
-    mock_apply_args_filters,
-    mock_confirm_to_continue,
-    mock_can_user_deploy_service,
-):
-    args, _ = parse_args(
-        [
-            "start",
-            "-s",
-            "fake_service",
-            "-i",
-            "main1,canary",
-            "-c",
-            "cluster1,cluster2",
-            "-d",
-            "/soa/dir",
-        ]
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_get_git_url.return_value = "fake_git_url"
-    mock_get_instance_config.return_value = mock_instance_config
-    mock_instance_config.get_deploy_group.return_value = "some_group"
-    get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
-    mock_format_timestamp.return_value = "not_a_real_timestamp"
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"fake_service": {"main1": None, "canary": None}},
-        "cluster2": {"fake_service": {"main1": None, "canary": None}},
-    }
-    mock_confirm_to_continue.return_value = True
+def test_paasta_start_or_stop():
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True
+    ) as mock_get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.utils.InstanceConfig", autospec=True
+    ) as mock_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag",
+        autospec=True,
+    ) as mock_get_latest_deployment_tag, mock.patch(
+        "paasta_tools.utils.format_timestamp", autospec=True
+    ) as mock_format_timestamp, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+        autospec=True,
+    ) as mock_issue_state_change_for_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue",
+        autospec=True,
+    ) as mock_confirm_to_continue, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ):
+        args, _ = parse_args(
+            [
+                "start",
+                "-s",
+                "fake_service",
+                "-i",
+                "main1,canary",
+                "-c",
+                "cluster1,cluster2",
+                "-d",
+                "/soa/dir",
+            ]
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_get_git_url.return_value = "fake_git_url"
+        mock_get_instance_config.return_value = mock_instance_config
+        mock_instance_config.get_deploy_group.return_value = "some_group"
+        get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
+        mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
+        mock_format_timestamp.return_value = "not_a_real_timestamp"
+        mock_apply_args_filters.return_value = {
+            "cluster1": {"fake_service": {"main1": None, "canary": None}},
+            "cluster2": {"fake_service": {"main1": None, "canary": None}},
+        }
+        mock_confirm_to_continue.return_value = True
 
-    ret = args.command(args)
-    c1_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster1",
-        instance="main1",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    c2_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster1",
-        instance="canary",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    c3_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster2",
-        instance="main1",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    c4_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster2",
-        instance="canary",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    mock_get_instance_config.assert_has_calls(
-        [
-            c1_get_instance_config_call,
-            c2_get_instance_config_call,
-            c3_get_instance_config_call,
-            c4_get_instance_config_call,
-        ],
-        any_order=True,
-    )
-    mock_get_latest_deployment_tag.assert_called_with(
-        ["not_a_real_tag", "fake_tag"], "some_group"
-    )
-    mock_issue_state_change_for_service.assert_called_with(
-        service_config=mock_instance_config,
-        force_bounce="not_a_real_timestamp",
-        desired_state="start",
-    )
-    assert mock_issue_state_change_for_service.call_count == 4
-    assert ret == 0
+        ret = args.command(args)
+        c1_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster1",
+            instance="main1",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        c2_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster1",
+            instance="canary",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        c3_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster2",
+            instance="main1",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        c4_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster2",
+            instance="canary",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        mock_get_instance_config.assert_has_calls(
+            [
+                c1_get_instance_config_call,
+                c2_get_instance_config_call,
+                c3_get_instance_config_call,
+                c4_get_instance_config_call,
+            ],
+            any_order=True,
+        )
+        mock_get_latest_deployment_tag.assert_called_with(
+            ["not_a_real_tag", "fake_tag"], "some_group"
+        )
+        mock_issue_state_change_for_service.assert_called_with(
+            service_config=mock_instance_config,
+            force_bounce="not_a_real_timestamp",
+            desired_state="start",
+        )
+        assert mock_issue_state_change_for_service.call_count == 4
+        assert ret == 0
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
-    autospec=True,
-)
-@mock.patch("paasta_tools.utils.format_timestamp", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_paasta_start_or_stop_with_deploy_group(
-    mock_list_clusters,
-    mock_get_git_url,
-    mock_get_instance_config,
-    mock_instance_config,
-    mock_get_remote_refs,
-    mock_get_latest_deployment_tag,
-    mock_format_timestamp,
-    mock_issue_state_change_for_service,
-    mock_apply_args_filters,
-    mock_confirm_to_continue,
-    mock_can_user_deploy_service,
-):
-    args, _ = parse_args(
-        [
-            "start",
-            "-s",
-            "fake_service",
-            "-c",
-            "cluster1",
-            "-l",
-            "fake_group",
-            "-d",
-            "/soa/dir",
-        ]
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_get_git_url.return_value = "fake_git_url"
-    mock_get_instance_config.return_value = mock_instance_config
-    mock_instance_config.get_deploy_group.return_value = args.deploy_group
-    mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
-    mock_format_timestamp.return_value = "not_a_real_timestamp"
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"fake_service": {"instance1": None}}
-    }
-    mock_confirm_to_continue.return_value = True
+def test_paasta_start_or_stop_with_deploy_group():
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True
+    ) as mock_get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.utils.InstanceConfig", autospec=True
+    ) as mock_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as mock_get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag",
+        autospec=True,
+    ) as mock_get_latest_deployment_tag, mock.patch(
+        "paasta_tools.utils.format_timestamp", autospec=True
+    ) as mock_format_timestamp, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+        autospec=True,
+    ) as mock_issue_state_change_for_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue",
+        autospec=True,
+    ) as mock_confirm_to_continue, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ):
+        args, _ = parse_args(
+            [
+                "start",
+                "-s",
+                "fake_service",
+                "-c",
+                "cluster1",
+                "-l",
+                "fake_group",
+                "-d",
+                "/soa/dir",
+            ]
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_get_git_url.return_value = "fake_git_url"
+        mock_get_instance_config.return_value = mock_instance_config
+        mock_instance_config.get_deploy_group.return_value = args.deploy_group
+        mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
+        mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
+        mock_format_timestamp.return_value = "not_a_real_timestamp"
+        mock_apply_args_filters.return_value = {
+            "cluster1": {"fake_service": {"instance1": None}}
+        }
+        mock_confirm_to_continue.return_value = True
 
-    ret = args.command(args)
+        ret = args.command(args)
 
-    mock_get_instance_config.assert_called_once_with(
-        service="fake_service",
-        cluster="cluster1",
-        instance="instance1",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    mock_get_latest_deployment_tag.assert_called_with(
-        ["not_a_real_tag", "fake_tag"], args.deploy_group
-    )
-    mock_issue_state_change_for_service.assert_called_once_with(
-        service_config=mock_instance_config,
-        force_bounce="not_a_real_timestamp",
-        desired_state="start",
-    )
-    assert ret == 0
+        mock_get_instance_config.assert_called_once_with(
+            service="fake_service",
+            cluster="cluster1",
+            instance="instance1",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        mock_get_latest_deployment_tag.assert_called_with(
+            ["not_a_real_tag", "fake_tag"], args.deploy_group
+        )
+        mock_issue_state_change_for_service.assert_called_once_with(
+            service_config=mock_instance_config,
+            force_bounce="not_a_real_timestamp",
+            desired_state="start",
+        )
+        assert ret == 0
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
-    autospec=True,
-)
-@mock.patch("paasta_tools.utils.format_timestamp", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_stop_or_start_figures_out_correct_instances(
-    mock_list_clusters,
-    mock_get_git_url,
-    mock_get_instance_config,
-    mock_instance_config,
-    mock_get_remote_refs,
-    mock_get_latest_deployment_tag,
-    mock_format_timestamp,
-    mock_issue_state_change_for_service,
-    mock_apply_args_filters,
-    mock_confirm_to_continue,
-    mock_can_user_deploy_service,
-):
-    args, _ = parse_args(
-        [
-            "start",
-            "-s",
-            "fake_service",
-            "-i",
-            "main1,canary",
-            "-c",
-            "cluster1,cluster2",
-            "-d",
-            "/soa/dir",
-        ]
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_get_git_url.return_value = "fake_git_url"
-    mock_get_instance_config.return_value = mock_instance_config
-    mock_instance_config.get_deploy_group.return_value = "some_group"
-    mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
-    mock_format_timestamp.return_value = "not_a_real_timestamp"
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"fake_service": {"main1": None}},
-        "cluster2": {"fake_service": {"main1": None, "canary": None}},
-    }
-    mock_confirm_to_continue.return_value = True
+def test_stop_or_start_figures_out_correct_instances():
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True
+    ) as mock_get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.utils.InstanceConfig", autospec=True
+    ) as mock_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as mock_get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag",
+        autospec=True,
+    ) as mock_get_latest_deployment_tag, mock.patch(
+        "paasta_tools.utils.format_timestamp", autospec=True
+    ) as mock_format_timestamp, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+        autospec=True,
+    ) as mock_issue_state_change_for_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue",
+        autospec=True,
+    ) as mock_confirm_to_continue, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ):
+        args, _ = parse_args(
+            [
+                "start",
+                "-s",
+                "fake_service",
+                "-i",
+                "main1,canary",
+                "-c",
+                "cluster1,cluster2",
+                "-d",
+                "/soa/dir",
+            ]
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_get_git_url.return_value = "fake_git_url"
+        mock_get_instance_config.return_value = mock_instance_config
+        mock_instance_config.get_deploy_group.return_value = "some_group"
+        mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
+        mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
+        mock_format_timestamp.return_value = "not_a_real_timestamp"
+        mock_apply_args_filters.return_value = {
+            "cluster1": {"fake_service": {"main1": None}},
+            "cluster2": {"fake_service": {"main1": None, "canary": None}},
+        }
+        mock_confirm_to_continue.return_value = True
 
-    ret = args.command(args)
-    c1_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster1",
-        instance="main1",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    c2_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster2",
-        instance="main1",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    c3_get_instance_config_call = mock.call(
-        service="fake_service",
-        cluster="cluster2",
-        instance="canary",
-        soa_dir="/soa/dir",
-        load_deployments=False,
-    )
-    mock_get_instance_config.assert_has_calls(
-        [
-            c1_get_instance_config_call,
-            c2_get_instance_config_call,
-            c3_get_instance_config_call,
-        ],
-        any_order=True,
-    )
-    mock_get_latest_deployment_tag.assert_called_with(
-        ["not_a_real_tag", "fake_tag"], "some_group"
-    )
-    mock_issue_state_change_for_service.assert_called_with(
-        service_config=mock_instance_config,
-        force_bounce="not_a_real_timestamp",
-        desired_state="start",
-    )
-    assert mock_issue_state_change_for_service.call_count == 3
-    assert ret == 0
+        ret = args.command(args)
+        c1_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster1",
+            instance="main1",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        c2_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster2",
+            instance="main1",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        c3_get_instance_config_call = mock.call(
+            service="fake_service",
+            cluster="cluster2",
+            instance="canary",
+            soa_dir="/soa/dir",
+            load_deployments=False,
+        )
+        mock_get_instance_config.assert_has_calls(
+            [
+                c1_get_instance_config_call,
+                c2_get_instance_config_call,
+                c3_get_instance_config_call,
+            ],
+            any_order=True,
+        )
+        mock_get_latest_deployment_tag.assert_called_with(
+            ["not_a_real_tag", "fake_tag"], "some_group"
+        )
+        mock_issue_state_change_for_service.assert_called_with(
+            service_config=mock_instance_config,
+            force_bounce="not_a_real_timestamp",
+            desired_state="start",
+        )
+        assert mock_issue_state_change_for_service.call_count == 3
+        assert ret == 0
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_stop_or_start_handle_ls_remote_failures(
-    mock_list_clusters,
-    mock_get_git_url,
-    mock_get_instance_config,
-    mock_get_remote_refs,
-    mock_apply_args_filters,
-    mock_confirm_to_continue,
-    mock_can_user_deploy_service,
-    capfd,
-):
-    args, _ = parse_args(
-        ["restart", "-s", "fake_service", "-c", "cluster1", "-d", "/soa/dir"]
-    )
+def test_stop_or_start_handle_ls_remote_failures(capfd):
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True
+    ) as mock_get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as mock_get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue",
+        autospec=True,
+    ) as mock_confirm_to_continue, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ):
+        args, _ = parse_args(
+            ["restart", "-s", "fake_service", "-c", "cluster1", "-d", "/soa/dir"]
+        )
 
-    mock_list_clusters.return_value = ["cluster1"]
-    mock_get_git_url.return_value = "fake_git_url"
-    mock_get_instance_config.return_value = None
-    mock_get_remote_refs.side_effect = remote_git.LSRemoteException
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"fake_service": {"instance1": mock.Mock()}}
-    }
-    mock_confirm_to_continue.return_value = True
+        mock_list_clusters.return_value = ["cluster1"]
+        mock_get_git_url.return_value = "fake_git_url"
+        mock_get_instance_config.return_value = None
+        mock_get_remote_refs.side_effect = remote_git.LSRemoteException
+        mock_apply_args_filters.return_value = {
+            "cluster1": {"fake_service": {"instance1": mock.Mock()}}
+        }
+        mock_confirm_to_continue.return_value = True
 
-    assert args.command(args) == 1
-    assert "may be down" in capfd.readouterr()[0]
+        assert args.command(args) == 1
+        assert "may be down" in capfd.readouterr()[0]
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_start_or_stop_bad_refs(
-    mock_list_clusters,
-    mock_get_remote_refs,
-    mock_get_instance_config,
-    mock_apply_args_filters,
-    mock_confirm_to_continue,
-    mock_can_user_deploy_service,
-    capfd,
-):
-    args, _ = parse_args(
-        [
-            "restart",
-            "-s",
-            "fake_service",
-            "-i",
-            "fake_instance",
-            "-c",
-            "fake_cluster1,fake_cluster2",
-            "-d",
-            "/fake/soa/dir",
-        ]
-    )
-    mock_list_clusters.return_value = ["fake_cluster1", "fake_cluster2"]
+def test_start_or_stop_bad_refs(capfd):
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as mock_get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue",
+        autospec=True,
+    ) as mock_confirm_to_continue, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ):
+        args, _ = parse_args(
+            [
+                "restart",
+                "-s",
+                "fake_service",
+                "-i",
+                "fake_instance",
+                "-c",
+                "fake_cluster1,fake_cluster2",
+                "-d",
+                "/fake/soa/dir",
+            ]
+        )
+        mock_list_clusters.return_value = ["fake_cluster1", "fake_cluster2"]
 
-    mock_get_instance_config.return_value = KubernetesDeploymentConfig(
-        cluster="fake_cluster1",
-        instance="fake_instance",
-        service="fake_service",
-        config_dict={},
-        branch_dict=None,
-    )
-    mock_get_remote_refs.return_value = {
-        "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"
-    }
-    mock_apply_args_filters.return_value = {
-        "fake_cluster1": {"fake_service": {"fake_instance": None}},
-        "fake_cluster2": {"fake_service": {"fake_instance": None}},
-    }
-    mock_confirm_to_continue.return_value = True
-    assert args.command(args) == 1
-    assert "deployed there yet?" in capfd.readouterr()[0]
+        mock_get_instance_config.return_value = KubernetesDeploymentConfig(
+            cluster="fake_cluster1",
+            instance="fake_instance",
+            service="fake_service",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_get_remote_refs.return_value = {
+            "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"
+        }
+        mock_apply_args_filters.return_value = {
+            "fake_cluster1": {"fake_service": {"fake_instance": None}},
+            "fake_cluster2": {"fake_service": {"fake_instance": None}},
+        }
+        mock_confirm_to_continue.return_value = True
+        assert args.command(args) == 1
+        assert "deployed there yet?" in capfd.readouterr()[0]
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
-    autospec=True,
-)
-@mock.patch("paasta_tools.utils.format_timestamp", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True)
-@mock.patch("paasta_tools.utils.InstanceConfig", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_start_warn_on_multi_instance(
-    mock_list_clusters,
-    mock_get_git_url,
-    mock_get_instance_config,
-    mock_instance_config,
-    get_remote_refs,
-    mock_get_latest_deployment_tag,
-    mock_format_timestamp,
-    mock_issue_state_change_for_service,
-    mock_apply_args_filters,
-    capfd,
-):
-    args, _ = parse_args(
-        [
-            "start",
-            "-s",
-            "fake_service,other_service",
-            "-c",
-            "cluster1,cluster2",
-            "-d",
-            "/soa/dir",
-        ]
-    )
-    mock_list_clusters.return_value = ["cluster1", "cluster2"]
-    mock_get_git_url.return_value = "fake_git_url"
-    mock_get_instance_config.return_value = mock_instance_config
-    mock_instance_config.get_deploy_group.return_value = "some_group"
-    get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
-    mock_format_timestamp.return_value = "not_a_real_timestamp"
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"fake_service": {"main1": None}, "other_service": {"main1": None}},
-        "cluster2": {"fake_service": {"main1": None, "canary": None}},
-    }
-    ret = args.command(args)
-    out, err = capfd.readouterr()
-    assert ret == 1
-    assert "Warning: trying to start/stop/restart multiple services" in out
+def test_start_warn_on_multi_instance(capfd):
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.list_clusters", autospec=True
+    ) as mock_list_clusters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True
+    ) as mock_get_git_url, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.utils.InstanceConfig", autospec=True
+    ) as mock_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_remote_refs", autospec=True
+    ) as get_remote_refs, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag",
+        autospec=True,
+    ) as mock_get_latest_deployment_tag, mock.patch(
+        "paasta_tools.utils.format_timestamp", autospec=True
+    ) as mock_format_timestamp, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters:
+        args, _ = parse_args(
+            [
+                "start",
+                "-s",
+                "fake_service,other_service",
+                "-c",
+                "cluster1,cluster2",
+                "-d",
+                "/soa/dir",
+            ]
+        )
+        mock_list_clusters.return_value = ["cluster1", "cluster2"]
+        mock_get_git_url.return_value = "fake_git_url"
+        mock_get_instance_config.return_value = mock_instance_config
+        mock_instance_config.get_deploy_group.return_value = "some_group"
+        get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
+        mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
+        mock_format_timestamp.return_value = "not_a_real_timestamp"
+        mock_apply_args_filters.return_value = {
+            "cluster1": {
+                "fake_service": {"main1": None},
+                "other_service": {"main1": None},
+            },
+            "cluster2": {"fake_service": {"main1": None, "canary": None}},
+        }
+        ret = args.command(args)
+        out, err = capfd.readouterr()
+        assert ret == 1
+        assert "Warning: trying to start/stop/restart multiple services" in out
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
-    autospec=True,
-)
 class TestStopErrorsIfUnderspecified:
     def run_and_assert_with_args(self, args, capfd):
         parsed_args, _ = parse_args(args)
@@ -602,375 +558,357 @@ class TestStopErrorsIfUnderspecified:
         assert ret == 1
         assert start_stop_restart.PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE in out
 
-    def test_no_cluster(self, mock_paasta_start_or_stop, capfd):
-        self.run_and_assert_with_args(
-            ["stop", "-s", "service", "-i", "instance"],
-            capfd,
-        )
+    def test_no_cluster(self, capfd):
+        with mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+            autospec=True,
+        ):
+            self.run_and_assert_with_args(
+                ["stop", "-s", "service", "-i", "instance"],
+                capfd,
+            )
 
-    def test_no_service(self, mock_paasta_start_or_stop, capfd):
-        self.run_and_assert_with_args(
-            ["stop", "-c", "cluster", "-i", "instance"],
-            capfd,
-        )
+    def test_no_service(self, capfd):
+        with mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+            autospec=True,
+        ):
+            self.run_and_assert_with_args(
+                ["stop", "-c", "cluster", "-i", "instance"],
+                capfd,
+            )
 
-    def test_no_instance(self, mock_paasta_start_or_stop, capfd):
-        self.run_and_assert_with_args(
-            ["stop", "-c", "cluster", "-s", "service"],
-            capfd,
-        )
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-def test_error_if_no_deploy_permissions(
-    mock_can_user_deploy_service,
-    mock_issue_state_change_for_service,
-    mock_apply_args_filters,
-):
-    args, _ = parse_args(
-        [
-            "start",
-            "-s",
-            "service",
-            "-c",
-            "cluster",
-            "-i",
-            "instance",
-            "-d",
-            "/soa/dir",
-        ]
-    )
-    mock_apply_args_filters.return_value = {"cluster": {"service": {"instance": None}}}
-    mock_can_user_deploy_service.return_value = False
-    ret = args.command(args)
-
-    assert ret == 1
-    assert not mock_issue_state_change_for_service.called
+    def test_no_instance(self, capfd):
+        with mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+            autospec=True,
+        ):
+            self.run_and_assert_with_args(
+                ["stop", "-c", "cluster", "-s", "service"],
+                capfd,
+            )
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop", autospec=True
-)
-class TestRestartCmd:
-    def test_delegates_to_start_or_stop(
-        self,
-        mock_paasta_start_or_stop,
-    ):
-        mock_paasta_start_or_stop.return_value = 0
-
+def test_error_if_no_deploy_permissions():
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ) as mock_can_user_deploy_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+        autospec=True,
+    ) as mock_issue_state_change_for_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters:
         args, _ = parse_args(
-            "restart -s service -c cluster -i instance -d /soa/dir".split(" ")
+            [
+                "start",
+                "-s",
+                "service",
+                "-c",
+                "cluster",
+                "-i",
+                "instance",
+                "-d",
+                "/soa/dir",
+            ]
         )
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"instance": None}}
+        }
+        mock_can_user_deploy_service.return_value = False
         ret = args.command(args)
 
-        mock_paasta_start_or_stop.assert_called_once_with(args, "restart")
-        assert ret == 0
+        assert ret == 1
+        assert not mock_issue_state_change_for_service.called
+
+
+class TestRestartCmd:
+    def test_delegates_to_start_or_stop(self):
+        with mock.patch(
+            "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+            autospec=True,
+        ) as mock_paasta_start_or_stop:
+            mock_paasta_start_or_stop.return_value = 0
+
+            args, _ = parse_args(
+                "restart -s service -c cluster -i instance -d /soa/dir".split(" ")
+            )
+            ret = args.command(args)
+
+            mock_paasta_start_or_stop.assert_called_once_with(args, "restart")
+            assert ret == 0
 
 
 @pytest.mark.parametrize("force_flag", [False, True])
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.socket.getfqdn", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_success(
-    mock_apply_args_filters,
-    mock_get_instance_config,
-    mock_get_deploy_info,
-    mock_can_user_deploy_service,
-    mock_getfqdn,
-    mock_get_username,
-    mock_log,
-    mock_log_audit,
-    mock_load_system_paasta_config,
-    mock_get_paasta_oapi_client_with_auth,
-    force_flag,
-):
+def test_paasta_restart_replica_success(force_flag):
     """Test successful replica restart with and without force flag."""
-    # Mock CLI args
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-    args.soa_dir = "/test/soa/dir"
-    args.force = force_flag
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True
+    ) as mock_get_deploy_info, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ) as mock_can_user_deploy_service, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.socket.getfqdn", autospec=True
+    ) as mock_getfqdn, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
+    ) as mock_get_username, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
+        autospec=True,
+    ) as mock_get_paasta_oapi_client_with_auth:
+        # Mock CLI args
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+        args.soa_dir = "/test/soa/dir"
+        args.force = force_flag
 
-    # Mock apply_args_filters to return single service/instance/cluster
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {"test-service": {"main": None}}
-    }
-
-    # Mock service config as Kubernetes
-    mock_service_config = KubernetesDeploymentConfig(
-        service="test-service",
-        cluster="test-cluster",
-        instance="main",
-        config_dict={},
-        branch_dict=None,
-    )
-    mock_get_instance_config.return_value = mock_service_config
-
-    # Mock permissions
-    mock_get_deploy_info.return_value = {"deploy_groups": []}
-    mock_can_user_deploy_service.return_value = True
-
-    # Mock username and hostname
-    mock_get_username.return_value = "test-user"
-    mock_getfqdn.return_value = "test-host.example.com"
-
-    # Mock API client
-    mock_client = mock.Mock()
-    mock_response = {
-        "message": "Initiated replica restart of test-pod-12345 successfully",
-        "service": "test-service",
-        "instance": "main",
-        "replica_name": "test-pod-12345",
-    }
-    mock_client.service.instance_replica_restart.return_value = mock_response
-    mock_get_paasta_oapi_client_with_auth.return_value = mock_client
-
-    result = start_stop_restart.paasta_restart_replica(args)
-
-    assert result == 0
-
-    # Verify API call was made with correct parameters
-    mock_client.service.instance_replica_restart.assert_called_once_with(
-        service="test-service",
-        instance="main",
-        replica_name="test-pod-12345",
-        force=force_flag,
-    )
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_multiple_clusters(mock_apply_args_filters):
-    """Test replica restart with multiple clusters fails."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-
-    # Mock multiple clusters
-    mock_apply_args_filters.return_value = {
-        "cluster1": {"test-service": {"main": None}},
-        "cluster2": {"test-service": {"main": None}},
-    }
-
-    result = start_stop_restart.paasta_restart_replica(args)
-
-    assert result == 1
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_multiple_services(mock_apply_args_filters):
-    """Test replica restart with multiple services fails."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-
-    # Mock multiple services
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {
-            "service1": {"main": None},
-            "service2": {"main": None},
+        # Mock apply_args_filters to return single service/instance/cluster
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {"test-service": {"main": None}}
         }
-    }
 
-    result = start_stop_restart.paasta_restart_replica(args)
+        # Mock service config as Kubernetes
+        mock_service_config = KubernetesDeploymentConfig(
+            service="test-service",
+            cluster="test-cluster",
+            instance="main",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_get_instance_config.return_value = mock_service_config
 
-    assert result == 1
+        # Mock permissions
+        mock_get_deploy_info.return_value = {"deploy_groups": []}
+        mock_can_user_deploy_service.return_value = True
+
+        # Mock username and hostname
+        mock_get_username.return_value = "test-user"
+        mock_getfqdn.return_value = "test-host.example.com"
+
+        # Mock API client
+        mock_client = mock.Mock()
+        mock_response = {
+            "message": "Initiated replica restart of test-pod-12345 successfully",
+            "service": "test-service",
+            "instance": "main",
+            "replica_name": "test-pod-12345",
+        }
+        mock_client.service.instance_replica_restart.return_value = mock_response
+        mock_get_paasta_oapi_client_with_auth.return_value = mock_client
+
+        result = start_stop_restart.paasta_restart_replica(args)
+
+        assert result == 0
+
+        # Verify API call was made with correct parameters
+        mock_client.service.instance_replica_restart.assert_called_once_with(
+            service="test-service",
+            instance="main",
+            replica_name="test-pod-12345",
+            force=force_flag,
+        )
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_multiple_instances(mock_apply_args_filters):
+def test_paasta_restart_replica_multiple_clusters():
+    """Test replica restart with multiple clusters fails."""
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+
+        # Mock multiple clusters
+        mock_apply_args_filters.return_value = {
+            "cluster1": {"test-service": {"main": None}},
+            "cluster2": {"test-service": {"main": None}},
+        }
+
+        result = start_stop_restart.paasta_restart_replica(args)
+
+        assert result == 1
+
+
+def test_paasta_restart_replica_multiple_services():
+    """Test replica restart with multiple services fails."""
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+
+        # Mock multiple services
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {
+                "service1": {"main": None},
+                "service2": {"main": None},
+            }
+        }
+
+        result = start_stop_restart.paasta_restart_replica(args)
+
+        assert result == 1
+
+
+def test_paasta_restart_replica_multiple_instances():
     """Test replica restart with multiple instances fails."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
 
-    # Mock multiple instances
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {"test-service": {"main": None, "canary": None}}
-    }
+        # Mock multiple instances
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {"test-service": {"main": None, "canary": None}}
+        }
 
-    result = start_stop_restart.paasta_restart_replica(args)
+        result = start_stop_restart.paasta_restart_replica(args)
 
-    assert result == 1
+        assert result == 1
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_non_kubernetes_instance(
-    mock_apply_args_filters, mock_get_instance_config
-):
+def test_paasta_restart_replica_non_kubernetes_instance():
     """Test replica restart with non-Kubernetes instance type fails."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-    args.soa_dir = "/test/soa/dir"
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+        args.soa_dir = "/test/soa/dir"
 
-    # Mock single valid cluster/service/instance
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {"test-service": {"main": None}}
-    }
+        # Mock single valid cluster/service/instance
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {"test-service": {"main": None}}
+        }
 
-    # Mock non-Kubernetes service config
-    mock_service_config = mock.Mock()
-    mock_service_config.__class__ = object  # Not KubernetesDeploymentConfig
-    mock_get_instance_config.return_value = mock_service_config
+        # Mock non-Kubernetes service config
+        mock_service_config = mock.Mock()
+        mock_service_config.__class__ = object  # Not KubernetesDeploymentConfig
+        mock_get_instance_config.return_value = mock_service_config
 
-    result = start_stop_restart.paasta_restart_replica(args)
+        result = start_stop_restart.paasta_restart_replica(args)
 
-    assert result == 1
+        assert result == 1
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_permission_denied(
-    mock_apply_args_filters,
-    mock_get_instance_config,
-    mock_get_deploy_info,
-    mock_can_user_deploy_service,
-):
+def test_paasta_restart_replica_permission_denied():
     """Test replica restart with insufficient permissions fails."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-    args.soa_dir = "/test/soa/dir"
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True
+    ) as mock_get_deploy_info, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ) as mock_can_user_deploy_service:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+        args.soa_dir = "/test/soa/dir"
 
-    # Mock single valid cluster/service/instance
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {"test-service": {"main": None}}
-    }
+        # Mock single valid cluster/service/instance
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {"test-service": {"main": None}}
+        }
 
-    # Mock Kubernetes service config
-    mock_service_config = KubernetesDeploymentConfig(
-        service="test-service",
-        cluster="test-cluster",
-        instance="main",
-        config_dict={},
-        branch_dict=None,
-    )
-    mock_get_instance_config.return_value = mock_service_config
+        # Mock Kubernetes service config
+        mock_service_config = KubernetesDeploymentConfig(
+            service="test-service",
+            cluster="test-cluster",
+            instance="main",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_get_instance_config.return_value = mock_service_config
 
-    # Mock permission denied
-    mock_get_deploy_info.return_value = {"deploy_groups": []}
-    mock_can_user_deploy_service.return_value = False
+        # Mock permission denied
+        mock_get_deploy_info.return_value = {"deploy_groups": []}
+        mock_can_user_deploy_service.return_value = False
 
-    result = start_stop_restart.paasta_restart_replica(args)
+        result = start_stop_restart.paasta_restart_replica(args)
 
-    assert result == 1
+        assert result == 1
 
 
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
-)
-@mock.patch("socket.getfqdn", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
-)
-@mock.patch("paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
-)
-@mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
-)
-def test_paasta_restart_replica_api_error(
-    mock_apply_args_filters,
-    mock_get_instance_config,
-    mock_get_deploy_info,
-    mock_can_user_deploy_service,
-    mock_getfqdn,
-    mock_get_username,
-    mock_log,
-    mock_log_audit,
-    mock_load_system_paasta_config,
-    mock_get_paasta_oapi_client_with_auth,
-):
+def test_paasta_restart_replica_api_error():
     """Test replica restart with API error."""
-    args = mock.Mock()
-    args.replica = "test-pod-12345"
-    args.soa_dir = "/test/soa/dir"
+    with mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+    ) as mock_apply_args_filters, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_instance_config",
+        autospec=True,
+    ) as mock_get_instance_config, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_deploy_info", autospec=True
+    ) as mock_get_deploy_info, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service",
+        autospec=True,
+    ) as mock_can_user_deploy_service, mock.patch(
+        "socket.getfqdn", autospec=True
+    ) as mock_getfqdn, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_username", autospec=True
+    ) as mock_get_username, mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils._log", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.utils._log_audit", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.load_system_paasta_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.start_stop_restart.get_paasta_oapi_client_with_auth",
+        autospec=True,
+    ) as mock_get_paasta_oapi_client_with_auth:
+        args = mock.Mock()
+        args.replica = "test-pod-12345"
+        args.soa_dir = "/test/soa/dir"
 
-    # Mock apply_args_filters to return single service/instance/cluster
-    mock_apply_args_filters.return_value = {
-        "test-cluster": {"test-service": {"main": None}}
-    }
+        # Mock apply_args_filters to return single service/instance/cluster
+        mock_apply_args_filters.return_value = {
+            "test-cluster": {"test-service": {"main": None}}
+        }
 
-    # Mock service config as Kubernetes
-    mock_service_config = KubernetesDeploymentConfig(
-        service="test-service",
-        cluster="test-cluster",
-        instance="main",
-        config_dict={},
-        branch_dict=None,
-    )
-    mock_get_instance_config.return_value = mock_service_config
+        # Mock service config as Kubernetes
+        mock_service_config = KubernetesDeploymentConfig(
+            service="test-service",
+            cluster="test-cluster",
+            instance="main",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_get_instance_config.return_value = mock_service_config
 
-    # Mock permissions
-    mock_get_deploy_info.return_value = {"deploy_groups": []}
-    mock_can_user_deploy_service.return_value = True
+        # Mock permissions
+        mock_get_deploy_info.return_value = {"deploy_groups": []}
+        mock_can_user_deploy_service.return_value = True
 
-    # Mock logging
-    mock_get_username.return_value = "test-user"
-    mock_getfqdn.return_value = "test-host.example.com"
+        # Mock logging
+        mock_get_username.return_value = "test-user"
+        mock_getfqdn.return_value = "test-host.example.com"
 
-    # Mock API client with error
-    from paasta_tools.paastaapi.exceptions import ApiException
+        # Mock API client with error
+        from paasta_tools.paastaapi.exceptions import ApiException
 
-    mock_client = mock.Mock()
-    mock_api_exception = ApiException(status=404)
-    mock_api_exception.body = '{"error": "Replica not found"}'
-    mock_client.service.instance_replica_restart.side_effect = mock_api_exception
-    mock_get_paasta_oapi_client_with_auth.return_value = mock_client
+        mock_client = mock.Mock()
+        mock_api_exception = ApiException(status=404)
+        mock_api_exception.body = '{"error": "Replica not found"}'
+        mock_client.service.instance_replica_restart.side_effect = mock_api_exception
+        mock_get_paasta_oapi_client_with_auth.return_value = mock_client
 
-    result = start_stop_restart.paasta_restart_replica(args)
+        result = start_stop_restart.paasta_restart_replica(args)
 
-    assert result == 1
+        assert result == 1

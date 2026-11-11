@@ -384,9 +384,10 @@ def test_load_system_paasta_config_duplicate_keys_errors():
         "paasta_tools.utils.json.load",
         autospec=True,
         side_effect=[fake_file_a, fake_file_b],
+    ), raises(
+        utils.DuplicateKeyError
     ):
-        with raises(utils.DuplicateKeyError):
-            utils.load_system_paasta_config(path="/some/fake/dir")
+        utils.load_system_paasta_config(path="/some/fake/dir")
 
 
 def test_SystemPaastaConfig_get_cluster():
@@ -537,14 +538,13 @@ def test_get_service_registry_dne():
         "service_configuration_lib.read_service_configuration",
         return_value=fake_service_config,
         autospec=True,
+    ), mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=fake_system_config,
+        autospec=True,
     ):
-        with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
-            return_value=fake_system_config,
-            autospec=True,
-        ):
-            actual = utils.get_service_docker_registry("fake_service", "fake_soa_dir")
-            assert actual == fake_registry
+        actual = utils.get_service_docker_registry("fake_service", "fake_soa_dir")
+        assert actual == fake_registry
 
 
 def test_SystemPaastaConfig_get_sensu_host_default():
@@ -788,63 +788,70 @@ def test_build_docker_image_name():
     assert actual == expected
 
 
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_build_docker_tag(mock_build_docker_image_name):
-    upstream_job_name = "foo"
-    upstream_git_commit = "bar"
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    expected = f"fake-registry/services-foo:paasta-{upstream_git_commit}"
-    actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
-    assert actual == expected
-
-
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_check_docker_image_false(mock_build_docker_image_name):
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    fake_app = "fake_app"
-    fake_commit = "fake_commit"
-    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+def test_build_docker_tag():
     with mock.patch(
-        "paasta_tools.utils.get_docker_client", autospec=True
-    ) as mock_docker:
-        docker_client = mock_docker.return_value
-        docker_client.images.return_value = [
-            {
-                "Created": 1425430339,
-                "VirtualSize": 250344331,
-                "ParentId": "1111",
-                "RepoTags": [docker_tag],
-                "Id": "ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2",
-                "Size": 0,
-            }
-        ]
-        assert utils.check_docker_image("test_service", "tag2") is False
+        "paasta_tools.utils.build_docker_image_name", autospec=True
+    ) as mock_build_docker_image_name:
+        upstream_job_name = "foo"
+        upstream_git_commit = "bar"
+        mock_build_docker_image_name.return_value = "fake-registry/services-foo"
+        expected = f"fake-registry/services-foo:paasta-{upstream_git_commit}"
+        actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
+        assert actual == expected
+
+
+def test_check_docker_image_false():
+    with mock.patch(
+        "paasta_tools.utils.build_docker_image_name", autospec=True
+    ) as mock_build_docker_image_name:
+        mock_build_docker_image_name.return_value = "fake-registry/services-foo"
+        fake_app = "fake_app"
+        fake_commit = "fake_commit"
+        docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+        with mock.patch(
+            "paasta_tools.utils.get_docker_client", autospec=True
+        ) as mock_docker:
+            docker_client = mock_docker.return_value
+            docker_client.images.return_value = [
+                {
+                    "Created": 1425430339,
+                    "VirtualSize": 250344331,
+                    "ParentId": "1111",
+                    "RepoTags": [docker_tag],
+                    "Id": "ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2",
+                    "Size": 0,
+                }
+            ]
+            assert utils.check_docker_image("test_service", "tag2") is False
 
 
 @pytest.mark.parametrize(("fake_image_version",), ((None,), ("extrastuff",)))
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_check_docker_image_true(mock_build_docker_image_name, fake_image_version):
-    fake_app = "fake_app"
-    fake_commit = "fake_commit"
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    docker_tag = utils.build_docker_tag(fake_app, fake_commit, fake_image_version)
+def test_check_docker_image_true(fake_image_version):
     with mock.patch(
-        "paasta_tools.utils.get_docker_client", autospec=True
-    ) as mock_docker:
-        docker_client = mock_docker.return_value
-        docker_client.images.return_value = [
-            {
-                "Created": 1425430339,
-                "VirtualSize": 250344331,
-                "ParentId": "1111",
-                "RepoTags": [docker_tag],
-                "Id": "ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2",
-                "Size": 0,
-            }
-        ]
-        assert (
-            utils.check_docker_image(fake_app, fake_commit, fake_image_version) is True
-        )
+        "paasta_tools.utils.build_docker_image_name", autospec=True
+    ) as mock_build_docker_image_name:
+        fake_app = "fake_app"
+        fake_commit = "fake_commit"
+        mock_build_docker_image_name.return_value = "fake-registry/services-foo"
+        docker_tag = utils.build_docker_tag(fake_app, fake_commit, fake_image_version)
+        with mock.patch(
+            "paasta_tools.utils.get_docker_client", autospec=True
+        ) as mock_docker:
+            docker_client = mock_docker.return_value
+            docker_client.images.return_value = [
+                {
+                    "Created": 1425430339,
+                    "VirtualSize": 250344331,
+                    "ParentId": "1111",
+                    "RepoTags": [docker_tag],
+                    "Id": "ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2",
+                    "Size": 0,
+                }
+            ]
+            assert (
+                utils.check_docker_image(fake_app, fake_commit, fake_image_version)
+                is True
+            )
 
 
 def test_remove_ansi_escape_sequences():
@@ -1035,97 +1042,91 @@ def test_read_service_instance_names_tron():
         assert sorted(expected) == sorted(actual)
 
 
-@mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
-)
-def test_load_service_instance_configs(
-    mock_read_extra_service_information, mock_load_auto_configs
-):
-    mock_read_extra_service_information.return_value = {
-        "foo": {"cpus": 1},
-        "bar": {"cpus": 1},
-    }
-    mock_load_auto_configs.return_value = {
-        "bar": {"mem": 100},
-        "baz": {"mem": 200},
-    }
-    expected = {
-        "foo": {"cpus": 1},
-        "bar": {"cpus": 1, "mem": 100},
-    }
-    result = utils.load_service_instance_configs(
-        service="fake_service",
-        instance_type="kubernetes",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-    assert result == expected
-    mock_read_extra_service_information.assert_called_with(
-        "fake_service",
-        "kubernetes-fake",
-        soa_dir="fake_dir",
-        deepcopy=False,
-    )
-    mock_load_auto_configs.assert_called_with(
-        service="fake_service",
-        instance_type="kubernetes",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-
-
-@mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
-)
-def test_flink_load_service_instance_configs(
-    mock_read_extra_service_information, mock_load_auto_configs
-):
-    mock_read_extra_service_information.return_value = {
-        "foo": {
-            "taskmanager": {"cpus": 1},
-            "jobmanager": {"mem": 2},
-            "supervisor": {"cpus": 2},
-        },
-    }
-    mock_load_auto_configs.return_value = {
-        "foo": {"taskmanager": {"mem": 2}},
-    }
-    expected = {
-        "foo": {
-            "taskmanager": {"cpus": 1, "mem": 2},
-            "jobmanager": {"mem": 2},
-            "supervisor": {"cpus": 2},
+def test_load_service_instance_configs():
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.utils.load_service_instance_auto_configs",
+        autospec=True,
+    ) as mock_load_auto_configs:
+        mock_read_extra_service_information.return_value = {
+            "foo": {"cpus": 1},
+            "bar": {"cpus": 1},
         }
-    }
-    result = utils.load_service_instance_configs(
-        service="fake_service",
-        instance_type="flink",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-    assert result == expected
-    mock_read_extra_service_information.assert_called_with(
-        "fake_service",
-        "flink-fake",
-        soa_dir="fake_dir",
-        deepcopy=False,
-    )
-    mock_load_auto_configs.assert_called_with(
-        service="fake_service",
-        instance_type="flink",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
+        mock_load_auto_configs.return_value = {
+            "bar": {"mem": 100},
+            "baz": {"mem": 200},
+        }
+        expected = {
+            "foo": {"cpus": 1},
+            "bar": {"cpus": 1, "mem": 100},
+        }
+        result = utils.load_service_instance_configs(
+            service="fake_service",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        assert result == expected
+        mock_read_extra_service_information.assert_called_with(
+            "fake_service",
+            "kubernetes-fake",
+            soa_dir="fake_dir",
+            deepcopy=False,
+        )
+        mock_load_auto_configs.assert_called_with(
+            service="fake_service",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+
+
+def test_flink_load_service_instance_configs():
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.utils.load_service_instance_auto_configs",
+        autospec=True,
+    ) as mock_load_auto_configs:
+        mock_read_extra_service_information.return_value = {
+            "foo": {
+                "taskmanager": {"cpus": 1},
+                "jobmanager": {"mem": 2},
+                "supervisor": {"cpus": 2},
+            },
+        }
+        mock_load_auto_configs.return_value = {
+            "foo": {"taskmanager": {"mem": 2}},
+        }
+        expected = {
+            "foo": {
+                "taskmanager": {"cpus": 1, "mem": 2},
+                "jobmanager": {"mem": 2},
+                "supervisor": {"cpus": 2},
+            }
+        }
+        result = utils.load_service_instance_configs(
+            service="fake_service",
+            instance_type="flink",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        assert result == expected
+        mock_read_extra_service_information.assert_called_with(
+            "fake_service",
+            "flink-fake",
+            soa_dir="fake_dir",
+            deepcopy=False,
+        )
+        mock_load_auto_configs.assert_called_with(
+            service="fake_service",
+            instance_type="flink",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
 
 
 def test_load_service_instance_config_underscore():
@@ -1139,30 +1140,22 @@ def test_load_service_instance_config_underscore():
         )
 
 
-@mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
-)
-def test_load_service_instance_config_not_found(mock_read_service_information):
-    mock_read_service_information.return_value = {"bar": {"cpus": 10}}
-    with pytest.raises(utils.NoConfigurationForServiceError):
-        utils.load_service_instance_config(
-            service="fake_service",
-            instance="foo",
-            instance_type="kubernetes",
-            cluster="fake",
-            soa_dir="fake_dir",
-        )
+def test_load_service_instance_config_not_found():
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_service_information:
+        mock_read_service_information.return_value = {"bar": {"cpus": 10}}
+        with pytest.raises(utils.NoConfigurationForServiceError):
+            utils.load_service_instance_config(
+                service="fake_service",
+                instance="foo",
+                instance_type="kubernetes",
+                cluster="fake",
+                soa_dir="fake_dir",
+            )
 
 
-@mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
-)
 @pytest.mark.parametrize(
     "user_config,auto_config,expected_config",
     [
@@ -1174,73 +1167,69 @@ def test_load_service_instance_config_not_found(mock_read_service_information):
         ({"foo": {"mem": 80}}, {"foo": {"cpus": 3}}, {"cpus": 3, "mem": 80}),
     ],
 )
-def test_load_service_instance_config(
-    mock_read_extra_service_information,
-    mock_load_auto_configs,
-    user_config,
-    auto_config,
-    expected_config,
-):
-    mock_read_extra_service_information.return_value = user_config
-    mock_load_auto_configs.return_value = auto_config
-    result = utils.load_service_instance_config(
-        service="fake_service",
-        instance="foo",
-        instance_type="kubernetes",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-    assert result == expected_config
-    mock_read_extra_service_information.assert_called_with(
-        "fake_service",
-        "kubernetes-fake",
-        soa_dir="fake_dir",
-        deepcopy=False,
-    )
-    mock_load_auto_configs.assert_called_with(
-        service="fake_service",
-        instance_type="kubernetes",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-
-
-@mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.utils.load_system_paasta_config",
-    autospec=True,
-)
-@pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
-def test_load_service_instance_auto_configs_no_aliases(
-    mock_load_system_paasta_config,
-    mock_read_extra_service_information,
-    instance_type_enabled,
-):
-    mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
-        "kubernetes": instance_type_enabled,
-    }
-    mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
-        {}
-    )
-    result = utils.load_service_instance_auto_configs(
-        service="fake_service",
-        instance_type="kubernetes",
-        cluster="fake",
-        soa_dir="fake_dir",
-    )
-    if instance_type_enabled:
+def test_load_service_instance_config(user_config, auto_config, expected_config):
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.utils.load_service_instance_auto_configs",
+        autospec=True,
+    ) as mock_load_auto_configs:
+        mock_read_extra_service_information.return_value = user_config
+        mock_load_auto_configs.return_value = auto_config
+        result = utils.load_service_instance_config(
+            service="fake_service",
+            instance="foo",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        assert result == expected_config
         mock_read_extra_service_information.assert_called_with(
             "fake_service",
-            f"{utils.AUTO_SOACONFIG_SUBDIR}/kubernetes-fake",
+            "kubernetes-fake",
             soa_dir="fake_dir",
             deepcopy=False,
         )
-        assert result == mock_read_extra_service_information.return_value
-    else:
-        assert result == {}
+        mock_load_auto_configs.assert_called_with(
+            service="fake_service",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+
+
+@pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
+def test_load_service_instance_auto_configs_no_aliases(instance_type_enabled):
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information:
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
+            "kubernetes": instance_type_enabled,
+        }
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
+            {}
+        )
+        result = utils.load_service_instance_auto_configs(
+            service="fake_service",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        if instance_type_enabled:
+            mock_read_extra_service_information.assert_called_with(
+                "fake_service",
+                f"{utils.AUTO_SOACONFIG_SUBDIR}/kubernetes-fake",
+                soa_dir="fake_dir",
+                deepcopy=False,
+            )
+            assert result == mock_read_extra_service_information.return_value
+        else:
+            assert result == {}
 
 
 @pytest.mark.parametrize(
@@ -2447,17 +2436,16 @@ def test_validate_service_instance_invalid():
             mock_nrtsearcheks_instances,
             mock_monkrelaycluster_instances,
         ],
+    ), raises(
+        utils.NoConfigurationForServiceError,
+        match="Did you mean one of: main3, main2, main1?",
     ):
-        with raises(
-            utils.NoConfigurationForServiceError,
-            match="Did you mean one of: main3, main2, main1?",
-        ):
-            utils.validate_service_instance(
-                service=my_service,
-                instance=my_instance,
-                cluster=fake_cluster,
-                soa_dir=fake_soa_dir,
-            )
+        utils.validate_service_instance(
+            service=my_service,
+            instance=my_instance,
+            cluster=fake_cluster,
+            soa_dir=fake_soa_dir,
+        )
 
 
 def test_terminal_len():
@@ -2794,57 +2782,64 @@ def test_get_code_sha_from_dockerurl():
     assert utils.get_code_sha_from_dockerurl("docker.io/busybox") == "gitbusybox"
 
 
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_flock(mock_flock, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.flock(f):
-            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
-            mock_flock.reset_mock()
+def test_flock(tmpdir):
+    with mock.patch(
+        "paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock
+    ) as mock_flock:
+        my_file = tmpdir.join("my-file")
+        with open(str(my_file), "w") as f:
+            with utils.flock(f):
+                mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
+                mock_flock.reset_mock()
 
-        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
-
-
-@mock.patch("paasta_tools.utils.Timeout", autospec=True)
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.timed_flock(f, seconds=mock.sentinel.seconds):
-            mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
-            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
-            mock_flock.reset_mock()
-
-        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
 
 
-@mock.patch(
-    "paasta_tools.utils.Timeout",
-    autospec=True,
-    side_effect=utils.TimeoutError("Oh noes"),
-)
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_timeout(mock_flock, mock_timeout, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with pytest.raises(utils.TimeoutError):
-            with utils.timed_flock(f):
+def test_timed_flock_ok(tmpdir):
+    with mock.patch(
+        "paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock
+    ) as mock_flock, mock.patch(
+        "paasta_tools.utils.Timeout", autospec=True
+    ) as mock_timeout:
+        my_file = tmpdir.join("my-file")
+        with open(str(my_file), "w") as f:
+            with utils.timed_flock(f, seconds=mock.sentinel.seconds):
+                mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
+                mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
+                mock_flock.reset_mock()
+
+            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
+
+
+def test_timed_flock_timeout(tmpdir):
+    with mock.patch(
+        "paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock
+    ) as mock_flock, mock.patch(
+        "paasta_tools.utils.Timeout",
+        autospec=True,
+        side_effect=utils.TimeoutError("Oh noes"),
+    ):
+        my_file = tmpdir.join("my-file")
+        with open(str(my_file), "w") as f:
+            with pytest.raises(utils.TimeoutError), utils.timed_flock(f):
                 assert False  # pragma: no cover
-        assert mock_flock.mock_calls == []
+            assert mock_flock.mock_calls == []
 
 
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
-    # Doing something slow inside the 'with' context of timed_flock doesn't cause a timeout
-    # (the timeout should only apply to the flock operation itself)
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.timed_flock(f, seconds=1):
-            time.true_slow_sleep(0.1)  # type: ignore
-        assert mock_flock.mock_calls == [
-            mock.call(f.fileno(), utils.fcntl.LOCK_EX),
-            mock.call(f.fileno(), utils.fcntl.LOCK_UN),
-        ]
+def test_timed_flock_inner_timeout_ok(tmpdir):
+    with mock.patch(
+        "paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock
+    ) as mock_flock:
+        # Doing something slow inside the 'with' context of timed_flock doesn't cause a timeout
+        # (the timeout should only apply to the flock operation itself)
+        my_file = tmpdir.join("my-file")
+        with open(str(my_file), "w") as f:
+            with utils.timed_flock(f, seconds=1):
+                time.true_slow_sleep(0.1)  # type: ignore
+            assert mock_flock.mock_calls == [
+                mock.call(f.fileno(), utils.fcntl.LOCK_EX),
+                mock.call(f.fileno(), utils.fcntl.LOCK_UN),
+            ]
 
 
 def test_suggest_possibilities_none():

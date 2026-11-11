@@ -41,33 +41,32 @@ def test_parse_filters_good():
     assert "zol" in parsed["qux"]
 
 
-@mock.patch(
-    "paasta_tools.api.views.resources.metastatus_lib.get_resource_utilization_by_grouping",
-    autospec=True,
-)
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_nothing_special(
-    mock_get_mesos_master, mock_get_resource_utilization_by_grouping
-):
-    request = testing.DummyRequest()
-    request.swagger_data = {"groupings": None, "filter": None}
-    mock_mesos_state = mock.Mock()
-    mock_master = mock.Mock(state=AsyncMock(return_value=mock_mesos_state))
-    mock_get_mesos_master.return_value = mock_master
+def test_resources_utilization_nothing_special():
+    with mock.patch(
+        "paasta_tools.api.views.resources.get_mesos_master", autospec=True
+    ) as mock_get_mesos_master, mock.patch(
+        "paasta_tools.api.views.resources.metastatus_lib.get_resource_utilization_by_grouping",
+        autospec=True,
+    ) as mock_get_resource_utilization_by_grouping:
+        request = testing.DummyRequest()
+        request.swagger_data = {"groupings": None, "filter": None}
+        mock_mesos_state = mock.Mock()
+        mock_master = mock.Mock(state=AsyncMock(return_value=mock_mesos_state))
+        mock_get_mesos_master.return_value = mock_master
 
-    mock_get_resource_utilization_by_grouping.return_value = {
-        frozenset([("superregion", "unknown")]): {
-            "total": metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
-            "free": metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
+        mock_get_resource_utilization_by_grouping.return_value = {
+            frozenset([("superregion", "unknown")]): {
+                "total": metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
+                "free": metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
+            }
         }
-    }
 
-    resp = resources_utilization(request)
-    body = json.loads(resp.body.decode("utf-8"))
+        resp = resources_utilization(request)
+        body = json.loads(resp.body.decode("utf-8"))
 
-    assert resp.status_int == 200
-    assert len(body) == 1
-    assert set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"}
+        assert resp.status_int == 200
+        assert len(body) == 1
+        assert set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"}
 
 
 mock_mesos_state = {
@@ -128,51 +127,55 @@ mock_mesos_state = {
 }
 
 
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_with_grouping(mock_get_mesos_master):
-    request = testing.DummyRequest()
-    request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
-    mock_master = mock.Mock(
-        state=AsyncMock(
-            return_value=mock_mesos_state,
+def test_resources_utilization_with_grouping():
+    with mock.patch(
+        "paasta_tools.api.views.resources.get_mesos_master", autospec=True
+    ) as mock_get_mesos_master:
+        request = testing.DummyRequest()
+        request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
+        mock_master = mock.Mock(
+            state=AsyncMock(
+                return_value=mock_mesos_state,
+            )
         )
-    )
-    mock_get_mesos_master.return_value = mock_master
+        mock_get_mesos_master.return_value = mock_master
 
-    resp = resources_utilization(request)
-    body = json.loads(resp.body.decode("utf-8"))
+        resp = resources_utilization(request)
+        body = json.loads(resp.body.decode("utf-8"))
 
-    assert resp.status_int == 200
-    # 4 groupings, 2x2 attrs for 5 slaves
-    assert len(body) == 4
+        assert resp.status_int == 200
+        # 4 groupings, 2x2 attrs for 5 slaves
+        assert len(body) == 4
 
 
-@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
-def test_resources_utilization_with_filter(mock_get_mesos_master):
-    request = testing.DummyRequest()
-    request.swagger_data = {
-        "groupings": ["region", "pool"],
-        "filter": ["region:top", "pool:default,other"],
-    }
-    mock_master = mock.Mock(
-        state=AsyncMock(
-            return_value=mock_mesos_state,
+def test_resources_utilization_with_filter():
+    with mock.patch(
+        "paasta_tools.api.views.resources.get_mesos_master", autospec=True
+    ) as mock_get_mesos_master:
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "groupings": ["region", "pool"],
+            "filter": ["region:top", "pool:default,other"],
+        }
+        mock_master = mock.Mock(
+            state=AsyncMock(
+                return_value=mock_mesos_state,
+            )
         )
-    )
-    mock_get_mesos_master.return_value = mock_master
+        mock_get_mesos_master.return_value = mock_master
 
-    resp = resources_utilization(request)
-    body = json.loads(resp.body.decode("utf-8"))
+        resp = resources_utilization(request)
+        body = json.loads(resp.body.decode("utf-8"))
 
-    assert resp.status_int == 200
-    assert len(body) == 2
+        assert resp.status_int == 200
+        assert len(body) == 2
 
-    request.swagger_data = {
-        "groupings": ["region", "pool"],
-        "filter": ["region:non-exist", "pool:default,other"],
-    }
-    resp = resources_utilization(request)
-    body = json.loads(resp.body.decode("utf-8"))
+        request.swagger_data = {
+            "groupings": ["region", "pool"],
+            "filter": ["region:non-exist", "pool:default,other"],
+        }
+        resp = resources_utilization(request)
+        body = json.loads(resp.body.decode("utf-8"))
 
-    assert resp.status_int == 200
-    assert len(body) == 0
+        assert resp.status_int == 200
+        assert len(body) == 0

@@ -52,10 +52,9 @@ def test_non_ascii_tags():
             ),
             "path",
         ),
-    ):
-        with mock.patch("time.sleep", autospec=True):
-            ret = remote_git.list_remote_refs("git-url")
-            assert ret == {"☃": "deadbeef"}
+    ), mock.patch("time.sleep", autospec=True):
+        ret = remote_git.list_remote_refs("git-url")
+        assert ret == {"☃": "deadbeef"}
 
 
 def test_make_force_push_mutate_refs_func_overwrites_shas():
@@ -83,67 +82,66 @@ def test_make_force_push_mutate_refs_func_overwrites_shas():
     assert all([isinstance(k, bytes) for k in actual])
 
 
-@mock.patch("dulwich.client", autospec=True)
-@mock.patch("paasta_tools.remote_git._make_determine_wants_func", autospec=True)
-def test_create_remote_refs_is_safe_by_default(
-    mock_make_determine_wants_func, mock_dulwich_client
-):
-    git_url = "fake_git_url"
-    fake_git_client = mock.Mock()
-    mock_dulwich_client.get_transport_and_path.return_value = (
-        fake_git_client,
-        "fake_path",
-    )
-    remote_git.create_remote_refs(
-        git_url=git_url, ref_mutator=mock.sentinel.ref_mutator
-    )
-    fake_git_client.send_pack.assert_called_once_with(
-        "fake_path", mock_make_determine_wants_func.return_value, mock.ANY
-    )
+def test_create_remote_refs_is_safe_by_default():
+    with mock.patch(
+        "paasta_tools.remote_git._make_determine_wants_func", autospec=True
+    ) as mock_make_determine_wants_func, mock.patch(
+        "dulwich.client", autospec=True
+    ) as mock_dulwich_client:
+        git_url = "fake_git_url"
+        fake_git_client = mock.Mock()
+        mock_dulwich_client.get_transport_and_path.return_value = (
+            fake_git_client,
+            "fake_path",
+        )
+        remote_git.create_remote_refs(
+            git_url=git_url, ref_mutator=mock.sentinel.ref_mutator
+        )
+        fake_git_client.send_pack.assert_called_once_with(
+            "fake_path", mock_make_determine_wants_func.return_value, mock.ANY
+        )
 
 
-@mock.patch("dulwich.client", autospec=True)
-def test_create_remote_refs_allows_force_and_uses_the_provided_mutator(
-    mock_dulwich_client,
-):
-    git_url = "fake_git_url"
-    fake_git_client = mock.Mock()
-    mock_dulwich_client.get_transport_and_path.return_value = (
-        fake_git_client,
-        "fake_path",
-    )
-    remote_git.create_remote_refs(
-        git_url=git_url, ref_mutator=mock.sentinel.ref_mutator, force=True
-    )
-    fake_git_client.send_pack.assert_called_once_with(
-        "fake_path", mock.sentinel.ref_mutator, mock.ANY
-    )
+def test_create_remote_refs_allows_force_and_uses_the_provided_mutator():
+    with mock.patch("dulwich.client", autospec=True) as mock_dulwich_client:
+        git_url = "fake_git_url"
+        fake_git_client = mock.Mock()
+        mock_dulwich_client.get_transport_and_path.return_value = (
+            fake_git_client,
+            "fake_path",
+        )
+        remote_git.create_remote_refs(
+            git_url=git_url, ref_mutator=mock.sentinel.ref_mutator, force=True
+        )
+        fake_git_client.send_pack.assert_called_once_with(
+            "fake_path", mock.sentinel.ref_mutator, mock.ANY
+        )
 
 
-@mock.patch("paasta_tools.remote_git._run", autospec=True)
-def test_get_authors_fails_with_bad_url(mock_run):
-    expected = 1, mock.ANY
-    assert expected == remote_git.get_authors("bad", "a", "b")
+def test_get_authors_fails_with_bad_url():
+    with mock.patch("paasta_tools.remote_git._run", autospec=True):
+        expected = 1, mock.ANY
+        assert expected == remote_git.get_authors("bad", "a", "b")
 
 
-@mock.patch("paasta_tools.remote_git._run", autospec=True)
-def test_get_authors_fails_with_unknown(mock_run):
-    url = "git@bitbucket.org:something.git"
-    expected = 1, mock.ANY
-    assert expected == remote_git.get_authors(url, "a", "b")
+def test_get_authors_fails_with_unknown():
+    with mock.patch("paasta_tools.remote_git._run", autospec=True):
+        url = "git@bitbucket.org:something.git"
+        expected = 1, mock.ANY
+        assert expected == remote_git.get_authors(url, "a", "b")
 
 
-@mock.patch("paasta_tools.remote_git._run", autospec=True)
-def test_get_authors_works_with_good_url(mock_run):
-    mock_run.return_value = (0, "it worked")
-    expected = mock_run.return_value
-    assert expected == remote_git.get_authors(
-        "git@git.yelpcorp.com:yelp-main", "a", "b"
-    )
-    mock_run.assert_called_once_with(
-        command="ssh git@git.yelpcorp.com authors-of-changeset yelp-main a b",
-        timeout=5.0,
-    )
+def test_get_authors_works_with_good_url():
+    with mock.patch("paasta_tools.remote_git._run", autospec=True) as mock_run:
+        mock_run.return_value = (0, "it worked")
+        expected = mock_run.return_value
+        assert expected == remote_git.get_authors(
+            "git@git.yelpcorp.com:yelp-main", "a", "b"
+        )
+        mock_run.assert_called_once_with(
+            command="ssh git@git.yelpcorp.com authors-of-changeset yelp-main a b",
+            timeout=5.0,
+        )
 
 
 def test_create_rollback_tag_success():

@@ -43,67 +43,67 @@ def instance_config():
     return mock_instance_config
 
 
-@mock.patch(
-    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
-    autospec=True,
-    return_value={"taskmanagers": 3},
-)
-def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
-    under, output, description = check_under_registered_taskmanagers(
-        instance_config,
-        expected_count=3,
-        cr_name="fake--service-575c857546",
-    )
-    assert not under
-    assert (
-        "fake_service.fake_instance has 3/3 taskmanagers "
-        "reported by dashboard (threshold: 100%)"
-    ) in output
-    assert "fake_service.fake_instance taskmanager is available" in description
+def test_check_under_registered_taskmanagers_ok(instance_config):
+    with mock.patch(
+        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        autospec=True,
+        return_value={"taskmanagers": 3},
+    ):
+        under, output, description = check_under_registered_taskmanagers(
+            instance_config,
+            expected_count=3,
+            cr_name="fake--service-575c857546",
+        )
+        assert not under
+        assert (
+            "fake_service.fake_instance has 3/3 taskmanagers "
+            "reported by dashboard (threshold: 100%)"
+        ) in output
+        assert "fake_service.fake_instance taskmanager is available" in description
 
 
-@mock.patch(
-    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
-    autospec=True,
-    return_value={"taskmanagers": 2},
-)
-def test_check_under_registered_taskmanagers_under(mock_overview, instance_config):
-    under, output, description = check_under_registered_taskmanagers(
-        instance_config,
-        expected_count=3,
-        cr_name="fake--service-575c857546",
-    )
-    assert under
-    assert (
-        "fake_service.fake_instance has 2/3 taskmanagers "
-        "reported by dashboard (threshold: 100%)"
-    ) in output
-    assert (
-        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
-        in description
-    )
+def test_check_under_registered_taskmanagers_under(instance_config):
+    with mock.patch(
+        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        autospec=True,
+        return_value={"taskmanagers": 2},
+    ):
+        under, output, description = check_under_registered_taskmanagers(
+            instance_config,
+            expected_count=3,
+            cr_name="fake--service-575c857546",
+        )
+        assert under
+        assert (
+            "fake_service.fake_instance has 2/3 taskmanagers "
+            "reported by dashboard (threshold: 100%)"
+        ) in output
+        assert (
+            "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
+            in description
+        )
 
 
-@mock.patch(
-    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
-    autospec=True,
-    side_effect=ValueError("dummy exception"),
-)
-def test_check_under_registered_taskmanagers_error(mock_overview, instance_config):
-    under, output, description = check_under_registered_taskmanagers(
-        instance_config,
-        expected_count=3,
-        cr_name="fake--service-575c857546",
-    )
-    assert under
-    assert (
-        "Dashboard of service fake_service.fake_instance is not available "
-        "(dummy exception)"
-    ) in output
-    assert (
-        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
-        in description
-    )
+def test_check_under_registered_taskmanagers_error(instance_config):
+    with mock.patch(
+        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        autospec=True,
+        side_effect=ValueError("dummy exception"),
+    ):
+        under, output, description = check_under_registered_taskmanagers(
+            instance_config,
+            expected_count=3,
+            cr_name="fake--service-575c857546",
+        )
+        assert under
+        assert (
+            "Dashboard of service fake_service.fake_instance is not available "
+            "(dummy exception)"
+        ) in output
+        assert (
+            "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
+            in description
+        )
 
 
 def test_check_flink_service_health_healthy(instance_config):

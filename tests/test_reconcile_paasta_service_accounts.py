@@ -190,32 +190,33 @@ class TestParseNamespacesFromTrustPolicy:
 
 
 class TestCollectDesiredServiceAccounts:
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.boto3.Session", autospec=True
-    )
-    def test_finds_matching_roles(self, mock_session_cls):
-        mock_iam = mock.MagicMock()
-        mock_session_cls.return_value.client.return_value = mock_iam
+    def test_finds_matching_roles(self):
+        with mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.boto3.Session",
+            autospec=True,
+        ) as mock_session_cls:
+            mock_iam = mock.MagicMock()
+            mock_session_cls.return_value.client.return_value = mock_iam
 
-        mock_paginator = mock.MagicMock()
-        mock_iam.get_paginator.return_value = mock_paginator
-        mock_paginator.paginate.return_value = [
-            {
-                "Roles": [
-                    {
-                        "Arn": ROLE_ARN,
-                        "AssumeRolePolicyDocument": _make_trust_policy(
-                            OIDC_ARN, ["mwaa"]
-                        ),
-                    },
-                ]
-            }
-        ]
+            mock_paginator = mock.MagicMock()
+            mock_iam.get_paginator.return_value = mock_paginator
+            mock_paginator.paginate.return_value = [
+                {
+                    "Roles": [
+                        {
+                            "Arn": ROLE_ARN,
+                            "AssumeRolePolicyDocument": _make_trust_policy(
+                                OIDC_ARN, ["mwaa"]
+                            ),
+                        },
+                    ]
+                }
+            ]
 
-        result = collect_desired_service_accounts(OIDC_ARN, {"mwaa", "temporal"})
-        assert len(result) == 1
-        assert result[0].namespace == "mwaa"
-        assert result[0].role_arn == ROLE_ARN
+            result = collect_desired_service_accounts(OIDC_ARN, {"mwaa", "temporal"})
+            assert len(result) == 1
+            assert result[0].namespace == "mwaa"
+            assert result[0].role_arn == ROLE_ARN
 
     @pytest.mark.parametrize(
         "trust_policy_oidc,trust_policy_namespaces,allowed_namespaces,reason",
@@ -236,37 +237,33 @@ class TestCollectDesiredServiceAccounts:
             ),
         ],
     )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.boto3.Session", autospec=True
-    )
     def test_skips_non_matching_roles(
-        self,
-        mock_session_cls,
-        trust_policy_oidc,
-        trust_policy_namespaces,
-        allowed_namespaces,
-        reason,
+        self, trust_policy_oidc, trust_policy_namespaces, allowed_namespaces, reason
     ):
-        mock_iam = mock.MagicMock()
-        mock_session_cls.return_value.client.return_value = mock_iam
+        with mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.boto3.Session",
+            autospec=True,
+        ) as mock_session_cls:
+            mock_iam = mock.MagicMock()
+            mock_session_cls.return_value.client.return_value = mock_iam
 
-        mock_paginator = mock.MagicMock()
-        mock_iam.get_paginator.return_value = mock_paginator
-        mock_paginator.paginate.return_value = [
-            {
-                "Roles": [
-                    {
-                        "Arn": ROLE_ARN,
-                        "AssumeRolePolicyDocument": _make_trust_policy(
-                            trust_policy_oidc, trust_policy_namespaces
-                        ),
-                    },
-                ]
-            }
-        ]
+            mock_paginator = mock.MagicMock()
+            mock_iam.get_paginator.return_value = mock_paginator
+            mock_paginator.paginate.return_value = [
+                {
+                    "Roles": [
+                        {
+                            "Arn": ROLE_ARN,
+                            "AssumeRolePolicyDocument": _make_trust_policy(
+                                trust_policy_oidc, trust_policy_namespaces
+                            ),
+                        },
+                    ]
+                }
+            ]
 
-        result = collect_desired_service_accounts(OIDC_ARN, allowed_namespaces)
-        assert len(result) == 0
+            result = collect_desired_service_accounts(OIDC_ARN, allowed_namespaces)
+            assert len(result) == 0
 
 
 class TestComputeDrift:
@@ -381,63 +378,58 @@ class TestApplyDrift:
             pytest.param(DriftKind.UNMANAGED, ROLE_ARN, 0, 1, id="adopt_unmanaged"),
         ],
     )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
-        autospec=True,
-    )
     def test_ensure_sa_cases(
-        self,
-        mock_ensure,
-        drift_kind,
-        actual_arn,
-        expected_created,
-        expected_updated,
+        self, drift_kind, actual_arn, expected_created, expected_updated
     ):
-        mock_kube = mock.MagicMock(spec_set=["core"])
-        drift = [
-            DriftItem(
+        with mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
+            autospec=True,
+        ) as mock_ensure:
+            mock_kube = mock.MagicMock(spec_set=["core"])
+            drift = [
+                DriftItem(
+                    namespace="mwaa",
+                    sa_name="paasta--my-role",
+                    kind=drift_kind,
+                    desired_arn=ROLE_ARN,
+                    actual_arn=actual_arn,
+                )
+            ]
+
+            stats = apply_drift(mock_kube, drift, dry_run=False)
+
+            assert stats.created == expected_created
+            assert stats.updated == expected_updated
+            assert stats.errors == 0
+            mock_ensure.assert_called_once_with(
+                iam_role=ROLE_ARN,
                 namespace="mwaa",
-                sa_name="paasta--my-role",
-                kind=drift_kind,
-                desired_arn=ROLE_ARN,
-                actual_arn=actual_arn,
+                kube_client=mock_kube,
+                managed=True,
             )
-        ]
 
-        stats = apply_drift(mock_kube, drift, dry_run=False)
-
-        assert stats.created == expected_created
-        assert stats.updated == expected_updated
-        assert stats.errors == 0
-        mock_ensure.assert_called_once_with(
-            iam_role=ROLE_ARN,
-            namespace="mwaa",
-            kube_client=mock_kube,
-            managed=True,
-        )
-
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
-        autospec=True,
-    )
-    def test_create_failure(self, mock_ensure):
-        mock_ensure.side_effect = ApiException(
-            status=500, reason="Internal Server Error"
-        )
-        mock_kube = mock.MagicMock(spec_set=["core"])
-        drift = [
-            DriftItem(
-                namespace="mwaa",
-                sa_name="paasta--my-role",
-                kind=DriftKind.MISSING,
-                desired_arn=ROLE_ARN,
+    def test_create_failure(self):
+        with mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
+            autospec=True,
+        ) as mock_ensure:
+            mock_ensure.side_effect = ApiException(
+                status=500, reason="Internal Server Error"
             )
-        ]
+            mock_kube = mock.MagicMock(spec_set=["core"])
+            drift = [
+                DriftItem(
+                    namespace="mwaa",
+                    sa_name="paasta--my-role",
+                    kind=DriftKind.MISSING,
+                    desired_arn=ROLE_ARN,
+                )
+            ]
 
-        stats = apply_drift(mock_kube, drift, dry_run=False)
+            stats = apply_drift(mock_kube, drift, dry_run=False)
 
-        assert stats.created == 0
-        assert stats.errors == 1
+            assert stats.created == 0
+            assert stats.errors == 1
 
     @pytest.mark.parametrize(
         "drift_kind,desired_arn,expected_stat",
@@ -446,29 +438,27 @@ class TestApplyDrift:
             pytest.param(DriftKind.EXTRA, None, "deleted", id="delete"),
         ],
     )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
-        autospec=True,
-    )
-    def test_dry_run_skips_mutations(
-        self, mock_ensure, drift_kind, desired_arn, expected_stat
-    ):
-        mock_kube = mock.MagicMock(spec_set=["core"])
-        drift = [
-            DriftItem(
-                namespace="mwaa",
-                sa_name="paasta--my-role",
-                kind=drift_kind,
-                desired_arn=desired_arn,
-                actual_arn="arn:old" if drift_kind == DriftKind.EXTRA else None,
-            )
-        ]
+    def test_dry_run_skips_mutations(self, drift_kind, desired_arn, expected_stat):
+        with mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.ensure_service_account",
+            autospec=True,
+        ) as mock_ensure:
+            mock_kube = mock.MagicMock(spec_set=["core"])
+            drift = [
+                DriftItem(
+                    namespace="mwaa",
+                    sa_name="paasta--my-role",
+                    kind=drift_kind,
+                    desired_arn=desired_arn,
+                    actual_arn="arn:old" if drift_kind == DriftKind.EXTRA else None,
+                )
+            ]
 
-        stats = apply_drift(mock_kube, drift, dry_run=True)
+            stats = apply_drift(mock_kube, drift, dry_run=True)
 
-        assert getattr(stats, expected_stat) == 1
-        mock_ensure.assert_not_called()
-        mock_kube.core.delete_namespaced_service_account.assert_not_called()
+            assert getattr(stats, expected_stat) == 1
+            mock_ensure.assert_not_called()
+            mock_kube.core.delete_namespaced_service_account.assert_not_called()
 
     def test_delete_extra(self):
         mock_kube = mock.MagicMock(spec_set=["core"])
@@ -489,57 +479,49 @@ class TestApplyDrift:
 
 
 class TestMain:
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.KubeClient", autospec=True
-    )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.collect_desired_service_accounts",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.boto3.Session", autospec=True
-    )
-    @mock.patch(
-        "paasta_tools.reconcile_paasta_service_accounts.load_system_paasta_config",
-        autospec=True,
-    )
-    def test_dry_run_skips_apply(
-        self,
-        mock_config,
-        mock_session,
-        mock_collect,
-        mock_kube_cls,
-    ):
-        mock_config.return_value.get_cluster.return_value = "test-cluster"
-        mock_config.return_value.get_reconciled_iam_service_account_namespaces.return_value = [
-            "mwaa"
-        ]
-        mock_config.return_value.get_kube_clusters.return_value = {
-            "test-cluster": {
-                "aws_region": "us-west-2",
-                "server": "https://ABC.gr7.us-west-2.eks.amazonaws.com",
-            }
-        }
-        mock_sts = mock.MagicMock()
-        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
-        mock_session.return_value.client.return_value = mock_sts
-
-        mock_collect.return_value = []
-
-        mock_kube = mock.MagicMock(spec_set=["core"])
-        mock_kube.core.list_namespace.return_value.items = [_make_namespace("mwaa")]
-        mock_kube.core.list_namespaced_service_account.return_value.items = []
-        mock_kube_cls.return_value = mock_kube
-
-        from paasta_tools.reconcile_paasta_service_accounts import main
-
+    def test_dry_run_skips_apply(self):
         with mock.patch(
-            "sys.argv", ["reconcile_paasta_service_accounts.py", "--dry-run"]
-        ):
-            with pytest.raises(SystemExit) as exc_info:
+            "paasta_tools.reconcile_paasta_service_accounts.load_system_paasta_config",
+            autospec=True,
+        ) as mock_config, mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.boto3.Session",
+            autospec=True,
+        ) as mock_session, mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.collect_desired_service_accounts",
+            autospec=True,
+        ) as mock_collect, mock.patch(
+            "paasta_tools.reconcile_paasta_service_accounts.KubeClient",
+            autospec=True,
+        ) as mock_kube_cls:
+            mock_config.return_value.get_cluster.return_value = "test-cluster"
+            mock_config.return_value.get_reconciled_iam_service_account_namespaces.return_value = [
+                "mwaa"
+            ]
+            mock_config.return_value.get_kube_clusters.return_value = {
+                "test-cluster": {
+                    "aws_region": "us-west-2",
+                    "server": "https://ABC.gr7.us-west-2.eks.amazonaws.com",
+                }
+            }
+            mock_sts = mock.MagicMock()
+            mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+            mock_session.return_value.client.return_value = mock_sts
+
+            mock_collect.return_value = []
+
+            mock_kube = mock.MagicMock(spec_set=["core"])
+            mock_kube.core.list_namespace.return_value.items = [_make_namespace("mwaa")]
+            mock_kube.core.list_namespaced_service_account.return_value.items = []
+            mock_kube_cls.return_value = mock_kube
+
+            from paasta_tools.reconcile_paasta_service_accounts import main
+
+            with mock.patch(
+                "sys.argv", ["reconcile_paasta_service_accounts.py", "--dry-run"]
+            ), pytest.raises(SystemExit) as exc_info:
                 main()
 
-        assert exc_info.value.code == 0
-        mock_kube.core.create_namespaced_service_account.assert_not_called()
-        mock_kube.core.patch_namespaced_service_account.assert_not_called()
-        mock_kube.core.delete_namespaced_service_account.assert_not_called()
+            assert exc_info.value.code == 0
+            mock_kube.core.create_namespaced_service_account.assert_not_called()
+            mock_kube.core.patch_namespaced_service_account.assert_not_called()
+            mock_kube.core.delete_namespaced_service_account.assert_not_called()

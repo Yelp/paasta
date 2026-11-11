@@ -87,7 +87,6 @@ Schemas:
 - **No inline imports** - all imports at top of module
 - **No module-level side effects** (other than imports)
 - **Avoid adding to `paasta_tools/utils.py`** - it's already large; prefer more specific modules
-- `mock.patch` must use `autospec=True` (enforced by pre-commit)
 
 ## Legacy Code
 - `paasta_tools/mesos/` - **deprecated and unused**; do not modify or extend

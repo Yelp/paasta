@@ -68,39 +68,32 @@ def test_request_logger_tween_factory_init(mock_factory):
     assert mock_factory.log_name == "request_logs"
 
 
-@mock.patch("time.time", mock.Mock(return_value="a_time"), autospec=False)
-@mock.patch(
-    "paasta_tools.utils.get_hostname",
-    mock.Mock(return_value="a_hostname"),
-    autospec=False,
-)
 def test_request_logger_tween_factory_log(mock_clog, mock_factory):
-    mock_factory._log(
-        timestamp=datetime.fromtimestamp(1589828049, timezone.utc),
-        level="ERROR",
-        additional_fields={"additional_key": "additional_value"},
-    )
-    assert mock_clog.log_line.call_args_list == [
-        mock.call(
-            "request_logs",
-            (
-                '{"additional_key": "additional_value", '
-                '"cluster": "a_cluster", '
-                '"hostname": "a_hostname", '
-                '"human_timestamp": "2020-05-18T18:54:09UTC", '
-                '"level": "ERROR", '
-                '"unix_timestamp": 1589828049.0}'
+    with mock.patch(
+        "paasta_tools.utils.get_hostname",
+        mock.Mock(return_value="a_hostname"),
+        autospec=False,
+    ), mock.patch("time.time", mock.Mock(return_value="a_time"), autospec=False):
+        mock_factory._log(
+            timestamp=datetime.fromtimestamp(1589828049, timezone.utc),
+            level="ERROR",
+            additional_fields={"additional_key": "additional_value"},
+        )
+        assert mock_clog.log_line.call_args_list == [
+            mock.call(
+                "request_logs",
+                (
+                    '{"additional_key": "additional_value", '
+                    '"cluster": "a_cluster", '
+                    '"hostname": "a_hostname", '
+                    '"human_timestamp": "2020-05-18T18:54:09UTC", '
+                    '"level": "ERROR", '
+                    '"unix_timestamp": 1589828049.0}'
+                ),
             ),
-        ),
-    ]
+        ]
 
 
-@mock.patch.object(request_logger, "datetime", autospec=True)
-@mock.patch(
-    "traceback.format_exc",
-    mock.Mock(return_value="an_exc_body"),
-    autospec=False,
-)
 @pytest.mark.parametrize(
     "status_code,exc,expected_lvl,extra_expected_response",
     [
@@ -116,51 +109,50 @@ def test_request_logger_tween_factory_log(mock_clog, mock_factory):
     ],
 )
 def test_request_logger_tween_factory_call(
-    mock_datetime,
-    mock_handler,
-    mock_factory,
-    status_code,
-    exc,
-    expected_lvl,
-    extra_expected_response,
+    mock_handler, mock_factory, status_code, exc, expected_lvl, extra_expected_response
 ):
-    req = Request.blank("/path/to/something")
-    mock_handler.return_value = Response(
-        body="a_body",
-        status=status_code,
-    )
-    if exc is not None:
-        mock_handler.side_effect = exc
-    mock_factory._log = mock.Mock()
-    mock_datetime.now = mock.Mock(
-        side_effect=[datetime.fromtimestamp(0), datetime.fromtimestamp(57)],
-    )
+    with mock.patch(
+        "traceback.format_exc",
+        mock.Mock(return_value="an_exc_body"),
+        autospec=False,
+    ), mock.patch.object(request_logger, "datetime", autospec=True) as mock_datetime:
+        req = Request.blank("/path/to/something")
+        mock_handler.return_value = Response(
+            body="a_body",
+            status=status_code,
+        )
+        if exc is not None:
+            mock_handler.side_effect = exc
+        mock_factory._log = mock.Mock()
+        mock_datetime.now = mock.Mock(
+            side_effect=[datetime.fromtimestamp(0), datetime.fromtimestamp(57)],
+        )
 
-    try:
-        mock_factory(req)
-    except Exception as e:
-        if exc is None:
-            pytest.fail(f"Got unexpected exception: {e}")
+        try:
+            mock_factory(req)
+        except Exception as e:
+            if exc is None:
+                pytest.fail(f"Got unexpected exception: {e}")
 
-    expected_response = {
-        "status_code": status_code,
-        "response_time_ms": 57000.0,
-    }
-    expected_response.update(extra_expected_response)
-    assert mock_factory._log.call_args_list == [
-        mock.call(
-            timestamp=datetime.fromtimestamp(0),
-            level=expected_lvl,
-            additional_fields={
-                # most of these are default for a blank request
-                "request": {
-                    "path": "/path/to/something",
-                    "params": {},
-                    "client_addr": None,
-                    "http_method": "GET",
-                    "headers": {"Host": "localhost:80"},
+        expected_response = {
+            "status_code": status_code,
+            "response_time_ms": 57000.0,
+        }
+        expected_response.update(extra_expected_response)
+        assert mock_factory._log.call_args_list == [
+            mock.call(
+                timestamp=datetime.fromtimestamp(0),
+                level=expected_lvl,
+                additional_fields={
+                    # most of these are default for a blank request
+                    "request": {
+                        "path": "/path/to/something",
+                        "params": {},
+                        "client_addr": None,
+                        "http_method": "GET",
+                        "headers": {"Host": "localhost:80"},
+                    },
+                    "response": expected_response,
                 },
-                "response": expected_response,
-            },
-        ),
-    ]
+            ),
+        ]

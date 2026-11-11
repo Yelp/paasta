@@ -24,41 +24,40 @@ from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
-@mock.patch(
-    "paasta_tools.api.views.service.list_all_instances_for_service", autospec=True
-)
-def test_list_instances(
-    mock_list_all_instances_for_service,
-):
-    fake_instances = ["fake_instance_a", "fake_instance_b", "fake_instance_c"]
-    mock_list_all_instances_for_service.return_value = fake_instances
+def test_list_instances():
+    with mock.patch(
+        "paasta_tools.api.views.service.list_all_instances_for_service",
+        autospec=True,
+    ) as mock_list_all_instances_for_service:
+        fake_instances = ["fake_instance_a", "fake_instance_b", "fake_instance_c"]
+        mock_list_all_instances_for_service.return_value = fake_instances
 
-    request = testing.DummyRequest()
-    request.swagger_data = {"service": "fake_service"}
+        request = testing.DummyRequest()
+        request.swagger_data = {"service": "fake_service"}
 
-    response = list_instances(request)
-    assert response["instances"] == fake_instances
+        response = list_instances(request)
+        assert response["instances"] == fake_instances
 
 
-@mock.patch("paasta_tools.api.views.service.get_services_for_cluster", autospec=True)
-def test_list_services_for_cluster(
-    mock_get_services_for_cluster,
-):
-    fake_services_and_instances = [
-        ("fake_service", "fake_instance_a"),
-        ("fake_service", "fake_instance_b"),
-        ("fake_service", "fake_instance_c"),
-    ]
-    mock_get_services_for_cluster.return_value = fake_services_and_instances
+def test_list_services_for_cluster():
+    with mock.patch(
+        "paasta_tools.api.views.service.get_services_for_cluster", autospec=True
+    ) as mock_get_services_for_cluster:
+        fake_services_and_instances = [
+            ("fake_service", "fake_instance_a"),
+            ("fake_service", "fake_instance_b"),
+            ("fake_service", "fake_instance_c"),
+        ]
+        mock_get_services_for_cluster.return_value = fake_services_and_instances
 
-    request = testing.DummyRequest()
+        request = testing.DummyRequest()
 
-    response = list_services_for_cluster(request)
-    assert response["services"] == [
-        ("fake_service", "fake_instance_a"),
-        ("fake_service", "fake_instance_b"),
-        ("fake_service", "fake_instance_c"),
-    ]
+        response = list_services_for_cluster(request)
+        assert response["services"] == [
+            ("fake_service", "fake_instance_a"),
+            ("fake_service", "fake_instance_b"),
+            ("fake_service", "fake_instance_c"),
+        ]
 
 
 def test_get_deployment_info_success_with_image_version():

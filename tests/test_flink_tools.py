@@ -29,288 +29,297 @@ def test_get_flink_ingress_url_root():
     )
 
 
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_error(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+def test_curl_flink_endpoint_error():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.ok = False
+        mock_response.status_code = 401
+        mock_response.reason = "Unauthorized"
+        mock_response.text = "401 Authorization Required"
+
+        service = "kurupt"
+        instance = "main"
+        response = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance), "overview"
+        )
+
+        assert response == {
+            "status": 401,
+            "error": "Unauthorized",
+            "text": "401 Authorization Required",
+        }
+
+
+def test_curl_flink_endpoint_overview():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "taskmanagers": 5,
+            "slots-total": 25,
+            "slots-available": 3,
+            "jobs-running": 1,
+            "jobs-finished": 0,
+            "jobs-cancelled": 0,
+            "jobs-failed": 0,
+        }
+
+        service = "kurupt"
+        instance = "main"
+        overview = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance), "overview"
+        )
+
+        assert overview == {
+            "taskmanagers": 5,
+            "slots-total": 25,
+            "slots-available": 3,
+            "jobs-running": 1,
+            "jobs-finished": 0,
+            "jobs-cancelled": 0,
+            "jobs-failed": 0,
+        }
+
+
+def test_curl_flink_endpoint_config():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "refresh-interval": 3000,
+            "timezone-name": "Coordinated Universal Time",
+            "timezone-offset": 0,
+            "flink-version": "1.13.5",
+            "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
+            "features": {"web-submit": True},
+        }
+
+        service = "kurupt"
+        instance = "main"
+        config = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance), "config"
+        )
+
+        assert config == {
+            "flink-version": "1.13.5",
+            "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
+        }
+
+
+def test_curl_flink_endpoint_list_jobs():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
+        }
+
+        service = "kurupt"
+        instance = "main"
+        jobs = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance), "jobs"
+        )
+
+        assert jobs == {
+            "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
+        }
+
+
+def test_curl_flink_endpoint_get_job_details():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
+            "name": "beam_happyhour.main.test_job",
+            "isStoppable": False,
+            "state": "RUNNING",
+            "start-time": 1655053223341,
+            "end-time": -1,
+            "duration": 855872054,
+            "maxParallelism": -1,
+            "now": 1655909095395,
+            "timestamps": {
+                "CREATED": 1655053223735,
+                "SUSPENDED": 0,
+                "FAILING": 0,
+                "FINISHED": 0,
+                "FAILED": 0,
+                "RUNNING": 1655842396454,
+                "CANCELLING": 0,
+                "RESTARTING": 1655842393301,
+                "RECONCILING": 0,
+                "CANCELED": 0,
+                "INITIALIZING": 1655053223341,
             },
         }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.ok = False
-    mock_response.status_code = 401
-    mock_response.reason = "Unauthorized"
-    mock_response.text = "401 Authorization Required"
 
-    service = "kurupt"
-    instance = "main"
-    response = flink_tools.curl_flink_endpoint(
-        flink_tools.cr_id(service, instance), "overview"
-    )
+        service = "kurupt"
+        instance = "main"
+        job = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance),
+            "jobs/4210f0646f5c9ce1db0b3e5ae4372b82",
+        )
 
-    assert response == {
-        "status": 401,
-        "error": "Unauthorized",
-        "text": "401 Authorization Required",
-    }
-
-
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_overview(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+        assert job == {
+            "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
+            "state": "RUNNING",
+            "name": "beam_happyhour.main.test_job",
+            "start-time": 1655053223341,
+            "timestamps": {
+                "CREATED": 1655053223735,
+                "SUSPENDED": 0,
+                "FAILING": 0,
+                "FINISHED": 0,
+                "FAILED": 0,
+                "RUNNING": 1655842396454,
+                "CANCELLING": 0,
+                "RESTARTING": 1655842393301,
+                "RECONCILING": 0,
+                "CANCELED": 0,
+                "INITIALIZING": 1655053223341,
             },
         }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.json.return_value = {
-        "taskmanagers": 5,
-        "slots-total": 25,
-        "slots-available": 3,
-        "jobs-running": 1,
-        "jobs-finished": 0,
-        "jobs-cancelled": 0,
-        "jobs-failed": 0,
-    }
-
-    service = "kurupt"
-    instance = "main"
-    overview = flink_tools.curl_flink_endpoint(
-        flink_tools.cr_id(service, instance), "overview"
-    )
-
-    assert overview == {
-        "taskmanagers": 5,
-        "slots-total": 25,
-        "slots-available": 3,
-        "jobs-running": 1,
-        "jobs-finished": 0,
-        "jobs-cancelled": 0,
-        "jobs-failed": 0,
-    }
 
 
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_config(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+def test_curl_flink_endpoint_get_job_checkpoints():
+    with mock.patch(
+        "paasta_tools.flink_tools.get_cr", autospec=True
+    ) as mock_get_cr, mock.patch(
+        "paasta_tools.flink_tools.requests.get", autospec=True
+    ) as mock_requests_get, mock.patch(
+        "requests.Response", autospec=True
+    ) as mock_response:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {
+                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+                },
+            }
+        }
+        mock_requests_get.return_value = mock_response
+        mock_response.json.return_value = {
+            "counts": {
+                "completed": 100,
+                "failed": 2,
+                "in_progress": 1,
+                "restored": 0,
+                "total": 103,
+            },
+            "summary": {"checkpointed_size": 12345},
+            "latest": {"completed": {"id": 100}},
+        }
+
+        service = "kurupt"
+        instance = "main"
+        result = flink_tools.curl_flink_endpoint(
+            flink_tools.cr_id(service, instance),
+            "jobs/4210f0646f5c9ce1db0b3e5ae4372b82/checkpoints",
+        )
+
+        assert result == {
+            "counts": {
+                "completed": 100,
+                "failed": 2,
+                "in_progress": 1,
+                "restored": 0,
+                "total": 103,
             },
         }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.json.return_value = {
-        "refresh-interval": 3000,
-        "timezone-name": "Coordinated Universal Time",
-        "timezone-offset": 0,
-        "flink-version": "1.13.5",
-        "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
-        "features": {"web-submit": True},
-    }
-
-    service = "kurupt"
-    instance = "main"
-    config = flink_tools.curl_flink_endpoint(
-        flink_tools.cr_id(service, instance), "config"
-    )
-
-    assert config == {
-        "flink-version": "1.13.5",
-        "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
-    }
 
 
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_list_jobs(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-            },
+def test_curl_flink_endpoint_kube_api_exception():
+    with mock.patch("paasta_tools.flink_tools.get_cr", autospec=True) as mock_get_cr:
+        mock_get_cr.side_effect = KubeApiException(
+            status=503, reason="Service Unavailable"
+        )
+
+        with pytest.raises(ValueError, match="failed HTTP request to flink API"):
+            flink_tools.curl_flink_endpoint(
+                flink_tools.cr_id("kurupt", "main"), "config"
+            )
+
+
+def test_curl_flink_endpoint_missing_annotation():
+    with mock.patch("paasta_tools.flink_tools.get_cr", autospec=True) as mock_get_cr:
+        mock_get_cr.return_value = {
+            "metadata": {
+                "labels": {"paasta.yelp.com/cluster": "mocked"},
+                "annotations": {},
+            }
         }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.json.return_value = {
-        "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
-    }
 
-    service = "kurupt"
-    instance = "main"
-    jobs = flink_tools.curl_flink_endpoint(flink_tools.cr_id(service, instance), "jobs")
-
-    assert jobs == {
-        "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
-    }
-
-
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_get_job_details(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-            },
-        }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.json.return_value = {
-        "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
-        "name": "beam_happyhour.main.test_job",
-        "isStoppable": False,
-        "state": "RUNNING",
-        "start-time": 1655053223341,
-        "end-time": -1,
-        "duration": 855872054,
-        "maxParallelism": -1,
-        "now": 1655909095395,
-        "timestamps": {
-            "CREATED": 1655053223735,
-            "SUSPENDED": 0,
-            "FAILING": 0,
-            "FINISHED": 0,
-            "FAILED": 0,
-            "RUNNING": 1655842396454,
-            "CANCELLING": 0,
-            "RESTARTING": 1655842393301,
-            "RECONCILING": 0,
-            "CANCELED": 0,
-            "INITIALIZING": 1655053223341,
-        },
-    }
-
-    service = "kurupt"
-    instance = "main"
-    job = flink_tools.curl_flink_endpoint(
-        flink_tools.cr_id(service, instance), "jobs/4210f0646f5c9ce1db0b3e5ae4372b82"
-    )
-
-    assert job == {
-        "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
-        "state": "RUNNING",
-        "name": "beam_happyhour.main.test_job",
-        "start-time": 1655053223341,
-        "timestamps": {
-            "CREATED": 1655053223735,
-            "SUSPENDED": 0,
-            "FAILING": 0,
-            "FINISHED": 0,
-            "FAILED": 0,
-            "RUNNING": 1655842396454,
-            "CANCELLING": 0,
-            "RESTARTING": 1655842393301,
-            "RECONCILING": 0,
-            "CANCELED": 0,
-            "INITIALIZING": 1655053223341,
-        },
-    }
-
-
-@mock.patch("requests.Response", autospec=True)
-@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_get_job_checkpoints(
-    mock_get_cr,
-    mock_requests_get,
-    mock_response,
-):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-            },
-        }
-    }
-    mock_requests_get.return_value = mock_response
-    mock_response.json.return_value = {
-        "counts": {
-            "completed": 100,
-            "failed": 2,
-            "in_progress": 1,
-            "restored": 0,
-            "total": 103,
-        },
-        "summary": {"checkpointed_size": 12345},
-        "latest": {"completed": {"id": 100}},
-    }
-
-    service = "kurupt"
-    instance = "main"
-    result = flink_tools.curl_flink_endpoint(
-        flink_tools.cr_id(service, instance),
-        "jobs/4210f0646f5c9ce1db0b3e5ae4372b82/checkpoints",
-    )
-
-    assert result == {
-        "counts": {
-            "completed": 100,
-            "failed": 2,
-            "in_progress": 1,
-            "restored": 0,
-            "total": 103,
-        },
-    }
-
-
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_kube_api_exception(mock_get_cr):
-    mock_get_cr.side_effect = KubeApiException(status=503, reason="Service Unavailable")
-
-    with pytest.raises(ValueError, match="failed HTTP request to flink API"):
-        flink_tools.curl_flink_endpoint(flink_tools.cr_id("kurupt", "main"), "config")
-
-
-@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-def test_curl_flink_endpoint_missing_annotation(mock_get_cr):
-    mock_get_cr.return_value = {
-        "metadata": {
-            "labels": {"paasta.yelp.com/cluster": "mocked"},
-            "annotations": {},
-        }
-    }
-
-    with pytest.raises(ValueError, match="missing expected field on Flink CR"):
-        flink_tools.curl_flink_endpoint(flink_tools.cr_id("kurupt", "main"), "config")
+        with pytest.raises(ValueError, match="missing expected field on Flink CR"):
+            flink_tools.curl_flink_endpoint(
+                flink_tools.cr_id("kurupt", "main"), "config"
+            )
 
 
 def test_get_flink_jobmanager_overview():
@@ -737,7 +746,6 @@ class TestFormatFlinkStateAndPods:
         assert "desired: stop" in state_line
 
 
-@mock.patch("paasta_tools.flink_tools.shutil.get_terminal_size")
 class TestFormatFlinkJobsTable:
     def _make_job(self, fields):
         defaults = {
@@ -750,90 +758,116 @@ class TestFormatFlinkJobsTable:
         defaults.update(fields)
         return defaults
 
-    def test_verbose_shows_job_id(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        job = self._make_job({"jid": "abc123def456"})
-        result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 2)
-        output_text = "\n".join(result)
-        assert "Job ID" in output_text
-        assert "abc123def456" in output_text
+    def test_verbose_shows_job_id(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            job = self._make_job({"jid": "abc123def456"})
+            result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 2)
+            output_text = "\n".join(result)
+            assert "Job ID" in output_text
+            assert "abc123def456" in output_text
 
-    def test_non_verbose_limits_to_3_jobs(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        jobs = [
-            self._make_job(
-                {
-                    "jid": f"id_job{i}",
-                    "name": f"beam.main.job{i}",
-                    "start_time": 1000000000000.0 + i * 1000000,
-                }
+    def test_non_verbose_limits_to_3_jobs(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            jobs = [
+                self._make_job(
+                    {
+                        "jid": f"id_job{i}",
+                        "name": f"beam.main.job{i}",
+                        "start_time": 1000000000000.0 + i * 1000000,
+                    }
+                )
+                for i in range(4)
+            ]
+            result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 0)
+            output_text = "\n".join(result)
+            assert "Only showing 3" in output_text
+
+    def test_verbose_shows_all_jobs(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            jobs = [
+                self._make_job(
+                    {
+                        "jid": f"id_job{i}",
+                        "name": f"beam.main.job{i}",
+                        "start_time": 1000000000000.0 + i * 1000000,
+                    }
+                )
+                for i in range(4)
+            ]
+            result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 1)
+            output_text = "\n".join(result)
+            assert "Only showing" not in output_text
+            assert "job3" in output_text
+
+    def test_failed_job_state(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            job = self._make_job({"state": "FAILED"})
+            result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 0)
+            output_text = "\n".join(result)
+            assert PaastaColors.red("Failed") in output_text
+
+    def test_checkpoint_and_restart_display(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            job = self._make_job({"timestamps": {"RESTARTING": 1655842393301.0}})
+            ckpt = mock.Mock()
+            ckpt.counts = {
+                "completed": 100,
+                "failed": 2,
+                "in_progress": 1,
+                "restored": 0,
+            }
+            result = flink_tools.format_flink_jobs_table(
+                [job], "http://dashboard", 2, checkpoint_data={"abc123": ckpt}
             )
-            for i in range(4)
-        ]
-        result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 0)
-        output_text = "\n".join(result)
-        assert "Only showing 3" in output_text
-
-    def test_verbose_shows_all_jobs(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        jobs = [
-            self._make_job(
-                {
-                    "jid": f"id_job{i}",
-                    "name": f"beam.main.job{i}",
-                    "start_time": 1000000000000.0 + i * 1000000,
-                }
+            output_text = "\n".join(result)
+            assert (
+                "Checkpoints: 100 completed, 2 failed, 1 in progress, 0 restored"
+                in output_text
             )
-            for i in range(4)
-        ]
-        result = flink_tools.format_flink_jobs_table(jobs, "http://dashboard", 1)
-        output_text = "\n".join(result)
-        assert "Only showing" not in output_text
-        assert "job3" in output_text
+            assert "Last restart:" in output_text
 
-    def test_failed_job_state(self, mock_terminal_size):
+    def test_no_dashboard_url(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            job = self._make_job({})
+            result = flink_tools.format_flink_jobs_table([job], None, 2)
+            output_text = "\n".join(result)
+            assert "None" not in output_text
 
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        job = self._make_job({"state": "FAILED"})
-        result = flink_tools.format_flink_jobs_table([job], "http://dashboard", 0)
-        output_text = "\n".join(result)
-        assert PaastaColors.red("Failed") in output_text
-
-    def test_checkpoint_and_restart_display(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        job = self._make_job({"timestamps": {"RESTARTING": 1655842393301.0}})
-        ckpt = mock.Mock()
-        ckpt.counts = {"completed": 100, "failed": 2, "in_progress": 1, "restored": 0}
-        result = flink_tools.format_flink_jobs_table(
-            [job], "http://dashboard", 2, checkpoint_data={"abc123": ckpt}
-        )
-        output_text = "\n".join(result)
-        assert (
-            "Checkpoints: 100 completed, 2 failed, 1 in progress, 0 restored"
-            in output_text
-        )
-        assert "Last restart:" in output_text
-
-    def test_no_dashboard_url(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        job = self._make_job({})
-        result = flink_tools.format_flink_jobs_table([job], None, 2)
-        output_text = "\n".join(result)
-        assert "None" not in output_text
-
-    def test_skips_jobs_missing_required_display_fields(self, mock_terminal_size):
-        mock_terminal_size.return_value = mock.Mock(columns=120)
-        empty_job = {}
-        malformed_job = {"jid": "bad123", "name": "beam.main.bad_job"}
-        valid_job = self._make_job({"jid": "good123", "name": "beam.main.good_job"})
-        result = flink_tools.format_flink_jobs_table(
-            [empty_job, malformed_job, valid_job], "http://dashboard", 0
-        )
-        output_text = "\n".join(result)
-        rendered_job_lines = [line for line in result if "job" in line]
-        assert len(rendered_job_lines) == 1
-        assert "good_job" in output_text
-        assert "bad_job" not in output_text
+    def test_skips_jobs_missing_required_display_fields(self):
+        with mock.patch(
+            "paasta_tools.flink_tools.shutil.get_terminal_size"
+        ) as mock_terminal_size:
+            mock_terminal_size.return_value = mock.Mock(columns=120)
+            empty_job = {}
+            malformed_job = {"jid": "bad123", "name": "beam.main.bad_job"}
+            valid_job = self._make_job({"jid": "good123", "name": "beam.main.good_job"})
+            result = flink_tools.format_flink_jobs_table(
+                [empty_job, malformed_job, valid_job], "http://dashboard", 0
+            )
+            output_text = "\n".join(result)
+            rendered_job_lines = [line for line in result if "job" in line]
+            assert len(rendered_job_lines) == 1
+            assert "good_job" in output_text
+            assert "bad_job" not in output_text
 
 
 class TestFormatFlinkUdfInfo:

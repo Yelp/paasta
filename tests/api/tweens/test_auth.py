@@ -31,12 +31,11 @@ def mock_auth_tween():
             "PAASTA_API_AUTH_ENFORCE": "1",
             "PAASTA_API_AUTH_ENDPOINT": "http://localhost:31337",
         },
-    ):
-        with patch("paasta_tools.api.tweens.auth.requests"):
-            yield auth.AuthTweenFactory(
-                MagicMock(spec=Handler),
-                MagicMock(spec=Registry),
-            )
+    ), patch("paasta_tools.api.tweens.auth.requests"):
+        yield auth.AuthTweenFactory(
+            MagicMock(spec=Handler),
+            MagicMock(spec=Registry),
+        )
 
 
 def test_call(mock_auth_tween):

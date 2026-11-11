@@ -367,12 +367,11 @@ def test_paasta_config_flink_dashboard_base_url():
         )
 
 
-@mock.patch(
-    "paasta_tools.setup_kubernetes_cr.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS):
+def test_reconcile_kubernetes_resource():
     with mock.patch(
+        "paasta_tools.setup_kubernetes_cr.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ), mock.patch(
         "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
     ) as mock_format_custom_resource, mock.patch(
         "paasta_tools.setup_kubernetes_cr.create_custom_resource", autospec=True
