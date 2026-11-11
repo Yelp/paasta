@@ -1957,6 +1957,14 @@ class TestReplicaHealthchecks:
             mock_datetime.now.return_value = now
             assert get_replica_state(mock_pod) == expected
 
+    def test_succeeded_pod_is_exited(self, mock_pod):
+        mock_pod.phase = "Succeeded"
+        mock_pod.ready = False
+        mock_pod.containers[0].state = "terminated"
+        state = get_replica_state(mock_pod)
+        assert state == ReplicaState.EXITED
+        assert state.is_unhealthy()
+
     @pytest.mark.parametrize(
         "seconds_since_created,expected",
         [(30, True), (60, False), (180, False)],
