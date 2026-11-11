@@ -105,8 +105,8 @@ from paasta_tools.kubernetes_tools import _egress_rule_for_firewall_rule
 from paasta_tools.kubernetes_tools import _ingress_rule_for_firewall_rule
 from paasta_tools.kubernetes_tools import _network_policy_ports
 from paasta_tools.kubernetes_tools import _peer_for_cidr
-from paasta_tools.kubernetes_tools import _peer_for_service_ref
 from paasta_tools.kubernetes_tools import _peers_for_firewall_rule
+from paasta_tools.kubernetes_tools import _peers_for_service_ref
 from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
@@ -4322,34 +4322,107 @@ def test_create_network_policy():
     )
 
 
-def test_peer_for_service_ref_bare_name():
+def _fake_instance_config(instance: str, namespace: str) -> mock.Mock:
+    config = mock.Mock(spec=KubernetesDeploymentConfig)
+    config.get_instance.return_value = instance
+    config.get_namespace.return_value = namespace
+    return config
+
+
+def _patch_peer_loader(instance_configs):
+    loader = mock.Mock()
+    loader.instance_configs.return_value = instance_configs
+    return mock.patch(
+        "paasta_tools.kubernetes_tools.PaastaServiceConfigLoader",
+        return_value=loader,
+        autospec=True,
+    )
+
+
+def test_peers_for_service_ref_bare_name():
     # A bare name means all instances: service label only, no instance label
-    peer = _peer_for_service_ref("some-service")
-    assert peer.namespace_selector.match_labels == {
+    with _patch_peer_loader(
+        [
+            _fake_instance_config("main", "paastasvc-some-service"),
+            _fake_instance_config("worker", "paastasvc-some-service"),
+        ]
+    ):
+        peers = _peers_for_service_ref("some-service", "fake-cluster")
+    assert len(peers) == 1
+    assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "paastasvc-some-service"
     }
-    assert peer.pod_selector.match_labels == {"paasta.yelp.com/service": "some-service"}
+    assert peers[0].pod_selector.match_labels == {
+        "paasta.yelp.com/service": "some-service"
+    }
 
 
-def test_peer_for_service_ref_dotted_name():
+def test_peers_for_service_ref_dotted_name():
     # A dotted name means one instance: both labels, raw service name
-    peer = _peer_for_service_ref("some-service.main")
-    assert peer.namespace_selector.match_labels == {
+    with _patch_peer_loader(
+        [
+            _fake_instance_config("main", "paastasvc-some-service"),
+            _fake_instance_config("worker", "paastasvc-some-service"),
+        ]
+    ):
+        peers = _peers_for_service_ref("some-service.main", "fake-cluster")
+    assert len(peers) == 1
+    assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "paastasvc-some-service"
     }
-    assert peer.pod_selector.match_labels == {
+    assert peers[0].pod_selector.match_labels == {
         "paasta.yelp.com/service": "some-service",
         "paasta.yelp.com/instance": "main",
     }
 
 
-def test_peer_for_service_ref_underscores():
-    # Namespace uses the sanitised name, pod label uses the raw name
-    peer = _peer_for_service_ref("service_with_underscores.main")
-    assert peer.namespace_selector.match_labels == {
-        "kubernetes.io/metadata.name": "paastasvc-service--with--underscores"
+def test_peers_for_service_ref_custom_namespace():
+    # The namespace comes from the peer's instance config, not the
+    # paastasvc- convention: services can override it
+    with _patch_peer_loader([_fake_instance_config("main", "custom-namespace")]):
+        peers = _peers_for_service_ref("some-service.main", "fake-cluster")
+    assert peers[0].namespace_selector.match_labels == {
+        "kubernetes.io/metadata.name": "custom-namespace"
     }
-    assert peer.pod_selector.match_labels == {
+
+
+def test_peers_for_service_ref_instances_span_namespaces():
+    # A bare name whose instances live in different namespaces produces
+    # one peer per namespace
+    with _patch_peer_loader(
+        [
+            _fake_instance_config("main", "paastasvc-some-service"),
+            _fake_instance_config("worker", "custom-namespace"),
+        ]
+    ):
+        peers = _peers_for_service_ref("some-service", "fake-cluster")
+    assert len(peers) == 2
+    namespaces = {
+        p.namespace_selector.match_labels["kubernetes.io/metadata.name"] for p in peers
+    }
+    assert namespaces == {"paastasvc-some-service", "custom-namespace"}
+
+
+def test_peers_for_service_ref_instance_not_found():
+    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+        with pytest.raises(ValueError):
+            _peers_for_service_ref("some-service.worker", "fake-cluster")
+
+
+def test_peers_for_service_ref_service_not_on_cluster():
+    with _patch_peer_loader([]):
+        with pytest.raises(ValueError):
+            _peers_for_service_ref("some-service", "fake-cluster")
+
+
+def test_peers_for_service_ref_underscores():
+    # Pod label uses the raw service name even when the namespace is
+    # sanitised
+    with _patch_peer_loader(
+        [_fake_instance_config("main", "paastasvc-service--with--underscores")]
+    ):
+        peers = _peers_for_service_ref("service_with_underscores.main", "fake-cluster")
+    assert peers[0].pod_selector.match_labels == {
         "paasta.yelp.com/service": "service_with_underscores",
         "paasta.yelp.com/instance": "main",
     }
@@ -4381,15 +4454,19 @@ def test_egress_rule_for_firewall_rule():
         "to_services": ["some-service"],
         "ports": [{"protocol": "TCP", "port": 3306}],
     }
-    egress_rule = _egress_rule_for_firewall_rule(rule)
-    assert egress_rule.to == [_peer_for_service_ref("some-service")]
+    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+        egress_rule = _egress_rule_for_firewall_rule(rule, "fake-cluster")
+        expected_peers = _peers_for_service_ref("some-service", "fake-cluster")
+    assert egress_rule.to == expected_peers
     assert egress_rule.ports == [V1NetworkPolicyPort(protocol="TCP", port=3306)]
 
 
 def test_ingress_rule_for_firewall_rule():
     rule = {"from_services": ["some-api.main"]}
-    ingress_rule = _ingress_rule_for_firewall_rule(rule)
-    assert ingress_rule._from == [_peer_for_service_ref("some-api.main")]
+    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-api")]):
+        ingress_rule = _ingress_rule_for_firewall_rule(rule, "fake-cluster")
+        expected_peers = _peers_for_service_ref("some-api.main", "fake-cluster")
+    assert ingress_rule._from == expected_peers
     assert ingress_rule.ports == []
 
 
@@ -4398,12 +4475,12 @@ def test_firewall_rule_with_no_destinations_raises():
     # anywhere", so it must raise instead of building a rule
     with pytest.raises(ValueError):
         _peers_for_firewall_rule(
-            "egress", {"ports": [{"protocol": "TCP", "port": 443}]}
+            "egress", {"ports": [{"protocol": "TCP", "port": 443}]}, "fake-cluster"
         )
     with pytest.raises(ValueError):
-        _peers_for_firewall_rule("ingress", {"to_services": []})
+        _peers_for_firewall_rule("ingress", {"to_services": []}, "fake-cluster")
     with pytest.raises(ValueError):
-        _peers_for_firewall_rule("egress", {})
+        _peers_for_firewall_rule("egress", {}, "fake-cluster")
 
 
 def test_network_policy_for_service_instance():
@@ -4433,14 +4510,29 @@ def test_network_policy_for_service_instance():
         )
     ]
 
-    policy = network_policy_for_service_instance(
-        service="some-service",
-        instance="main",
-        namespace="paastasvc-some-service",
-        firewall_config=firewall_config,
-        baseline_egress=baseline_egress,
-        baseline_ingress=baseline_ingress,
-    )
+    with _patch_peer_loader(
+        [
+            _fake_instance_config("main", "paastasvc-some-service"),
+            _fake_instance_config("main", "paastasvc-some-api"),
+        ]
+    ):
+        policy = network_policy_for_service_instance(
+            service="some-service",
+            instance="main",
+            cluster="fake-cluster",
+            namespace="paastasvc-some-service",
+            firewall_config=firewall_config,
+            baseline_egress=baseline_egress,
+            baseline_ingress=baseline_ingress,
+        )
+        expected_egress = [
+            _egress_rule_for_firewall_rule(rule, "fake-cluster")
+            for rule in firewall_config["egress"] + baseline_egress
+        ]
+        expected_ingress = [
+            _ingress_rule_for_firewall_rule(rule, "fake-cluster")
+            for rule in firewall_config["ingress"] + baseline_ingress
+        ]
 
     assert policy.api_version == "networking.k8s.io/v1"
     assert policy.kind == "NetworkPolicy"
@@ -4457,14 +4549,8 @@ def test_network_policy_for_service_instance():
     }
     assert policy.spec.policy_types == ["Egress", "Ingress"]
     # owner rules first, then baselines
-    assert policy.spec.egress == [
-        _egress_rule_for_firewall_rule(firewall_config["egress"][0]),
-        _egress_rule_for_firewall_rule(baseline_egress[0]),
-    ]
-    assert policy.spec.ingress == [
-        _ingress_rule_for_firewall_rule(firewall_config["ingress"][0]),
-        _ingress_rule_for_firewall_rule(baseline_ingress[0]),
-    ]
+    assert policy.spec.egress == expected_egress
+    assert policy.spec.ingress == expected_ingress
 
 
 def test_network_policy_for_service_instance_baselines():
@@ -4474,19 +4560,27 @@ def test_network_policy_for_service_instance_baselines():
     )
     baseline_ingress = [FirewallRuleDict(from_cidrs=["10.0.0.0/8"])]
 
-    policy = network_policy_for_service_instance(
-        service="some-service",
-        instance="main",
-        namespace="paastasvc-some-service",
-        firewall_config=firewall_config,
-        baseline_egress=[],
-        baseline_ingress=baseline_ingress,
-    )
+    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+        policy = network_policy_for_service_instance(
+            service="some-service",
+            instance="main",
+            cluster="fake-cluster",
+            namespace="paastasvc-some-service",
+            firewall_config=firewall_config,
+            baseline_egress=[],
+            baseline_ingress=baseline_ingress,
+        )
+        expected_egress = [
+            _egress_rule_for_firewall_rule(rule, "fake-cluster")
+            for rule in firewall_config["egress"]
+        ]
+        expected_ingress = [
+            _ingress_rule_for_firewall_rule(rule, "fake-cluster")
+            for rule in baseline_ingress
+        ]
 
-    assert policy.spec.egress == [
-        _egress_rule_for_firewall_rule(firewall_config["egress"][0])
-    ]
-    assert policy.spec.ingress == [_ingress_rule_for_firewall_rule(baseline_ingress[0])]
+    assert policy.spec.egress == expected_egress
+    assert policy.spec.ingress == expected_ingress
 
 
 def test_network_policy_for_service_instance_invalid_rule_raises():
@@ -4496,6 +4590,7 @@ def test_network_policy_for_service_instance_invalid_rule_raises():
         network_policy_for_service_instance(
             service="some-service",
             instance="main",
+            cluster="fake-cluster",
             namespace="paasta",
             firewall_config=FirewallConfigDict(
                 egress=[
