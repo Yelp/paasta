@@ -1,3 +1,27 @@
+paasta-tools (1.65.0) jammy; urgency=medium
+
+  * 1.65.0 tagged with 'make release'
+    Commit: Refactor paasta_cleanup_stale_nodes so that it actually
+    works (#4417)  This has been claiming to be deleting stale nodes for
+    a while, but that"s been a lie (likely ever since our switch to
+    Karpenter)  The delete node call is really just a request to delete,
+    but the Karpenter-placed finalizer was blocking this - and iiuc,
+    nodes were likely only getting cleaned up whenever one of the
+    various controllers noticed things were extra-stale and actually
+    GC"d the orphaned node away.  However, we can"t generally wait for
+    that since we have some alerts on important DaemonSets and it"s
+    possible for those to fire on nodes that no longer exists (e.g.,
+    this entire PR was motivated by someone getting paged for this
+    yesterday: a DS was in a pending state according to the k8s API on a
+    node that hadn"t existed for quite some time).  I"m also not quite
+    sure how k8s is actually handling things for autoscaling, but in all
+    the cases I"ve seen while refactoring this script, the nodes
+    sometimes have a lot of pods "scheduled" on them...so I can see us
+    potentially being underscaled if it"s treating those replicas as
+    actually existing
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Nov 2026 08:10:53 -0800
+
 paasta-tools (1.64.1) jammy; urgency=medium
 
   * 1.64.1 tagged with 'make release'
