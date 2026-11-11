@@ -146,6 +146,7 @@ from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.kubernetes_tools import group_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -4383,6 +4384,20 @@ def test_peers_for_service_ref_custom_namespace():
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "custom-namespace"
+    }
+
+
+def test_peers_for_service_ref_truncated_instance_label():
+    # Batch tools (tron) label pods with the instance name truncated to
+    # the 63-char label limit plus a hash suffix; the peer must match
+    long_instance = "a" * 70
+    with _patch_peer_loader(
+        [_fake_instance_config(long_instance, "paastasvc-some-service")]
+    ):
+        peers = _peers_for_service_ref(f"some-service.{long_instance}", "fake-cluster")
+    assert peers[0].pod_selector.match_labels == {
+        "paasta.yelp.com/service": "some-service",
+        "paasta.yelp.com/instance": limit_size_with_hash(long_instance),
     }
 
 

@@ -3740,9 +3740,13 @@ def _peers_for_service_ref(
                 f"instance '{instance}' of service '{service}' not found on {cluster}"
             )
         namespaces = [matching[0].get_namespace()]
+        # Batch tools like tron label pods with the instance name
+        # truncated to fit the 63-char label limit (see tron_tools.py);
+        # limit_size_with_hash is a no-op for short names, so this only
+        # changes the long-name case
         pod_labels = {
             "paasta.yelp.com/service": service,
-            "paasta.yelp.com/instance": instance,
+            "paasta.yelp.com/instance": limit_size_with_hash(instance),
         }
     else:
         namespaces = sorted({c.get_namespace() for c in instance_configs})
