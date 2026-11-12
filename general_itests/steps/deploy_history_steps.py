@@ -108,9 +108,9 @@ def step_run_deploy_history(context, extra_args):
 def step_history_matches(context):
     # other output (e.g. warnings) can come before the table, so find its header
     lines = context.output.splitlines()
-    header = "Timestamp -- UTC  Human time"
+    header = "Deployed at (UTC)"
     header_index = next(i for i, line in enumerate(lines) if line.startswith(header))
-    assert lines[header_index].split()[-2:] == ["deploy_group", "Version"]
+    assert lines[header_index].split()[-3:] == ["Deploy", "group", "Version"]
 
     expected = [
         (row["timestamp"], row["deploy_group"], context.commits[row["commit"]])

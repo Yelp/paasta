@@ -134,10 +134,14 @@ def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
         return
 
     shown = history[:limit] if limit > 0 else history
-    rows = [("Timestamp -- UTC", "Human time", "deploy_group", "Version")]
-    for timestamp, deploy_group, version in shown:
-        human_time = naturaltime(datetime_from_utc_to_local(parse_timestamp(timestamp)))
-        rows.append((timestamp, human_time, deploy_group, repr(version)))
+    rows = [("Deployed at (UTC)", "Deploy group", "Version")]
+    for entry in shown:
+        human_time = naturaltime(
+            datetime_from_utc_to_local(parse_timestamp(entry.tstamp))
+        )
+        rows.append(
+            (f"{entry.tstamp} ({human_time})", entry.deploy_group, repr(entry.version))
+        )
     for line in format_table(rows):
         print(line)
 
