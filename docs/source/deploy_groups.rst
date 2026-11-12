@@ -145,6 +145,28 @@ As an example the following deploy.yaml will execute steps ``security-check`` & 
      trigger_next_step_manually: true
    - step: prod.non_canary
 
+Multi-architecture images
+-------------------------
+
+By default, a service's image is built for ``amd64`` only. Yelp's Jenkins pipelines can instead build a multi-arch
+image when the service's ``jenkins.yaml`` lists more than one architecture in ``image_architectures``:
+
+.. sourcecode:: yaml
+
+   # jenkins.yaml
+   type: paasta
+   overrides:
+     paasta:
+       image_architectures: [amd64, arm64]
+
+Jenkins will then build and push 3 tags:
+* 2 architecture-suffixed images (``paasta-<sha>[-<image version>]-<arch>``)
+* a combined manifest at the standard tag (``paasta-<sha>[-<image version>]``)
+
+Because Jenkins will run your build pipeline once per architecture, your ``make cook-image`` and/or ``make itest`` targets
+should build for the architecture of the host it is currently running on (i.e. not hard-code ``amd64`` or pass
+``--platform`` as a Docker/Podman CLI flag).
+
 Crashloop auto-rollback
 ------------------------
 
