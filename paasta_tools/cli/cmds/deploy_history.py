@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Collection
 from typing import List
-from typing import Tuple
 
 from dulwich.errors import GitProtocolError
 from humanize import naturaltime
@@ -38,8 +39,25 @@ from paasta_tools.utils import parse_timestamp
 
 DEFAULT_LIMIT = 10
 
-# (timestamp, deploy_group, version)
-DeployHistoryEntry = Tuple[str, str, DeploymentVersion]
+
+@dataclass(frozen=True, order=True)
+class DeployHistoryEntry:
+    tstamp: str  # YYYYMMDDTHHMMSS, so string order is chronological order
+    deploy_group: str
+    # only sort by the fields above
+    version: DeploymentVersion = field(compare=False)
+
+
+def positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        number = 0
+    if number < 1:
+        raise argparse.ArgumentTypeError(
+            f"must be a positive whole number, got {value!r}"
+        )
+    return number
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -79,9 +97,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser.add_argument(
         "-n",
         "--limit",
-        help=f"Maximum number of deploys to show (default: {DEFAULT_LIMIT}). "
-        "Use 0 to show all of them.",
-        type=int,
+        help=f"Number of most recent deploys to show (default: {DEFAULT_LIMIT}).",
+        type=positive_int,
         default=DEFAULT_LIMIT,
     )
     list_parser.add_argument(
@@ -99,8 +116,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 def get_deploy_history(
     service: str, deploy_groups: Collection[str], soa_dir: str
 ) -> List[DeployHistoryEntry]:
-    """Returns every deploy of the given deploy groups as (timestamp, deploy_group, version),
-    sorted newest first.
+    """Returns every deploy of the given deploy groups, sorted newest first.
 
     Unlike rollback.get_versions_for_service, this does not dedupe by version: a version
     deployed several times (or to several deploy groups) shows up once per deploy.
@@ -118,14 +134,15 @@ def get_deploy_history(
         if tag_info["deploy_group"] not in deploy_groups:
             continue
         history.append(
-            (
-                tag_info["tstamp"],
-                tag_info["deploy_group"],
-                DeploymentVersion(sha=sha, image_version=tag_info["image_version"]),
+            DeployHistoryEntry(
+                tstamp=tag_info["tstamp"],
+                deploy_group=tag_info["deploy_group"],
+                version=DeploymentVersion(
+                    sha=sha, image_version=tag_info["image_version"]
+                ),
             )
         )
-    # timestamps are YYYYMMDDTHHMMSS, so string order is chronological order
-    return sorted(history, key=lambda entry: (entry[0], entry[1]), reverse=True)
+    return sorted(history, reverse=True)
 
 
 def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
@@ -133,7 +150,7 @@ def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
         print("No deploys found for the given deploy groups.")
         return
 
-    shown = history[:limit] if limit > 0 else history
+    shown = history[:limit]
     rows = [("Deployed at (UTC)", "Deploy group", "Version")]
     for entry in shown:
         human_time = naturaltime(
@@ -148,7 +165,7 @@ def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
     if len(shown) < len(history):
         print(
             f"\nShowing the {len(shown)} most recent of {len(history)} deploys. "
-            "Use -n 0 to show all of them."
+            "Use -n N to show more."
         )
 
 
