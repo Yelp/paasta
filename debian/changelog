@@ -1,3 +1,18 @@
+paasta-tools (1.65.1) jammy; urgency=medium
+
+  * 1.65.1 tagged with 'make release'
+    Commit: Teach get_replica_state() about Succeeded pods (#4414)
+    While this should never happen (we have a restart policy of
+    Always!), we have seen this occasionally happen - and when it does,
+    `paasta status` says to contact #paasta since an error occurred.
+    However, no error really occurred: it was just us not handling a
+    case that shouldn"t happen in the first place :p (especially since
+    the last time we saw this, it was a pod that was being evicted that
+    somehow ended up in this phase!)  ...but while we figure out how
+    this is happening, let"s add a matching conditional for this
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Nov 2026 13:57:49 -0800
+
 paasta-tools (1.65.0) jammy; urgency=medium
 
   * 1.65.0 tagged with 'make release'
