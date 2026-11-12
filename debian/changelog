@@ -1,3 +1,17 @@
+paasta-tools (1.66.0) jammy; urgency=medium
+
+  * 1.66.0 tagged with 'make release'
+    Commit: Teach paasta how to tag/combine multi-arch images (#4418)
+    This will build on top of (and is also required for some other)
+    internal PRs.  For the most part, this just sets up `paasta push-to-
+    registry` so that it can push architecture-suffixed tags in the
+    right format + teach it how to combine these per-arch images into a
+    single manifest.  Unless the new flags are passed, `paasta push-to-
+    registry` will continue working as-is :)  ---------  Co-authored-by:
+    Jason Perrin Co-authored-by: Evan Krall
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Nov 2026 08:13:58 -0800
+
 paasta-tools (1.65.1) jammy; urgency=medium
 
   * 1.65.1 tagged with 'make release'
