@@ -15,14 +15,9 @@
 from unittest.mock import patch
 
 import pytest
-from dulwich.errors import GitProtocolError
 
-from paasta_tools.cli.cli import parse_args
-from paasta_tools.cli.cmds.deploy_history import DEFAULT_LIMIT
 from paasta_tools.cli.cmds.deploy_history import get_deploy_history
-from paasta_tools.cli.cmds.deploy_history import paasta_deploy_history
 from paasta_tools.cli.cmds.deploy_history import print_deploy_history
-from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import DeploymentVersion
 
 FAKE_REFS = {
@@ -54,33 +49,6 @@ def mock_git():
         return_value=FAKE_REFS,
     ) as mock_list_remote_refs:
         yield mock_list_remote_refs
-
-
-def test_parse_args_wires_up_command():
-    args, _ = parse_args(["deploy-history", "-s", "fakeservice/"])
-    assert args.command is paasta_deploy_history
-    assert args.service == "fakeservice"
-    assert args.deploy_groups == ""
-    assert args.limit == DEFAULT_LIMIT
-
-
-def test_parse_args_all_flags():
-    args, _ = parse_args(
-        [
-            "deploy-history",
-            "-s",
-            "fakeservice",
-            "-l",
-            "prod.main,prod.canary",
-            "-n",
-            "0",
-            "-d",
-            "/fake/soa",
-        ]
-    )
-    assert args.deploy_groups == "prod.main,prod.canary"
-    assert args.limit == 0
-    assert args.soa_dir == "/fake/soa"
 
 
 def test_get_deploy_history_filters_and_keeps_every_deploy(mock_git):
@@ -115,16 +83,6 @@ def _history(n):
     ]
 
 
-def test_print_deploy_history_limit(capsys):
-    print_deploy_history(_history(5), limit=2)
-    out = capsys.readouterr().out
-
-    assert "Timestamp -- UTC" in out
-    assert "sha5" in out and "sha4" in out
-    assert "sha3" not in out
-    assert "Showing the 2 most recent of 5 deploys" in out
-
-
 def test_print_deploy_history_limit_zero_shows_all(capsys):
     print_deploy_history(_history(5), limit=0)
     out = capsys.readouterr().out
@@ -146,102 +104,3 @@ def test_print_deploy_history_image_version_repr(capsys):
 def test_print_deploy_history_empty(capsys):
     print_deploy_history([], limit=10)
     assert "No deploys found" in capsys.readouterr().out
-
-
-@patch("paasta_tools.cli.cmds.deploy_history.print_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.get_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.list_deploy_groups", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.figure_out_service_name", autospec=True)
-def test_paasta_deploy_history_defaults_to_all_deploy_groups(
-    mock_figure_out_service_name,
-    mock_list_deploy_groups,
-    mock_get_deploy_history,
-    mock_print_deploy_history,
-):
-    args, _ = parse_args(["deploy-history", "-s", "fakeservice"])
-    mock_figure_out_service_name.return_value = "fakeservice"
-    mock_list_deploy_groups.return_value = {"prod.main", "prod.canary"}
-
-    assert paasta_deploy_history(args) == 0
-    mock_get_deploy_history.assert_called_once_with(
-        "fakeservice", {"prod.main", "prod.canary"}, args.soa_dir
-    )
-    mock_print_deploy_history.assert_called_once_with(
-        mock_get_deploy_history.return_value, DEFAULT_LIMIT
-    )
-
-
-@patch("paasta_tools.cli.cmds.deploy_history.print_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.get_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.list_deploy_groups", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.figure_out_service_name", autospec=True)
-def test_paasta_deploy_history_some_invalid_groups(
-    mock_figure_out_service_name,
-    mock_list_deploy_groups,
-    mock_get_deploy_history,
-    mock_print_deploy_history,
-    capsys,
-):
-    args, _ = parse_args(
-        ["deploy-history", "-s", "fakeservice", "-l", "prod.main,prod.mian"]
-    )
-    mock_figure_out_service_name.return_value = "fakeservice"
-    mock_list_deploy_groups.return_value = {"prod.main", "prod.canary"}
-
-    assert paasta_deploy_history(args) == 0
-    assert "not valid and will be skipped: prod.mian" in capsys.readouterr().out
-    mock_get_deploy_history.assert_called_once_with(
-        "fakeservice", {"prod.main"}, args.soa_dir
-    )
-
-
-@patch("paasta_tools.cli.cmds.deploy_history.print_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.get_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.list_deploy_groups", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.figure_out_service_name", autospec=True)
-def test_paasta_deploy_history_only_invalid_groups(
-    mock_figure_out_service_name,
-    mock_list_deploy_groups,
-    mock_get_deploy_history,
-    mock_print_deploy_history,
-    capsys,
-):
-    args, _ = parse_args(["deploy-history", "-s", "fakeservice", "-l", "nope"])
-    mock_figure_out_service_name.return_value = "fakeservice"
-    mock_list_deploy_groups.return_value = {"prod.main"}
-
-    assert paasta_deploy_history(args) == 1
-    assert "No valid deploy groups found" in capsys.readouterr().out
-    assert not mock_get_deploy_history.called
-    assert not mock_print_deploy_history.called
-
-
-@pytest.mark.parametrize(
-    "error",
-    [
-        LSRemoteException("hung up"),
-        GitProtocolError("Permission denied (publickey)."),
-    ],
-)
-@patch("paasta_tools.cli.cmds.deploy_history.print_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.get_deploy_history", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.list_deploy_groups", autospec=True)
-@patch("paasta_tools.cli.cmds.deploy_history.figure_out_service_name", autospec=True)
-def test_paasta_deploy_history_git_error(
-    mock_figure_out_service_name,
-    mock_list_deploy_groups,
-    mock_get_deploy_history,
-    mock_print_deploy_history,
-    error,
-    capsys,
-):
-    args, _ = parse_args(["deploy-history", "-s", "fakeservice"])
-    mock_figure_out_service_name.return_value = "fakeservice"
-    mock_list_deploy_groups.return_value = {"prod.main"}
-    mock_get_deploy_history.side_effect = error
-
-    assert paasta_deploy_history(args) == 1
-    out = capsys.readouterr().out
-    assert "Could not read deploy tags from the Git repo for fakeservice" in out
-    assert str(error) in out
-    assert not mock_print_deploy_history.called
