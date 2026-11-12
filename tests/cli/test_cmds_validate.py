@@ -2310,3 +2310,31 @@ def test_validate_pool_limits_passes_for_unconfigured_pool(
     ]
 
     assert validate_pool_limits("fake-service-path") is True
+
+
+@pytest.mark.parametrize(
+    "value,valid",
+    [("true", True), ("false", True), ("nope", False)],
+)
+@pytest.mark.parametrize("file_type", ["eks", "service"])
+def test_bounce_on_datastore_credentials_change_schema_validation(
+    value, valid, file_type, capsys
+):
+    if file_type == "eks":
+        content = f"""
+test_instance:
+  bounce_on_datastore_credentials_change: {value}
+"""
+    else:
+        content = f"""
+description: test service
+external_link: https://example.com
+bounce_on_datastore_credentials_change: {value}
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = content
+        assert validate_schema("unused_service_path.yaml", file_type) is valid
+        output, _ = capsys.readouterr()
+        assert (SCHEMA_VALID if valid else SCHEMA_INVALID) in output

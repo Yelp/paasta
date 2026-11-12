@@ -499,6 +499,9 @@
                         }
                     }
                 },
+                "bounce_on_datastore_credentials_change": {
+                    "type": "boolean"
+                },
                 "ssm_secrets": {
                     "type": "array",
                     "items": {
