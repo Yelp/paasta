@@ -338,9 +338,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         list_previous_versions(
             service, deploy_groups, bool(given_deploy_groups), versions
         )
-        deploy_groups_arg = (
-            " -l %s" % ",".join(sorted(deploy_groups)) if given_deploy_groups else ""
-        )
+        deploy_groups_arg = f" -l {','.join(deploy_groups)}" if deploy_groups else ""
         print(
             "\nTip: to only view the deploy history, use the dedicated command:\n"
             + PaastaColors.bold(
