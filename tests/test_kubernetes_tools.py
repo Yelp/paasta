@@ -173,6 +173,7 @@ from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import SystemPaastaConfigDict
 from paasta_tools.utils import TopologySpreadConstraintDict
+from paasta_tools.utils import get_config_hash
 
 # Expected pre-stop command for smartstack services waiting for connections on port 8888
 EXPECTED_PRESTOP_CMD_WITH_CONNECTION_WAIT = [
@@ -223,6 +224,43 @@ def test_force_delete_pods():
         assert mock_client.core.delete_namespaced_pod.call_args_list[1] == mock.call(
             "pod_2", "namespace", body=body, grace_period_seconds=0
         )
+
+
+@pytest.mark.parametrize(
+    "service_config,instance_config,expected",
+    [
+        ({}, {}, True),
+        # service.yaml opts every instance out...
+        ({"bounce_on_datastore_credentials_change": False}, {}, False),
+        # ...and an instance can opt back in
+        (
+            {"bounce_on_datastore_credentials_change": False},
+            {"bounce_on_datastore_credentials_change": True},
+            True,
+        ),
+        ({}, {"bounce_on_datastore_credentials_change": False}, False),
+    ],
+)
+def test_bounce_on_datastore_credentials_change_inherits_from_service_yaml(
+    service_config, instance_config, expected
+):
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration",
+        autospec=True,
+        return_value=service_config,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_instance_config",
+        autospec=True,
+        return_value=instance_config,
+    ):
+        config = load_kubernetes_service_config_no_cache(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            load_deployments=False,
+            soa_dir="/nail/blah",
+        )
+    assert config.get_bounce_on_datastore_credentials_change() is expected
 
 
 def test_load_kubernetes_service_config_no_cache():
@@ -3484,6 +3522,85 @@ class TestKubernetesDeploymentConfig:
         # this means that with or without a SOA sha env var, the config SHA will
         # not be affected. if this is no longer true, this will cause a big bounce.
         assert no_sha_ret == with_sha_ret
+        # instances without datastore_credentials must hash exactly as before
+        assert "datastore_credentials_secret" not in no_sha_ret
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
+        autospec=True,
+    )
+    def test_sanitize_for_config_hash_datastore_credentials(
+        self, mock_get_kubernetes_secret_hashes
+    ):
+        mock_get_kubernetes_secret_hashes.return_value = {}
+        config = V1Deployment(
+            metadata=V1ObjectMeta(name="qwe"),
+            spec=V1DeploymentSpec(
+                selector=V1LabelSelector(match_labels={"freq": "108.9"}),
+                template=V1PodTemplateSpec(
+                    spec=V1PodSpec(containers=[V1Container(name="c", env=[])]),
+                ),
+            ),
+        )
+        self.deployment.config_dict["datastore_credentials"] = {"mysql": ["db"]}
+        with mock.patch.object(
+            self.deployment,
+            "get_datastore_credentials_secret_hash",
+            autospec=True,
+            side_effect=["sig-1", "sig-1", "sig-2"],
+        ):
+            first = self.deployment.sanitize_for_config_hash(config)
+            same = self.deployment.sanitize_for_config_hash(config)
+            rotated = self.deployment.sanitize_for_config_hash(config)
+
+        assert first["datastore_credentials_secret"] == "sig-1"
+        assert get_config_hash(first) == get_config_hash(same)
+        # a rotated secret changes the config hash, so the instance bounces
+        assert get_config_hash(first) != get_config_hash(rotated)
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
+        autospec=True,
+    )
+    def test_sanitize_for_config_hash_datastore_credentials_opt_out(
+        self, mock_get_kubernetes_secret_hashes
+    ):
+        mock_get_kubernetes_secret_hashes.return_value = {}
+        config = V1Deployment(
+            metadata=V1ObjectMeta(name="qwe"),
+            spec=V1DeploymentSpec(
+                selector=V1LabelSelector(match_labels={"freq": "108.9"}),
+                template=V1PodTemplateSpec(
+                    spec=V1PodSpec(containers=[V1Container(name="c", env=[])]),
+                ),
+            ),
+        )
+        self.deployment.config_dict["datastore_credentials"] = {"mysql": ["db"]}
+        self.deployment.config_dict["bounce_on_datastore_credentials_change"] = False
+        with mock.patch.object(
+            self.deployment,
+            "get_datastore_credentials_secret_hash",
+            autospec=True,
+            side_effect=["sig-1", "sig-2"],
+        ):
+            first = self.deployment.sanitize_for_config_hash(config)
+            rotated = self.deployment.sanitize_for_config_hash(config)
+
+        assert "datastore_credentials_secret" not in first
+        # opted out, so a rotated secret doesn't bounce the instance
+        assert get_config_hash(first) == get_config_hash(rotated)
+
+    @pytest.mark.parametrize(
+        "config_dict,expected",
+        [
+            ({}, True),
+            ({"bounce_on_datastore_credentials_change": True}, True),
+            ({"bounce_on_datastore_credentials_change": False}, False),
+        ],
+    )
+    def test_get_bounce_on_datastore_credentials_change(self, config_dict, expected):
+        self.deployment.config_dict.update(config_dict)
+        assert self.deployment.get_bounce_on_datastore_credentials_change() is expected
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
