@@ -102,6 +102,29 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    arch_group = list_parser.add_mutually_exclusive_group()
+    arch_group.add_argument(
+        "--architecture",
+        type=str,
+        default=None,
+        help=(
+            "Push the locally built image under an architecture-specific tag"
+            " (e.g. paasta-<sha>-arm64) instead of the normal tag. Used when"
+            " building multi-arch images: each architecture is pushed separately"
+            " and then combined with --combine-architectures."
+        ),
+    )
+    arch_group.add_argument(
+        "--combine-architectures",
+        type=lambda x: [a.strip() for a in x.split(",") if a.strip()],
+        default=None,
+        metavar="ARCH[,ARCH...]",
+        help=(
+            "Instead of pushing a local image, create a multi-arch manifest list"
+            " under the normal tag from architecture-specific tags previously"
+            " pushed with --architecture."
+        ),
+    )
     list_parser.add_argument(
         "-f",
         "--force",
@@ -181,12 +204,144 @@ def paasta_push_to_registry_impl(
     return returncode
 
 
+def arch_image_version(image_version: str | None, architecture: str) -> str:
+    """Image version used for the architecture-specific tag of a multi-arch image,
+    i.e. paasta-<sha>[-<image_version>]-<architecture>"""
+    if image_version:
+        return f"{image_version}-{architecture}"
+    return architecture
+
+
+def paasta_push_architecture(
+    args: argparse.Namespace,
+    service: str,
+    commit: str,
+    image_version: str | None,
+    architecture: str,
+) -> int:
+    """Push the locally built image under its architecture-specific tag"""
+    arch_version = arch_image_version(image_version, architecture)
+    returncode, _ = _run(
+        [
+            "docker",
+            "tag",
+            # NOTE: this doesn't actually get pushed (just the arch_version tag below)
+            # ...but it's nice to keep this around for interoperability with other stuff
+            # that's still looking for the standard DOCKER_TAG :)
+            # and also, there's no way for collisions since atm, we only support doing
+            # native builds - i.e,. there's no way for this tag to be on the same host
+            # and overwrite the tag for another arch-image
+            build_docker_tag(service, commit, image_version),
+            # for reference: paasta-<sha>[-<image_version>]-<arch>
+            build_docker_tag(service, commit, arch_version),
+        ],
+        timeout=30,
+        log=True,
+        component="build",
+        service=service,
+        loglevel="debug",
+    )
+    if returncode != 0:
+        return returncode
+    return paasta_push_to_registry_impl(args, service, arch_version)
+
+
+def paasta_combine_architectures(
+    service: str,
+    commit: str,
+    image_version: str | None,
+    architectures: list[str],
+    soa_dir: str,
+    force: bool,
+) -> int:
+    """Create multi-arch manifest list(s) under the normal tag(s) from the
+    architecture-specific images already in the registry"""
+    # i.e., default to just pushing the standard paasta-<sha> tag
+    target_versions: list[str | None] = [None]
+    # but also handle paasta-<sha>-<image version> for the services
+    # using that feature
+    if image_version:
+        target_versions.append(image_version)
+
+    targets = []
+    for target_version in target_versions:
+        if not force:
+            try:
+                if is_docker_image_already_in_registry(
+                    service=service,
+                    soa_dir=soa_dir,
+                    sha=commit,
+                    image_version=target_version,
+                ):
+                    print(
+                        f"{build_docker_tag(service, commit, target_version)} is already "
+                        "in the PaaSTA docker registry, not overriding it."
+                    )
+                    continue
+            except RequestException as e:
+                print(
+                    f"Can not check the PaaSTA docker registry for existing images: {e}"
+                )
+                return 1
+        targets.append(build_docker_tag(service, commit, target_version))
+
+    if not targets:
+        return 0
+
+    cmd = ["docker", "buildx", "imagetools", "create"]
+    # i.e., the "destination" tag(s)
+    for target in targets:
+        cmd += ["--tag", target]
+    # and the "source" tags to combine into the "destination" tag(s)
+    cmd += [
+        build_docker_tag(service, commit, arch_image_version(image_version, arch))
+        for arch in architectures
+    ]
+    returncode, _ = _run(
+        cmd,
+        timeout=3600,
+        log=True,
+        component="build",
+        service=service,
+        loglevel="debug",
+    )
+    image_identifier = build_image_identifier(commit, None, image_version)
+    if returncode != 0:
+        line = f"ERROR: Failed to create multi-arch image for {image_identifier}."
+        output = get_jenkins_build_output_url()
+        if output:
+            line += f" See output: {output}"
+    else:
+        line = f"Successfully pushed {'/'.join(architectures)} image for {image_identifier} to registry"
+        _log_audit(
+            action="push-to-registry",
+            action_details={"commit": commit, "architectures": architectures},
+            service=service,
+        )
+    _log(service=service, line=line, component="build", level="event")
+    return returncode
+
+
 def paasta_push_to_registry(args: argparse.Namespace) -> int:
     """Upload a docker images to a registry"""
     service = args.service
     if service and service.startswith("services-"):
         service = service.split("services-", 1)[1]
     validate_service_name(service, args.soa_dir)
+
+    if args.architecture:
+        return paasta_push_architecture(
+            args, service, args.commit, args.image_version, args.architecture
+        )
+    if args.combine_architectures:
+        return paasta_combine_architectures(
+            service=service,
+            commit=args.commit,
+            image_version=args.image_version,
+            architectures=args.combine_architectures,
+            soa_dir=args.soa_dir,
+            force=args.force,
+        )
 
     returncode = 0
     image_versions = [None]
