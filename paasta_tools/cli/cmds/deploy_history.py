@@ -145,7 +145,9 @@ def get_deploy_history(
     return sorted(history, reverse=True)
 
 
-def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
+def print_deploy_history(
+    history: List[DeployHistoryEntry], limit: int, show_more_hint: bool = True
+) -> None:
     if not history:
         print("No deploys found for the given deploy groups.")
         return
@@ -162,7 +164,7 @@ def print_deploy_history(history: List[DeployHistoryEntry], limit: int) -> None:
     for line in format_table(rows):
         print(line)
 
-    if len(shown) < len(history):
+    if show_more_hint and len(shown) < len(history):
         print(
             f"\nShowing the {len(shown)} most recent of {len(history)} deploys. "
             "Use -n N to show more."
