@@ -165,9 +165,10 @@ def print_deploy_history(
         print(line)
 
     if show_more_hint and len(shown) < len(history):
+        suggested_limit = min(len(history), limit * 2)
         print(
             f"\nShowing the {len(shown)} most recent of {len(history)} deploys. "
-            "Use -n N to show more."
+            f"To see more, re-run with a larger limit, e.g. -n {suggested_limit}."
         )
 
 
