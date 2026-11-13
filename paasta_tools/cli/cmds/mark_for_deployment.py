@@ -1618,8 +1618,11 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def on_enter_start_rollback(self) -> None:
         # we're already rolling back, so any other countdowns (e.g., for other failing conditions) are moot - and
-        # leaving them running would roll us back *again* if someone then clicked forward
-        self.cancel_auto_rollback_countdown()
+        # leaving them running would roll us back *again* if someone then clicked forward. This is quiet since a
+        # "Countdown to automatically roll back cancelled" right before we roll back could be interpreted as the
+        # rollback itself being canceled
+
+        self.cancel_auto_rollback_countdown(quiet=True)
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
