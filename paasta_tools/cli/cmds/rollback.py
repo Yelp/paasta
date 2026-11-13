@@ -22,6 +22,8 @@ from typing import Tuple
 
 from humanize import naturaltime
 
+from paasta_tools.cli.cmds.deploy_history import DeployHistoryEntry
+from paasta_tools.cli.cmds.deploy_history import print_deploy_history
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
@@ -42,7 +44,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
@@ -219,13 +220,16 @@ def list_previous_versions(
     print("Below is a list of recent commits:")
     # Latest 10 versions sorted by deployment time
     list_of_versions = sorted(versions.items(), key=lambda x: x[1], reverse=True)[:10]
-    rows = [("Timestamp -- UTC", "Human time", "deploy_group", "Version")]
-    for version, (timestamp, deploy_group) in list_of_versions:
-        rows.extend(
-            [(timestamp, format_timestamp(timestamp), deploy_group, repr(version))]
-        )
-    for line in format_table(rows):
-        print(line)
+    print_deploy_history(
+        [
+            DeployHistoryEntry(
+                tstamp=timestamp, deploy_group=deploy_group, version=version
+            )
+            for version, (timestamp, deploy_group) in list_of_versions
+        ],
+        limit=10,
+        show_more_hint=False,
+    )
     if len(list_of_versions) >= 2:
         version, (timestamp, deploy_group) = list_of_versions[1]
         deploy_groups_arg_line = (
@@ -337,6 +341,13 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         print("Please specify a commit to mark for rollback (-k, --commit).")
         list_previous_versions(
             service, deploy_groups, bool(given_deploy_groups), versions
+        )
+        deploy_groups_arg = f" -l {','.join(deploy_groups)}" if deploy_groups else ""
+        print(
+            "\nTip: to only view the deploy history, use the dedicated command:\n"
+            + PaastaColors.bold(
+                f"    paasta deploy-history -s {service}{deploy_groups_arg}"
+            )
         )
         return 1
     elif new_version not in versions and not args.force:
