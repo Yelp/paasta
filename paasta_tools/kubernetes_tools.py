@@ -14,6 +14,7 @@ import asyncio
 import base64
 import functools
 import hashlib
+import ipaddress
 import itertools
 import json
 import logging
@@ -69,6 +70,7 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1IPBlock
 from kubernetes.client import V1Job
 from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
@@ -79,6 +81,12 @@ from kubernetes.client import V1LimitRange
 from kubernetes.client import V1LimitRangeItem
 from kubernetes.client import V1LimitRangeSpec
 from kubernetes.client import V1Namespace
+from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyEgressRule
+from kubernetes.client import V1NetworkPolicyIngressRule
+from kubernetes.client import V1NetworkPolicyPeer
+from kubernetes.client import V1NetworkPolicyPort
+from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
@@ -158,6 +166,7 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -247,6 +256,11 @@ TEMPLATEABLE_PROVIDERS = {
     METRICS_PROVIDER_PISCINA,
     METRICS_PROVIDER_WORKER_LOAD,
     METRICS_PROVIDER_GUNICORN,
+}
+
+FIREWALL_RULE_KEYS = {
+    "egress": ("to_services", "to_cidrs"),
+    "ingress": ("from_services", "from_cidrs"),
 }
 
 
@@ -652,6 +666,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.batches = kube_client.BatchV1Api(self.api_client)
+        self.networking = kube_client.NetworkingV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)
@@ -3600,6 +3615,244 @@ def create_pod_disruption_budget(
 ) -> None:
     return kube_client.policy.create_namespaced_pod_disruption_budget(
         namespace=namespace, body=pod_disruption_budget
+    )
+
+
+class FirewallPortDict(TypedDict):
+    protocol: Literal["TCP", "UDP", "SCTP"]
+    port: int
+
+
+class FirewallRuleDict(TypedDict, total=False):
+    to_services: List[str]
+    from_services: List[str]
+    to_cidrs: List[str]
+    from_cidrs: List[str]
+    ports: List[FirewallPortDict]
+
+
+class FirewallConfigDict(TypedDict, total=False):
+    egress: List[FirewallRuleDict]
+    ingress: List[FirewallRuleDict]
+
+
+def network_policy_for_service_instance(
+    service: str,
+    instance: str,
+    cluster: str,
+    namespace: str,
+    firewall_config: FirewallConfigDict,
+    baseline_egress: List[FirewallRuleDict],
+    baseline_ingress: List[FirewallRuleDict],
+) -> V1NetworkPolicy:
+    """
+    Create NetworkPolicy for service instance from its firewall config.
+
+    :param service: service name
+    :param instance: instance name
+    :param cluster: cluster the policy is generated for
+    :param namespace: namespace to create NetworkPolicy in
+    :param firewall_config: parsed contents of `firewall` key
+    :param baseline_egress: baseline egress rules (from system config)
+    :param baseline_ingress: baseline ingress rules (from system config)
+    :return: V1NetworkPolicy object for service instance
+    """
+    try:
+        network_policy = V1NetworkPolicy(
+            api_version="networking.k8s.io/v1",
+            kind="NetworkPolicy",
+            metadata=V1ObjectMeta(
+                name=get_kubernetes_app_name(service, instance),
+                namespace=namespace,
+                labels={
+                    "paasta.yelp.com/managed": "true",
+                    "paasta.yelp.com/service": service,
+                    "paasta.yelp.com/instance": instance,
+                },
+            ),
+            spec=V1NetworkPolicySpec(
+                pod_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": service,
+                        "paasta.yelp.com/instance": instance,
+                    }
+                ),
+                policy_types=["Egress", "Ingress"],
+                ingress=[
+                    _ingress_rule_for_firewall_rule(rule, cluster)
+                    for rule in firewall_config.get("ingress", []) + baseline_ingress
+                ],
+                egress=[
+                    _egress_rule_for_firewall_rule(rule, cluster)
+                    for rule in firewall_config.get("egress", []) + baseline_egress
+                ],
+            ),
+        )
+    except Exception as e:
+        raise InvalidKubernetesConfig(e, service, instance)
+
+    return network_policy
+
+
+def create_network_policy(
+    kube_client: KubeClient,
+    network_policy: V1NetworkPolicy,
+    namespace: str,
+) -> None:
+    """
+    Create k8s NetworkPolicy in specified namespace.
+
+    :param kube_client: k8s client
+    :param network_policy: V1NetworkPolicy object to create
+    :param namespace: Namespace to create NetworkPolicy in
+    """
+    return kube_client.networking.create_namespaced_network_policy(
+        namespace=namespace, body=network_policy
+    )
+
+
+def _peers_for_service_ref(
+    service_ref: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[V1NetworkPolicyPeer]:
+    """
+    Translate service reference into NetworkPolicyPeers.
+
+    A bare name ("some-service") = all instances of service.
+    Dotted name ("some-service.main") = one instance.
+
+    The peer's namespace comes from its instance config, since services can
+    override the default with the `namespace` key; a bare name whose
+    instances span multiple namespaces produces one peer per namespace.
+
+    :param service_ref: service name from a to_services/from_services list
+    :param cluster: cluster the policy is generated for
+    :param soa_dir: soa config dir to load the peer service's config from
+    :raises ValueError: if the service or named instance is not on the cluster
+    :return: NetworkPolicyPeer objects for the service reference
+    """
+    service, _, instance = service_ref.partition(".")
+    instance_configs = list(
+        PaastaServiceConfigLoader(service=service, soa_dir=soa_dir).instance_configs(
+            cluster, KubernetesDeploymentConfig
+        )
+    )
+    if not instance_configs:
+        raise ValueError(f"no instances of service '{service}' found on {cluster}")
+    if instance:
+        matching = [c for c in instance_configs if c.get_instance() == instance]
+        if not matching:
+            raise ValueError(
+                f"instance '{instance}' of service '{service}' not found on {cluster}"
+            )
+        namespaces = [matching[0].get_namespace()]
+        # Batch tools like tron label pods with the instance name
+        # truncated to fit the 63-char label limit (see tron_tools.py);
+        # limit_size_with_hash is a no-op for short names, so this only
+        # changes the long-name case
+        pod_labels = {
+            "paasta.yelp.com/service": service,
+            "paasta.yelp.com/instance": limit_size_with_hash(instance),
+        }
+    else:
+        namespaces = sorted({c.get_namespace() for c in instance_configs})
+        pod_labels = {"paasta.yelp.com/service": service}
+    return [
+        V1NetworkPolicyPeer(
+            namespace_selector=V1LabelSelector(
+                match_labels={"kubernetes.io/metadata.name": namespace}
+            ),
+            pod_selector=V1LabelSelector(match_labels=pod_labels),
+        )
+        for namespace in namespaces
+    ]
+
+
+def _peer_for_cidr(cidr: str) -> V1NetworkPolicyPeer:
+    """
+    Translate a CIDR block into a NetworkPolicyPeer.
+
+    :param cidr: CIDR block from a to_cidrs/from_cidrs list
+    :raises ValueError: if the CIDR is invalid
+    :return: V1NetworkPolicyPeer object for CIDR block
+    """
+    ipaddress.ip_network(cidr)  # will raise ValueError if bad CIDR
+    return V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr=cidr))
+
+
+def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
+    """
+    Translate rule's ports list into V1NetworkPolicyPort objects.
+
+    No ports = all ports, returns empty list.
+
+    :param rule: rule from the firewall config
+    :return: List of V1NetworkPolicyPort objects for the rule
+    """
+    ports = []
+    for port in rule.get("ports", []):
+        ports.append(
+            V1NetworkPolicyPort(
+                protocol=port["protocol"],
+                port=port["port"],
+            )
+        )
+    return ports
+
+
+def _peers_for_firewall_rule(
+    direction: str, rule: FirewallRuleDict, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[V1NetworkPolicyPeer]:
+    """
+    Translate a rule's destinations into NetworkPolicyPeers.
+
+    :param direction: "egress" or "ingress"; decides the destination keys
+    :param rule: rule from the firewall config
+    :param cluster: cluster the policy is generated for
+    :param soa_dir: soa config dir to load peer configs from
+    :raises ValueError: if the rule has no destinations, which would allow traffic to anywhere
+    """
+    services_key, cidrs_key = FIREWALL_RULE_KEYS[direction]
+    peers = []
+    for service_ref in cast(List[str], rule.get(services_key, [])):
+        peers.extend(_peers_for_service_ref(service_ref, cluster, soa_dir))
+    for cidr in cast(List[str], rule.get(cidrs_key, [])):
+        peers.append(_peer_for_cidr(cidr))
+    if not peers:
+        raise ValueError(
+            f"firewall {direction} rule has no destinations, which would allow traffic to anywhere"
+        )
+    return peers
+
+
+def _egress_rule_for_firewall_rule(
+    rule: FirewallRuleDict, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> V1NetworkPolicyEgressRule:
+    """
+    Translate firewall rule into V1NetworkPolicyEgressRule.
+
+    :param rule: rule from firewall config
+    :param cluster: cluster the policy is generated for
+    :return: V1NetworkPolicyEgressRule object for the rule
+    """
+    return V1NetworkPolicyEgressRule(
+        to=_peers_for_firewall_rule("egress", rule, cluster, soa_dir),
+        ports=_network_policy_ports(rule),
+    )
+
+
+def _ingress_rule_for_firewall_rule(
+    rule: FirewallRuleDict, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> V1NetworkPolicyIngressRule:
+    """
+    Translate firewall rule into V1NetworkPolicyIngressRule.
+
+    :param rule: rule from firewall config
+    :param cluster: cluster the policy is generated for
+    :return: V1NetworkPolicyIngressRule object for the rule
+    """
+    return V1NetworkPolicyIngressRule(
+        _from=_peers_for_firewall_rule("ingress", rule, cluster, soa_dir),
+        ports=_network_policy_ports(rule),
     )
 
 
