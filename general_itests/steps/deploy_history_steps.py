@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import re
 import tempfile
 from time import time
 
@@ -27,6 +28,12 @@ from dulwich.repo import Repo
 from paasta_tools.utils import _run
 
 SERVICE = "fake_deploy_history_service"
+
+# A table row: "<tstamp> (<human time>)  <deploy group>  <version>".
+# Columns are separated by 2+ spaces; single spaces only appear inside a column.
+TABLE_ROW = re.compile(
+    r"^(?P<tstamp>\d{8}T\d{6}) \([^)]*\)\s{2,}(?P<deploy_group>\S+)\s{2,}(?P<version>.+)$"
+)
 
 # Lightweight tags in the same format mark-for-deployment pushes, pointing at
 # one of two commits ("first" / "second").
@@ -106,18 +113,13 @@ def step_run_deploy_history(context, extra_args):
 
 @then("the history should list, newest first")
 def step_history_matches(context):
-    # other output (e.g. warnings) can come before the table, so find its header
-    lines = context.output.splitlines()
-    header = "Deployed at (UTC)"
-    header_index = next(i for i, line in enumerate(lines) if line.startswith(header))
-    assert lines[header_index].split()[-3:] == ["Deploy", "group", "Version"]
-
     expected = [
         (row["timestamp"], row["deploy_group"], context.commits[row["commit"]])
         for row in context.table
     ]
-    data_lines = [line for line in lines[header_index + 1 :] if line[:8].isdigit()]
-    actual = [(cols[0], cols[-2], cols[-1]) for cols in map(str.split, data_lines)]
+    # only table rows match, so the header, warnings and footer are skipped
+    matches = (TABLE_ROW.match(line) for line in context.output.splitlines())
+    actual = [(m["tstamp"], m["deploy_group"], m["version"]) for m in matches if m]
     assert actual == expected, f"actual: {actual}\nexpected: {expected}"
 
 
