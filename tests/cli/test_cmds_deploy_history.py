@@ -42,11 +42,12 @@ def test_get_deploy_history_filters_and_keeps_every_deploy():
         autospec=True,
         return_value=refs,
     ) as mock_list_remote_refs:
-        history = get_deploy_history(
-            "fakeservice", {"prod.main", "prod.canary"}, "/fake/soa"
+        history, total = get_deploy_history(
+            "fakeservice", {"prod.main", "prod.canary"}, "/fake/soa", limit=10
         )
 
     mock_list_remote_refs.assert_called_once_with("git://git.repo")
+    assert total == 5
     # DeployHistoryEntry equality ignores `version`, so compare it explicitly
     assert [(e.tstamp, e.deploy_group, e.version) for e in history] == [
         ("20260601T000000", "prod.main", DeploymentVersion("sha_c", "img123")),
@@ -58,5 +59,5 @@ def test_get_deploy_history_filters_and_keeps_every_deploy():
 
 
 def test_print_deploy_history_empty(capsys):
-    print_deploy_history([], limit=10)
+    print_deploy_history([])
     assert "No deploys found" in capsys.readouterr().out

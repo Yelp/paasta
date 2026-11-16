@@ -477,6 +477,11 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
     assert not mock_log_audit.called
 
 
+@patch(
+    "paasta_tools.cli.cmds.rollback.get_deploy_history",
+    autospec=True,
+    return_value=([], 0),
+)
 @patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
@@ -492,6 +497,7 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
     mock_figure_out_service_name,
     mock_list_deploy_groups,
     mock_log_audit,
+    mock_get_deploy_history,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "fake_deploy_group1"]

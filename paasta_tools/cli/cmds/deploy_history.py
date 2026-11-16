@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import heapq
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Collection
 from typing import List
+from typing import Optional
+from typing import Tuple
 
 from dulwich.errors import GitProtocolError
 from humanize import naturaltime
@@ -114,12 +117,17 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def get_deploy_history(
-    service: str, deploy_groups: Collection[str], soa_dir: str
-) -> List[DeployHistoryEntry]:
-    """Returns every deploy of the given deploy groups, sorted newest first.
+    service: str, deploy_groups: Collection[str], soa_dir: str, limit: int
+) -> Tuple[List[DeployHistoryEntry], int]:
+    """Returns the `limit` most recent deploys of the given deploy groups (newest first),
+    along with the total number of deploys found.
 
     Unlike rollback.get_versions_for_service, this does not dedupe by version: a version
     deployed several times (or to several deploy groups) shows up once per deploy.
+
+    All tags come back from a single ls-remote call, ordered by name rather than by
+    time, so every tag has to be looked at to find the newest ones - but only the
+    newest `limit` are kept.
     """
     git_url = get_git_url(service=service, soa_dir=soa_dir)
     history: List[DeployHistoryEntry] = []
@@ -142,19 +150,18 @@ def get_deploy_history(
                 ),
             )
         )
-    return sorted(history, reverse=True)
+    return heapq.nlargest(limit, history), len(history)
 
 
 def print_deploy_history(
-    history: List[DeployHistoryEntry], limit: int, show_more_hint: bool = True
+    history: List[DeployHistoryEntry], total: Optional[int] = None
 ) -> None:
     if not history:
         print("No deploys found for the given deploy groups.")
         return
 
-    shown = history[:limit]
     rows = [("Deployed at (UTC)", "Deploy group", "Version")]
-    for entry in shown:
+    for entry in history:
         human_time = naturaltime(
             datetime_from_utc_to_local(parse_timestamp(entry.tstamp))
         )
@@ -164,10 +171,10 @@ def print_deploy_history(
     for line in format_table(rows):
         print(line)
 
-    if show_more_hint and len(shown) < len(history):
-        suggested_limit = min(len(history), limit * 2)
+    if total is not None and total > len(history):
+        suggested_limit = min(total, len(history) * 2)
         print(
-            f"\nShowing the {len(shown)} most recent of {len(history)} deploys. "
+            f"\nShowing the {len(history)} most recent of {total} deploys. "
             f"To see more, re-run with a larger limit, e.g. -n {suggested_limit}."
         )
 
@@ -206,7 +213,9 @@ def paasta_deploy_history(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        history = get_deploy_history(service, deploy_groups, soa_dir)
+        history, total = get_deploy_history(
+            service, deploy_groups, soa_dir, limit=args.limit
+        )
     except (LSRemoteException, GitProtocolError) as e:
         print(
             PaastaColors.red(
@@ -215,5 +224,5 @@ def paasta_deploy_history(args: argparse.Namespace) -> int:
             )
         )
         return 1
-    print_deploy_history(history, args.limit)
+    print_deploy_history(history, total)
     return 0

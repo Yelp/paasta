@@ -22,7 +22,7 @@ from typing import Tuple
 
 from humanize import naturaltime
 
-from paasta_tools.cli.cmds.deploy_history import DeployHistoryEntry
+from paasta_tools.cli.cmds.deploy_history import get_deploy_history
 from paasta_tools.cli.cmds.deploy_history import print_deploy_history
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
@@ -212,26 +212,29 @@ def list_previous_versions(
     service: str,
     deploy_groups: Collection[str],
     any_given_deploy_groups: bool,
-    versions: Mapping[DeploymentVersion, Tuple],
+    soa_dir: str,
 ) -> None:
     def format_timestamp(tstamp: str) -> str:
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
     print("Below is a list of recent commits:")
-    # Latest 10 versions sorted by deployment time
-    list_of_versions = sorted(versions.items(), key=lambda x: x[1], reverse=True)[:10]
-    print_deploy_history(
-        [
-            DeployHistoryEntry(
-                tstamp=timestamp, deploy_group=deploy_group, version=version
-            )
-            for version, (timestamp, deploy_group) in list_of_versions
-        ],
-        limit=10,
-        show_more_hint=False,
+    # Latest 10 deploys, newest first
+    recent_deploys, _ = get_deploy_history(service, deploy_groups, soa_dir, limit=10)
+    print_deploy_history(recent_deploys)
+    # Every deploy is listed, so the next row can be the same version as the latest
+    # one (e.g. a redeploy) - suggest the most recent *different* version instead.
+    previous_deploy = next(
+        (
+            deploy
+            for deploy in recent_deploys[1:]
+            if deploy.version != recent_deploys[0].version
+        ),
+        None,
     )
-    if len(list_of_versions) >= 2:
-        version, (timestamp, deploy_group) = list_of_versions[1]
+    if previous_deploy is not None:
+        version = previous_deploy.version
+        timestamp = previous_deploy.tstamp
+        deploy_group = previous_deploy.deploy_group
         deploy_groups_arg_line = (
             "-l %s " % ",".join(deploy_groups) if any_given_deploy_groups else ""
         )
@@ -340,7 +343,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     if not commit:
         print("Please specify a commit to mark for rollback (-k, --commit).")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), versions
+            service, deploy_groups, bool(given_deploy_groups), soa_dir
         )
         deploy_groups_arg = f" -l {','.join(deploy_groups)}" if deploy_groups else ""
         print(
@@ -358,7 +361,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         print("Please double check it or use --force to skip this verification.\n")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), versions
+            service, deploy_groups, bool(given_deploy_groups), soa_dir
         )
         return 1
 
