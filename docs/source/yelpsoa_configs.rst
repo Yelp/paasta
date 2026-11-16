@@ -550,7 +550,9 @@ instance MAY have:
     A bare service name means all instances of that service; a dotted name
     (``some-service.main``) means one instance. A rule with no ``ports`` allows
     all ports. Port entries must have exactly ``protocol`` (``TCP``, ``UDP``, or
-    ``SCTP``) and an integer ``port``. An empty ``firewall`` block is invalid.
+    ``SCTP``) and an integer ``port``. ``to_cidrs``/``from_cidrs`` are IPv4 CIDR
+    blocks (e.g. ``52.94.0.0/16``); IPv6 is not supported, and neither are
+    domain names in v1. An empty ``firewall`` block is invalid.
 
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
     If set to ``http`` or ``https``, a ``curl`` command will be executed
