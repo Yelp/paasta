@@ -124,20 +124,18 @@ class RollbackCountdownReason(NamedTuple):
     cancelled_reason: str
 
 
-ROLLBACK_COUNTDOWN_REASONS: Dict[str, RollbackCountdownReason] = {
-    "rollback_slo_failure": RollbackCountdownReason(
-        reason="an SLO is failing",
-        cancelled_reason="an SLO was failing",
-    ),
-    "rollback_alertmanager_failure": RollbackCountdownReason(
-        reason="an AlertManager alert is firing",
-        cancelled_reason="an AlertManager alert was firing",
-    ),
-    "rollback_crashloop_failure": RollbackCountdownReason(
-        reason="replicas are crashlooping",
-        cancelled_reason="replicas were crashlooping",
-    ),
-}
+SLO_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="an SLO is failing",
+    cancelled_reason="an SLO was failing",
+)
+ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="an AlertManager alert is firing",
+    cancelled_reason="an AlertManager alert was firing",
+)
+CRASHLOOP_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="replicas are crashlooping",
+    cancelled_reason="replicas were crashlooping",
+)
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 # Lets a manual run target another table (e.g. a test table) without changing system config
 SLACK_THREAD_TABLE_ENV_VAR = "PAASTA_DEPLOY_SLACK_THREADS_TABLE"
@@ -1405,7 +1403,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_slo_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_slo_failure",
+                reason=SLO_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=SLO_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         yield {
@@ -1421,7 +1422,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.alertmanager_rollbacks_enabled],
             "unless": [self.already_rolling_back, self._alertmanager_dry_run],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_alertmanager_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_alertmanager_failure",
+                reason=ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         # without this, the trigger would be silently swallowed in dry-run mode
@@ -1447,7 +1451,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.crashloop_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_crashloop_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_crashloop_failure",
+                reason=CRASHLOOP_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=CRASHLOOP_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         yield {
@@ -1898,21 +1905,26 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
+    def start_auto_rollback_countdown(
+        self,
+        trigger: str,
+        extra_text: str = "",
+        reason: str = "",
+        cancelled_reason: str = "",
+    ) -> None:
         # a deploy that we might be about to roll back shouldn't be certified in the meantime
         self.cancel_timer(trigger="auto_certify")
-        cancel_button_text = self.get_button_text(
-            button="disable_auto_rollbacks",
-            is_active=False,
-        )
-        countdown_reason = ROLLBACK_COUNTDOWN_REASONS.get(
-            trigger, RollbackCountdownReason(reason="", cancelled_reason="")
-        )
+        if not extra_text:
+            cancel_button_text = self.get_button_text(
+                button="disable_auto_rollbacks",
+                is_active=False,
+            )
+            extra_text = f'Click "{cancel_button_text}" to cancel this!'
         super().start_auto_rollback_countdown(
             trigger=trigger,
-            extra_text=f'Click "{cancel_button_text}" to cancel this!',
-            reason=countdown_reason.reason,
-            cancelled_reason=countdown_reason.cancelled_reason,
+            extra_text=extra_text,
+            reason=reason,
+            cancelled_reason=cancelled_reason,
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
