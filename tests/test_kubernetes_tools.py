@@ -28,6 +28,7 @@ from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1IPBlock
 from kubernetes.client import V1Job
 from kubernetes.client import V1JobSpec
 from kubernetes.client import V1KeyToPath
@@ -35,7 +36,11 @@ from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NetworkPolicy
+from kubernetes.client import V1NetworkPolicyEgressRule
+from kubernetes.client import V1NetworkPolicyIngressRule
+from kubernetes.client import V1NetworkPolicyPeer
 from kubernetes.client import V1NetworkPolicyPort
+from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -4330,12 +4335,15 @@ def _fake_instance_config(instance: str, namespace: str) -> mock.Mock:
     return config
 
 
-def _patch_peer_loader(instance_configs):
-    loader = mock.Mock()
-    loader.instance_configs.return_value = instance_configs
+def _patch_peer_loader(configs_by_service):
+    def make_loader(service=None, soa_dir=None):
+        loader = mock.Mock()
+        loader.instance_configs.return_value = configs_by_service.get(service, [])
+        return loader
+
     return mock.patch(
         "paasta_tools.kubernetes_tools.PaastaServiceConfigLoader",
-        return_value=loader,
+        side_effect=make_loader,
         autospec=True,
     )
 
@@ -4343,10 +4351,12 @@ def _patch_peer_loader(instance_configs):
 def test_peers_for_service_ref_bare_name():
     # A bare name means all instances: service label only, no instance label
     with _patch_peer_loader(
-        [
-            _fake_instance_config("main", "paastasvc-some-service"),
-            _fake_instance_config("worker", "paastasvc-some-service"),
-        ]
+        {
+            "some-service": [
+                _fake_instance_config("main", "paastasvc-some-service"),
+                _fake_instance_config("worker", "paastasvc-some-service"),
+            ]
+        }
     ):
         peers = _peers_for_service_ref("some-service", "fake-cluster")
     assert len(peers) == 1
@@ -4361,10 +4371,12 @@ def test_peers_for_service_ref_bare_name():
 def test_peers_for_service_ref_dotted_name():
     # A dotted name means one instance: both labels, raw service name
     with _patch_peer_loader(
-        [
-            _fake_instance_config("main", "paastasvc-some-service"),
-            _fake_instance_config("worker", "paastasvc-some-service"),
-        ]
+        {
+            "some-service": [
+                _fake_instance_config("main", "paastasvc-some-service"),
+                _fake_instance_config("worker", "paastasvc-some-service"),
+            ]
+        }
     ):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert len(peers) == 1
@@ -4380,7 +4392,9 @@ def test_peers_for_service_ref_dotted_name():
 def test_peers_for_service_ref_custom_namespace():
     # The namespace comes from the peer's instance config, not the
     # paastasvc- convention: services can override it
-    with _patch_peer_loader([_fake_instance_config("main", "custom-namespace")]):
+    with _patch_peer_loader(
+        {"some-service": [_fake_instance_config("main", "custom-namespace")]}
+    ):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "custom-namespace"
@@ -4392,7 +4406,11 @@ def test_peers_for_service_ref_truncated_instance_label():
     # the 63-char label limit plus a hash suffix; the peer must match
     long_instance = "a" * 70
     with _patch_peer_loader(
-        [_fake_instance_config(long_instance, "paastasvc-some-service")]
+        {
+            "some-service": [
+                _fake_instance_config(long_instance, "paastasvc-some-service")
+            ]
+        }
     ):
         peers = _peers_for_service_ref(f"some-service.{long_instance}", "fake-cluster")
     assert peers[0].pod_selector.match_labels == {
@@ -4405,10 +4423,12 @@ def test_peers_for_service_ref_instances_span_namespaces():
     # A bare name whose instances live in different namespaces produces
     # one peer per namespace
     with _patch_peer_loader(
-        [
-            _fake_instance_config("main", "paastasvc-some-service"),
-            _fake_instance_config("worker", "custom-namespace"),
-        ]
+        {
+            "some-service": [
+                _fake_instance_config("main", "paastasvc-some-service"),
+                _fake_instance_config("worker", "custom-namespace"),
+            ]
+        }
     ):
         peers = _peers_for_service_ref("some-service", "fake-cluster")
     assert len(peers) == 2
@@ -4419,13 +4439,15 @@ def test_peers_for_service_ref_instances_span_namespaces():
 
 
 def test_peers_for_service_ref_instance_not_found():
-    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+    with _patch_peer_loader(
+        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    ):
         with pytest.raises(ValueError):
             _peers_for_service_ref("some-service.worker", "fake-cluster")
 
 
 def test_peers_for_service_ref_service_not_on_cluster():
-    with _patch_peer_loader([]):
+    with _patch_peer_loader({"some-service": []}):
         with pytest.raises(ValueError):
             _peers_for_service_ref("some-service", "fake-cluster")
 
@@ -4434,7 +4456,11 @@ def test_peers_for_service_ref_underscores():
     # Pod label uses the raw service name even when the namespace is
     # sanitised
     with _patch_peer_loader(
-        [_fake_instance_config("main", "paastasvc-service--with--underscores")]
+        {
+            "service_with_underscores": [
+                _fake_instance_config("main", "paastasvc-service--with--underscores")
+            ]
+        }
     ):
         peers = _peers_for_service_ref("service_with_underscores.main", "fake-cluster")
     assert peers[0].pod_selector.match_labels == {
@@ -4469,20 +4495,49 @@ def test_egress_rule_for_firewall_rule():
         "to_services": ["some-service"],
         "ports": [{"protocol": "TCP", "port": 3306}],
     }
-    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+    with _patch_peer_loader(
+        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    ):
         egress_rule = _egress_rule_for_firewall_rule(rule, "fake-cluster")
-        expected_peers = _peers_for_service_ref("some-service", "fake-cluster")
-    assert egress_rule.to == expected_peers
-    assert egress_rule.ports == [V1NetworkPolicyPort(protocol="TCP", port=3306)]
+    assert egress_rule == V1NetworkPolicyEgressRule(
+        to=[
+            V1NetworkPolicyPeer(
+                namespace_selector=V1LabelSelector(
+                    match_labels={
+                        "kubernetes.io/metadata.name": "paastasvc-some-service"
+                    }
+                ),
+                pod_selector=V1LabelSelector(
+                    match_labels={"paasta.yelp.com/service": "some-service"}
+                ),
+            )
+        ],
+        ports=[V1NetworkPolicyPort(protocol="TCP", port=3306)],
+    )
 
 
 def test_ingress_rule_for_firewall_rule():
     rule = {"from_services": ["some-api.main"]}
-    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-api")]):
+    with _patch_peer_loader(
+        {"some-api": [_fake_instance_config("main", "paastasvc-some-api")]}
+    ):
         ingress_rule = _ingress_rule_for_firewall_rule(rule, "fake-cluster")
-        expected_peers = _peers_for_service_ref("some-api.main", "fake-cluster")
-    assert ingress_rule._from == expected_peers
-    assert ingress_rule.ports == []
+    assert ingress_rule == V1NetworkPolicyIngressRule(
+        _from=[
+            V1NetworkPolicyPeer(
+                namespace_selector=V1LabelSelector(
+                    match_labels={"kubernetes.io/metadata.name": "paastasvc-some-api"}
+                ),
+                pod_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "some-api",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+            )
+        ],
+        ports=[],
+    )
 
 
 def test_firewall_rule_with_no_destinations_raises():
@@ -4526,10 +4581,10 @@ def test_network_policy_for_service_instance():
     ]
 
     with _patch_peer_loader(
-        [
-            _fake_instance_config("main", "paastasvc-some-service"),
-            _fake_instance_config("main", "paastasvc-some-api"),
-        ]
+        {
+            "some-service": [_fake_instance_config("main", "paastasvc-some-service")],
+            "some-api": [_fake_instance_config("main", "paastasvc-some-api")],
+        }
     ):
         policy = network_policy_for_service_instance(
             service="some-service",
@@ -4540,32 +4595,76 @@ def test_network_policy_for_service_instance():
             baseline_egress=baseline_egress,
             baseline_ingress=baseline_ingress,
         )
-        expected_egress = [
-            _egress_rule_for_firewall_rule(rule, "fake-cluster")
-            for rule in firewall_config["egress"] + baseline_egress
-        ]
-        expected_ingress = [
-            _ingress_rule_for_firewall_rule(rule, "fake-cluster")
-            for rule in firewall_config["ingress"] + baseline_ingress
-        ]
 
-    assert policy.api_version == "networking.k8s.io/v1"
-    assert policy.kind == "NetworkPolicy"
-    assert policy.metadata.name == "some-service-main"
-    assert policy.metadata.namespace == "paastasvc-some-service"
-    assert policy.metadata.labels == {
-        "paasta.yelp.com/managed": "true",
-        "paasta.yelp.com/service": "some-service",
-        "paasta.yelp.com/instance": "main",
-    }
-    assert policy.spec.pod_selector.match_labels == {
-        "paasta.yelp.com/service": "some-service",
-        "paasta.yelp.com/instance": "main",
-    }
-    assert policy.spec.policy_types == ["Egress", "Ingress"]
+    expected_policy = V1NetworkPolicy(
+        api_version="networking.k8s.io/v1",
+        kind="NetworkPolicy",
+        metadata=V1ObjectMeta(
+            name="some-service-main",
+            namespace="paastasvc-some-service",
+            labels={
+                "paasta.yelp.com/managed": "true",
+                "paasta.yelp.com/service": "some-service",
+                "paasta.yelp.com/instance": "main",
+            },
+        ),
+        spec=V1NetworkPolicySpec(
+            pod_selector=V1LabelSelector(
+                match_labels={
+                    "paasta.yelp.com/service": "some-service",
+                    "paasta.yelp.com/instance": "main",
+                }
+            ),
+            policy_types=["Egress", "Ingress"],
+            egress=[
+                V1NetworkPolicyEgressRule(
+                    to=[
+                        V1NetworkPolicyPeer(
+                            namespace_selector=V1LabelSelector(
+                                match_labels={
+                                    "kubernetes.io/metadata.name": "paastasvc-some-service"
+                                }
+                            ),
+                            pod_selector=V1LabelSelector(
+                                match_labels={"paasta.yelp.com/service": "some-service"}
+                            ),
+                        )
+                    ],
+                    ports=[V1NetworkPolicyPort(protocol="TCP", port=3306)],
+                ),
+                V1NetworkPolicyEgressRule(
+                    to=[V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr="10.0.0.0/8"))],
+                    ports=[V1NetworkPolicyPort(protocol="UDP", port=53)],
+                ),
+            ],
+            ingress=[
+                V1NetworkPolicyIngressRule(
+                    _from=[
+                        V1NetworkPolicyPeer(
+                            namespace_selector=V1LabelSelector(
+                                match_labels={
+                                    "kubernetes.io/metadata.name": "paastasvc-some-api"
+                                }
+                            ),
+                            pod_selector=V1LabelSelector(
+                                match_labels={
+                                    "paasta.yelp.com/service": "some-api",
+                                    "paasta.yelp.com/instance": "main",
+                                }
+                            ),
+                        )
+                    ],
+                    ports=[V1NetworkPolicyPort(protocol="TCP", port=8080)],
+                ),
+                V1NetworkPolicyIngressRule(
+                    _from=[V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr="10.0.0.0/8"))],
+                    ports=[V1NetworkPolicyPort(protocol="TCP", port=8080)],
+                ),
+            ],
+        ),
+    )
     # owner rules first, then baselines
-    assert policy.spec.egress == expected_egress
-    assert policy.spec.ingress == expected_ingress
+    assert policy == expected_policy
 
 
 def test_network_policy_for_service_instance_baselines():
@@ -4575,7 +4674,9 @@ def test_network_policy_for_service_instance_baselines():
     )
     baseline_ingress = [FirewallRuleDict(from_cidrs=["10.0.0.0/8"])]
 
-    with _patch_peer_loader([_fake_instance_config("main", "paastasvc-some-service")]):
+    with _patch_peer_loader(
+        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    ):
         policy = network_policy_for_service_instance(
             service="some-service",
             instance="main",
@@ -4585,17 +4686,53 @@ def test_network_policy_for_service_instance_baselines():
             baseline_egress=[],
             baseline_ingress=baseline_ingress,
         )
-        expected_egress = [
-            _egress_rule_for_firewall_rule(rule, "fake-cluster")
-            for rule in firewall_config["egress"]
-        ]
-        expected_ingress = [
-            _ingress_rule_for_firewall_rule(rule, "fake-cluster")
-            for rule in baseline_ingress
-        ]
 
-    assert policy.spec.egress == expected_egress
-    assert policy.spec.ingress == expected_ingress
+    expected_policy = V1NetworkPolicy(
+        api_version="networking.k8s.io/v1",
+        kind="NetworkPolicy",
+        metadata=V1ObjectMeta(
+            name="some-service-main",
+            namespace="paastasvc-some-service",
+            labels={
+                "paasta.yelp.com/managed": "true",
+                "paasta.yelp.com/service": "some-service",
+                "paasta.yelp.com/instance": "main",
+            },
+        ),
+        spec=V1NetworkPolicySpec(
+            pod_selector=V1LabelSelector(
+                match_labels={
+                    "paasta.yelp.com/service": "some-service",
+                    "paasta.yelp.com/instance": "main",
+                }
+            ),
+            policy_types=["Egress", "Ingress"],
+            egress=[
+                V1NetworkPolicyEgressRule(
+                    to=[
+                        V1NetworkPolicyPeer(
+                            namespace_selector=V1LabelSelector(
+                                match_labels={
+                                    "kubernetes.io/metadata.name": "paastasvc-some-service"
+                                }
+                            ),
+                            pod_selector=V1LabelSelector(
+                                match_labels={"paasta.yelp.com/service": "some-service"}
+                            ),
+                        )
+                    ],
+                    ports=[],
+                ),
+            ],
+            ingress=[
+                V1NetworkPolicyIngressRule(
+                    _from=[V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr="10.0.0.0/8"))],
+                    ports=[],
+                ),
+            ],
+        ),
+    )
+    assert policy == expected_policy
 
 
 def test_network_policy_for_service_instance_invalid_rule_raises():
