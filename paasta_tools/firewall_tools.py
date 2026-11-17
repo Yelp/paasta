@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import ipaddress
+import re
 from typing import List
 from typing import Literal
 from typing import cast
@@ -38,6 +39,25 @@ FIREWALL_RULE_KEYS = {
     "egress": ("to_services", "to_cidrs"),
     "ingress": ("from_services", "from_cidrs"),
 }
+
+# Allowlist for to_services/from_services refs: a bare service name or
+# service.instance, matching PaaSTA service and instance naming. Validating
+# before the PaastaServiceConfigLoader lookup matters because the loader
+# builds filesystem paths from the service name.
+_SERVICE_REF_RE = re.compile(
+    r"^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?)?$"
+)
+
+
+def _validate_service_ref(service_ref: str) -> None:
+    """
+    Validate a service reference before it is used to load config.
+
+    :param service_ref: service name from a to_services/from_services list
+    :raises ValueError: if the ref is not a bare or dotted service name
+    """
+    if not _SERVICE_REF_RE.match(service_ref):
+        raise ValueError(f"invalid service reference: {service_ref!r}")
 
 
 class FirewallPortDict(TypedDict):
@@ -152,6 +172,7 @@ def _peers_for_service_ref(
     :raises ValueError: if the service or named instance is not on the cluster
     :return: NetworkPolicyPeer objects for the service reference
     """
+    _validate_service_ref(service_ref)
     service, _, instance = service_ref.partition(".")
     instance_configs = list(
         PaastaServiceConfigLoader(service=service, soa_dir=soa_dir).instance_configs(

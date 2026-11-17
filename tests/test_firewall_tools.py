@@ -177,6 +177,14 @@ def test_peers_for_service_ref_underscores():
     }
 
 
+def test_peers_for_service_ref_traversal_raises():
+    # Service refs are validated before the loader builds filesystem
+    # paths from them; traversal must be rejected
+    for bad_ref in ["../../etc/passwd", "..", ".", "some-service/../other", "a/b"]:
+        with pytest.raises(ValueError):
+            _peers_for_service_ref(bad_ref, "fake-cluster")
+
+
 def test_peer_for_cidr():
     peer = _peer_for_cidr("52.94.0.0/16")
     assert peer.ip_block.cidr == "52.94.0.0/16"
