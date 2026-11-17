@@ -49,6 +49,9 @@ from paasta_tools.utils import parse_timestamp
 
 DEFAULT_SLACK_CHANNEL = "#deploy"
 
+# how many recent deploys to list when no (or an unknown) commit is given
+NUM_RECENT_DEPLOYS = 10
+
 REVERT_MESSAGE = (
     "You must also revert the relevant commits in Git, or they will be redeployed on the next push.\n"
     "See y/rollback-then-revert for more information."
@@ -307,7 +310,10 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     if not commit:
         print("Please specify a commit to mark for rollback (-k, --commit).")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), history[:10]
+            service,
+            deploy_groups,
+            bool(given_deploy_groups),
+            history[:NUM_RECENT_DEPLOYS],
         )
         deploy_groups_arg = f" -l {','.join(deploy_groups)}" if deploy_groups else ""
         print(
@@ -325,7 +331,10 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         print("Please double check it or use --force to skip this verification.\n")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), history[:10]
+            service,
+            deploy_groups,
+            bool(given_deploy_groups),
+            history[:NUM_RECENT_DEPLOYS],
         )
         return 1
 
