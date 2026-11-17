@@ -17,17 +17,16 @@ from typing import Any
 from typing import Collection
 from typing import Dict
 from typing import Generator
-from typing import Mapping
-from typing import Tuple
+from typing import List
 
 from humanize import naturaltime
 
+from paasta_tools.cli.cmds.deploy_history import DeployHistoryEntry
 from paasta_tools.cli.cmds.deploy_history import get_deploy_history
 from paasta_tools.cli.cmds.deploy_history import print_deploy_history
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
-from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -36,7 +35,6 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.remote_git import create_rollback_tag
-from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
@@ -143,83 +141,47 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 def list_previously_deployed_shas(
     parsed_args: argparse.Namespace, **kwargs: None
 ) -> Generator[str, None, None]:
-    service = parsed_args.service
-    soa_dir = parsed_args.soa_dir
+    if parsed_args.service is None:
+        return
     deploy_groups = {
         deploy_group
         for deploy_group in parsed_args.deploy_groups.split(",")
         if deploy_group
     }
-    return (
-        version.sha
-        for version in get_versions_for_service(service, deploy_groups, soa_dir)
+    history, _ = get_deploy_history(
+        parsed_args.service, deploy_groups, parsed_args.soa_dir
     )
+    yield from {entry.version.sha for entry in history}
 
 
 def list_previously_deployed_image_versions(
     parsed_args: argparse.Namespace, **kwargs: None
 ) -> Generator[str, None, None]:
-    service = parsed_args.service
-    soa_dir = parsed_args.soa_dir
+    if parsed_args.service is None:
+        return
     deploy_groups = {
         deploy_group
         for deploy_group in parsed_args.deploy_groups.split(",")
         if deploy_group
     }
-    return (
-        version.image_version
-        for version in get_versions_for_service(service, deploy_groups, soa_dir)
+    history, _ = get_deploy_history(
+        parsed_args.service, deploy_groups, parsed_args.soa_dir
     )
-
-
-def get_versions_for_service(
-    service: str, deploy_groups: Collection[str], soa_dir: str
-) -> Mapping[DeploymentVersion, Tuple[str, str]]:
-    """Returns a dictionary of 2-tuples of the form (timestamp, deploy_group) for each version tuple of (deploy sha, image_version)"""
-    if service is None:
-        return {}
-    git_url = get_git_url(service=service, soa_dir=soa_dir)
-    all_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
-    deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
-    previously_deployed_versions: Dict[DeploymentVersion, Tuple[str, str]] = {}
-    for ref, sha in list_remote_refs(git_url).items():
-        regex_match = extract_tags(ref)
-        try:
-            deploy_group = regex_match["deploy_group"]
-            tstamp = regex_match["tstamp"]
-            image_version = regex_match["image_version"]
-            tag_type = regex_match["tag"]
-        except KeyError:
-            pass
-        else:
-            if tag_type != "deploy":
-                # i.e., we don't care about noise like rollback tags :)
-                continue
-
-            # Now we filter and dedup by picking the most recent sha for a deploy group
-            # Note that all strings are greater than ''
-            if deploy_group in deploy_groups:
-                version = DeploymentVersion(sha=sha, image_version=image_version)
-                tstamp_so_far = previously_deployed_versions.get(version, ("all", ""))[
-                    1
-                ]
-                if tstamp > tstamp_so_far:
-                    previously_deployed_versions[version] = (tstamp, deploy_group)
-    return previously_deployed_versions
+    yield from {
+        entry.version.image_version for entry in history if entry.version.image_version
+    }
 
 
 def list_previous_versions(
     service: str,
     deploy_groups: Collection[str],
     any_given_deploy_groups: bool,
-    soa_dir: str,
+    recent_deploys: List[DeployHistoryEntry],
 ) -> None:
     def format_timestamp(tstamp: str) -> str:
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
     print("Below is a list of recent commits:")
-    # Latest 10 deploys, newest first
-    recent_deploys, _ = get_deploy_history(service, deploy_groups, soa_dir, limit=10)
     print_deploy_history(recent_deploys)
     # Every deploy is listed, so the next row can be the same version as the latest
     # one (e.g. a redeploy) - suggest the most recent *different* version instead.
@@ -336,14 +298,16 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         return 1
 
-    versions = get_versions_for_service(service, deploy_groups, soa_dir)
+    history, _ = get_deploy_history(service, deploy_groups, soa_dir)
+    # every version that has ever been deployed to these deploy groups
+    versions = {entry.version for entry in history}
     commit = args.commit
     image_version = args.image_version
     new_version = DeploymentVersion(sha=commit, image_version=image_version)
     if not commit:
         print("Please specify a commit to mark for rollback (-k, --commit).")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), soa_dir
+            service, deploy_groups, bool(given_deploy_groups), history[:10]
         )
         deploy_groups_arg = f" -l {','.join(deploy_groups)}" if deploy_groups else ""
         print(
@@ -361,7 +325,7 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         print("Please double check it or use --force to skip this verification.\n")
         list_previous_versions(
-            service, deploy_groups, bool(given_deploy_groups), soa_dir
+            service, deploy_groups, bool(given_deploy_groups), history[:10]
         )
         return 1
 

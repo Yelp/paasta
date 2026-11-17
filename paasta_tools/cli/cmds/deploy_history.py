@@ -117,13 +117,16 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def get_deploy_history(
-    service: str, deploy_groups: Collection[str], soa_dir: str, limit: int
+    service: str,
+    deploy_groups: Collection[str],
+    soa_dir: str,
+    limit: Optional[int] = None,
 ) -> Tuple[List[DeployHistoryEntry], int]:
     """Returns the `limit` most recent deploys of the given deploy groups (newest first),
-    along with the total number of deploys found.
+    or all of them if `limit` is None, along with the total number of deploys found.
 
-    Unlike rollback.get_versions_for_service, this does not dedupe by version: a version
-    deployed several times (or to several deploy groups) shows up once per deploy.
+    This does not dedupe by version: a version deployed several times (or to several
+    deploy groups) shows up once per deploy.
 
     All tags come back from a single ls-remote call, ordered by name rather than by
     time, so every tag has to be looked at to find the newest ones - but only the
@@ -150,6 +153,8 @@ def get_deploy_history(
                 ),
             )
         )
+    if limit is None:
+        return sorted(history, reverse=True), len(history)
     return heapq.nlargest(limit, history), len(history)
 
 
