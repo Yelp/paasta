@@ -306,6 +306,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Additional author(s) of the deploy, who will be pinged in Slack",
     )
     list_parser.add_argument(
+        "--triggered-by",
+        dest="triggered_by",
+        default=None,
+        help="User who triggered this deploy, who will be sent a Slack DM if it is rolled back",
+    )
+    list_parser.add_argument(
         "--polling-interval",
         dest="polling_interval",
         type=float,
@@ -828,6 +834,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             if old_deployment_version
             else None,
             authors=args.authors,
+            triggered_by=args.triggered_by,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
             time_before_first_diagnosis=args.time_before_first_diagnosis,
@@ -902,6 +909,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         image_version: Optional[str] = None,
         old_image_version: Optional[str] = None,
         authors: Optional[List[str]] = None,
+        triggered_by: Optional[str] = None,
         polling_interval: float = None,
         diagnosis_interval: float = None,
         time_before_first_diagnosis: float = None,
@@ -934,6 +942,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
         self.authors = authors
+        self.triggered_by = triggered_by
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
@@ -1773,6 +1782,52 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             log.error(traceback.format_exc())
             self.trigger("deploy_errored")
 
+    def slack_api_call(self, method: str, **kwargs: Any) -> Dict[str, Any]:
+        client = self.get_slack_client()
+        if client is None:
+            return {"ok": False, "error": "no slack token"}
+        return client.api_call(method, **kwargs)
+
+    def get_rollback_dm_text(self, is_triggerer: bool, is_author: bool) -> str:
+        lines = [
+            f":rewind: `{self.service}` was rolled back in `{self.deploy_group}`.",
+            f"It went back to `{self.old_deployment_version.short_sha_repr()}` from "
+            f"`{self.deployment_version.short_sha_repr()}`.",
+        ]
+        if is_triggerer:
+            lines.append("You triggered this deploy.")
+        if is_author:
+            lines.append("You are listed as an author of this deploy.")
+        channel_id = getattr(self, "slack_channel_id", None)
+        thread_ts = getattr(self, "slack_ts", None)
+        if channel_id and thread_ts:
+            resp = self.slack_api_call(
+                "chat.getPermalink", channel=channel_id, message_ts=thread_ts
+            )
+            permalink = resp.get("permalink")
+            if resp.get("ok") is True and permalink:
+                lines.append(f"Deploy thread: {permalink}")
+        return "\n".join(lines)
+
+    def dm_authors_about_rollback(self) -> None:
+        try:
+            authors: Set[str] = set(self.authors or [])
+            recipients = set(authors)
+            if self.triggered_by:
+                recipients.add(self.triggered_by)
+            for username in sorted(recipients):
+                message = self.get_rollback_dm_text(
+                    is_triggerer=username == self.triggered_by,
+                    is_author=username in authors,
+                )
+                resp = self.slack_api_call(
+                    "chat.postMessage", channel=f"@{username}", text=message
+                )
+                if resp.get("ok") is not True:
+                    log.warning(f"Could not DM {username}: {resp.get('error')}")
+        except Exception:
+            log.warning(f"Failed to DM authors: {traceback.format_exc()}")
+
     def on_enter_rolled_back(self) -> None:
         message = f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
         self.update_slack_status(message)
@@ -1780,6 +1835,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         # so we also post this to the thread itself so that it's always clear that a rollback happened and was successful
         # XXX: perhaps we should audit our update_* calls and ensure we do this everywhere?
         self.update_slack_thread(message)
+        self.dm_authors_about_rollback()
         line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
