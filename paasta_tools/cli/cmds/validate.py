@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
+import ipaddress
 import json
 import os
 import pkgutil
@@ -359,6 +360,47 @@ def validate_instance_names(config_file_object, file_path):
     return len(errors) == 0
 
 
+def validate_firewall_cidrs(config_file_object, file_path):
+    """Check that every CIDR in a firewall block parses as a network address.
+
+    Mirrors the check the deploy pipeline performs (ipaddress.ip_network,
+    strict: host bits set are rejected), so config fails here at validate
+    time instead of at deploy time.
+
+    :param config_file_object: the parsed config file
+    :param file_path: path to the config file, for error messages
+    :return: True if all CIDRs are valid
+    """
+    errors = []
+    for instance_name, instance_config in config_file_object.items():
+        firewall = (
+            instance_config.get("firewall")
+            if isinstance(instance_config, dict)
+            else None
+        )
+        if not isinstance(firewall, dict):
+            continue
+        for direction in ("egress", "ingress"):
+            for rule in firewall.get(direction) or []:
+                for cidr_key in ("to_cidrs", "from_cidrs"):
+                    for cidr in rule.get(cidr_key) or []:
+                        try:
+                            ipaddress.ip_network(cidr)
+                        except ValueError:
+                            errors.append(
+                                f"{instance_name}.{direction}.{cidr_key}: {cidr}"
+                            )
+    if errors:
+        error_string = "\n".join(errors)
+        print(
+            failure(
+                f"Invalid CIDRs in firewall block(s) of {os.path.basename(file_path)}:\n{error_string}",
+                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+            )
+        )
+    return len(errors) == 0
+
+
 def validate_service_name(service):
     if len(sanitise_kubernetes_name(service)) > 63:
         print(
@@ -417,6 +459,11 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     try:
         validator.validate(config_file_object)
         if file_type in K8S_TYPES and not validate_instance_names(
+            config_file_object, file_path
+        ):
+            return False
+
+        if file_type == "eks" and not validate_firewall_cidrs(
             config_file_object, file_path
         ):
             return False

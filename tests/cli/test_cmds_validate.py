@@ -43,6 +43,7 @@ from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_cpu_burst
+from paasta_tools.cli.cmds.validate import validate_firewall_cidrs
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
@@ -565,6 +566,39 @@ def test_validate_instance_names(mock_get_file_contents, capsys):
     assert not validate_instance_names(fake_instances, "fake_path")
     output, _ = capsys.readouterr()
     assert "Length of instance name" in output
+
+
+def test_validate_firewall_cidrs_valid():
+    config = {
+        "main": {
+            "firewall": {
+                "egress": [
+                    {"to_cidrs": ["52.94.0.0/16", "10.0.0.0/8"], "ports": []},
+                    {"to_services": ["some-service"]},
+                ],
+                "ingress": [
+                    {"from_cidrs": ["10.0.0.0/8"], "ports": []},
+                ],
+            }
+        }
+    }
+    assert validate_firewall_cidrs(config, "fake_path/eks-fake-cluster.yaml")
+
+
+@pytest.mark.parametrize(
+    "bad_cidr", ["not-a-cidr", "52.94.0.999/16", "10.0.0.0/33", "10.0.0.1/8"]
+)
+def test_validate_firewall_cidrs_invalid(bad_cidr, capsys):
+    config = {"main": {"firewall": {"egress": [{"to_cidrs": [bad_cidr]}]}}}
+    assert not validate_firewall_cidrs(config, "fake_path/eks-fake-cluster.yaml")
+    output, _ = capsys.readouterr()
+    assert "Invalid CIDRs" in output
+    assert bad_cidr in output
+
+
+def test_validate_firewall_cidrs_absent_block(capsys):
+    assert validate_firewall_cidrs({"main": {"cpus": 0.5}}, "fake_path")
+    assert validate_firewall_cidrs({"main": {}}, "fake_path")
 
 
 @pytest.mark.parametrize(
