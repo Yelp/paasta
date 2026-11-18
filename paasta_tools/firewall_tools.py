@@ -27,9 +27,9 @@ from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1ObjectMeta
 from mypy_extensions import TypedDict
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -174,9 +174,11 @@ def _peers_for_service_ref(
     """
     _validate_service_ref(service_ref)
     service, _, instance = service_ref.partition(".")
+    # EksDeploymentConfig, not KubernetesDeploymentConfig: it loads
+    # eks-<cluster>.yaml, which is where firewall blocks live
     instance_configs = list(
         PaastaServiceConfigLoader(service=service, soa_dir=soa_dir).instance_configs(
-            cluster, KubernetesDeploymentConfig
+            cluster, EksDeploymentConfig
         )
     )
     if not instance_configs:

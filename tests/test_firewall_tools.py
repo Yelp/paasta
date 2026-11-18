@@ -11,6 +11,7 @@ from kubernetes.client import V1NetworkPolicyPort
 from kubernetes.client import V1NetworkPolicySpec
 from kubernetes.client import V1ObjectMeta
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.firewall_tools import FirewallConfigDict
 from paasta_tools.firewall_tools import FirewallPortDict
 from paasta_tools.firewall_tools import FirewallRuleDict
@@ -23,7 +24,6 @@ from paasta_tools.firewall_tools import _peers_for_service_ref
 from paasta_tools.firewall_tools import create_network_policy
 from paasta_tools.firewall_tools import network_policy_for_service_instance
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 
 
@@ -37,7 +37,7 @@ def test_create_network_policy():
 
 
 def _fake_instance_config(instance: str, namespace: str) -> mock.Mock:
-    config = mock.Mock(spec=KubernetesDeploymentConfig)
+    config = mock.Mock(spec=EksDeploymentConfig)
     config.get_instance.return_value = instance
     config.get_namespace.return_value = namespace
     return config
