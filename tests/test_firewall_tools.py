@@ -37,14 +37,14 @@ def test_create_network_policy():
     )
 
 
-def _fake_instance_config(instance: str, namespace: str) -> mock.Mock:
+def mock_instance_config(instance: str, namespace: str) -> mock.Mock:
     config = mock.Mock(spec=EksDeploymentConfig)
     config.get_instance.return_value = instance
     config.get_namespace.return_value = namespace
     return config
 
 
-def _patch_peer_loader(configs_by_service):
+def mock_paasta_service_config_loader(configs_by_service):
     def make_loader(service=None, soa_dir=None):
         loader = mock.create_autospec(PaastaServiceConfigLoader, instance=True)
         loader.instance_configs.return_value = configs_by_service.get(service, [])
@@ -57,7 +57,7 @@ def _patch_peer_loader(configs_by_service):
     )
 
 
-def _patch_eks_service_loader(instance_config):
+def mock_eks_service_config_loader(instance_config):
     return mock.patch(
         "paasta_tools.firewall_tools.load_eks_service_config",
         return_value=instance_config,
@@ -67,11 +67,11 @@ def _patch_eks_service_loader(instance_config):
 
 def test_peers_for_service_ref_bare_name():
     # A bare name means all instances: service label only, no instance label
-    with _patch_peer_loader(
+    with mock_paasta_service_config_loader(
         {
             "some-service": [
-                _fake_instance_config("main", "paastasvc-some-service"),
-                _fake_instance_config("worker", "paastasvc-some-service"),
+                mock_instance_config("main", "paastasvc-some-service"),
+                mock_instance_config("worker", "paastasvc-some-service"),
             ]
         }
     ):
@@ -87,8 +87,8 @@ def test_peers_for_service_ref_bare_name():
 
 def test_peers_for_service_ref_dotted_name():
     # A dotted name means one instance: both labels, raw service name
-    with _patch_eks_service_loader(
-        _fake_instance_config("main", "paastasvc-some-service")
+    with mock_eks_service_config_loader(
+        mock_instance_config("main", "paastasvc-some-service")
     ):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert len(peers) == 1
@@ -104,7 +104,9 @@ def test_peers_for_service_ref_dotted_name():
 def test_peers_for_service_ref_custom_namespace():
     # The namespace comes from the peer's instance config, not the
     # paastasvc- convention: services can override it
-    with _patch_eks_service_loader(_fake_instance_config("main", "custom-namespace")):
+    with mock_eks_service_config_loader(
+        mock_instance_config("main", "custom-namespace")
+    ):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "custom-namespace"
@@ -114,11 +116,11 @@ def test_peers_for_service_ref_custom_namespace():
 def test_peers_for_service_ref_instances_span_namespaces():
     # A bare name whose instances live in different namespaces produces
     # one peer per namespace
-    with _patch_peer_loader(
+    with mock_paasta_service_config_loader(
         {
             "some-service": [
-                _fake_instance_config("main", "paastasvc-some-service"),
-                _fake_instance_config("worker", "custom-namespace"),
+                mock_instance_config("main", "paastasvc-some-service"),
+                mock_instance_config("worker", "custom-namespace"),
             ]
         }
     ):
@@ -141,7 +143,7 @@ def test_peers_for_service_ref_instance_not_found():
 
 
 def test_peers_for_service_ref_service_not_on_cluster():
-    with _patch_peer_loader({"some-service": []}):
+    with mock_paasta_service_config_loader({"some-service": []}):
         with pytest.raises(ValueError):
             _peers_for_service_ref("some-service", "fake-cluster")
 
@@ -149,8 +151,8 @@ def test_peers_for_service_ref_service_not_on_cluster():
 def test_peers_for_service_ref_underscores():
     # Pod label uses the raw service name even when the namespace is
     # sanitised
-    with _patch_eks_service_loader(
-        _fake_instance_config("main", "paastasvc-service--with--underscores")
+    with mock_eks_service_config_loader(
+        mock_instance_config("main", "paastasvc-service--with--underscores")
     ):
         peers = _peers_for_service_ref("service_with_underscores.main", "fake-cluster")
     assert peers[0].pod_selector.match_labels == {
@@ -185,8 +187,8 @@ def test_egress_rule_for_firewall_rule():
         "to_services": ["some-service"],
         "ports": [{"protocol": "TCP", "port": 3306}],
     }
-    with _patch_peer_loader(
-        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    with mock_paasta_service_config_loader(
+        {"some-service": [mock_instance_config("main", "paastasvc-some-service")]}
     ):
         egress_rule = _egress_rule_for_firewall_rule(rule, "fake-cluster")
     assert egress_rule == V1NetworkPolicyEgressRule(
@@ -208,7 +210,9 @@ def test_egress_rule_for_firewall_rule():
 
 def test_ingress_rule_for_firewall_rule():
     rule = {"from_services": ["some-api.main"]}
-    with _patch_eks_service_loader(_fake_instance_config("main", "paastasvc-some-api")):
+    with mock_eks_service_config_loader(
+        mock_instance_config("main", "paastasvc-some-api")
+    ):
         ingress_rule = _ingress_rule_for_firewall_rule(rule, "fake-cluster")
     assert ingress_rule == V1NetworkPolicyIngressRule(
         _from=[
@@ -268,9 +272,11 @@ def test_network_policy_for_service_instance():
         )
     ]
 
-    with _patch_peer_loader(
-        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
-    ), _patch_eks_service_loader(_fake_instance_config("main", "paastasvc-some-api")):
+    with mock_paasta_service_config_loader(
+        {"some-service": [mock_instance_config("main", "paastasvc-some-service")]}
+    ), mock_eks_service_config_loader(
+        mock_instance_config("main", "paastasvc-some-api")
+    ):
         policy = network_policy_for_service_instance(
             service="some-service",
             instance="main",
@@ -359,8 +365,8 @@ def test_network_policy_for_service_instance_baselines():
     )
     baseline_ingress = [FirewallRuleDict(from_cidrs=["10.0.0.0/8"])]
 
-    with _patch_peer_loader(
-        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    with mock_paasta_service_config_loader(
+        {"some-service": [mock_instance_config("main", "paastasvc-some-service")]}
     ):
         policy = network_policy_for_service_instance(
             service="some-service",
