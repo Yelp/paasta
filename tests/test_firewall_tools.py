@@ -65,71 +65,136 @@ def mock_eks_service_config_loader(instance_config):
     )
 
 
-def test_peers_for_service_ref_bare_name():
-    # A bare name means all instances: service label only, no instance label
+@pytest.mark.parametrize(
+    "service_ref, pscl_configs, direct_config, expected_peers",
+    (
+        pytest.param(
+            "some-service",
+            {
+                "some-service": [
+                    mock_instance_config("main", "paastasvc-some-service"),
+                    mock_instance_config("worker", "paastasvc-some-service"),
+                ]
+            },
+            mock_instance_config("main", "paastasvc-some-service"),
+            [
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={
+                            "kubernetes.io/metadata.name": "paastasvc-some-service"
+                        }
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={"paasta.yelp.com/service": "some-service"}
+                    ),
+                )
+            ],
+            id="bare-name-all-instances",
+        ),
+        pytest.param(
+            "some-service.main",
+            {"some-service": []},
+            mock_instance_config("main", "paastasvc-some-service"),
+            [
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={
+                            "kubernetes.io/metadata.name": "paastasvc-some-service"
+                        }
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={
+                            "paasta.yelp.com/service": "some-service",
+                            "paasta.yelp.com/instance": "main",
+                        }
+                    ),
+                )
+            ],
+            id="dotted-name-one-instance",
+        ),
+        pytest.param(
+            "some-service.main",
+            {"some-service": []},
+            mock_instance_config("main", "custom-namespace"),
+            [
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={"kubernetes.io/metadata.name": "custom-namespace"}
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={
+                            "paasta.yelp.com/service": "some-service",
+                            "paasta.yelp.com/instance": "main",
+                        }
+                    ),
+                )
+            ],
+            id="custom-namespace",
+        ),
+        pytest.param(
+            "service_with_underscores.main",
+            {"service_with_underscores": []},
+            mock_instance_config("main", "paastasvc-service--with--underscores"),
+            [
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={
+                            "kubernetes.io/metadata.name": (
+                                "paastasvc-service--with--underscores"
+                            )
+                        }
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={
+                            "paasta.yelp.com/service": "service_with_underscores",
+                            "paasta.yelp.com/instance": "main",
+                        }
+                    ),
+                )
+            ],
+            id="raw-service-name-in-pod-label",
+        ),
+        pytest.param(
+            "some-service",
+            {
+                "some-service": [
+                    mock_instance_config("main", "paastasvc-some-service"),
+                    mock_instance_config("worker", "custom-namespace"),
+                ]
+            },
+            mock_instance_config("main", "paastasvc-some-service"),
+            [
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={"kubernetes.io/metadata.name": "custom-namespace"}
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={"paasta.yelp.com/service": "some-service"}
+                    ),
+                ),
+                V1NetworkPolicyPeer(
+                    namespace_selector=V1LabelSelector(
+                        match_labels={
+                            "kubernetes.io/metadata.name": "paastasvc-some-service"
+                        }
+                    ),
+                    pod_selector=V1LabelSelector(
+                        match_labels={"paasta.yelp.com/service": "some-service"}
+                    ),
+                ),
+            ],
+            id="instances-span-namespaces",
+        ),
+    ),
+)
+def test_peers_for_service_ref(
+    service_ref, pscl_configs, direct_config, expected_peers
+):
     with mock_paasta_service_config_loader(
-        {
-            "some-service": [
-                mock_instance_config("main", "paastasvc-some-service"),
-                mock_instance_config("worker", "paastasvc-some-service"),
-            ]
-        }
-    ):
-        peers = _peers_for_service_ref("some-service", "fake-cluster")
-    assert len(peers) == 1
-    assert peers[0].namespace_selector.match_labels == {
-        "kubernetes.io/metadata.name": "paastasvc-some-service"
-    }
-    assert peers[0].pod_selector.match_labels == {
-        "paasta.yelp.com/service": "some-service"
-    }
-
-
-def test_peers_for_service_ref_dotted_name():
-    # A dotted name means one instance: both labels, raw service name
-    with mock_eks_service_config_loader(
-        mock_instance_config("main", "paastasvc-some-service")
-    ):
-        peers = _peers_for_service_ref("some-service.main", "fake-cluster")
-    assert len(peers) == 1
-    assert peers[0].namespace_selector.match_labels == {
-        "kubernetes.io/metadata.name": "paastasvc-some-service"
-    }
-    assert peers[0].pod_selector.match_labels == {
-        "paasta.yelp.com/service": "some-service",
-        "paasta.yelp.com/instance": "main",
-    }
-
-
-def test_peers_for_service_ref_custom_namespace():
-    # The namespace comes from the peer's instance config, not the
-    # paastasvc- convention: services can override it
-    with mock_eks_service_config_loader(
-        mock_instance_config("main", "custom-namespace")
-    ):
-        peers = _peers_for_service_ref("some-service.main", "fake-cluster")
-    assert peers[0].namespace_selector.match_labels == {
-        "kubernetes.io/metadata.name": "custom-namespace"
-    }
-
-
-def test_peers_for_service_ref_instances_span_namespaces():
-    # A bare name whose instances live in different namespaces produces
-    # one peer per namespace
-    with mock_paasta_service_config_loader(
-        {
-            "some-service": [
-                mock_instance_config("main", "paastasvc-some-service"),
-                mock_instance_config("worker", "custom-namespace"),
-            ]
-        }
-    ):
-        peers = _peers_for_service_ref("some-service", "fake-cluster")
-    assert len(peers) == 2
-    namespaces = {
-        p.namespace_selector.match_labels["kubernetes.io/metadata.name"] for p in peers
-    }
-    assert namespaces == {"paastasvc-some-service", "custom-namespace"}
+        pscl_configs
+    ), mock_eks_service_config_loader(direct_config):
+        peers = _peers_for_service_ref(service_ref, "fake-cluster")
+    assert peers == expected_peers
 
 
 def test_peers_for_service_ref_instance_not_found():
@@ -146,19 +211,6 @@ def test_peers_for_service_ref_service_not_on_cluster():
     with mock_paasta_service_config_loader({"some-service": []}):
         with pytest.raises(ValueError):
             _peers_for_service_ref("some-service", "fake-cluster")
-
-
-def test_peers_for_service_ref_underscores():
-    # Pod label uses the raw service name even when the namespace is
-    # sanitised
-    with mock_eks_service_config_loader(
-        mock_instance_config("main", "paastasvc-service--with--underscores")
-    ):
-        peers = _peers_for_service_ref("service_with_underscores.main", "fake-cluster")
-    assert peers[0].pod_selector.match_labels == {
-        "paasta.yelp.com/service": "service_with_underscores",
-        "paasta.yelp.com/instance": "main",
-    }
 
 
 def test_peer_for_cidr():
