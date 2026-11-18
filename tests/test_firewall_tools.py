@@ -25,6 +25,7 @@ from paasta_tools.firewall_tools import create_network_policy
 from paasta_tools.firewall_tools import network_policy_for_service_instance
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.utils import NoConfigurationForServiceError
 
 
 def test_create_network_policy():
@@ -56,6 +57,14 @@ def _patch_peer_loader(configs_by_service):
     )
 
 
+def _patch_eks_service_loader(instance_config):
+    return mock.patch(
+        "paasta_tools.firewall_tools.load_eks_service_config",
+        return_value=instance_config,
+        autospec=True,
+    )
+
+
 def test_peers_for_service_ref_bare_name():
     # A bare name means all instances: service label only, no instance label
     with _patch_peer_loader(
@@ -78,13 +87,8 @@ def test_peers_for_service_ref_bare_name():
 
 def test_peers_for_service_ref_dotted_name():
     # A dotted name means one instance: both labels, raw service name
-    with _patch_peer_loader(
-        {
-            "some-service": [
-                _fake_instance_config("main", "paastasvc-some-service"),
-                _fake_instance_config("worker", "paastasvc-some-service"),
-            ]
-        }
+    with _patch_eks_service_loader(
+        _fake_instance_config("main", "paastasvc-some-service")
     ):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert len(peers) == 1
@@ -100,9 +104,7 @@ def test_peers_for_service_ref_dotted_name():
 def test_peers_for_service_ref_custom_namespace():
     # The namespace comes from the peer's instance config, not the
     # paastasvc- convention: services can override it
-    with _patch_peer_loader(
-        {"some-service": [_fake_instance_config("main", "custom-namespace")]}
-    ):
+    with _patch_eks_service_loader(_fake_instance_config("main", "custom-namespace")):
         peers = _peers_for_service_ref("some-service.main", "fake-cluster")
     assert peers[0].namespace_selector.match_labels == {
         "kubernetes.io/metadata.name": "custom-namespace"
@@ -129,10 +131,12 @@ def test_peers_for_service_ref_instances_span_namespaces():
 
 
 def test_peers_for_service_ref_instance_not_found():
-    with _patch_peer_loader(
-        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    with mock.patch(
+        "paasta_tools.firewall_tools.load_eks_service_config",
+        side_effect=NoConfigurationForServiceError("nope"),
+        autospec=True,
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(NoConfigurationForServiceError):
             _peers_for_service_ref("some-service.worker", "fake-cluster")
 
 
@@ -145,12 +149,8 @@ def test_peers_for_service_ref_service_not_on_cluster():
 def test_peers_for_service_ref_underscores():
     # Pod label uses the raw service name even when the namespace is
     # sanitised
-    with _patch_peer_loader(
-        {
-            "service_with_underscores": [
-                _fake_instance_config("main", "paastasvc-service--with--underscores")
-            ]
-        }
+    with _patch_eks_service_loader(
+        _fake_instance_config("main", "paastasvc-service--with--underscores")
     ):
         peers = _peers_for_service_ref("service_with_underscores.main", "fake-cluster")
     assert peers[0].pod_selector.match_labels == {
@@ -208,9 +208,7 @@ def test_egress_rule_for_firewall_rule():
 
 def test_ingress_rule_for_firewall_rule():
     rule = {"from_services": ["some-api.main"]}
-    with _patch_peer_loader(
-        {"some-api": [_fake_instance_config("main", "paastasvc-some-api")]}
-    ):
+    with _patch_eks_service_loader(_fake_instance_config("main", "paastasvc-some-api")):
         ingress_rule = _ingress_rule_for_firewall_rule(rule, "fake-cluster")
     assert ingress_rule == V1NetworkPolicyIngressRule(
         _from=[
@@ -271,11 +269,8 @@ def test_network_policy_for_service_instance():
     ]
 
     with _patch_peer_loader(
-        {
-            "some-service": [_fake_instance_config("main", "paastasvc-some-service")],
-            "some-api": [_fake_instance_config("main", "paastasvc-some-api")],
-        }
-    ):
+        {"some-service": [_fake_instance_config("main", "paastasvc-some-service")]}
+    ), _patch_eks_service_loader(_fake_instance_config("main", "paastasvc-some-api")):
         policy = network_policy_for_service_instance(
             service="some-service",
             instance="main",

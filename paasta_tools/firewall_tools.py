@@ -27,6 +27,7 @@ from kubernetes.client import V1ObjectMeta
 from mypy_extensions import TypedDict
 
 from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
@@ -148,31 +149,36 @@ def _peers_for_service_ref(
     :param service_ref: service name from a to_services/from_services list
     :param cluster: cluster the policy is generated for
     :param soa_dir: soa config dir to load the peer service's config from
-    :raises ValueError: if the service or named instance is not on the cluster
+    :raises NoConfigurationForServiceError: if a named instance is not on the cluster
+    :raises ValueError: if a bare-named service has no instances on the cluster
     :return: NetworkPolicyPeer objects for the service reference
     """
     service, _, instance = service_ref.partition(".")
-    # EksDeploymentConfig, not KubernetesDeploymentConfig: it loads
-    # eks-<cluster>.yaml, which is where firewall blocks live
-    instance_configs = list(
-        PaastaServiceConfigLoader(service=service, soa_dir=soa_dir).instance_configs(
-            cluster, EksDeploymentConfig
-        )
-    )
-    if not instance_configs:
-        raise ValueError(f"no instances of service '{service}' found on {cluster}")
     if instance:
-        matching = [c for c in instance_configs if c.get_instance() == instance]
-        if not matching:
-            raise ValueError(
-                f"instance '{instance}' of service '{service}' not found on {cluster}"
-            )
-        namespaces = [matching[0].get_namespace()]
+        # Dotted ref: load just this instance's config, which raises
+        # NoConfigurationForServiceError if it isn't on the cluster
+        instance_config = load_eks_service_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        namespaces = [instance_config.get_namespace()]
         pod_labels = {
             "paasta.yelp.com/service": service,
             "paasta.yelp.com/instance": instance,
         }
     else:
+        # Bare ref: all instances, via EksDeploymentConfig, which loads
+        # eks-<cluster>.yaml, where firewall blocks live
+        instance_configs = list(
+            PaastaServiceConfigLoader(
+                service=service, soa_dir=soa_dir
+            ).instance_configs(cluster, EksDeploymentConfig)
+        )
+        if not instance_configs:
+            raise ValueError(f"no instances of service '{service}' found on {cluster}")
         namespaces = sorted({c.get_namespace() for c in instance_configs})
         pod_labels = {"paasta.yelp.com/service": service}
     return [
