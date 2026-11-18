@@ -24,6 +24,7 @@ from paasta_tools.firewall_tools import _peers_for_service_ref
 from paasta_tools.firewall_tools import create_network_policy
 from paasta_tools.firewall_tools import network_policy_for_service_instance
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 
 
 def test_create_network_policy():
@@ -44,7 +45,7 @@ def _fake_instance_config(instance: str, namespace: str) -> mock.Mock:
 
 def _patch_peer_loader(configs_by_service):
     def make_loader(service=None, soa_dir=None):
-        loader = mock.Mock()
+        loader = mock.create_autospec(PaastaServiceConfigLoader, instance=True)
         loader.instance_configs.return_value = configs_by_service.get(service, [])
         return loader
 
