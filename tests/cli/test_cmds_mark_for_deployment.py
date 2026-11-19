@@ -2237,13 +2237,8 @@ def test_MarkForDeployProcess_deploys_when_recording_fails():
     assert mfdp.state == "_begin"
 
 
-def make_dm_process(
-    authors, post_responses=None, permalink_response=None, triggered_by=None
-):
-    """A stand-in for MarkForDeploymentProcess wired to the real DM methods.
-
-    post_responses maps a chat.postMessage channel (e.g. "@alpha") to its response; others succeed.
-    """
+def make_dm_process(authors, triggered_by=None, permalink="https://slack/thread"):
+    """A stand-in for MarkForDeploymentProcess wired to the real DM methods."""
     mfdp_cls = mark_for_deployment.MarkForDeploymentProcess
     fake = MagicMock()
     fake.authors = authors
@@ -2252,28 +2247,17 @@ def make_dm_process(
     fake.deploy_group = "prod.non_canary"
     fake.deployment_version = DeploymentVersion(sha="a" * 40, image_version=None)
     fake.old_deployment_version = DeploymentVersion(sha="b" * 40, image_version=None)
-    fake.slack_channel_id = "C123"
-    fake.slack_ts = "1.23"
-
-    def slack_api_call(method, **kwargs):
-        if method == "chat.getPermalink":
-            return permalink_response or {
-                "ok": True,
-                "permalink": "https://slack/thread",
-            }
-        return (post_responses or {}).get(kwargs["channel"], {"ok": True})
-
-    fake.slack_api_call.side_effect = slack_api_call
+    fake.get_thread_permalink.return_value = permalink
     fake.get_rollback_dm_text.side_effect = (
         lambda **kwargs: mfdp_cls.get_rollback_dm_text(fake, **kwargs)
     )
     return fake
 
 
-def dm_calls(fake):
-    return [
-        c for c in fake.slack_api_call.call_args_list if c.args[0] == "chat.postMessage"
-    ]
+def dm_messages(fake):
+    """The {username: text} dict passed to dm_users."""
+    fake.dm_users.assert_called_once()
+    return fake.dm_users.call_args.args[0]
 
 
 def test_dm_authors_about_rollback_dms_each_author():
@@ -2281,10 +2265,11 @@ def test_dm_authors_about_rollback_dms_each_author():
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert [c.kwargs["channel"] for c in dm_calls(fake)] == ["@alpha", "@bravo"]
-    text = dm_calls(fake)[0].kwargs["text"]
-    assert "`service` was rolled back in `prod.non_canary`" in text
-    assert "`bbbbbbbb` from `aaaaaaaa`" in text
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "bravo"]
+    text = messages["alpha"]
+    assert "`service` is being rolled back in `prod.non_canary`" in text
+    assert "Rolling back to `bbbbbbbb` from `aaaaaaaa`" in text
     assert "Deploy thread: https://slack/thread" in text
 
 
@@ -2293,16 +2278,16 @@ def test_dm_authors_about_rollback_dms_duplicate_authors_once():
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert len(dm_calls(fake)) == 1
+    assert list(dm_messages(fake)) == ["alpha"]
 
 
 @pytest.mark.parametrize("authors", [None, []])
-def test_dm_authors_about_rollback_without_authors_does_nothing(authors):
+def test_dm_authors_about_rollback_without_authors_dms_nobody(authors):
     fake = make_dm_process(authors=authors)
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    fake.slack_api_call.assert_not_called()
+    assert dm_messages(fake) == {}
 
 
 def test_dm_authors_about_rollback_dms_triggerer_who_is_not_an_author():
@@ -2310,12 +2295,12 @@ def test_dm_authors_about_rollback_dms_triggerer_who_is_not_an_author():
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert [c.kwargs["channel"] for c in dm_calls(fake)] == ["@alpha", "@delta"]
-    author_text, triggerer_text = [c.kwargs["text"] for c in dm_calls(fake)]
-    assert "You are listed as an author of this deploy." in author_text
-    assert "You triggered this deploy." not in author_text
-    assert "You triggered this deploy." in triggerer_text
-    assert "You are listed as an author of this deploy." not in triggerer_text
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "delta"]
+    assert "You are listed as an author of this deploy." in messages["alpha"]
+    assert "You triggered this deploy." not in messages["alpha"]
+    assert "You triggered this deploy." in messages["delta"]
+    assert "You are listed as an author of this deploy." not in messages["delta"]
 
 
 def test_dm_authors_about_rollback_dms_triggerer_without_authors():
@@ -2323,7 +2308,7 @@ def test_dm_authors_about_rollback_dms_triggerer_without_authors():
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert [c.kwargs["channel"] for c in dm_calls(fake)] == ["@delta"]
+    assert list(dm_messages(fake)) == ["delta"]
 
 
 def test_dm_authors_about_rollback_dms_triggerer_who_is_an_author_once():
@@ -2331,51 +2316,28 @@ def test_dm_authors_about_rollback_dms_triggerer_who_is_an_author_once():
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert [c.kwargs["channel"] for c in dm_calls(fake)] == ["@alpha", "@bravo"]
-    text = dm_calls(fake)[1].kwargs["text"]
-    assert "You triggered this deploy." in text
-    assert "You are listed as an author of this deploy." in text
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "bravo"]
+    assert "You triggered this deploy." in messages["bravo"]
+    assert "You are listed as an author of this deploy." in messages["bravo"]
 
 
-@pytest.mark.parametrize(
-    "permalink_response",
-    [{"ok": False, "error": "boom"}, {"ok": True}],
-)
-def test_dm_authors_about_rollback_omits_thread_link_but_still_dms(
-    permalink_response,
-):
-    fake = make_dm_process(authors=["alpha"], permalink_response=permalink_response)
+def test_dm_authors_about_rollback_omits_thread_link_but_still_dms():
+    fake = make_dm_process(authors=["alpha"], permalink=None)
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
-    assert "Deploy thread" not in dm_calls(fake)[0].kwargs["text"]
-
-
-def test_dm_authors_about_rollback_failed_dm_does_not_stop_the_others():
-    fake = make_dm_process(
-        authors=["alpha", "charlie+foxtrot", "bravo"],
-        post_responses={
-            "@charlie+foxtrot": {"ok": False, "error": "channel_not_found"}
-        },
-    )
-
-    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
-
-    assert [c.kwargs["channel"] for c in dm_calls(fake)] == [
-        "@alpha",
-        "@bravo",
-        "@charlie+foxtrot",
-    ]
+    assert "Deploy thread" not in dm_messages(fake)["alpha"]
 
 
 def test_dm_authors_about_rollback_never_raises():
     fake = make_dm_process(authors=["alpha"])
-    fake.slack_api_call.side_effect = Exception("boom")
+    fake.dm_users.side_effect = Exception("boom")
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 
 
-def test_on_enter_rolled_back_dms_authors_after_posting_to_thread():
+def test_on_enter_rolled_back_does_not_dm_authors():
     fake = MagicMock()
     fake.service = "service"
     fake.deploy_group = "prod.non_canary"
@@ -2385,10 +2347,25 @@ def test_on_enter_rolled_back_dms_authors_after_posting_to_thread():
     with patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True):
         mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back(fake)
 
-    called = [c[0] for c in fake.method_calls]
-    assert called.index("update_slack_thread") < called.index(
-        "dm_authors_about_rollback"
-    )
-    fake.dm_authors_about_rollback.assert_called_once_with()
+    fake.dm_authors_about_rollback.assert_not_called()
     # the rollback's later steps still happen
     fake.start_timer.assert_called_once_with(600, "auto_abandon", "abandon")
+
+
+def test_on_enter_start_rollback_dms_authors_before_marking():
+    fake = MagicMock()
+    fake.old_git_sha = "b" * 40
+    fake.old_image_version = None
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=1,
+    ):
+        mark_for_deployment.MarkForDeploymentProcess.on_enter_start_rollback(fake)
+
+    fake.dm_authors_about_rollback.assert_called_once_with()
+    called = [c[0] for c in fake.method_calls]
+    assert called.index("dm_authors_about_rollback") < called.index(
+        "update_slack_status"
+    )
