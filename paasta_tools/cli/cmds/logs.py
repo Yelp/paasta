@@ -16,19 +16,25 @@
 import argparse
 import asyncio
 import datetime
+import http.client
 import json
 import logging
+import os
 import re
 import sys
+import threading
+from collections import deque
 from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
+from time import monotonic
 from time import sleep
 from typing import Any
 from typing import Callable
 from typing import ContextManager
+from typing import Deque
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -45,6 +51,7 @@ from typing import Union
 import isodate
 import nats
 import pytz
+import urllib3
 from dateutil import tz
 
 from paasta_tools.async_utils import run_sync
@@ -84,6 +91,7 @@ except ImportError:
 from pytimeparse.timeparse import timeparse
 
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import verify_instances
@@ -92,6 +100,7 @@ from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import get_log_name_for_service
@@ -134,7 +143,9 @@ def add_subparser(subparsers) -> None:
         type=str,
     ).completer = completer_clusters
     pod_help = (
-        "The pods to see relevant logs for. Defaults to all pods for this service."
+        "The pods to see relevant logs for. Defaults to all pods for this service. "
+        "When PAASTA_LOGS_VIA_API (or the logs_via_api toggle in the system paasta "
+        "config) is enabled, logs for specific pods are fetched via the paasta API."
     )
     status_parser.add_argument("-p", "--pods", help=pod_help)
     status_parser.add_argument(
@@ -1500,6 +1511,389 @@ def pick_default_log_mode(
     return 1
 
 
+PAASTA_LOGS_VIA_API_ENV_VAR = "PAASTA_LOGS_VIA_API"
+POD_LOGS_TRUTHY_ENV_VAR_VALUES = frozenset(("1", "true", "yes", "on"))
+POD_LOGS_FALSY_ENV_VAR_VALUES = frozenset(("0", "false", "no", "off", ""))
+POD_LOGS_DEFAULT_LINE_COUNT = 100
+POD_LOGS_RECONNECT_DEDUPE_WINDOW = 1000
+# A follow stream that ends cleanly with no lines almost immediately generally
+# means the pod's logs are finished. A stream that produced lines, or that
+# stayed open for a while before ending cleanly, is instead assumed to be an
+# expected server-side stream rotation and is reconnected.
+POD_LOGS_EMPTY_STREAM_EXIT_SECONDS = 5
+
+# Exceptions that mean a request or its log stream broke unexpectedly (network
+# blip, connection reset, ...). In that case we log, reconnect, and resume from
+# the last seen timestamp. The paasta API normally ends follow streams cleanly
+# before its own request timeout, so routine reconnects do not come through
+# this path.
+POD_LOGS_RECONNECTABLE_ERRORS = (
+    http.client.HTTPException,
+    ConnectionError,
+    TimeoutError,
+    urllib3.exceptions.ProtocolError,
+    urllib3.exceptions.MaxRetryError,
+    urllib3.exceptions.ReadTimeoutError,
+)
+
+# A kubernetes log line with timestamps=True looks like
+# "2023-06-01T21:49:16.045075559Z the actual message"
+KUBE_LOG_TIMESTAMP_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}) "
+)
+
+
+def pod_logs_via_api_enabled(system_paasta_config: SystemPaastaConfig) -> bool:
+    """Whether `paasta logs --pods` should fetch logs via the paasta API
+    instead of scribe/vector.
+
+    The PAASTA_LOGS_VIA_API environment variable takes precedence over the
+    logs_via_api toggle in the system paasta config: if it is unset, the config
+    value is used; if it is set, it is parsed as a boolean ("1"/"true"/"yes"/
+    "on" case-insensitively means enabled, anything else - including "" and
+    "0"/"false"/"no"/"off" - means disabled), so it can be used to force the
+    behavior on or off for a single invocation.
+    """
+    env_var_value = os.environ.get(PAASTA_LOGS_VIA_API_ENV_VAR)
+    if env_var_value is None:
+        return system_paasta_config.get_logs_via_api()
+    normalized = env_var_value.strip().lower()
+    if normalized in POD_LOGS_TRUTHY_ENV_VAR_VALUES:
+        return True
+    if normalized not in POD_LOGS_FALSY_ENV_VAR_VALUES:
+        log.warning(
+            "Ignoring unrecognized %s value %r; treating it as disabled",
+            PAASTA_LOGS_VIA_API_ENV_VAR,
+            env_var_value,
+        )
+    return False
+
+
+def split_kube_log_line(line: str) -> Tuple[Optional[str], str]:
+    """Split a kubernetes log line (requested with timestamps=True) into its
+    RFC3339Nano timestamp and its content. Returns (None, line) if the line
+    does not appear to be timestamped."""
+    if not KUBE_LOG_TIMESTAMP_RE.match(line):
+        return (None, line)
+    timestamp, content = line.split(" ", 1)
+    return (timestamp, content)
+
+
+def floor_kube_timestamp_to_second(timestamp: str) -> str:
+    """Floor an RFC3339Nano timestamp to the whole second below it, as an
+    ISO8601 string usable as the since_time query parameter when resuming a
+    pod log stream. We floor rather than passing the exact timestamp because
+    the API server can be picky about sub-second precision; the up-to-one-
+    second overlap this causes is deduplicated client-side."""
+    return isodate.parse_datetime(timestamp).replace(microsecond=0).isoformat()
+
+
+def format_pod_log_line(
+    timestamp: Optional[str], content: str, strip_headers: bool
+) -> str:
+    """Render a kubernetes pod log line for display."""
+    if strip_headers and timestamp is not None:
+        return content
+    return f"{timestamp} {content}" if timestamp is not None else content
+
+
+def iter_kube_log_lines(kube_response: Any) -> Iterator[str]:
+    """Iterate over the lines of a paasta-api pod logs response (an un-preloaded
+    urllib3 response), yielding utf-8 decoded lines, closing the underlying
+    connection when done."""
+    buffer = b""
+    try:
+        for chunk in kube_response.stream(4096):
+            buffer += chunk
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                yield line.decode("utf-8", errors="replace")
+        if buffer:
+            yield buffer.decode("utf-8", errors="replace")
+    finally:
+        kube_response.release_conn()
+        kube_response.close()
+
+
+def fetch_pod_logs_via_api(
+    client: Any,
+    service: str,
+    instance: str,
+    pod: str,
+    line_count: Optional[int],
+    prefix: str,
+    strip_headers: bool,
+    print_lock: threading.Lock,
+) -> None:
+    """Fetch the last line_count log lines of a single pod via the paasta API
+    and print them."""
+    try:
+        kube_response = client.service.pod_logs(
+            service,
+            instance,
+            pod,
+            tail_lines=line_count,
+            _preload_content=False,
+        )
+    except client.api_error as e:
+        with print_lock:
+            print(
+                PaastaColors.red(f"Failed to fetch logs for pod {pod}: {e.body}"),
+                file=sys.stderr,
+            )
+        return
+    for line in iter_kube_log_lines(kube_response):
+        timestamp, content = split_kube_log_line(line)
+        with print_lock:
+            print(
+                f"{prefix}{format_pod_log_line(timestamp, content, strip_headers)}",
+                flush=True,
+            )
+
+
+def follow_pod_logs_via_api(
+    client: Any,
+    service: str,
+    instance: str,
+    pod: str,
+    prefix: str,
+    strip_headers: bool,
+    print_lock: threading.Lock,
+    stop_event: threading.Event,
+) -> None:
+    """Follow the logs of a single pod via the paasta API, reconnecting and
+    resuming (without skipping or duplicating lines) whenever the stream breaks.
+
+    The paasta API streams logs straight from the Kubernetes API, but closes
+    each follow response cleanly after 115 seconds so that it stays below the
+    API server's request timeout. A long follow is therefore a series of
+    requests. On reconnect we resume from the whole second below the last seen
+    timestamp and deduplicate the resulting overlap, so the user sees a
+    seamless stream. Expected clean reconnects are silent; unexpected
+    connection/stream errors still produce warnings.
+
+    A clean EOF triggers a reconnect too, since it is usually the expected
+    stream rotation. If the next stream ends almost immediately without any
+    new (non-duplicate) lines, the pod's logs are considered finished. This
+    also handles pods which had already finished before the first request.
+
+    Exits when the pod's log stream is finished, when the API reports the pod
+    is gone (404), on an unrecoverable API error, or when stop_event is set
+    (e.g. Ctrl-C).
+    """
+    last_timestamp: Optional[str] = None
+    seen_lines: Deque[str] = deque(maxlen=POD_LOGS_RECONNECT_DEDUPE_WINDOW)
+    while not stop_event.is_set():
+        # On the first connection show the last few lines, like the
+        # scribe-based default mode does; afterwards resume from the last seen
+        # timestamp instead of re-reading a fixed tail. NOTE: only pass the
+        # parameters that are actually set - the generated client serializes
+        # explicitly-passed None values as the string "None" in the query
+        # string, which the API would reject.
+        query_kwargs: Dict[str, Any] = {"follow": True, "_preload_content": False}
+        if last_timestamp is None:
+            query_kwargs["tail_lines"] = POD_LOGS_DEFAULT_LINE_COUNT
+        else:
+            query_kwargs["since_time"] = floor_kube_timestamp_to_second(last_timestamp)
+        try:
+            kube_response = client.service.pod_logs(
+                service,
+                instance,
+                pod,
+                **query_kwargs,
+            )
+        except client.api_error as e:
+            if e.status == 404:
+                with print_lock:
+                    print(
+                        PaastaColors.yellow(
+                            f"Pod {pod} is gone; done following its logs."
+                        ),
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                return
+            with print_lock:
+                print(
+                    PaastaColors.red(f"Error following logs of pod {pod}: {e.body}"),
+                    file=sys.stderr,
+                    flush=True,
+                )
+            return
+        except POD_LOGS_RECONNECTABLE_ERRORS as e:
+            log.warning(
+                "Could not connect to the log stream for pod %s (%s); reconnecting",
+                pod,
+                e,
+            )
+            sleep(1)
+            continue
+
+        stream_started = monotonic()
+        new_lines_this_stream = 0
+        try:
+            for line in iter_kube_log_lines(kube_response):
+                if stop_event.is_set():
+                    return
+                if line in seen_lines:
+                    continue
+                seen_lines.append(line)
+                new_lines_this_stream += 1
+                timestamp, content = split_kube_log_line(line)
+                if timestamp is not None:
+                    last_timestamp = timestamp
+                with print_lock:
+                    print(
+                        f"{prefix}{format_pod_log_line(timestamp, content, strip_headers)}",
+                        flush=True,
+                    )
+            # A clean EOF is normally the API's expected periodic stream
+            # rotation, so reconnect without making any noise. An immediately
+            # ending stream with no new lines instead means the pod's logs are
+            # finished (duplicate overlap lines do not count as new lines).
+            if (
+                new_lines_this_stream == 0
+                and monotonic() - stream_started < POD_LOGS_EMPTY_STREAM_EXIT_SECONDS
+            ):
+                log.debug("Log stream for pod %s has finished", pod)
+                return
+        except POD_LOGS_RECONNECTABLE_ERRORS as e:
+            # The API server kills long-lived requests after its timeout and
+            # network blips happen; that is expected, so reconnect and resume.
+            # A read timeout on a quiet pod is not even worth logging.
+            if isinstance(e, urllib3.exceptions.ReadTimeoutError):
+                log.debug("Log stream for pod %s timed out; reconnecting", pod)
+            else:
+                log.warning("Log stream for pod %s broke (%s); reconnecting", pod, e)
+            # Don't spin if the API is unreachable entirely.
+            sleep(1)
+
+
+def paasta_pod_logs_via_api(
+    args: argparse.Namespace,
+    service: str,
+    instance: str,
+    pods: List[str],
+) -> int:
+    """Implementation of `paasta logs --pods` that fetches pod logs from the
+    Kubernetes API via the paasta API (GET /v1/services/{service}/{instance}/
+    pods/{pod_name}/logs) instead of from scribe/vector."""
+    log.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+
+    components = set(args.components)
+    if "app_output" in components:
+        components.remove("app_output")
+        components.update({"stdout", "stderr"})
+    unsupported_components = components - {"stdout", "stderr"}
+    if unsupported_components:
+        print(
+            PaastaColors.red(
+                "Only the stdout and stderr components are supported when "
+                f"fetching logs for individual pods via the paasta API (got: "
+                f"{', '.join(sorted(components))})"
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
+    if (
+        args.time_from is not None
+        or args.time_to is not None
+        or args.line_offset is not None
+    ):
+        print(
+            PaastaColors.red(
+                "--from/--to/--line-offset are not supported when fetching "
+                "logs for individual pods via the paasta API"
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.tail and args.line_count is not None:
+        print(
+            PaastaColors.red("You cannot filter based on line counts when tailing"),
+            file=sys.stderr,
+        )
+        return 1
+
+    cluster = args.cluster[0]
+    client = get_paasta_oapi_client_with_auth(cluster=cluster)
+    if client is None:
+        print(
+            PaastaColors.red(
+                f"Cluster {cluster} does not have a paasta API endpoint configured"
+            ),
+            file=sys.stderr,
+        )
+        return 1
+
+    print_lock = threading.Lock()
+    # Kube pod logs don't carry the pod's identity, so with more than one pod
+    # we prefix every line with its pod name to keep them distinguishable.
+    prefixes = {
+        pod: f"{PaastaColors.bold(pod)}: " if len(pods) > 1 else "" for pod in pods
+    }
+
+    if args.tail:
+        print(
+            PaastaColors.cyan(
+                "Following pod logs via the paasta API and applying filters... "
+                "(Ctrl-C to stop; reconnects automatically)"
+            ),
+            file=sys.stderr,
+        )
+        stop_event = threading.Event()
+        threads = []
+        for pod in pods:
+            thread = threading.Thread(
+                target=follow_pod_logs_via_api,
+                args=(
+                    client,
+                    service,
+                    instance,
+                    pod,
+                    prefixes[pod],
+                    args.strip_headers,
+                    print_lock,
+                    stop_event,
+                ),
+                daemon=True,
+            )
+            thread.start()
+            threads.append(thread)
+        try:
+            for thread in threads:
+                thread.join()
+        except KeyboardInterrupt:
+            log.warning("Terminating.")
+        finally:
+            stop_event.set()
+        return 0
+
+    line_count = (
+        args.line_count if args.line_count is not None else POD_LOGS_DEFAULT_LINE_COUNT
+    )
+    print(
+        PaastaColors.cyan(
+            f"Fetching {line_count} lines per pod via the paasta API and applying filters..."
+        ),
+        file=sys.stderr,
+    )
+    for pod in pods:
+        fetch_pod_logs_via_api(
+            client=client,
+            service=service,
+            instance=instance,
+            pod=pod,
+            line_count=line_count,
+            prefix=prefixes[pod],
+            strip_headers=args.strip_headers,
+            print_lock=print_lock,
+        )
+    return 0
+
+
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -1528,6 +1922,11 @@ def paasta_logs(args: argparse.Namespace) -> int:
         pods = None
     else:
         pods = args.pods.split(",")
+
+    if pods is not None and pod_logs_via_api_enabled(load_system_paasta_config()):
+        return paasta_pod_logs_via_api(
+            args=args, service=service, instance=instance, pods=pods
+        )
 
     components = args.components
     if "app_output" in args.components:

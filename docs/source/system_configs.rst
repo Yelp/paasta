@@ -83,6 +83,17 @@ These are the keys that may exist in system configs:
         }
       }
 
+  * ``logs_via_api``: A boolean controlling whether ``paasta logs --pods`` fetches the logs of
+    the given pods from the Kubernetes API via the paasta API (GET
+    ``/v1/services/{service}/{instance}/pods/{pod_name}/logs``) instead of from scribe/vector.
+    Only takes effect when specific pods are requested; without ``--pods`` the log_reader
+    drivers are used as before. The ``PAASTA_LOGS_VIA_API`` environment variable overrides
+    this setting for a single invocation: unset means "use this config value", while any
+    value set (e.g. ``1``/``true`` or ``0``/``false``) forces it on or off.
+    Defaults to ``false``.
+
+    Example: ``"logs_via_api": true``
+
   * ``sensu_host``: The hostname or IP address of a Sensu client that we should send events to.
     Defaults to ``localhost``.
 
