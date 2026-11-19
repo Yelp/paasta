@@ -1560,6 +1560,8 @@ def test_paasta_pod_logs_via_api_no_api_endpoint(capsys):
         "paasta_tools.cli.cmds.logs.get_paasta_oapi_client_with_auth",
         autospec=True,
         return_value=None,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ):
         exit_code = logs.paasta_pod_logs_via_api(
             args=args,
@@ -1585,6 +1587,8 @@ def test_paasta_pod_logs_via_api_fetches_each_pod(capsys):
         "paasta_tools.cli.cmds.logs.get_paasta_oapi_client_with_auth",
         autospec=True,
         return_value=fake_client,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ):
         exit_code = logs.paasta_pod_logs_via_api(
             args=args,
