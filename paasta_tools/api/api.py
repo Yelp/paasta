@@ -161,6 +161,10 @@ def make_app(global_config=None):
         "/v1/services/{service}/{instance}/replicas/{replica_name}/restart",
     )
     config.add_route(
+        "service.instance.pod_logs",
+        "/v1/services/{service}/{instance}/pods/{pod_name}/logs",
+    )
+    config.add_route(
         "service.instance.delay", "/v1/services/{service}/{instance}/delay"
     )
     config.add_route(

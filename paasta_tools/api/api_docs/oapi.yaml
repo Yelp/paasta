@@ -2118,6 +2118,82 @@ paths:
       summary: Restart a specific replica for service_name.instance_name
       tags:
       - service
+  /services/{service}/{instance}/pods/{pod_name}/logs:
+    get:
+      operationId: pod_logs
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Pod name
+        in: path
+        name: pod_name
+        required: true
+        schema:
+          type: string
+      - description: Container name; defaults to the only container of the pod
+        in: query
+        name: container
+        required: false
+        schema:
+          type: string
+      - description: Follow the log stream of the pod. paasta-api closes each follow
+          stream cleanly after 115 seconds (before its request timeout); reconnect
+          and resume with since_time to continue. The stream can also end earlier
+          when the pod's logs finish
+        in: query
+        name: follow
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - description: Return previous terminated container logs
+        in: query
+        name: previous
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - description: If set, the number of lines from the end of the logs to show
+        in: query
+        name: tail_lines
+        required: false
+        schema:
+          format: int32
+          type: integer
+      - description: Only return logs newer than or equal to this ISO8601 timestamp.
+          Lines are prefixed with RFC3339Nano timestamps (timestamps=true) which can
+          be used to resume after a reconnect
+        in: query
+        name: since_time
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: Log lines, each prefixed with an RFC3339Nano timestamp
+        "400":
+          description: since_time not parsable or conflicting log options
+        "404":
+          description: Pod not found or service/instance not found
+        "500":
+          description: Instance failure or kubernetes client unavailable
+      summary: Fetch (and optionally follow) the logs of a single pod for service_name.instance_name
+      tags:
+      - service
   /version:
     get:
       operationId: showVersion

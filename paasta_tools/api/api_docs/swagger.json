@@ -1299,6 +1299,94 @@
                     }
                 ]
             }
+        },
+        "/services/{service}/{instance}/pods/{pod_name}/logs": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Log lines, each prefixed with an RFC3339Nano timestamp",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "since_time not parsable or conflicting log options"
+                    },
+                    "404": {
+                        "description": "Pod not found or service/instance not found"
+                    },
+                    "500": {
+                        "description": "Instance failure or kubernetes client unavailable"
+                    }
+                },
+                "produces": [
+                    "text/plain"
+                ],
+                "summary": "Fetch (and optionally follow) the logs of a single pod for service_name.instance_name",
+                "operationId": "pod_logs",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Pod name",
+                        "name": "pod_name",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Container name; defaults to the only container of the pod",
+                        "name": "container",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Follow the log stream of the pod. paasta-api closes each follow stream cleanly after 115 seconds (before its request timeout); reconnect and resume with since_time to continue. The stream can also end earlier when the pod's logs finish",
+                        "name": "follow",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Return previous terminated container logs",
+                        "name": "previous",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "If set, the number of lines from the end of the logs to show",
+                        "name": "tail_lines",
+                        "required": false,
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only return logs newer than or equal to this ISO8601 timestamp",
+                        "name": "since_time",
+                        "required": false,
+                        "type": "string"
+                    }
+                ]
+            }
         }
     },
     "definitions": {

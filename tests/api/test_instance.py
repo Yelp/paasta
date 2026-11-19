@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import datetime
+import threading
 from unittest import mock
 from unittest.mock import AsyncMock
 
 import pytest
+import pytz
 from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException
 from pyramid import testing
@@ -650,3 +653,276 @@ class TestInstanceReplicaRestart:
             instance.instance_replica_restart(mock_request)
 
         assert excinfo.value.err == 500
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+class TestPodLogs:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.instance.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            _mock_settings.soa_dir = "/test/soa/dir"
+            self.mock_settings = _mock_settings
+            yield
+
+    @pytest.fixture
+    def mock_kube_client(self):
+        mock_kube_client = mock.Mock()
+        self.mock_settings.kubernetes_client = mock_kube_client
+        return mock_kube_client
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+            "pod_name": "test-pod-12345",
+        }
+        return request
+
+    @staticmethod
+    def make_fake_kube_response(chunks=(b"2023-06-01T21:49:16.045075559Z line one\n",)):
+        fake_response = mock.Mock()
+        fake_response.stream.return_value = iter(chunks)
+
+        def release_conn():
+            fake_response.released = True
+
+        def close():
+            fake_response.closed = True
+
+        fake_response.release_conn.side_effect = release_conn
+        fake_response.close.side_effect = close
+        return fake_response
+
+    def test_success(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                kubernetes_tools.V1Pod(
+                    metadata=kubernetes_tools.V1ObjectMeta(
+                        name="test-pod-12345", namespace="test_namespace"
+                    )
+                )
+            ]
+        )
+        fake_kube_response = self.make_fake_kube_response()
+        mock_kube_client.core.read_namespaced_pod_log.return_value = fake_kube_response
+
+        response = instance.pod_logs(mock_request)
+
+        assert response.content_type == "text/plain"
+        assert (
+            b"".join(response.app_iter) == b"2023-06-01T21:49:16.045075559Z line one\n"
+        )
+        mock_kube_client.core.list_pod_for_all_namespaces.assert_called_once_with(
+            field_selector="metadata.name=test-pod-12345",
+            label_selector=(
+                "paasta.yelp.com/service=test_service,"
+                "paasta.yelp.com/instance=test_instance"
+            ),
+        )
+        mock_kube_client.core.read_namespaced_pod_log.assert_called_once_with(
+            name="test-pod-12345",
+            namespace="test_namespace",
+            container=None,
+            follow=False,
+            previous=False,
+            tail_lines=None,
+            since_time=None,
+            timestamps=True,
+            _preload_content=False,
+        )
+        assert fake_kube_response.released
+        assert fake_kube_response.closed
+
+    def test_follow_passes_query_params(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                kubernetes_tools.V1Pod(
+                    metadata=kubernetes_tools.V1ObjectMeta(
+                        name="test-pod-12345", namespace="test_namespace"
+                    )
+                )
+            ]
+        )
+        mock_kube_client.core.read_namespaced_pod_log.return_value = (
+            self.make_fake_kube_response()
+        )
+        mock_request.swagger_data.update(
+            {
+                "follow": True,
+                "previous": True,
+                "container": "main",
+                "tail_lines": 10,
+                "since_time": "2023-06-01T21:49:16+00:00",
+            }
+        )
+
+        instance.pod_logs(mock_request)
+
+        mock_kube_client.core.read_namespaced_pod_log.assert_called_once_with(
+            name="test-pod-12345",
+            namespace="test_namespace",
+            container="main",
+            follow=True,
+            previous=True,
+            tail_lines=10,
+            since_time=datetime.datetime(2023, 6, 1, 21, 49, 16, tzinfo=pytz.utc),
+            timestamps=True,
+            _preload_content=False,
+        )
+
+    def test_service_not_found(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(mock_request)
+        assert excinfo.value.err == 404
+
+    def test_pod_not_found(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[]
+        )
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(mock_request)
+        assert excinfo.value.err == 404
+        assert "No pod named test-pod-12345" in excinfo.value.msg
+        mock_kube_client.core.read_namespaced_pod_log.assert_not_called()
+
+    def test_bad_since_time(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                kubernetes_tools.V1Pod(
+                    metadata=kubernetes_tools.V1ObjectMeta(
+                        name="test-pod-12345", namespace="test_namespace"
+                    )
+                )
+            ]
+        )
+        mock_request.swagger_data["since_time"] = "not a timestamp"
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(mock_request)
+        assert excinfo.value.err == 400
+
+    def test_kubernetes_api_error(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                kubernetes_tools.V1Pod(
+                    metadata=kubernetes_tools.V1ObjectMeta(
+                        name="test-pod-12345", namespace="test_namespace"
+                    )
+                )
+            ]
+        )
+        mock_kube_client.core.read_namespaced_pod_log.side_effect = ApiException(
+            status=400, reason="a container name must be specified"
+        )
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(mock_request)
+        assert excinfo.value.err == 400
+
+    def test_no_kubernetes_client(
+        self,
+        mock_validate_service_instance,
+        mock_kube_client,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        self.mock_settings.kubernetes_client = None
+
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(mock_request)
+        assert excinfo.value.err == 500
+
+
+class TestStreamKubeLogResponse:
+    def test_non_follow_forwards_chunks_and_closes(self):
+        response = mock.Mock()
+        response.stream.return_value = iter((b"one\n", b"two\n"))
+
+        actual = list(instance._stream_kube_log_response(response, follow_timeout=None))
+
+        assert actual == [b"one\n", b"two\n"]
+        response.release_conn.assert_called_once()
+        response.close.assert_called_once()
+
+    def test_follow_forwards_chunks_and_closes(self):
+        response = mock.Mock()
+        response.stream.return_value = iter((b"one\n", b"two\n"))
+
+        actual = list(instance._stream_kube_log_response(response, follow_timeout=10))
+
+        assert actual == [b"one\n", b"two\n"]
+        response.release_conn.assert_called_once()
+        response.close.assert_called_once()
+
+    def test_follow_deadline_ends_idle_stream_cleanly(self):
+        response = mock.Mock()
+        closed = threading.Event()
+
+        def stream(_amt):
+            closed.wait()
+            return iter(())
+
+        response.stream.side_effect = stream
+        response.close.side_effect = closed.set
+
+        # The reader thread is blocked waiting for upstream data. The total
+        # deadline must still end the response promptly and cleanly.
+        actual = list(instance._stream_kube_log_response(response, follow_timeout=0.01))
+
+        assert actual == []
+        assert closed.is_set()
+        response.release_conn.assert_called_once()
+        response.close.assert_called_once()
+
+    def test_follow_propagates_upstream_errors(self):
+        response = mock.Mock()
+        response.stream.side_effect = RuntimeError("upstream broke")
+
+        with pytest.raises(RuntimeError, match="upstream broke"):
+            list(instance._stream_kube_log_response(response, follow_timeout=10))
+
+        response.release_conn.assert_called_once()
+        response.close.assert_called_once()
