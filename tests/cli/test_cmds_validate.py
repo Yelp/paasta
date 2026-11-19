@@ -1122,6 +1122,41 @@ def test_rollback_validate_schema_invalid(mock_content, capsys):
     assert SCHEMA_INVALID in output
 
 
+@pytest.mark.parametrize(
+    "hash_policy, expected",
+    (
+        ("[{header: {header_name: x-user-id}}]", True),
+        (
+            """[{header: {header_name: ":path", regex_rewrite: {"""
+            """pattern: {regex: "^/(?:history|api/v1/applications)/([^/?]+).*$"}, """
+            """substitution: "\\\\1"}}}]""",
+            True,
+        ),
+        ("[{header: {}}]", False),
+        ("[{header: {header_name: ''}}]", False),
+        ("[{header: {header_name: x, extra: true}}]", False),
+        ("[{cookie: {name: foo}}]", False),
+        ("[{header: {header_name: x, regex_rewrite: {pattern: {regex: a}}}}]", False),
+        ("[{header: {header_name: x, regex_rewrite: {substitution: b}}}]", False),
+    ),
+)
+def test_smartstack_validate_schema_hash_policy(hash_policy, expected, capsys):
+    mock_content = (
+        "main:\n"
+        "  proxy_port: 20000\n"
+        "  lb_policy: RING_HASH\n"
+        f"  hash_policy: {hash_policy}\n"
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents",
+        autospec=True,
+        return_value=mock_content,
+    ):
+        assert validate_schema("smartstack.yaml", "smartstack") == expected
+    output, _ = capsys.readouterr()
+    assert (SCHEMA_VALID if expected else SCHEMA_INVALID) in output
+
+
 @patch("paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True)
 def test_validate_tron_with_service_invalid(
