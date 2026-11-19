@@ -1,3 +1,19 @@
+paasta-tools (1.66.1) jammy; urgency=medium
+
+  * 1.66.1 tagged with 'make release'
+    Commit: Actually handle multiple rollback reasons happening
+    concurrently (#4415)  This does a couple things that I noticed
+    during testing or that I wanted to fix as part of this effort: *
+    fixes some wording shenanigans (e.g., makes it clear that things are
+    still happening or have already happened when clicking the slack
+    buttons) * handles any of SLO/AlertManager/crashloop rollbacks
+    happening without losing track of "em   * and also handles
+    enabling/disabling them correctly from Slack * fixes some potential
+    race condition with the timers (e.g., certing while a rollback is
+    just now being triggered)
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 19 Nov 2026 08:35:19 -0800
+
 paasta-tools (1.66.0) jammy; urgency=medium
 
   * 1.66.0 tagged with 'make release'
