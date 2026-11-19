@@ -1607,9 +1607,8 @@ def test_paasta_pod_logs_via_api_fetches_each_pod(capsys):
 
 
 def test_paasta_logs_dispatches_to_pod_logs_via_api_when_enabled():
-    args, _ = parse_args(
-        ["logs", "-c", "fake_cluster", "-i", "fake_instance", "-p", "fake-pod"]
-    )
+    # No -s/-i/-c: API-backed pod logs may infer all of them from the pod name.
+    args, _ = parse_args(["logs", "-p", "fake-pod"])
     with mock.patch(
         "paasta_tools.cli.cmds.logs.figure_out_service_name", autospec=True
     ) as mock_figure, mock.patch(
@@ -1628,10 +1627,11 @@ def test_paasta_logs_dispatches_to_pod_logs_via_api_when_enabled():
         actual = logs.paasta_logs(args)
     assert actual == 42
     mock_enabled.assert_called_once()
+    mock_figure.assert_not_called()
     mock_via_api.assert_called_once_with(
         args=args,
-        service=mock_figure.return_value,
-        instance="fake_instance",
+        service=None,
+        instance=None,
         pods=["fake-pod"],
     )
 
@@ -1750,3 +1750,179 @@ def test_generated_pod_logs_client_serialization():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def make_resolution_config():
+    config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    config.get_api_endpoints.return_value = {
+        "cluster1": "http://cluster1",
+        "cluster2": "http://cluster2",
+    }
+    return config
+
+
+class FakePodLookupClient:
+    def __init__(self, pods=(), error=None):
+        self.api_error = FakeApiError
+        self.service = mock.Mock()
+        self.lookup_calls = []
+        self._pods = list(pods)
+        self._error = error
+        self.service.lookup_pod.side_effect = self._lookup_pod
+
+    def _lookup_pod(self, pod_name, **kwargs):
+        self.lookup_calls.append({"pod_name": pod_name, **kwargs})
+        if self._error is not None:
+            raise self._error
+        return mock.Mock(pods=self._pods)
+
+
+def make_lookup_pod(service="foo", instance="bar", namespace="test_namespace"):
+    return mock.Mock(
+        name="foo-bar-0",
+        namespace=namespace,
+        service=service,
+        instance=instance,
+    )
+
+
+def test_resolve_pod_logs_target_looks_up_all_clusters():
+    clients = {
+        "cluster1": FakePodLookupClient(),
+        "cluster2": FakePodLookupClient([make_lookup_pod()]),
+    }
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service=None,
+        instance=None,
+        cluster=None,
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.service == "foo"
+    assert target.instance == "bar"
+    assert target.cluster == "cluster2"
+    assert target.namespace == "test_namespace"
+    assert "service" not in clients["cluster1"].lookup_calls[0]
+    assert "instance" not in clients["cluster1"].lookup_calls[0]
+
+
+def test_resolve_pod_logs_target_errors_on_multiple_clusters():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient([make_lookup_pod()]),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "multiple locations" in str(excinfo.value)
+    assert "--cluster" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_errors_on_multiple_namespaces():
+    clients = {
+        "cluster1": FakePodLookupClient(
+            [
+                make_lookup_pod(namespace="namespace_a"),
+                make_lookup_pod(namespace="namespace_b"),
+            ]
+        ),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster="cluster1",
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "namespace_a" in str(excinfo.value)
+    assert "namespace_b" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_explicit_cluster_disambiguates():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient(),
+    }
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service=None,
+        instance=None,
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.cluster == "cluster1"
+    assert len(clients["cluster1"].lookup_calls) == 1
+    assert clients["cluster2"].lookup_calls == []
+
+
+def test_resolve_pod_logs_target_forwards_optional_filters():
+    clients = {"cluster1": FakePodLookupClient([make_lookup_pod()])}
+    logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service="foo",
+        instance=None,
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    call = clients["cluster1"].lookup_calls[0]
+    assert call["service"] == "foo"
+    assert "instance" not in call
+
+
+def test_resolve_pod_logs_target_no_matching_pod():
+    clients = {
+        "cluster1": FakePodLookupClient(),
+        "cluster2": FakePodLookupClient(),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "No PaaSTA pod named foo-bar-0 found" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_does_not_ignore_lookup_errors():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient(error=FakeApiError(500, "boom")),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "could not rule out" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_fully_specified_skips_lookup():
+    clients = {"cluster1": FakePodLookupClient()}
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service="foo",
+        instance="bar",
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.cluster == "cluster1"
+    clients["cluster1"].service.lookup_pod.assert_not_called()

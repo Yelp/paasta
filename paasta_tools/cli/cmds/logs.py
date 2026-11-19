@@ -25,6 +25,7 @@ import sys
 import threading
 from collections import deque
 from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
@@ -41,6 +42,7 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableSequence
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -145,7 +147,11 @@ def add_subparser(subparsers) -> None:
     pod_help = (
         "The pods to see relevant logs for. Defaults to all pods for this service. "
         "When PAASTA_LOGS_VIA_API (or the logs_via_api toggle in the system paasta "
-        "config) is enabled, logs for specific pods are fetched via the paasta API."
+        "config) is enabled, logs for specific pods are fetched via the paasta API, "
+        "and --service/--instance/--cluster may be omitted: the pod name is looked "
+        "up across paasta API clusters and its labels/annotations identify the "
+        "service and instance. Ambiguous pods still require --cluster (and possibly "
+        "--service/--instance)."
     )
     status_parser.add_argument("-p", "--pods", help=pod_help)
     status_parser.add_argument(
@@ -1769,10 +1775,163 @@ def follow_pod_logs_via_api(
             sleep(1)
 
 
+class PodLogsTarget(NamedTuple):
+    client: Any
+    service: str
+    instance: str
+    cluster: str
+    namespace: str = ""
+
+
+class PodLogsResolutionError(Exception):
+    pass
+
+
+def _get_pod_logs_client(cluster: str, clients: Dict[str, Any]) -> Any:
+    if cluster not in clients:
+        client = get_paasta_oapi_client_with_auth(cluster=cluster)
+        if client is None:
+            raise PodLogsResolutionError(
+                f"Cluster {cluster} does not have a paasta API endpoint configured"
+            )
+        clients[cluster] = client
+    return clients[cluster]
+
+
+def _format_pod_locations(locations: Iterable[PodLogsTarget]) -> str:
+    return "\n".join(
+        f"  {target.service}.{target.instance} in {target.cluster}"
+        + (f" (namespace: {target.namespace})" if target.namespace else "")
+        for target in sorted(
+            locations,
+            key=lambda target: (target.service, target.instance, target.cluster),
+        )
+    )
+
+
+def _lookup_pod_locations(
+    client: Any,
+    cluster: str,
+    pod_name: str,
+    service: Optional[str],
+    instance: Optional[str],
+) -> Tuple[List[PodLogsTarget], Optional[str]]:
+    """Look up one pod name in one cluster, returning every matching PaaSTA
+    identity (there can be duplicates across namespaces)."""
+    # Only pass set filters: the generated client serializes explicit None
+    # values as the string "None".
+    query_kwargs: Dict[str, Any] = {}
+    if service is not None:
+        query_kwargs["service"] = service
+    if instance is not None:
+        query_kwargs["instance"] = instance
+    try:
+        response = client.service.lookup_pod(
+            pod_name,
+            _request_timeout=(5, 10),
+            **query_kwargs,
+        )
+    except client.api_error as e:
+        return [], f"{cluster}: {e.body or e}"
+    except Exception as e:
+        return [], f"{cluster}: {e}"
+    return [
+        PodLogsTarget(
+            client=client,
+            service=pod.service,
+            instance=pod.instance,
+            cluster=cluster,
+            namespace=pod.namespace,
+        )
+        for pod in response.pods
+        if pod.service is not None and pod.instance is not None
+    ], None
+
+
+def resolve_pod_logs_target(
+    pod_name: str,
+    service: Optional[str],
+    instance: Optional[str],
+    cluster: Optional[str],
+    system_paasta_config: SystemPaastaConfig,
+    clients: Dict[str, Any],
+) -> PodLogsTarget:
+    """Resolve one pod name to its full service.instance and API cluster by
+    looking up the name directly in Kubernetes via the paasta API.
+
+    No pod-name parsing or yelpsoa-config scanning is needed: with no cluster
+    specified, every configured API endpoint is queried in parallel, while
+    optional service/instance filters narrow the matches. A fully specified
+    service/instance/cluster skips the lookup entirely.
+    """
+    if service is not None and instance is not None and cluster is not None:
+        return PodLogsTarget(
+            client=_get_pod_logs_client(cluster, clients),
+            service=service,
+            instance=instance,
+            cluster=cluster,
+        )
+
+    api_clusters = (
+        [cluster]
+        if cluster is not None
+        else sorted(system_paasta_config.get_api_endpoints())
+    )
+    if not api_clusters:
+        raise PodLogsResolutionError("No paasta API endpoints are configured")
+    cluster_clients = {
+        api_cluster: _get_pod_logs_client(api_cluster, clients)
+        for api_cluster in api_clusters
+    }
+
+    # A name lookup takes about a second per cluster; fan out so multi-cluster
+    # resolution stays within a few seconds even when all endpoints are used.
+    with ThreadPoolExecutor(max_workers=min(16, len(api_clusters))) as executor:
+        results = list(
+            executor.map(
+                lambda api_cluster: _lookup_pod_locations(
+                    cluster_clients[api_cluster],
+                    api_cluster,
+                    pod_name,
+                    service,
+                    instance,
+                ),
+                api_clusters,
+            )
+        )
+    matches = [match for cluster_matches, _ in results for match in cluster_matches]
+    errors = [error for _, error in results if error is not None]
+
+    if len(matches) > 1:
+        raise PodLogsResolutionError(
+            f"Pod {pod_name} exists in multiple locations:\n"
+            f"{_format_pod_locations(matches)}\n"
+            "Please specify --cluster (and --service/--instance if necessary)."
+        )
+    if errors:
+        detail = "\n".join(f"  {error}" for error in errors)
+        if matches:
+            raise PodLogsResolutionError(
+                f"Found pod {pod_name} at {_format_pod_locations(matches).strip()}, "
+                "but could not rule out the same pod existing elsewhere because "
+                f"these API queries failed:\n{detail}\n"
+                "Please specify --cluster explicitly."
+            )
+        raise PodLogsResolutionError(
+            f"Could not check whether pod {pod_name} exists:\n{detail}\n"
+            "Please specify --cluster explicitly or try again later."
+        )
+    if not matches:
+        raise PodLogsResolutionError(
+            f"No PaaSTA pod named {pod_name} found in the queried cluster(s)."
+        )
+    return matches[0]
+
+
 def paasta_pod_logs_via_api(
     args: argparse.Namespace,
-    service: str,
-    instance: str,
+    service: Optional[str],
+    instance: Optional[str],
     pods: List[str],
 ) -> int:
     """Implementation of `paasta logs --pods` that fetches pod logs from the
@@ -1817,16 +1976,31 @@ def paasta_pod_logs_via_api(
         )
         return 1
 
-    cluster = args.cluster[0]
-    client = get_paasta_oapi_client_with_auth(cluster=cluster)
-    if client is None:
-        print(
-            PaastaColors.red(
-                f"Cluster {cluster} does not have a paasta API endpoint configured"
-            ),
-            file=sys.stderr,
-        )
-        return 1
+    system_paasta_config = load_system_paasta_config()
+    clients: Dict[str, Any] = {}
+    pod_targets: List[Tuple[str, PodLogsTarget]] = []
+    for pod in pods:
+        try:
+            target = resolve_pod_logs_target(
+                pod_name=pod,
+                service=service,
+                instance=instance,
+                cluster=args.cluster[0] if args.cluster else None,
+                system_paasta_config=system_paasta_config,
+                clients=clients,
+            )
+        except PodLogsResolutionError as e:
+            print(PaastaColors.red(str(e)), file=sys.stderr)
+            return 1
+        if service is None or instance is None or args.cluster is None:
+            print(
+                PaastaColors.cyan(
+                    f"Resolved {pod} to {target.service}.{target.instance} "
+                    f"in {target.cluster}"
+                ),
+                file=sys.stderr,
+            )
+        pod_targets.append((pod, target))
 
     print_lock = threading.Lock()
     # Kube pod logs don't carry the pod's identity, so with more than one pod
@@ -1845,13 +2019,13 @@ def paasta_pod_logs_via_api(
         )
         stop_event = threading.Event()
         threads = []
-        for pod in pods:
+        for pod, target in pod_targets:
             thread = threading.Thread(
                 target=follow_pod_logs_via_api,
                 args=(
-                    client,
-                    service,
-                    instance,
+                    target.client,
+                    target.service,
+                    target.instance,
                     pod,
                     prefixes[pod],
                     args.strip_headers,
@@ -1880,11 +2054,11 @@ def paasta_pod_logs_via_api(
         ),
         file=sys.stderr,
     )
-    for pod in pods:
+    for pod, target in pod_targets:
         fetch_pod_logs_via_api(
-            client=client,
-            service=service,
-            instance=instance,
+            client=target.client,
+            service=target.service,
+            instance=target.instance,
             pod=pod,
             line_count=line_count,
             prefix=prefixes[pod],
@@ -1898,6 +2072,17 @@ def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
+
+    # API-backed pod logs can infer service/instance/cluster from the pod name
+    # (and from soa-configs plus API lookups), so dispatch before the legacy
+    # path's requirement that cluster and instance be explicitly specified.
+    if args.pods is not None and pod_logs_via_api_enabled(load_system_paasta_config()):
+        return paasta_pod_logs_via_api(
+            args=args,
+            service=args.service,
+            instance=args.instance,
+            pods=args.pods.split(","),
+        )
 
     service = figure_out_service_name(args, soa_dir)
 
@@ -1922,11 +2107,6 @@ def paasta_logs(args: argparse.Namespace) -> int:
         pods = None
     else:
         pods = args.pods.split(",")
-
-    if pods is not None and pod_logs_via_api_enabled(load_system_paasta_config()):
-        return paasta_pod_logs_via_api(
-            args=args, service=service, instance=instance, pods=pods
-        )
 
     components = args.components
     if "app_output" in args.components:

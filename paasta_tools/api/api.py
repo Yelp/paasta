@@ -164,6 +164,7 @@ def make_app(global_config=None):
         "service.instance.pod_logs",
         "/v1/services/{service}/{instance}/pods/{pod_name}/logs",
     )
+    config.add_route("pods.lookup", "/v1/pods/{pod_name}")
     config.add_route(
         "service.instance.delay", "/v1/services/{service}/{instance}/delay"
     )

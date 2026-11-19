@@ -429,6 +429,29 @@ components:
         replica_name:
           type: string
       type: object
+    PodLocation:
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        service:
+          type: string
+        instance:
+          type: string
+      required:
+      - name
+      - namespace
+      type: object
+    PodLookupResponse:
+      properties:
+        pods:
+          items:
+            $ref: '#/components/schemas/PodLocation'
+          type: array
+      required:
+      - pods
+      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -2189,9 +2212,45 @@ paths:
           description: since_time not parsable or conflicting log options
         "404":
           description: Pod not found or service/instance not found
+        "409":
+          description: Multiple pods with this name and service.instance in different namespaces
         "500":
           description: Instance failure or kubernetes client unavailable
       summary: Fetch (and optionally follow) the logs of a single pod for service_name.instance_name
+      tags:
+      - service
+  /pods/{pod_name}:
+    get:
+      operationId: lookup_pod
+      parameters:
+      - description: Pod name
+        in: path
+        name: pod_name
+        required: true
+        schema:
+          type: string
+      - description: Only include pods for this service (matches labels and annotations)
+        in: query
+        name: service
+        required: false
+        schema:
+          type: string
+      - description: Only include pods for this instance (matches labels and annotations)
+        in: query
+        name: instance
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodLookupResponse'
+          description: All PaaSTA pods with this name in the cluster; possibly multiple namespaces
+        "500":
+          description: Kubernetes client unavailable
+      summary: Look up a PaaSTA pod by name across all namespaces in this cluster
       tags:
       - service
   /version:

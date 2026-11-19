@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytz
+from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException
 from pyramid import testing
@@ -655,6 +656,31 @@ class TestInstanceReplicaRestart:
         assert excinfo.value.err == 500
 
 
+def make_test_pod(
+    name="test-pod-12345",
+    namespace="test_namespace",
+    service="test_service",
+    instance="test_instance",
+    label_instance=None,
+    annotated_instance=None,
+):
+    return V1Pod(
+        metadata=V1ObjectMeta(
+            name=name,
+            namespace=namespace,
+            labels={
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": label_instance or instance,
+            },
+            annotations=(
+                {"paasta.yelp.com/instance": annotated_instance}
+                if annotated_instance is not None
+                else {}
+            ),
+        )
+    )
+
+
 @mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 class TestPodLogs:
     @pytest.fixture(autouse=True)
@@ -706,13 +732,7 @@ class TestPodLogs:
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
-            items=[
-                kubernetes_tools.V1Pod(
-                    metadata=kubernetes_tools.V1ObjectMeta(
-                        name="test-pod-12345", namespace="test_namespace"
-                    )
-                )
-            ]
+            items=[make_test_pod()]
         )
         fake_kube_response = self.make_fake_kube_response()
         mock_kube_client.core.read_namespaced_pod_log.return_value = fake_kube_response
@@ -725,10 +745,7 @@ class TestPodLogs:
         )
         mock_kube_client.core.list_pod_for_all_namespaces.assert_called_once_with(
             field_selector="metadata.name=test-pod-12345",
-            label_selector=(
-                "paasta.yelp.com/service=test_service,"
-                "paasta.yelp.com/instance=test_instance"
-            ),
+            label_selector="paasta.yelp.com/service",
         )
         mock_kube_client.core.read_namespaced_pod_log.assert_called_once_with(
             name="test-pod-12345",
@@ -752,13 +769,7 @@ class TestPodLogs:
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
-            items=[
-                kubernetes_tools.V1Pod(
-                    metadata=kubernetes_tools.V1ObjectMeta(
-                        name="test-pod-12345", namespace="test_namespace"
-                    )
-                )
-            ]
+            items=[make_test_pod()]
         )
         mock_kube_client.core.read_namespaced_pod_log.return_value = (
             self.make_fake_kube_response()
@@ -793,11 +804,14 @@ class TestPodLogs:
         mock_kube_client,
         mock_request,
     ):
-        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[]
+        )
 
         with pytest.raises(ApiFailure) as excinfo:
             instance.pod_logs(mock_request)
         assert excinfo.value.err == 404
+        mock_validate_service_instance.assert_not_called()
 
     def test_pod_not_found(
         self,
@@ -824,13 +838,7 @@ class TestPodLogs:
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
-            items=[
-                kubernetes_tools.V1Pod(
-                    metadata=kubernetes_tools.V1ObjectMeta(
-                        name="test-pod-12345", namespace="test_namespace"
-                    )
-                )
-            ]
+            items=[make_test_pod()]
         )
         mock_request.swagger_data["since_time"] = "not a timestamp"
 
@@ -846,13 +854,7 @@ class TestPodLogs:
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
-            items=[
-                kubernetes_tools.V1Pod(
-                    metadata=kubernetes_tools.V1ObjectMeta(
-                        name="test-pod-12345", namespace="test_namespace"
-                    )
-                )
-            ]
+            items=[make_test_pod()]
         )
         mock_kube_client.core.read_namespaced_pod_log.side_effect = ApiException(
             status=400, reason="a container name must be specified"
@@ -874,6 +876,163 @@ class TestPodLogs:
         with pytest.raises(ApiFailure) as excinfo:
             instance.pod_logs(mock_request)
         assert excinfo.value.err == 500
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+def test_pod_logs_zero_tail_lines_only_checks_pod_existence(
+    mock_validate_service_instance,
+):
+    mock_validate_service_instance.return_value = "kubernetes"
+    request = testing.DummyRequest()
+    request.swagger_data = {
+        "service": "test_service",
+        "instance": "test_instance",
+        "pod_name": "test-pod-12345",
+        "tail_lines": 0,
+    }
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_kube_client = mock.Mock()
+        mock_settings.kubernetes_client = mock_kube_client
+        mock_kube_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[make_test_pod()]
+        )
+
+        response = instance.pod_logs(request)
+
+    assert response.status_int == 200
+    mock_kube_client.core.read_namespaced_pod_log.assert_not_called()
+
+
+def make_lookup_request(service=None, instance=None):
+    request = testing.DummyRequest()
+    request.swagger_data = {"pod_name": "test-pod-12345"}
+    if service is not None:
+        request.swagger_data["service"] = service
+    if instance is not None:
+        request.swagger_data["instance"] = instance
+    return request
+
+
+def test_lookup_pod_returns_all_matches_and_prefers_annotations():
+    pods = [
+        make_test_pod(
+            label_instance="truncated-hash",
+            annotated_instance="test_instance",
+        ),
+        make_test_pod(namespace="other_namespace"),
+    ]
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_settings.kubernetes_client = mock.Mock()
+        mock_settings.kubernetes_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=pods
+        )
+
+        response = instance.lookup_pod(make_lookup_request())
+
+    assert response == {
+        "pods": [
+            {
+                "name": "test-pod-12345",
+                "namespace": "test_namespace",
+                "service": "test_service",
+                "instance": "test_instance",
+            },
+            {
+                "name": "test-pod-12345",
+                "namespace": "other_namespace",
+                "service": "test_service",
+                "instance": "test_instance",
+            },
+        ]
+    }
+
+
+def test_lookup_pod_filters_by_full_identity():
+    pods = [
+        make_test_pod(),
+        make_test_pod(service="other_service", instance="other_instance"),
+    ]
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_settings.kubernetes_client = mock.Mock()
+        mock_settings.kubernetes_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=pods
+        )
+
+        response = instance.lookup_pod(
+            make_lookup_request(service="test_service", instance="test_instance")
+        )
+
+    assert len(response["pods"]) == 1
+    assert response["pods"][0]["service"] == "test_service"
+
+
+def test_lookup_pod_returns_empty_list_when_not_found():
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_settings.kubernetes_client = mock.Mock()
+        mock_settings.kubernetes_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[]
+        )
+        response = instance.lookup_pod(make_lookup_request())
+    assert response == {"pods": []}
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+def test_pod_logs_rejects_multiple_matching_pods(mock_validate_service_instance):
+    request = testing.DummyRequest()
+    request.swagger_data = {
+        "service": "test_service",
+        "instance": "test_instance",
+        "pod_name": "test-pod-12345",
+    }
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_settings.kubernetes_client = mock.Mock()
+        mock_settings.kubernetes_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                make_test_pod(namespace="namespace_a"),
+                make_test_pod(namespace="namespace_b"),
+            ]
+        )
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.pod_logs(request)
+    assert excinfo.value.err == 409
+    assert "Multiple pods" in excinfo.value.msg
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+def test_pod_logs_matches_full_instance_annotation(mock_validate_service_instance):
+    request = testing.DummyRequest()
+    request.swagger_data = {
+        "service": "test_service",
+        "instance": "test_instance",
+        "pod_name": "test-pod-12345",
+    }
+    with mock.patch(
+        "paasta_tools.api.views.instance.settings", autospec=True
+    ) as mock_settings:
+        mock_settings.kubernetes_client = mock.Mock()
+        mock_settings.kubernetes_client.core.list_pod_for_all_namespaces.return_value = mock.Mock(
+            items=[
+                make_test_pod(
+                    label_instance="truncated-hash",
+                    annotated_instance="test_instance",
+                )
+            ]
+        )
+        mock_settings.kubernetes_client.core.read_namespaced_pod_log.return_value = (
+            mock.Mock()
+        )
+        response = instance.pod_logs(request)
+    assert response.status_int == 200
 
 
 class TestStreamKubeLogResponse:

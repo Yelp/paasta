@@ -1317,6 +1317,9 @@
                     },
                     "500": {
                         "description": "Instance failure or kubernetes client unavailable"
+                    },
+                    "409": {
+                        "description": "Multiple pods with this name and service.instance in different namespaces"
                     }
                 },
                 "produces": [
@@ -1382,6 +1385,52 @@
                         "in": "query",
                         "description": "Only return logs newer than or equal to this ISO8601 timestamp",
                         "name": "since_time",
+                        "required": false,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/pods/{pod_name}": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "All PaaSTA pods with this name in the cluster; possibly multiple namespaces",
+                        "schema": {
+                            "$ref": "#/definitions/PodLookupResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kubernetes client unavailable"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Look up a PaaSTA pod by name across all namespaces in this cluster",
+                "operationId": "lookup_pod",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Pod name",
+                        "name": "pod_name",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only include pods for this service (matches labels and annotations)",
+                        "name": "service",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only include pods for this instance (matches labels and annotations)",
+                        "name": "instance",
                         "required": false,
                         "type": "string"
                     }
@@ -2789,6 +2838,41 @@
                 },
                 "error_message": {
                     "type": "string"
+                }
+            }
+        },
+        "PodLocation": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "instance": {
+                    "type": "string"
+                }
+            }
+        },
+        "PodLookupResponse": {
+            "type": "object",
+            "required": [
+                "pods"
+            ],
+            "properties": {
+                "pods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PodLocation"
+                    }
                 }
             }
         }

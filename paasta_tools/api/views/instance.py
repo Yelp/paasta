@@ -28,9 +28,11 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Tuple
 
 import isodate
 import pytz
+from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException
 from pyramid.request import Request
 from pyramid.response import Response
@@ -535,6 +537,80 @@ def instance_replica_restart(
         raise ApiFailure(error_message, 500)
 
 
+def _pod_paasta_identity(pod: V1Pod) -> Tuple[Optional[str], Optional[str]]:
+    """Return the full PaaSTA service/instance for a pod, preferring
+    annotations because Tron and Spark can truncate the corresponding labels."""
+    labels = pod.metadata.labels or {}
+    annotations = pod.metadata.annotations or {}
+    service = annotations.get("paasta.yelp.com/service") or labels.get(
+        "paasta.yelp.com/service"
+    )
+    instance = annotations.get("paasta.yelp.com/instance") or labels.get(
+        "paasta.yelp.com/instance"
+    )
+    return service, instance
+
+
+def _find_pods_by_name(
+    pod_name: str,
+    service: Optional[str] = None,
+    instance: Optional[str] = None,
+) -> List[Tuple[V1Pod, Optional[str], Optional[str]]]:
+    """Find PaaSTA pods by exact name cluster-wide, optionally filtering by
+    full service/instance identity. The apiserver applies the name selector;
+    identity filtering also considers annotations so hashed labels work."""
+    pods = settings.kubernetes_client.core.list_pod_for_all_namespaces(
+        field_selector=f"metadata.name={pod_name}",
+        # Restrict the lookup to PaaSTA-managed pods without requiring an
+        # exact instance label (which Tron/Spark may truncate).
+        label_selector="paasta.yelp.com/service",
+    ).items
+    matches = []
+    for pod in pods:
+        resolved_service, resolved_instance = _pod_paasta_identity(pod)
+        labels = pod.metadata.labels or {}
+        if service is not None and service not in (
+            resolved_service,
+            labels.get("paasta.yelp.com/service"),
+        ):
+            continue
+        if instance is not None and instance not in (
+            resolved_instance,
+            labels.get("paasta.yelp.com/instance"),
+        ):
+            continue
+        matches.append((pod, resolved_service, resolved_instance))
+    return matches
+
+
+@view_config(route_name="pods.lookup", request_method="GET", renderer="json")
+def lookup_pod(request: Request) -> Dict[str, Any]:
+    """Look up a PaaSTA pod by name across all namespaces in this cluster.
+
+    Optional service/instance filters are matched against both labels and
+    full-name annotations. All matches are returned so the caller can detect
+    ambiguity across namespaces.
+    """
+    if settings.kubernetes_client is None:
+        raise ApiFailure("kubernetes client is not available on this cluster", 500)
+    matches = _find_pods_by_name(
+        pod_name=request.swagger_data.get("pod_name"),
+        service=request.swagger_data.get("service"),
+        instance=request.swagger_data.get("instance"),
+    )
+    return {
+        "pods": [
+            {
+                "name": pod.metadata.name,
+                "namespace": pod.metadata.namespace,
+                "service": service,
+                "instance": instance,
+            }
+            for pod, service, instance in matches
+        ]
+    }
+
+
 @view_config(
     route_name="service.instance.pod_logs",
     request_method="GET",
@@ -554,37 +630,26 @@ def pod_logs(request: Request) -> Response:
     container = request.swagger_data.get("container")
     since_time_raw = request.swagger_data.get("since_time")
 
-    try:
-        validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
-    except NoConfigurationForServiceError:
-        error_message = no_configuration_for_service_message(
-            settings.cluster,
-            service,
-            instance,
-        )
-        raise ApiFailure(error_message, 404)
-    except Exception:
-        error_message = traceback.format_exc()
-        raise ApiFailure(error_message, 500)
-
     if settings.kubernetes_client is None:
         raise ApiFailure("kubernetes client is not available on this cluster", 500)
 
-    # Look the pod up cluster-wide, but restricted by both its name and the
-    # service/instance labels, so that this endpoint can only ever serve logs
-    # for pods that actually belong to service.instance.
-    pods = settings.kubernetes_client.core.list_pod_for_all_namespaces(
-        field_selector=f"metadata.name={pod_name}",
-        label_selector=(
-            f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}"
-        ),
-    ).items
-    if not pods:
+    # The name plus service/instance identity restricts which pod can be read.
+    # Matching annotations as well as labels supports Tron/Spark's truncated
+    # labels and pods whose service config has since been deleted.
+    matches = _find_pods_by_name(pod_name, service=service, instance=instance)
+    if not matches:
         raise ApiFailure(
             f"No pod named {pod_name} found for {service}.{instance}",
             404,
         )
-    pod = pods[0]
+    if len(matches) > 1:
+        namespaces = sorted(pod.metadata.namespace for pod, _, _ in matches)
+        raise ApiFailure(
+            f"Multiple pods named {pod_name} found for {service}.{instance} "
+            f"in namespaces: {', '.join(namespaces)}",
+            409,
+        )
+    pod = matches[0][0]
 
     if since_time_raw:
         try:
@@ -598,6 +663,13 @@ def pod_logs(request: Request) -> Response:
             since_time = pytz.utc.localize(since_time)
     else:
         since_time = None
+
+    if tail_lines == 0:
+        # A zero-line request is a cheap existence check: the pod lookup above
+        # has already established that this exact pod name belongs to
+        # service.instance, so there is no need to open a Kubernetes log
+        # stream (or require a container name on multi-container pods).
+        return Response(content_type="text/plain")
 
     try:
         kube_response = settings.kubernetes_client.core.read_namespaced_pod_log(
