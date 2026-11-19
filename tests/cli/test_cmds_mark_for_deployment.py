@@ -1126,7 +1126,11 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
-            deploy_info={"pipeline": []},
+            deploy_info={
+                "pipeline": [
+                    {"step": "deploy_group", "enable_crashloop_auto_rollback": True}
+                ]
+            },
             deploy_group="deploy_group",
             commit="commit",
             old_git_sha="old_git_sha",
@@ -1571,9 +1575,89 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
     autospec=True,
 )
-def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
+def test_MarkForDeployProcess_auto_rollback_buttons_toggle_every_kind_of_rollback(
     mock_get_instance_configs,
     mock_alertmanager_watcher_threads,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={
+            "pipeline": [
+                {"step": "deploy_group", "enable_crashloop_auto_rollback": True}
+            ]
+        },
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    mfdp.state = "deploying"
+    mfdp.slo_watchers = [
+        MagicMock(
+            spec=SLOWatcher,
+            failing=True,
+            label="some_slo",
+            bad_before_mark=False,
+            bad_after_mark=True,
+        )
+    ]
+    mfdp.alertmanager_url = "http://alertmanager"
+    assert not mock_alertmanager_watcher_threads.called
+
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running("rollback_slo_failure")
+
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+    assert not mfdp.any_auto_rollback_kind_enabled()
+    # let the event loop run any timers that are still (incorrectly) scheduled: the cancelled countdown must not
+    # fire and roll us back
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert "rollback_slo_failure" not in mfdp.trigger_history
+    assert mfdp.state == "deploying"
+    # ...and even if something does trigger a rollback, we must not roll back once a human has disabled them
+    mfdp.trigger("rollback_slo_failure")
+    assert mfdp.state == "deploying"
+
+    # enabling turns on both SLO-based and AlertManager-based rollbacks, even though
+    # AlertManager-based rollbacks weren't configured - so the watcher is started on click
+    # (crashloop-based rollbacks are configured, so they're turned back on too)
+    mfdp.trigger("enable_auto_rollbacks_button_clicked")
+    assert mfdp.auto_rollbacks_enabled()
+    assert mfdp.alertmanager_rollbacks_enabled()
+    assert mfdp.crashloop_rollbacks_enabled()
+    mock_alertmanager_watcher_threads.assert_called_once()
+
+    # crashloop countdowns can be disabled too - even when nothing else is failing
+    mfdp.slo_watchers[0].failing = False
+    mfdp.on_crashloop_detected("cluster", "instance", True)
+    assert mfdp.is_timer_running("rollback_crashloop_failure")
+    assert "disable_auto_rollbacks" in mfdp.get_available_buttons()
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+
+    # the AlertManager watcher keeps running after disabling, so new alerts must not start a countdown
+    mfdp.trigger("alertmanager_started_failing")
+    assert not mfdp.is_timer_running()
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+def test_MarkForDeployProcess_rollback_countdowns_and_auto_certify(
+    mock_log,
+    mock_get_instance_configs,
 ):
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
@@ -1592,29 +1676,38 @@ def test_MarkForDeployProcess_auto_rollback_buttons_toggle_slo_and_alertmanager(
         auto_rollback_delay=30,
         authors=None,
     )
+    slo_watcher = MagicMock(
+        spec=SLOWatcher,
+        failing=False,
+        label="some_slo",
+        bad_before_mark=False,
+        bad_after_mark=False,
+    )
+    mfdp.slo_watchers = [slo_watcher]
     mfdp.state = "deploying"
-    mfdp.slo_watchers = [MagicMock(spec=SLOWatcher, failing=True, label="some_slo")]
-    mfdp.alertmanager_url = "http://alertmanager"
-    assert not mock_alertmanager_watcher_threads.called
+    mfdp.trigger("deploy_finished")
+    assert mfdp.is_timer_running("auto_certify")
 
+    # an SLO failing after we've started counting down to certify must stop us from certifying
+    slo_watcher.failing = True
     mfdp.trigger("slos_started_failing")
-    assert mfdp.is_timer_running()
+    assert mfdp.is_timer_running("rollback_slo_failure")
+    assert not mfdp.is_timer_running("auto_certify")
+    mfdp.trigger("auto_certify")
+    assert mfdp.state == "deployed"
 
-    mfdp.trigger("disable_auto_rollbacks_button_clicked")
-    assert not mfdp.is_timer_running()
-    assert not mfdp.any_auto_rollbacks_enabled()
+    # a human telling us to go forward overrides the pending rollback - but the SLO is still failing, so we still
+    # shouldn't certify
+    mfdp.trigger("forward_button_clicked")
+    assert not mfdp.is_auto_rollback_countdown_running()
+    assert not mfdp.is_timer_running("auto_certify")
 
-    # enabling turns on both SLO-based and AlertManager-based rollbacks, even though
-    # AlertManager-based rollbacks weren't configured - so the watcher is started on click
-    mfdp.trigger("enable_auto_rollbacks_button_clicked")
-    assert mfdp.auto_rollbacks_enabled()
-    assert mfdp.alertmanager_rollbacks_enabled()
-    mock_alertmanager_watcher_threads.assert_called_once()
-
-    # the AlertManager watcher keeps running after disabling, so new alerts must not start a countdown
-    mfdp.trigger("disable_auto_rollbacks_button_clicked")
-    mfdp.trigger("alertmanager_started_failing")
-    assert not mfdp.is_timer_running()
+    # once the SLO recovers, there's nothing stopping us from certifying anymore
+    slo_watcher.failing = False
+    mfdp.trigger("slos_stopped_failing")
+    assert mfdp.is_timer_running("auto_certify")
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert mfdp.state == "complete"
 
 
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(

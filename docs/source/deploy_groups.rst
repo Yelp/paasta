@@ -185,7 +185,9 @@ This is configured per deploy_group in deploy.yaml:
   that must be crashlooping to trigger the rollback.
   (default: 1.0, i.e., all replicas must be crashlooping).
 
-Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack.
+Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack (by clicking
+"Disable auto rollbacks", which also turns off crashloop-based auto-rollbacks for the rest of the deploy, or
+the "Forward" button).
 
 A replica recovering does not cancel the rollback under the assumption that if we've had had enough repeated restarts
 across all replicas, something is fundamentally unsafe with the new deployment.
@@ -232,10 +234,11 @@ blips in AlertManager don't cancel an in-progress rollback.
 
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
 
-The "Disable auto rollbacks" Slack button turns off both SLO-based and AlertManager-based auto-rollbacks
-for the current deploy (and cancels any pending rollback countdown); "Enable auto rollbacks" turns both back on,
-even if they weren't configured for this step. If AlertManager-based auto-rollbacks weren't configured, alerts that
-are already firing when "Enable auto rollbacks" is clicked are treated as pre-existing and ignored.
+The "Disable auto rollbacks" Slack button turns off SLO-based, AlertManager-based and crashloop-based auto-rollbacks
+for the current deploy (and cancels every pending rollback countdown); "Enable auto rollbacks" turns SLO-based and
+AlertManager-based auto-rollbacks back on, even if they weren't configured for this step, and turns crashloop-based
+auto-rollbacks back on if they're configured for this step. If AlertManager-based auto-rollbacks weren't configured,
+alerts that are already firing when "Enable auto rollbacks" is clicked are treated as pre-existing and ignored.
 
 Example:
 
