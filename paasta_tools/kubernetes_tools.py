@@ -479,6 +479,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     crypto_keys: CryptoKeyConfig
     ssm_secrets: List[SsmSecretConfig]
     datastore_credentials: DatastoreCredentialsConfig
+    bounce_on_datastore_credentials_change: bool
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
 
@@ -1784,6 +1785,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         datastore_credentials = self.config_dict.get("datastore_credentials", {})
         return datastore_credentials
 
+    def get_bounce_on_datastore_credentials_change(self) -> bool:
+        return self.config_dict.get("bounce_on_datastore_credentials_change", True)
+
     def get_datastore_credentials_secret_name(self) -> str:
         return get_datastore_credentials_secret_name(
             self.get_namespace(),
@@ -2788,6 +2792,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             environment_variables=self.get_env(),
             namespace=self.get_namespace(),
         )
+        # Rotated datastore credentials are only read by clients at startup, so
+        # bounce when they change. Only add the key for instances that use them,
+        # so everyone else's config hash (and pods) stay as they are. Instances
+        # whose clients reload the mounted credentials themselves can opt out.
+        if (
+            self.get_datastore_credentials()
+            and self.get_bounce_on_datastore_credentials_change()
+        ):
+            ahash[
+                "datastore_credentials_secret"
+            ] = self.get_datastore_credentials_secret_hash()
 
         # remove data we dont want used to hash configs
         # replica count

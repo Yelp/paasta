@@ -24,6 +24,9 @@
             "type": "string",
             "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
             "maxLength": 63
+        },
+        "bounce_on_datastore_credentials_change": {
+            "type": "boolean"
         }
     },
     "required": [
