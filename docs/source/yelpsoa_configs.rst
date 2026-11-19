@@ -529,6 +529,44 @@ instance MAY have:
     percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
+  * ``firewall``: Optional. Limits the network traffic this instance can send and
+    receive. When you add a ``firewall`` block, PaaSTA blocks all traffic except:
+
+    * the rules you list under ``egress`` (outbound) and ``ingress`` (inbound)
+    * a default set of rules that every instance gets, covering
+      generally-expected traffic (e.g. DNS, monitoring tools, etc.)
+
+    For example:
+
+    .. code-block:: yaml
+
+        main:
+          firewall:
+            egress:
+              # Allow MySQL traffic to any instance of some-service
+              - to_services: [some-service]
+                ports: [{protocol: TCP, port: 3306}]
+              # Allow traffic to a vendor's published IP range
+              - to_cidrs: [52.94.0.0/16]
+            ingress:
+              # Allow some-api.main to reach this instance on port 8080
+              - from_services: [some-api.main]
+                ports: [{protocol: TCP, port: 8080}]
+
+    Each rule must have at least one of these:
+
+    * ``to_services`` / ``from_services``: a list of services and/or
+      service-instances. ``some-service`` matches all of its instances;
+      ``some-service.main`` matches only that instance.
+    * ``to_cidrs`` / ``from_cidrs``: a list of IPv4 CIDR blocks, such as
+      ``52.94.0.0/16``.
+
+    .. NOTE:: IPv6 addresses and domain names aren't supported yet.
+
+    ``ports`` is optional. If you leave it out, the rule allows all ports.
+
+    Under the hood, PaaSTA puts these rules into a Kubernetes NetworkPolicy.
+
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
     If set to ``http`` or ``https``, a ``curl`` command will be executed
     inside the container.

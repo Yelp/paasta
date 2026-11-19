@@ -652,6 +652,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.batches = kube_client.BatchV1Api(self.api_client)
+        self.networking = kube_client.NetworkingV1Api(self.api_client)
 
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2Api(self.api_client)

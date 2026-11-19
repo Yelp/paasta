@@ -870,6 +870,129 @@
                 "enable_aws_lb_readiness_gate": {
                     "type": "boolean"
                 },
+                "firewall": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "minProperties": 1,
+                    "properties": {
+                        "egress": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "anyOf": [
+                                    {
+                                        "required": [
+                                            "to_services"
+                                        ]
+                                    },
+                                    {
+                                        "required": [
+                                            "to_cidrs"
+                                        ]
+                                    }
+                                ],
+                                "properties": {
+                                    "to_services": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "to_cidrs": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "ports": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                                "protocol",
+                                                "port"
+                                            ],
+                                            "properties": {
+                                                "protocol": {
+                                                    "enum": [
+                                                        "TCP",
+                                                        "UDP",
+                                                        "SCTP"
+                                                    ]
+                                                },
+                                                "port": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "ingress": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "anyOf": [
+                                    {
+                                        "required": [
+                                            "from_services"
+                                        ]
+                                    },
+                                    {
+                                        "required": [
+                                            "from_cidrs"
+                                        ]
+                                    }
+                                ],
+                                "properties": {
+                                    "from_services": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "from_cidrs": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "ports": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                                "protocol",
+                                                "port"
+                                            ],
+                                            "properties": {
+                                                "protocol": {
+                                                    "enum": [
+                                                        "TCP",
+                                                        "UDP",
+                                                        "SCTP"
+                                                    ]
+                                                },
+                                                "port": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "lifecycle": {
                     "type": "object",
                     "properties": {
