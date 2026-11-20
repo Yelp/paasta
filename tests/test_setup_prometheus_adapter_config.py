@@ -7,10 +7,8 @@ from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -20,31 +18,13 @@ from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_arbitrary_promql_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
-    create_instance_gunicorn_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_instance_uwsgi_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_instance_uwsgi_v2_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_worker_load_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
     create_prometheus_adapter_config,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
-    create_shared_gunicorn_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
     create_shared_piscina_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_shared_uwsgi_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_shared_uwsgi_v2_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
     create_shared_worker_load_scaling_rule,
@@ -112,79 +92,6 @@ def test_create_instance_active_requests_scaling_rule(
     assert rule["name"]["as"].endswith("-active-requests-prom")
 
 
-def test_create_instance_uwsgi_scaling_rule() -> None:
-    service_name = "test_service"
-    instance_config = mock.Mock(instance="test_instance")
-    metrics_provider_config = MetricsProviderDict(
-        {
-            "type": METRICS_PROVIDER_UWSGI,
-            "setpoint": 0.1234567890,
-            "moving_average_window_seconds": 20120302,
-        }
-    )
-    paasta_cluster = "test_cluster"
-    metric_name = "test_service-test_instance-uwsgi-prom"
-    rule = create_instance_uwsgi_scaling_rule(
-        service=service_name,
-        instance_config=instance_config,
-        metrics_provider_config=metrics_provider_config,
-        paasta_cluster=paasta_cluster,
-        metric_name=metric_name,
-    )
-
-    # we test that the format of the dictionary is as expected with mypy
-    # and we don't want to test the full contents of the retval since then
-    # we're basically just writting a change-detector test - instead, we test
-    # that we're actually using our inputs
-    assert service_name in rule["seriesQuery"]
-    assert instance_config.instance in rule["seriesQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    # these two numbers are distinctive and unlikely to be used as constants
-    assert str(metrics_provider_config["setpoint"]) in rule["metricsQuery"]
-    assert (
-        str(metrics_provider_config["moving_average_window_seconds"])
-        in rule["metricsQuery"]
-    )
-    assert rule["name"]["as"].endswith("-uwsgi-prom")
-
-
-def test_create_instance_uwsgi_v2_scaling_rule() -> None:
-    service_name = "test_service"
-    instance_config = mock.Mock(instance="test_instance")
-    metrics_provider_config = MetricsProviderDict(
-        {
-            "type": METRICS_PROVIDER_UWSGI_V2,
-            "setpoint": 0.1234567890,
-            "moving_average_window_seconds": 20120302,
-        }
-    )
-    paasta_cluster = "test_cluster"
-    metric_name = "test_service-test_instance-uwsgi-v2-prom"
-    rule = create_instance_uwsgi_v2_scaling_rule(
-        service=service_name,
-        instance_config=instance_config,
-        metrics_provider_config=metrics_provider_config,
-        paasta_cluster=paasta_cluster,
-        metric_name=metric_name,
-    )
-
-    # we test that the format of the dictionary is as expected with mypy
-    # and we don't want to test the full contents of the retval since then
-    # we're basically just writing a change-detector test - instead, we test
-    # that we're actually using our inputs
-    assert service_name in rule["seriesQuery"]
-    assert instance_config.instance in rule["seriesQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-
-    # Unlike uwsgi(v1), we don't use the setpoint in this query -- the HPA will have the setpoint as its target.
-    assert str(metrics_provider_config["setpoint"]) not in rule["metricsQuery"]
-    assert (
-        str(metrics_provider_config["moving_average_window_seconds"])
-        in rule["metricsQuery"]
-    )
-    assert rule["name"]["as"].endswith("-uwsgi-v2-prom")
-
-
 def test_create_instance_worker_load_scaling_rule() -> None:
     service_name = "test_service"
     instance_config = mock.Mock(instance="test_instance")
@@ -213,7 +120,7 @@ def test_create_instance_worker_load_scaling_rule() -> None:
     assert instance_config.instance in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
 
-    # Like uwsgi_v2, we don't use the setpoint in this query -- the HPA will have the setpoint as its target.
+    # We don't use the setpoint in this query -- the HPA will have the setpoint as its target.
     assert str(metrics_provider_config["setpoint"]) not in rule["metricsQuery"]
     assert (
         str(metrics_provider_config["moving_average_window_seconds"])
@@ -228,42 +135,6 @@ def test_create_instance_worker_load_scaling_rule() -> None:
 
     # Verify the metric name uses worker-load-prom suffix
     assert rule["name"]["as"].endswith("-worker-load-prom")
-
-
-def test_create_instance_gunicorn_scaling_rule() -> None:
-    service_name = "test_service"
-    instance_config = mock.Mock(instance="test_instance")
-    metrics_provider_config = MetricsProviderDict(
-        {
-            "type": METRICS_PROVIDER_GUNICORN,
-            "setpoint": 0.1234567890,
-            "moving_average_window_seconds": 20120302,
-        }
-    )
-    paasta_cluster = "test_cluster"
-    metric_name = "test_service-test_instance-gunicorn-prom"
-    rule = create_instance_gunicorn_scaling_rule(
-        service=service_name,
-        instance_config=instance_config,
-        metrics_provider_config=metrics_provider_config,
-        paasta_cluster=paasta_cluster,
-        metric_name=metric_name,
-    )
-
-    # we test that the format of the dictionary is as expected with mypy
-    # and we don't want to test the full contents of the retval since then
-    # we're basically just writting a change-detector test - instead, we test
-    # that we're actually using our inputs
-    assert service_name in rule["seriesQuery"]
-    assert instance_config.instance in rule["seriesQuery"]
-    assert paasta_cluster in rule["seriesQuery"]
-    # these two numbers are distinctive and unlikely to be used as constants
-    assert str(metrics_provider_config["setpoint"]) in rule["metricsQuery"]
-    assert (
-        str(metrics_provider_config["moving_average_window_seconds"])
-        in rule["metricsQuery"]
-    )
-    assert rule["name"]["as"].endswith("-gunicorn-prom")
 
 
 @pytest.mark.parametrize(
@@ -312,11 +183,11 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                 get_autoscaling_metrics_provider=mock.Mock(
                     side_effect=lambda x: (
                         {
-                            "type": METRICS_PROVIDER_UWSGI,
+                            "type": METRICS_PROVIDER_PISCINA,
                             "setpoint": 0.1234567890,
                             "moving_average_window_seconds": 20120302,
                         }
-                        if x == METRICS_PROVIDER_UWSGI
+                        if x == METRICS_PROVIDER_PISCINA
                         else None
                     )
                 ),
@@ -330,11 +201,11 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                 get_autoscaling_metrics_provider=mock.Mock(
                     side_effect=lambda x: (
                         {
-                            "type": METRICS_PROVIDER_UWSGI,
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
                             "setpoint": 0.1234567890,
                             "moving_average_window_seconds": 20120302,
                         }
-                        if x == METRICS_PROVIDER_UWSGI
+                        if x == METRICS_PROVIDER_WORKER_LOAD
                         else (
                             {
                                 "type": METRICS_PROVIDER_CPU,
@@ -356,18 +227,18 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                 get_autoscaling_metrics_provider=mock.Mock(
                     side_effect=lambda x: (
                         {
-                            "type": METRICS_PROVIDER_UWSGI,
+                            "type": METRICS_PROVIDER_WORKER_LOAD,
                             "setpoint": 0.1234567890,
                             "moving_average_window_seconds": 20120302,
                         }
-                        if x == METRICS_PROVIDER_UWSGI
+                        if x == METRICS_PROVIDER_WORKER_LOAD
                         else (
                             {
-                                "type": METRICS_PROVIDER_GUNICORN,
+                                "type": METRICS_PROVIDER_PISCINA,
                                 "setpoint": 0.1234567890,
                                 "moving_average_window_seconds": 20120302,
                             }
-                            if x == METRICS_PROVIDER_GUNICORN
+                            if x == METRICS_PROVIDER_PISCINA
                             else None
                         )
                     )
@@ -415,14 +286,11 @@ def test_get_rules_for_service_instance(
     "rule_func,expected_series_metric,expected_name_prefix",
     [
         (create_shared_worker_load_scaling_rule, "worker_busy", "worker-load-prom"),
-        (create_shared_uwsgi_v2_scaling_rule, "uwsgi_worker_busy", "uwsgi-v2-prom"),
-        (create_shared_uwsgi_scaling_rule, "uwsgi_worker_busy", "uwsgi-prom"),
         (
             create_shared_piscina_scaling_rule,
             "piscina_pool_utilization",
             "piscina-prom",
         ),
-        (create_shared_gunicorn_scaling_rule, "gunicorn_worker_busy", "gunicorn-prom"),
     ],
 )
 def test_create_shared_scaling_rule(
