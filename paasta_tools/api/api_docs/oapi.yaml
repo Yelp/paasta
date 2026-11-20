@@ -2170,7 +2170,7 @@ paths:
         schema:
           type: string
       - description: Follow the log stream of the pod. paasta-api closes each follow
-          stream cleanly after 115 seconds (before its request timeout); reconnect
+          stream cleanly after 115 seconds (before its 120s request timeout); reconnect
           and resume with since_time to continue. The stream can also end earlier
           when the pod's logs finish
         in: query

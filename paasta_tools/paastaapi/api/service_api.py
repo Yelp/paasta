@@ -1857,7 +1857,7 @@ class ServiceApi(object):
 
             Keyword Args:
                 container (str): Container name; defaults to the only container of the pod. [optional]
-                follow (bool): Follow the log stream of the pod. paasta-api closes each follow stream cleanly after 115 seconds (before its request timeout); reconnect and resume with since_time to continue. The stream can also end earlier when the pod&#39;s logs finish. [optional] if omitted the server will use the default value of False
+                follow (bool): Follow the log stream of the pod. paasta-api closes each follow stream cleanly after 115 seconds (before its 120s request timeout); reconnect and resume with since_time to continue. The stream can also end earlier when the pod&#39;s logs finish. [optional] if omitted the server will use the default value of False
                 previous (bool): Return previous terminated container logs. [optional] if omitted the server will use the default value of False
                 tail_lines (int): If set, the number of lines from the end of the logs to show. [optional]
                 since_time (str): Only return logs newer than or equal to this ISO8601 timestamp. Lines are prefixed with RFC3339Nano timestamps (timestamps&#x3D;true) which can be used to resume after a reconnect. [optional]
