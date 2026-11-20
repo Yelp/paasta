@@ -120,6 +120,7 @@ class FakeArgs:
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
     authors = None
+    triggered_by = None
     warn = 17
     polling_interval = None
     diagnosis_interval = None
@@ -2234,3 +2235,137 @@ def test_MarkForDeployProcess_deploys_when_recording_fails():
 
     mock_put_item.assert_called_once()
     assert mfdp.state == "_begin"
+
+
+def make_dm_process(authors, triggered_by=None, permalink="https://slack/thread"):
+    """A stand-in for MarkForDeploymentProcess wired to the real DM methods."""
+    mfdp_cls = mark_for_deployment.MarkForDeploymentProcess
+    fake = MagicMock()
+    fake.authors = authors
+    fake.triggered_by = triggered_by
+    fake.service = "service"
+    fake.deploy_group = "prod.non_canary"
+    fake.deployment_version = DeploymentVersion(sha="a" * 40, image_version=None)
+    fake.old_deployment_version = DeploymentVersion(sha="b" * 40, image_version=None)
+    fake.get_thread_permalink.return_value = permalink
+    fake.get_rollback_dm_text.side_effect = (
+        lambda **kwargs: mfdp_cls.get_rollback_dm_text(fake, **kwargs)
+    )
+    return fake
+
+
+def dm_messages(fake):
+    """The {username: text} dict passed to dm_users."""
+    fake.dm_users.assert_called_once()
+    return fake.dm_users.call_args.args[0]
+
+
+def test_dm_authors_about_rollback_dms_each_author():
+    fake = make_dm_process(authors=["bravo", "alpha"])
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "bravo"]
+    text = messages["alpha"]
+    assert "`service` is being rolled back in `prod.non_canary`" in text
+    assert "Rolling back to `bbbbbbbb` from `aaaaaaaa`" in text
+    assert "Deploy thread: https://slack/thread" in text
+
+
+def test_dm_authors_about_rollback_dms_duplicate_authors_once():
+    fake = make_dm_process(authors=["alpha", "alpha"])
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    assert list(dm_messages(fake)) == ["alpha"]
+
+
+@pytest.mark.parametrize("authors", [None, []])
+def test_dm_authors_about_rollback_without_authors_dms_nobody(authors):
+    fake = make_dm_process(authors=authors)
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    assert dm_messages(fake) == {}
+
+
+def test_dm_authors_about_rollback_dms_triggerer_who_is_not_an_author():
+    fake = make_dm_process(authors=["alpha"], triggered_by="delta")
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "delta"]
+    assert "You are listed as an author of this deploy." in messages["alpha"]
+    assert "You triggered this deploy." not in messages["alpha"]
+    assert "You triggered this deploy." in messages["delta"]
+    assert "You are listed as an author of this deploy." not in messages["delta"]
+
+
+def test_dm_authors_about_rollback_dms_triggerer_without_authors():
+    fake = make_dm_process(authors=None, triggered_by="delta")
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    assert list(dm_messages(fake)) == ["delta"]
+
+
+def test_dm_authors_about_rollback_dms_triggerer_who_is_an_author_once():
+    fake = make_dm_process(authors=["bravo", "alpha"], triggered_by="bravo")
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    messages = dm_messages(fake)
+    assert sorted(messages) == ["alpha", "bravo"]
+    assert "You triggered this deploy." in messages["bravo"]
+    assert "You are listed as an author of this deploy." in messages["bravo"]
+
+
+def test_dm_authors_about_rollback_omits_thread_link_but_still_dms():
+    fake = make_dm_process(authors=["alpha"], permalink=None)
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+    assert "Deploy thread" not in dm_messages(fake)["alpha"]
+
+
+def test_dm_authors_about_rollback_never_raises():
+    fake = make_dm_process(authors=["alpha"])
+    fake.dm_users.side_effect = Exception("boom")
+
+    mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
+
+
+def test_on_enter_rolled_back_does_not_dm_authors():
+    fake = MagicMock()
+    fake.service = "service"
+    fake.deploy_group = "prod.non_canary"
+    fake.old_deployment_version = DeploymentVersion(sha="b" * 40, image_version=None)
+    fake.auto_abandon_delay = 600
+
+    with patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True):
+        mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back(fake)
+
+    fake.dm_authors_about_rollback.assert_not_called()
+    # the rollback's later steps still happen
+    fake.start_timer.assert_called_once_with(600, "auto_abandon", "abandon")
+
+
+def test_on_enter_start_rollback_dms_authors_before_marking():
+    fake = MagicMock()
+    fake.old_git_sha = "b" * 40
+    fake.old_image_version = None
+
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=1,
+    ):
+        mark_for_deployment.MarkForDeploymentProcess.on_enter_start_rollback(fake)
+
+    fake.dm_authors_about_rollback.assert_called_once_with()
+    called = [c[0] for c in fake.method_calls]
+    assert called.index("dm_authors_about_rollback") < called.index(
+        "update_slack_status"
+    )
