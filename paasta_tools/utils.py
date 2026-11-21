@@ -2517,6 +2517,14 @@ class SystemPaastaConfig:
         :returns: the monitoring config dictionary"""
         return self.config_dict.get("monitoring_config", {})
 
+    def get_logs_via_api(self) -> bool:
+        """Whether ``paasta logs --pods`` should fetch pod logs via the paasta API
+        (instead of scribe/vector). Can be overridden per-invocation with the
+        PAASTA_LOGS_VIA_API environment variable.
+
+        :returns: true if pod logs should be fetched via the paasta API"""
+        return bool(self.config_dict.get("logs_via_api", False))
+
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """Get global blacklist. This applies to all services
         in the cluster

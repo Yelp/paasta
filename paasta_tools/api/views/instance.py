@@ -17,14 +17,23 @@ PaaSTA service instance status/start/stop etc.
 """
 import asyncio
 import logging
+import queue
 import re
+import threading
+import time
 import traceback
 from typing import Any
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Tuple
 
+import isodate
+import pytz
+from kubernetes.client import V1Pod
+from kubernetes.client.rest import ApiException
 from pyramid.request import Request
 from pyramid.response import Response
 from pyramid.view import view_config
@@ -45,6 +54,72 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
+
+# Follow streams are closed cleanly before gunicorn's default 120-second
+# max-request-seconds timeout kills the worker. This gives clients a clear,
+# expected EOF at which to reconnect instead of an abrupt connection reset.
+POD_LOGS_FOLLOW_STREAM_SECONDS = 115
+
+
+def _stream_kube_log_response(
+    kube_response: Any, follow_timeout: Optional[float]
+) -> Iterator[bytes]:
+    """Yield chunks from a Kubernetes pod log response and close it afterwards.
+
+    If follow_timeout is set, return cleanly after that many seconds, even if
+    the upstream Kubernetes stream is idle. A reader thread is needed because
+    urllib3's stream() otherwise blocks indefinitely waiting for the next
+    chunk, which would prevent us from enforcing a total stream deadline.
+    """
+    if follow_timeout is None:
+        try:
+            for chunk in kube_response.stream(4096):
+                yield chunk
+        finally:
+            kube_response.release_conn()
+            kube_response.close()
+        return
+
+    chunks: queue.Queue = queue.Queue()
+    stream_errors: List[Exception] = []
+
+    def read_upstream() -> None:
+        try:
+            for chunk in kube_response.stream(4096):
+                chunks.put(chunk)
+        except Exception as e:
+            stream_errors.append(e)
+        finally:
+            # Tell the response generator that the upstream stream is done.
+            chunks.put(None)
+
+    reader = threading.Thread(target=read_upstream, daemon=True)
+    reader.start()
+    deadline = time.monotonic() + follow_timeout
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                # Expected periodic reconnect point. Any chunks still queued
+                # here will be refetched by the client from its last timestamp.
+                return
+            try:
+                chunk = chunks.get(timeout=min(remaining, 1.0))
+            except queue.Empty:
+                continue
+            if chunk is None:
+                if stream_errors:
+                    raise stream_errors[0]
+                # Kubernetes ended the stream, e.g. because the container
+                # finished. This is also a clean EOF, but it happens before
+                # our deadline rather than at it.
+                return
+            yield chunk
+    finally:
+        # Closing the response also unblocks a reader waiting on the socket.
+        kube_response.release_conn()
+        kube_response.close()
+        reader.join(timeout=1)
 
 
 def tron_instance_status(
@@ -460,3 +535,168 @@ def instance_replica_restart(
             "support replica restart"
         )
         raise ApiFailure(error_message, 500)
+
+
+def _pod_paasta_identity(pod: V1Pod) -> Tuple[Optional[str], Optional[str]]:
+    """Return the full PaaSTA service/instance for a pod, preferring
+    annotations because Tron and Spark can truncate the corresponding labels."""
+    labels = pod.metadata.labels or {}
+    annotations = pod.metadata.annotations or {}
+    service = annotations.get("paasta.yelp.com/service") or labels.get(
+        "paasta.yelp.com/service"
+    )
+    instance = annotations.get("paasta.yelp.com/instance") or labels.get(
+        "paasta.yelp.com/instance"
+    )
+    return service, instance
+
+
+def _find_pods_by_name(
+    pod_name: str,
+    service: Optional[str] = None,
+    instance: Optional[str] = None,
+) -> List[Tuple[V1Pod, Optional[str], Optional[str]]]:
+    """Find PaaSTA pods by exact name cluster-wide, optionally filtering by
+    full service/instance identity. The apiserver applies the name selector;
+    identity filtering also considers annotations so hashed labels work."""
+    pods = settings.kubernetes_client.core.list_pod_for_all_namespaces(
+        field_selector=f"metadata.name={pod_name}",
+        # Restrict the lookup to PaaSTA-managed pods without requiring an
+        # exact instance label (which Tron/Spark may truncate).
+        label_selector="paasta.yelp.com/service",
+    ).items
+    matches = []
+    for pod in pods:
+        resolved_service, resolved_instance = _pod_paasta_identity(pod)
+        labels = pod.metadata.labels or {}
+        if service is not None and service not in (
+            resolved_service,
+            labels.get("paasta.yelp.com/service"),
+        ):
+            continue
+        if instance is not None and instance not in (
+            resolved_instance,
+            labels.get("paasta.yelp.com/instance"),
+        ):
+            continue
+        matches.append((pod, resolved_service, resolved_instance))
+    return matches
+
+
+@view_config(route_name="pods.lookup", request_method="GET", renderer="json")
+def lookup_pod(request: Request) -> Dict[str, Any]:
+    """Look up a PaaSTA pod by name across all namespaces in this cluster.
+
+    Optional service/instance filters are matched against both labels and
+    full-name annotations. All matches are returned so the caller can detect
+    ambiguity across namespaces.
+    """
+    if settings.kubernetes_client is None:
+        raise ApiFailure("kubernetes client is not available on this cluster", 500)
+    matches = _find_pods_by_name(
+        pod_name=request.swagger_data.get("pod_name"),
+        service=request.swagger_data.get("service"),
+        instance=request.swagger_data.get("instance"),
+    )
+    return {
+        "pods": [
+            {
+                "name": pod.metadata.name,
+                "namespace": pod.metadata.namespace,
+                "service": service,
+                "instance": instance,
+            }
+            for pod, service, instance in matches
+        ]
+    }
+
+
+@view_config(
+    route_name="service.instance.pod_logs",
+    request_method="GET",
+)
+def pod_logs(request: Request) -> Response:
+    """Stream logs for a single pod of service.instance, directly from the
+    Kubernetes API. With follow=true the response is a chunked stream which
+    ends cleanly after POD_LOGS_FOLLOW_STREAM_SECONDS; the CLI reconnects and
+    resumes from its last timestamp. The stream also ends if the pod's log
+    stream finishes before that deadline."""
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    pod_name = request.swagger_data.get("pod_name")
+    follow = bool(request.swagger_data.get("follow") or False)
+    previous = bool(request.swagger_data.get("previous") or False)
+    tail_lines = request.swagger_data.get("tail_lines")
+    container = request.swagger_data.get("container")
+    since_time_raw = request.swagger_data.get("since_time")
+
+    if settings.kubernetes_client is None:
+        raise ApiFailure("kubernetes client is not available on this cluster", 500)
+
+    # The name plus service/instance identity restricts which pod can be read.
+    # Matching annotations as well as labels supports Tron/Spark's truncated
+    # labels and pods whose service config has since been deleted.
+    matches = _find_pods_by_name(pod_name, service=service, instance=instance)
+    if not matches:
+        raise ApiFailure(
+            f"No pod named {pod_name} found for {service}.{instance}",
+            404,
+        )
+    if len(matches) > 1:
+        namespaces = sorted(pod.metadata.namespace for pod, _, _ in matches)
+        raise ApiFailure(
+            f"Multiple pods named {pod_name} found for {service}.{instance} "
+            f"in namespaces: {', '.join(namespaces)}",
+            409,
+        )
+    pod = matches[0][0]
+
+    if since_time_raw:
+        try:
+            since_time = isodate.parse_datetime(since_time_raw)
+        except (ValueError, TypeError):
+            raise ApiFailure(
+                f"Could not parse since_time {since_time_raw} as an ISO8601 timestamp",
+                400,
+            )
+        if since_time.tzinfo is None:
+            since_time = pytz.utc.localize(since_time)
+    else:
+        since_time = None
+
+    if tail_lines == 0:
+        # A zero-line request is a cheap existence check: the pod lookup above
+        # has already established that this exact pod name belongs to
+        # service.instance, so there is no need to open a Kubernetes log
+        # stream (or require a container name on multi-container pods).
+        return Response(content_type="text/plain")
+
+    try:
+        kube_response = settings.kubernetes_client.core.read_namespaced_pod_log(
+            name=pod_name,
+            namespace=pod.metadata.namespace,
+            container=container,
+            follow=follow,
+            previous=previous,
+            tail_lines=tail_lines,
+            since_time=since_time,
+            # kube prefixes every line with an RFC3339Nano timestamp, which the
+            # CLI relies on to reconnect without skipping or duplicating lines
+            timestamps=True,
+            _preload_content=False,
+        )
+    except ApiException as e:
+        raise ApiFailure(
+            f"kubernetes API error while reading logs of pod {pod_name}: {e.reason}",
+            e.status,
+        )
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    response = Response(content_type="text/plain")
+    response.app_iter = _stream_kube_log_response(
+        kube_response,
+        follow_timeout=POD_LOGS_FOLLOW_STREAM_SECONDS if follow else None,
+    )
+    return response
