@@ -58,8 +58,6 @@ from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
@@ -1380,23 +1378,11 @@ def test_check_secrets_for_instance_missing_secret(
     "autoscaling_config,registrations,instance_type,expected",
     [
         (
-            {"metrics_providers": [{"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55}]},
-            [],
-            "eks",
-            True,
-        ),
-        (
             {
                 "metrics_providers": [
-                    {"type": METRICS_PROVIDER_UWSGI_V2, "setpoint": 0.55}
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.55}
                 ]
             },
-            [],
-            "eks",
-            True,
-        ),
-        (
-            {"metrics_providers": [{"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55}]},
             [],
             "kubernetes",
             True,
@@ -1404,7 +1390,7 @@ def test_check_secrets_for_instance_missing_secret(
         (
             {
                 "metrics_providers": [
-                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.55},
                     {"type": METRICS_PROVIDER_CPU, "decision_policy": "bespoke"},
                 ]
             },
@@ -1415,8 +1401,8 @@ def test_check_secrets_for_instance_missing_secret(
         (
             {
                 "metrics_providers": [
-                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
-                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.35},
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.55},
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.35},
                 ]
             },
             [],
@@ -1494,7 +1480,7 @@ def test_check_secrets_for_instance_missing_secret(
             {
                 "metrics_providers": [
                     {"type": METRICS_PROVIDER_MEMORY, "setpoint": 0.8},
-                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
+                    {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.55},
                 ]
             },
             [],
@@ -1574,7 +1560,7 @@ def test_validate_cpu_autotune_override(
 ):
     metrics_providers = [
         {"type": METRICS_PROVIDER_CPU, "setpoint": 0.8},
-        {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.4},
+        {"type": METRICS_PROVIDER_WORKER_LOAD, "setpoint": 0.4},
     ]
 
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")

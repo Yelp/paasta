@@ -5,12 +5,9 @@
         "properties": {
             "type": {
                 "enum": [
-                    "uwsgi",
-                    "uwsgi-v2",
                     "cpu",
                     "memory",
                     "piscina",
-                    "gunicorn",
                     "active-requests",
                     "arbitrary-promql",
                     "worker-load"

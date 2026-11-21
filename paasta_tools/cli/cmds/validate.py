@@ -63,12 +63,9 @@ from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import DEFAULT_PROMQL_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -170,19 +167,7 @@ INVALID_AUTOSCALING_FIELDS = {
         "desired_active_requests_per_replica",
     }
     | _PROMQL_ONLY_FIELDS,
-    METRICS_PROVIDER_GUNICORN: {
-        "desired_active_requests_per_replica",
-    }
-    | _PROMQL_ONLY_FIELDS,
     METRICS_PROVIDER_PISCINA: {
-        "desired_active_requests_per_replica",
-    }
-    | _PROMQL_ONLY_FIELDS,
-    METRICS_PROVIDER_UWSGI: {
-        "desired_active_requests_per_replica",
-    }
-    | _PROMQL_ONLY_FIELDS,
-    METRICS_PROVIDER_UWSGI_V2: {
         "desired_active_requests_per_replica",
     }
     | _PROMQL_ONLY_FIELDS,
