@@ -301,8 +301,8 @@ def cleanup_vertical_pod_autoscalers(
         namespace = vpa["metadata"]["namespace"]
         labels = vpa["metadata"]["labels"]
         job_id = compose_job_id(
-            labels.get(paasta_prefixed("service"), ""),
-            labels.get(paasta_prefixed("instance"), ""),
+            labels.get(paasta_prefixed("service")),
+            labels.get(paasta_prefixed("instance")),
         )
         deployment = vpa["spec"]["targetRef"]["name"]
         try:
