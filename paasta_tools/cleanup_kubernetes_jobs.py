@@ -61,6 +61,7 @@ from paasta_tools.kubernetes_tools import VPA_PLURAL
 from paasta_tools.kubernetes_tools import VPA_VERSION
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import VerticalPodAutoscalerDict
 from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -287,20 +288,21 @@ def cleanup_vertical_pod_autoscalers(
         return True
     listed_instances = set(vpa_config.get("instances", []))
 
-    managed_vpas = kube_client.custom.list_cluster_custom_object(
+    response = kube_client.custom.list_cluster_custom_object(
         group=VPA_GROUP,
         version=VPA_VERSION,
         plural=VPA_PLURAL,
         label_selector=f"{paasta_prefixed('managed')}=true",
     )
+    managed_vpas: List[VerticalPodAutoscalerDict] = response["items"]
     results: List[bool] = []
-    for vpa in managed_vpas["items"]:
+    for vpa in managed_vpas:
         name = vpa["metadata"]["name"]
         namespace = vpa["metadata"]["namespace"]
         labels = vpa["metadata"]["labels"]
         job_id = compose_job_id(
-            labels.get(paasta_prefixed("service")),
-            labels.get(paasta_prefixed("instance")),
+            labels.get(paasta_prefixed("service"), ""),
+            labels.get(paasta_prefixed("instance"), ""),
         )
         deployment = vpa["spec"]["targetRef"]["name"]
         try:

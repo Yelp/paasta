@@ -1,8 +1,6 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
-from typing import Any
-from typing import Dict
 from typing import Optional
 from typing import Union
 
@@ -23,6 +21,7 @@ from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import VerticalPodAutoscalerDict
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
@@ -442,7 +441,7 @@ class DeploymentWrapper(Application):
                 plural=VPA_PLURAL,
                 body=desired_vpa,
             )
-        elif existing_vpa.get("spec") != desired_vpa["spec"]:
+        elif existing_vpa["spec"] != desired_vpa["spec"]:
             self.logging.info(f"Updating VPA {namespace}/{name}")
             kube_client.custom.patch_namespaced_custom_object(
                 group=VPA_GROUP,
@@ -457,7 +456,7 @@ class DeploymentWrapper(Application):
 
     def get_existing_vertical_pod_autoscaler(
         self, kube_client: KubeClient
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[VerticalPodAutoscalerDict]:
         try:
             return kube_client.custom.get_namespaced_custom_object(
                 group=VPA_GROUP,
@@ -472,8 +471,8 @@ class DeploymentWrapper(Application):
             raise
 
     @staticmethod
-    def _is_paasta_managed(vpa: Dict[str, Any]) -> bool:
-        labels = vpa.get("metadata", {}).get("labels") or {}
+    def _is_paasta_managed(vpa: VerticalPodAutoscalerDict) -> bool:
+        labels = vpa["metadata"].get("labels", {})
         return labels.get(paasta_prefixed("managed")) == "true"
 
 
