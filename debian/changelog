@@ -1,3 +1,10 @@
+paasta-tools (1.66.2) jammy; urgency=medium
+
+  * 1.66.2 tagged with 'make release'
+    Commit: fix aactivator link
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 20 Nov 2026 04:56:48 -0800
+
 paasta-tools (1.66.1) jammy; urgency=medium
 
   * 1.66.1 tagged with 'make release'

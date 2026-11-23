@@ -675,6 +675,20 @@ instance MAY have:
     See `y/users-to-role <http://y/users-to-role>`_ for more information on how to switch to IAM roles.
     NOTE: this key is ignored for ``paasta local-run``.
 
+  * ``datastore_credentials``: A mapping of datastore type to a list of credential names whose rotated
+    credentials should be mounted into the instance. Currently only ``mysql`` is supported, e.g.
+    ``datastore_credentials: {mysql: [my_db_credential]}``. Each credential is mounted read-only at
+    ``/datastore/<datastore>/<credential>/credentials`` as a JSON document, backed by a Secret kept up to
+    date by ``paasta_secrets_sync --secret-type datastore-credentials``. Since clients typically only read
+    these credentials at startup, the instance is bounced whenever the Secret's contents change. See
+    ``bounce_on_datastore_credentials_change`` to opt out.
+
+  * ``bounce_on_datastore_credentials_change``: A boolean. Defaults to ``true``, which bounces the instance
+    whenever its ``datastore_credentials`` Secret changes. Set to ``false`` for instances whose clients
+    re-read the mounted credentials themselves, so a rotation doesn't restart them. The mounted files are
+    still updated in place either way. If not specified, inherits from ``service.yaml``, so a service can
+    opt out all of its instances at once and opt individual instances back in.
+
   * ``ssm_secrets``: A list of configurations for syncing secrets from the AWS SSM Parameter Store to the service as environment variables. Each entry requires:
 
     * ``source``: The name of the parameter in AWS SSM (e.g., ``/my-service/prod/db_password``).
@@ -1304,6 +1318,7 @@ Various PaaSTA utilities look at the following keys from service.yaml
  * ``description``
  * ``external_link``
  * ``docker_registry`` This is optional. Set this to override the `system-wide docker registry <system_configs.html#configuration-options>`_, and specify an alternate docker registry for your service.
+ * ``bounce_on_datastore_credentials_change`` A boolean, the service-wide default for the instance setting of the same name. Defaults to ``true``. Can be overridden per-instance.
  * ``cost_owner`` A string identifying the team responsible for the cost of this service. Applied as a ``yelp.com/cost_owner`` Kubernetes pod label for cost attribution. Should be in kebab-case and match a canonical owner name from the Ownership service. Must match the pattern ``^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`` and be at most 63 characters. Can be overridden per-instance in instance configs or per-job/action in Tron configs.
 
 Where does paasta_tools look for yelpsoa-configs?
