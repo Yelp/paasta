@@ -16,13 +16,16 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
+from kubernetes.client.rest import ApiException
 from pytest import fixture
 from pytest import raises
 
 from paasta_tools.cleanup_kubernetes_jobs import DontKillEverythingError
 from paasta_tools.cleanup_kubernetes_jobs import cleanup_unused_apps
+from paasta_tools.cleanup_kubernetes_jobs import cleanup_vertical_pod_autoscalers
 from paasta_tools.cleanup_kubernetes_jobs import main
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
@@ -624,3 +627,158 @@ def test_cleanup_unused_apps_ignore_invalid_apps(
             "soa_dir", "fake_cluster", kill_threshold=0, force=True, eks=eks_flag
         )
         assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 0
+
+
+VPA_API_KWARGS = {
+    "group": "autoscaling.k8s.io",
+    "version": "v1",
+    "plural": "verticalpodautoscalers",
+}
+
+
+def fake_managed_vpa(service, instance):
+    return {
+        "metadata": {
+            "name": f"{service}-{instance}",
+            "namespace": f"paastasvc-{service}",
+            "labels": {
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": instance,
+                "paasta.yelp.com/managed": "true",
+            },
+        },
+        "spec": {"targetRef": {"name": f"{service}-{instance}"}},
+    }
+
+
+def test_main_cleans_up_vpas_on_eks():
+    vpa_config = {"enabled": True, "instances": ["pypi.main"]}
+    with mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config", autospec=True
+    ) as load_config_patch, mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.KubeClient", autospec=True
+    ) as kube_client_patch, mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_vertical_pod_autoscalers",
+        autospec=True,
+        return_value=True,
+    ) as cleanup_vpas_patch:
+        load_config_patch.return_value.get_vertical_pod_autoscaling_config.return_value = (
+            vpa_config
+        )
+        main(("--cluster", "fake_cluster", "--eks"))
+        cleanup_vpas_patch.assert_called_once_with(
+            kube_client_patch.return_value, vpa_config
+        )
+
+
+def test_main_exits_when_vpa_cleanup_fails():
+    with mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.KubeClient", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_vertical_pod_autoscalers",
+        autospec=True,
+        return_value=False,
+    ):
+        with raises(SystemExit) as e:
+            main(("--cluster", "fake_cluster", "--eks"))
+        assert e.value.code == 1
+
+
+def test_main_skips_vpa_cleanup_without_eks():
+    with mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.cleanup_kubernetes_jobs.cleanup_vertical_pod_autoscalers",
+        autospec=True,
+    ) as cleanup_vpas_patch:
+        main(("--cluster", "fake_cluster"))
+        assert cleanup_vpas_patch.call_count == 0
+
+
+@pytest.mark.parametrize("vpa_config", [{}, {"enabled": False, "instances": []}])
+def test_cleanup_vertical_pod_autoscalers_disabled(vpa_config):
+    mock_kube_client = mock.MagicMock()
+
+    assert cleanup_vertical_pod_autoscalers(mock_kube_client, vpa_config) is True
+    assert mock_kube_client.custom.method_calls == []
+
+
+def test_cleanup_vertical_pod_autoscalers():
+    unlabelled_vpa = fake_managed_vpa("mystery", "main")
+    unlabelled_vpa["metadata"]["labels"] = {"paasta.yelp.com/managed": "true"}
+    mock_kube_client = mock.MagicMock()
+    mock_kube_client.custom.list_cluster_custom_object.return_value = {
+        "items": [
+            fake_managed_vpa("pypi", "main"),
+            fake_managed_vpa("clb", "main"),
+            fake_managed_vpa("federator", "main"),
+            unlabelled_vpa,
+        ]
+    }
+
+    def read_deployment(name, namespace):
+        if name == "clb-main":
+            raise ApiException(status=404)
+        return mock.Mock()
+
+    mock_kube_client.deployments.read_namespaced_deployment.side_effect = (
+        read_deployment
+    )
+
+    assert (
+        cleanup_vertical_pod_autoscalers(
+            mock_kube_client, {"enabled": True, "instances": ["pypi.main", "clb.main"]}
+        )
+        is True
+    )
+
+    mock_kube_client.custom.list_cluster_custom_object.assert_called_once_with(
+        **VPA_API_KWARGS, label_selector="paasta.yelp.com/managed=true"
+    )
+    assert mock_kube_client.custom.delete_namespaced_custom_object.call_args_list == [
+        mock.call(
+            **VPA_API_KWARGS,
+            name="clb-main",
+            namespace="paastasvc-clb",
+            body=V1DeleteOptions(),
+        ),
+        mock.call(
+            **VPA_API_KWARGS,
+            name="federator-main",
+            namespace="paastasvc-federator",
+            body=V1DeleteOptions(),
+        ),
+        mock.call(
+            **VPA_API_KWARGS,
+            name="mystery-main",
+            namespace="paastasvc-mystery",
+            body=V1DeleteOptions(),
+        ),
+    ]
+
+
+@pytest.mark.parametrize("status,expected_result", [(404, True), (403, False)])
+def test_cleanup_vertical_pod_autoscalers_delete_errors(status, expected_result):
+    mock_kube_client = mock.MagicMock()
+    mock_kube_client.custom.list_cluster_custom_object.return_value = {
+        "items": [fake_managed_vpa("pypi", "main"), fake_managed_vpa("clb", "main")]
+    }
+    mock_kube_client.custom.delete_namespaced_custom_object.side_effect = ApiException(
+        status=status
+    )
+
+    assert (
+        cleanup_vertical_pod_autoscalers(
+            mock_kube_client, {"enabled": True, "instances": []}
+        )
+        is expected_result
+    )
+    assert mock_kube_client.custom.delete_namespaced_custom_object.call_count == 2

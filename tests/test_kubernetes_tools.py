@@ -2897,6 +2897,44 @@ class TestKubernetesDeploymentConfig:
                 namespace="paastasvc-kurupt",
             )
 
+    def test_get_vertical_pod_autoscaler(self):
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm_canary",
+            cluster="brentford",
+            config_dict=KubernetesDeploymentConfigDict(),
+            branch_dict=None,
+        )
+        assert deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary", namespace="paastasvc-kurupt"
+        ) == {
+            "apiVersion": "autoscaling.k8s.io/v1",
+            "kind": "VerticalPodAutoscaler",
+            "metadata": {
+                "name": "kurupt-fm--canary",
+                "namespace": "paastasvc-kurupt",
+                "labels": {
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm_canary",
+                    "paasta.yelp.com/managed": "true",
+                },
+            },
+            "spec": {
+                "targetRef": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "kurupt-fm--canary",
+                },
+                "updatePolicy": {"updateMode": "Off"},
+                "resourcePolicy": {
+                    "containerPolicies": [
+                        {"containerName": "fm--canary", "mode": "Auto"},
+                        {"containerName": "*", "mode": "Off"},
+                    ]
+                },
+            },
+        }
+
     @pytest.mark.parametrize(
         "metrics_provider",
         (METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY),

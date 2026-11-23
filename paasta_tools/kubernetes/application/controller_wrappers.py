@@ -1,6 +1,8 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
+from typing import Any
+from typing import Dict
 from typing import Optional
 from typing import Union
 
@@ -12,7 +14,11 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
+from paasta_tools.kubernetes_tools import VPA_GROUP
+from paasta_tools.kubernetes_tools import VPA_PLURAL
+from paasta_tools.kubernetes_tools import VPA_VERSION
 from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -27,6 +33,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -310,6 +317,7 @@ class DeploymentWrapper(Application):
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
+        self.sync_vertical_pod_autoscaler(kube_client)
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
@@ -400,6 +408,73 @@ class DeploymentWrapper(Application):
                     self.item.metadata.name, self.item.metadata.namespace
                 )
             )
+
+    def sync_vertical_pod_autoscaler(self, kube_client: KubeClient) -> None:
+        if not isinstance(self.soa_config, EksDeploymentConfig):
+            return
+
+        vpa_config = load_system_paasta_config().get_vertical_pod_autoscaling_config()
+        if not vpa_config.get("enabled", False):
+            return
+
+        job_id = compose_job_id(self.soa_config.service, self.soa_config.instance)
+        if job_id not in vpa_config.get("instances", []):
+            return
+
+        name = self.item.metadata.name
+        namespace = self.item.metadata.namespace
+        existing_vpa = self.get_existing_vertical_pod_autoscaler(kube_client)
+        if existing_vpa is not None and not self._is_paasta_managed(existing_vpa):
+            self.logging.info(
+                f"Not syncing VPA {namespace}/{name}: it exists but paasta doesn't manage it"
+            )
+            return
+
+        desired_vpa = self.soa_config.get_vertical_pod_autoscaler(
+            name=name, namespace=namespace
+        )
+        if existing_vpa is None:
+            self.logging.info(f"Creating VPA {namespace}/{name}")
+            kube_client.custom.create_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=namespace,
+                plural=VPA_PLURAL,
+                body=desired_vpa,
+            )
+        elif existing_vpa.get("spec") != desired_vpa["spec"]:
+            self.logging.info(f"Updating VPA {namespace}/{name}")
+            kube_client.custom.patch_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=namespace,
+                plural=VPA_PLURAL,
+                name=name,
+                body={"spec": desired_vpa["spec"]},
+            )
+        else:
+            self.logging.debug(f"VPA {namespace}/{name} is up to date")
+
+    def get_existing_vertical_pod_autoscaler(
+        self, kube_client: KubeClient
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            return kube_client.custom.get_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=self.item.metadata.namespace,
+                plural=VPA_PLURAL,
+                name=self.item.metadata.name,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+
+    @staticmethod
+    def _is_paasta_managed(vpa: Dict[str, Any]) -> bool:
+        labels = vpa.get("metadata", {}).get("labels") or {}
+        return labels.get(paasta_prefixed("managed")) == "true"
 
 
 class StatefulSetWrapper(Application):

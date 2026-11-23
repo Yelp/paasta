@@ -1941,6 +1941,11 @@ class PoolLimits(TypedDict):
     recommended_pool: str
 
 
+class VerticalPodAutoscalingConfigDict(TypedDict, total=False):
+    enabled: bool
+    instances: List[str]  # e.g. "pypi.main"
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_client_timeout: int
@@ -2076,6 +2081,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
     reconciled_iam_service_account_namespaces: List[str]
+    vertical_pod_autoscaling: VerticalPodAutoscalingConfigDict
 
 
 def load_system_paasta_config(
@@ -2915,6 +2921,9 @@ class SystemPaastaConfig:
         Defaults to IfHealthyBudget
         """
         return self.config_dict.get("unhealthy_pod_eviction_policy", "IfHealthyBudget")
+
+    def get_vertical_pod_autoscaling_config(self) -> VerticalPodAutoscalingConfigDict:
+        return self.config_dict.get("vertical_pod_autoscaling", {})
 
 
 def _run(

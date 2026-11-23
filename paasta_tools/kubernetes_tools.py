@@ -356,6 +356,49 @@ class HpaOverride(TypedDict):
     expire_after: str
 
 
+VPA_GROUP = "autoscaling.k8s.io"
+VPA_VERSION = "v1"
+VPA_PLURAL = "verticalpodautoscalers"
+
+
+class VpaTargetRefDict(TypedDict):
+    apiVersion: str
+    kind: str
+    name: str
+
+
+class VpaUpdatePolicyDict(TypedDict):
+    updateMode: Literal["Off"]
+
+
+class VpaContainerPolicyDict(TypedDict):
+    containerName: str
+    mode: Literal["Auto", "Off"]
+
+
+class VpaResourcePolicyDict(TypedDict):
+    containerPolicies: List[VpaContainerPolicyDict]
+
+
+class VpaSpecDict(TypedDict):
+    targetRef: VpaTargetRefDict
+    updatePolicy: VpaUpdatePolicyDict
+    resourcePolicy: VpaResourcePolicyDict
+
+
+class VpaMetadataDict(TypedDict):
+    name: str
+    namespace: str
+    labels: Dict[str, str]
+
+
+class VerticalPodAutoscalerDict(TypedDict):
+    apiVersion: str
+    kind: str
+    metadata: VpaMetadataDict
+    spec: VpaSpecDict
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -1044,6 +1087,40 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
         return hpa
+
+    def get_vertical_pod_autoscaler(
+        self, name: str, namespace: str
+    ) -> VerticalPodAutoscalerDict:
+        return {
+            "apiVersion": f"{VPA_GROUP}/{VPA_VERSION}",
+            "kind": "VerticalPodAutoscaler",
+            "metadata": {
+                "name": name,
+                "namespace": namespace,
+                "labels": {
+                    paasta_prefixed("service"): self.service,
+                    paasta_prefixed("instance"): self.instance,
+                    paasta_prefixed("managed"): "true",
+                },
+            },
+            "spec": {
+                "targetRef": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": name,
+                },
+                "updatePolicy": {"updateMode": "Off"},
+                "resourcePolicy": {
+                    "containerPolicies": [
+                        {
+                            "containerName": self.get_sanitised_instance_name(),
+                            "mode": "Auto",
+                        },
+                        {"containerName": "*", "mode": "Off"},
+                    ]
+                },
+            },
+        }
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method

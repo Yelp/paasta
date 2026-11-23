@@ -4,6 +4,7 @@ import pytest
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import JobWrapper
@@ -333,6 +334,171 @@ def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
         ),
         pretty=True,
     )
+
+
+VPA_API_KWARGS = {
+    "group": "autoscaling.k8s.io",
+    "version": "v1",
+    "namespace": "faasta",
+    "plural": "verticalpodautoscalers",
+}
+
+
+@pytest.fixture
+def vpa_app():
+    app = setup_app({"instances": 1}, exists_hpa=False)
+    app.soa_config = EksDeploymentConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={"instances": 1},
+        branch_dict=None,
+    )
+    with mock.patch(
+        "paasta_tools.kubernetes.application.controller_wrappers.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config:
+
+        def set_vpa_config(vpa_config):
+            mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+                SystemPaastaConfigDict(vertical_pod_autoscaling=vpa_config),
+                "/mock/system/configs",
+            )
+
+        yield app, set_vpa_config
+
+
+def desired_vpa(app):
+    return app.soa_config.get_vertical_pod_autoscaler(
+        name="fake_name", namespace="faasta"
+    )
+
+
+def existing_vpa(managed, spec):
+    labels = {"paasta.yelp.com/managed": "true"} if managed else {}
+    return {"metadata": {"name": "fake_name", "labels": labels}, "spec": spec}
+
+
+@pytest.mark.parametrize(
+    "vpa_config",
+    [{}, {"enabled": False, "instances": ["service.instance"]}],
+)
+def test_sync_vertical_pod_autoscaler_disabled(vpa_app, vpa_config):
+    app, set_vpa_config = vpa_app
+    set_vpa_config(vpa_config)
+    mock_client = mock.MagicMock()
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    assert mock_client.custom.method_calls == []
+
+
+def test_sync_vertical_pod_autoscaler_skips_non_eks(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    app.soa_config = KubernetesDeploymentConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={"instances": 1},
+        branch_dict=None,
+    )
+    mock_client = mock.MagicMock()
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    assert mock_client.custom.method_calls == []
+
+
+def test_sync_vertical_pod_autoscaler_create(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    mock_client = mock.MagicMock()
+    mock_client.custom.get_namespaced_custom_object.side_effect = ApiException(
+        status=404
+    )
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    mock_client.custom.create_namespaced_custom_object.assert_called_once_with(
+        **VPA_API_KWARGS, body=desired_vpa(app)
+    )
+    assert mock_client.custom.patch_namespaced_custom_object.call_count == 0
+
+
+def test_sync_vertical_pod_autoscaler_up_to_date(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    mock_client = mock.MagicMock()
+    mock_client.custom.get_namespaced_custom_object.return_value = existing_vpa(
+        managed=True, spec=desired_vpa(app)["spec"]
+    )
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    assert mock_client.custom.create_namespaced_custom_object.call_count == 0
+    assert mock_client.custom.patch_namespaced_custom_object.call_count == 0
+    assert mock_client.custom.delete_namespaced_custom_object.call_count == 0
+
+
+def test_sync_vertical_pod_autoscaler_patches_changed_spec(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    mock_client = mock.MagicMock()
+    mock_client.custom.get_namespaced_custom_object.return_value = existing_vpa(
+        managed=True, spec={"updatePolicy": {"updateMode": "Auto"}}
+    )
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    mock_client.custom.patch_namespaced_custom_object.assert_called_once_with(
+        **VPA_API_KWARGS,
+        name="fake_name",
+        body={"spec": desired_vpa(app)["spec"]},
+    )
+    assert mock_client.custom.create_namespaced_custom_object.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "vpa_config",
+    [{"enabled": True}, {"enabled": True, "instances": ["other_service.main"]}],
+)
+def test_sync_vertical_pod_autoscaler_unlisted_makes_no_api_calls(vpa_app, vpa_config):
+    app, set_vpa_config = vpa_app
+    set_vpa_config(vpa_config)
+    mock_client = mock.MagicMock()
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    assert mock_client.custom.method_calls == []
+
+
+def test_sync_vertical_pod_autoscaler_leaves_unmanaged_vpa_alone(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    mock_client = mock.MagicMock()
+    mock_client.custom.get_namespaced_custom_object.return_value = existing_vpa(
+        managed=False, spec={"updatePolicy": {"updateMode": "Off"}}
+    )
+
+    app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+
+    assert mock_client.custom.create_namespaced_custom_object.call_count == 0
+    assert mock_client.custom.patch_namespaced_custom_object.call_count == 0
+    assert mock_client.custom.delete_namespaced_custom_object.call_count == 0
+
+
+def test_sync_vertical_pod_autoscaler_reraises_api_errors(vpa_app):
+    app, set_vpa_config = vpa_app
+    set_vpa_config({"enabled": True, "instances": ["service.instance"]})
+    mock_client = mock.MagicMock()
+    mock_client.custom.get_namespaced_custom_object.side_effect = ApiException(
+        status=403
+    )
+
+    with pytest.raises(ApiException):
+        app.sync_vertical_pod_autoscaler(kube_client=mock_client)
+    assert mock_client.custom.create_namespaced_custom_object.call_count == 0
 
 
 def test_job_wrapper_deep_delete():
