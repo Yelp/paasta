@@ -2237,7 +2237,7 @@ def test_MarkForDeployProcess_deploys_when_recording_fails():
     assert mfdp.state == "_begin"
 
 
-def make_dm_process(authors, triggered_by=None, permalink="https://slack/thread"):
+def make_dm_process(authors, triggered_by=None, link="https://slack/thread"):
     """A stand-in for MarkForDeploymentProcess wired to the real DM methods."""
     mfdp_cls = mark_for_deployment.MarkForDeploymentProcess
     fake = MagicMock()
@@ -2247,7 +2247,7 @@ def make_dm_process(authors, triggered_by=None, permalink="https://slack/thread"
     fake.deploy_group = "prod.non_canary"
     fake.deployment_version = DeploymentVersion(sha="a" * 40, image_version=None)
     fake.old_deployment_version = DeploymentVersion(sha="b" * 40, image_version=None)
-    fake.get_thread_permalink.return_value = permalink
+    fake.get_thread_link.return_value = link
     fake.get_rollback_dm_text.side_effect = (
         lambda **kwargs: mfdp_cls.get_rollback_dm_text(fake, **kwargs)
     )
@@ -2323,7 +2323,7 @@ def test_dm_authors_about_rollback_dms_triggerer_who_is_an_author_once():
 
 
 def test_dm_authors_about_rollback_omits_thread_link_but_still_dms():
-    fake = make_dm_process(authors=["alpha"], permalink=None)
+    fake = make_dm_process(authors=["alpha"], link=None)
 
     mark_for_deployment.MarkForDeploymentProcess.dm_authors_about_rollback(fake)
 

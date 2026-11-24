@@ -1793,9 +1793,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             lines.append("You triggered this deploy.")
         if is_author:
             lines.append("You are listed as an author of this deploy.")
-        permalink = self.get_thread_permalink()
-        if permalink:
-            lines.append(f"Deploy thread: {permalink}")
+        link = self.get_thread_link()
+        if link:
+            lines.append(f"Deploy thread: {link}")
         return "\n".join(lines)
 
     def dm_authors_about_rollback(self) -> None:
