@@ -327,29 +327,6 @@ class Application(ABC):
             raise
         self.logging.info(f"Deleted VPA {namespace}/{name}")
 
-    def delete_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
-        try:
-            kube_client.autoscaling.delete_namespaced_horizontal_pod_autoscaler(
-                name=self.item.metadata.name,
-                namespace=self.item.metadata.namespace,
-                body=V1DeleteOptions(),
-            )
-        except ApiException as e:
-            if e.status == 404:
-                # Deployment does not exist, nothing to delete but
-                # we can consider this a success.
-                self.logging.debug(
-                    f"not deleting nonexistent HPA/{self.item.metadata.name} from namespace/{self.item.metadata.namespace}"
-                )
-            else:
-                raise
-        else:
-            self.logging.info(
-                "deleted HPA/{} from namespace/{}".format(
-                    self.item.metadata.name, self.item.metadata.namespace
-                )
-            )
-
 
 class DeploymentWrapper(Application):
     def __init__(
