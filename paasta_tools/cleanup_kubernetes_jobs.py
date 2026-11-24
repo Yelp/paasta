@@ -47,7 +47,6 @@ from typing import Union
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
-from kubernetes.client.rest import ApiException
 from pysensu_yelp import Status
 
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -56,20 +55,12 @@ from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWr
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes.application.tools import Application
 from paasta_tools.kubernetes.application.tools import list_all_applications
-from paasta_tools.kubernetes_tools import VPA_GROUP
-from paasta_tools.kubernetes_tools import VPA_PLURAL
-from paasta_tools.kubernetes_tools import VPA_VERSION
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import VerticalPodAutoscalerDict
-from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import VerticalPodAutoscalingConfigDict
 from paasta_tools.utils import _log
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 
@@ -280,69 +271,6 @@ def cleanup_unused_apps(
             applicaton.deep_delete(kube_client)
 
 
-def cleanup_vertical_pod_autoscalers(
-    kube_client: KubeClient,
-    vpa_config: VerticalPodAutoscalingConfigDict,
-) -> bool:
-    if not vpa_config.get("enabled", False):
-        return True
-    listed_instances = set(vpa_config.get("instances", []))
-
-    response = kube_client.custom.list_cluster_custom_object(
-        group=VPA_GROUP,
-        version=VPA_VERSION,
-        plural=VPA_PLURAL,
-        label_selector=f"{paasta_prefixed('managed')}=true",
-    )
-    managed_vpas: List[VerticalPodAutoscalerDict] = response["items"]
-    results: List[bool] = []
-    for vpa in managed_vpas:
-        name = vpa["metadata"]["name"]
-        namespace = vpa["metadata"]["namespace"]
-        labels = vpa["metadata"]["labels"]
-        job_id = compose_job_id(
-            labels.get(paasta_prefixed("service")),
-            labels.get(paasta_prefixed("instance")),
-        )
-        deployment = vpa["spec"]["targetRef"]["name"]
-        try:
-            if job_id in listed_instances and deployment_exists(
-                kube_client, name=deployment, namespace=namespace
-            ):
-                continue
-            log.info(f"Deleting VPA {namespace}/{name}")
-            delete_custom_resource(
-                kube_client=kube_client,
-                name=name,
-                namespace=namespace,
-                group=VPA_GROUP,
-                version=VPA_VERSION,
-                plural=VPA_PLURAL,
-            )
-            results.append(True)
-        except ApiException as e:
-            if e.status == 404:
-                # VPA does not exist, nothing to delete but
-                # we can consider this a success.
-                results.append(True)
-            else:
-                log.exception(f"Error while deleting VPA {namespace}/{name}")
-                results.append(False)
-    return all(results)
-
-
-def deployment_exists(kube_client: KubeClient, name: str, namespace: str) -> bool:
-    try:
-        kube_client.deployments.read_namespaced_deployment(
-            name=name, namespace=namespace
-        )
-    except ApiException as e:
-        if e.status == 404:
-            return False
-        raise
-    return True
-
-
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Cleans up stale kubernetes jobs.")
     parser.add_argument(
@@ -410,11 +338,6 @@ def main(argv=None) -> None:
         )
     except DontKillEverythingError:
         sys.exit(1)
-
-    if eks:
-        vpa_config = load_system_paasta_config().get_vertical_pod_autoscaling_config()
-        if not cleanup_vertical_pod_autoscalers(KubeClient(), vpa_config):
-            sys.exit(1)
 
 
 if __name__ == "__main__":

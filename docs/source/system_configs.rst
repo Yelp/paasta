@@ -126,16 +126,3 @@ These are the keys that may exist in system configs:
     ``table_name``.
 
     Example: ``"slack_thread_writer_config": {"table_name": "deploy-slack-threads", "region": "us-west-2"}``
-
-  * ``vertical_pod_autoscaling``: Which instances ``setup_kubernetes_job`` creates a recommendation-only
-    VerticalPodAutoscaler for. Only EKS instances (``eks-*.yaml``) get one. A dictionary with the keys
-    ``enabled`` and ``instances``.
-    ``enabled`` turns VPA management on for the cluster. Only set it where the ``autoscaling.k8s.io`` VPA CRDs
-    are installed. When it is false or unset, paasta makes no VPA API calls.
-    ``instances`` lists ``service.instance`` pairs. Each one gets a VPA named after its Deployment, with
-    ``updateMode: "Off"``, so the VPA recommender writes recommendations for the main container and never
-    changes pods. ``cleanup_kubernetes_jobs --eks`` deletes the VPAs paasta created for instances that leave the
-    list or whose Deployment is gone. To remove all of them, keep ``enabled`` true with an empty ``instances`` list
-    for one run. paasta never modifies or deletes a VPA without the ``paasta.yelp.com/managed: "true"`` label.
-
-    Example: ``"vertical_pod_autoscaling": {"enabled": true, "instances": ["pypi.main"]}``

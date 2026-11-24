@@ -3040,19 +3040,3 @@ def test_SystemPaastaConfig_get_enable_cost_owner_label_enabled():
         {"enable_cost_owner_label": True}, "/some/fake/dir"
     )
     assert fake_config.get_enable_cost_owner_label() is True
-
-
-def test_SystemPaastaConfig_get_vertical_pod_autoscaling_config_default():
-    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
-    assert fake_config.get_vertical_pod_autoscaling_config() == {}
-
-
-def test_SystemPaastaConfig_get_vertical_pod_autoscaling_config():
-    vpa_config: utils.VerticalPodAutoscalingConfigDict = {
-        "enabled": True,
-        "instances": ["pypi.main", "federator.main"],
-    }
-    fake_config = utils.SystemPaastaConfig(
-        {"vertical_pod_autoscaling": vpa_config}, "/some/fake/dir"
-    )
-    assert fake_config.get_vertical_pod_autoscaling_config() == vpa_config

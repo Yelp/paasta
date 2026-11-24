@@ -648,7 +648,7 @@ instance MAY have:
   * ``autotune_limits``: Optionally set lower and upper-bounds for autotuned resources. Useful for services that have a known range of resource usage, but that have usage patterns that don't play well with our autotune system.
     This is a dictionary with the following keys:
 
-    * ``cpu``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the CPU limit, respectively.
+    * ``cpus``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the CPU limit, respectively.
     * ``mem``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the memory limit, respectively.
     * ``disk``: A dictionary with the keys ``min`` and ``max``. These are the lower and upper bounds for the disk limit, respectively.
 
@@ -664,6 +664,31 @@ instance MAY have:
           max: 10000
 
     NOTE: it's possible to set only one of the bounds, if you only want to set a lower or upper bound (i.e., setting both min/max is not required).
+
+    If ``vertical_scaling`` uses a VPA, the ``cpus`` and ``mem`` bounds also become the VPA's ``minAllowed`` and ``maxAllowed`` for the main container, so its recommendations stay inside them.
+    VPA doesn't scale disk, so ``disk`` only applies to the autotuner.
+
+  * ``vertical_scaling``: Optionally choose what recommends CPU and memory for this instance. Only EKS instances (``eks-*.yaml``) support it.
+    This is a dictionary with the following keys:
+
+    * ``type``: Required. One of:
+
+      * ``autotuner``: The default when ``vertical_scaling`` is unset. The autotuner writes recommendations to ``autotuned_defaults``.
+      * ``vpa-default``: PaaSTA also creates a VerticalPodAutoscaler (VPA) for the instance, which the cluster's ``default`` VPA recommender fills with recommendations for the main container. Sidecars get no recommendations.
+        ``autotuned_defaults`` keep applying, and the VPA reads ``autotune_limits`` as described above.
+        PaaSTA only creates the VPA on clusters that serve the VPA API, and deletes it when ``type`` changes back to ``autotuner`` or the instance is removed.
+
+    * ``update_mode``: Optional, and only allowed with a ``vpa-*`` type. Controls whether the VPA changes pods. The only value for now is ``'Off'``, which is also the default: the VPA writes recommendations and never changes pods.
+      Quote the value, because YAML reads a bare ``Off`` as ``false``.
+
+    Example::
+
+      vertical_scaling:
+        type: vpa-default
+        update_mode: 'Off'
+
+    You can read the recommendations with ``kubectl describe vpa <deployment name> -n <namespace>``.
+    Changing to a different ``vpa-*`` type later starts that instance's recommendations from scratch.
 
   * ``enable_aws_lb_readiness_gate``: A boolean indicating whether to enable injecting AWS Load Balancer readiness gates for this instance. Defaults to ``false``.
     This is only applicable to a very small subset of services at Yelp - please chat with #paasta before enabling this.

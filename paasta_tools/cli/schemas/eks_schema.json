@@ -971,6 +971,35 @@
                         }
                     }
                 },
+                "vertical_scaling": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "type"
+                    ],
+                    "properties": {
+                        "type": {
+                            "enum": [
+                                "autotuner",
+                                "vpa-default"
+                            ]
+                        },
+                        "update_mode": {
+                            "enum": [
+                                "Off"
+                            ]
+                        }
+                    },
+                    "dependencies": {
+                        "update_mode": {
+                            "properties": {
+                                "type": {
+                                    "pattern": "^vpa-"
+                                }
+                            }
+                        }
+                    }
+                },
                 "topology_spread_constraints": {
                     "type": "array",
                     "items": {

@@ -36,6 +36,7 @@ from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
+from typing import NotRequired
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -48,6 +49,7 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import ApisApi
 from kubernetes.client import CoreV1Event
 from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
@@ -359,21 +361,59 @@ class HpaOverride(TypedDict):
 VPA_GROUP = "autoscaling.k8s.io"
 VPA_VERSION = "v1"
 VPA_PLURAL = "verticalpodautoscalers"
+VPA_VERTICAL_SCALING_PREFIX = "vpa-"
+
+VerticalScalingType = Literal["autotuner", "vpa-default"]
+# Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
+# also need the VPA updater, and no cluster runs either yet.
+VpaUpdateMode = Literal["Off"]
+
+
+class VerticalScalingDict(TypedDict, total=False):
+    type: VerticalScalingType
+    update_mode: VpaUpdateMode
+
+
+class AutotuneCpuLimitsDict(TypedDict, total=False):
+    min: float
+    max: float
+
+
+class AutotuneSizeLimitsDict(TypedDict, total=False):
+    min: int  # MiB
+    max: int  # MiB
+
+
+class AutotuneLimitsDict(TypedDict, total=False):
+    cpus: AutotuneCpuLimitsDict
+    mem: AutotuneSizeLimitsDict
+    disk: AutotuneSizeLimitsDict
 
 
 class VpaTargetRefDict(TypedDict):
     apiVersion: str
-    kind: str
+    kind: Literal["Deployment", "StatefulSet"]
     name: str
 
 
 class VpaUpdatePolicyDict(TypedDict):
-    updateMode: Literal["Off"]
+    updateMode: VpaUpdateMode
+
+
+class VpaRecommenderDict(TypedDict):
+    name: str
+
+
+class VpaResourceListDict(TypedDict, total=False):
+    cpu: str  # Kubernetes quantity, e.g. "250m"
+    memory: str  # Kubernetes quantity, e.g. "1024Mi"
 
 
 class VpaContainerPolicyDict(TypedDict):
     containerName: str
     mode: Literal["Auto", "Off"]
+    minAllowed: NotRequired[VpaResourceListDict]
+    maxAllowed: NotRequired[VpaResourceListDict]
 
 
 class VpaResourcePolicyDict(TypedDict):
@@ -383,6 +423,7 @@ class VpaResourcePolicyDict(TypedDict):
 class VpaSpecDict(TypedDict):
     targetRef: VpaTargetRefDict
     updatePolicy: VpaUpdatePolicyDict
+    recommenders: List[VpaRecommenderDict]
     resourcePolicy: VpaResourcePolicyDict
 
 
@@ -525,6 +566,8 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_on_datastore_credentials_change: bool
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
+    vertical_scaling: VerticalScalingDict
+    autotune_limits: AutotuneLimitsDict
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1088,9 +1131,59 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return hpa
 
+    def get_vertical_scaling_type(self) -> VerticalScalingType:
+        return self.config_dict.get("vertical_scaling", {}).get("type", "autotuner")
+
+    def get_vpa_recommender(self) -> Optional[str]:
+        """Return the name of the VPA recommender for this instance, or None if it doesn't use a VPA."""
+        scaling_type = self.get_vertical_scaling_type()
+        if not scaling_type.startswith(VPA_VERTICAL_SCALING_PREFIX):
+            return None
+        return scaling_type.removeprefix(VPA_VERTICAL_SCALING_PREFIX)
+
+    def get_vpa_update_mode(self) -> VpaUpdateMode:
+        return self.config_dict.get("vertical_scaling", {}).get("update_mode", "Off")
+
+    def get_vpa_resource_bounds(
+        self,
+    ) -> Tuple[VpaResourceListDict, VpaResourceListDict]:
+        """Turn autotune_limits into minAllowed and maxAllowed for the main container's VPA policy.
+
+        autotune_limits sets cpus in cores and mem in MiB. VPA doesn't scale disk, so disk is ignored.
+        """
+        autotune_limits = self.config_dict.get("autotune_limits", {})
+        cpus = autotune_limits.get("cpus", {})
+        mem = autotune_limits.get("mem", {})
+        min_allowed: VpaResourceListDict = {}
+        max_allowed: VpaResourceListDict = {}
+        if "min" in cpus:
+            min_allowed["cpu"] = f"{round(cpus['min'] * 1000)}m"
+        if "max" in cpus:
+            max_allowed["cpu"] = f"{round(cpus['max'] * 1000)}m"
+        if "min" in mem:
+            min_allowed["memory"] = f"{mem['min']}Mi"
+        if "max" in mem:
+            max_allowed["memory"] = f"{mem['max']}Mi"
+        return min_allowed, max_allowed
+
     def get_vertical_pod_autoscaler(
         self, name: str, namespace: str
-    ) -> VerticalPodAutoscalerDict:
+    ) -> Optional[VerticalPodAutoscalerDict]:
+        """Return the VPA this instance should have, or None if its vertical_scaling type isn't a VPA."""
+        recommender = self.get_vpa_recommender()
+        if recommender is None:
+            return None
+
+        main_container_policy: VpaContainerPolicyDict = {
+            "containerName": self.get_sanitised_instance_name(),
+            "mode": "Auto",
+        }
+        min_allowed, max_allowed = self.get_vpa_resource_bounds()
+        if min_allowed:
+            main_container_policy["minAllowed"] = min_allowed
+        if max_allowed:
+            main_container_policy["maxAllowed"] = max_allowed
+
         return {
             "apiVersion": f"{VPA_GROUP}/{VPA_VERSION}",
             "kind": "VerticalPodAutoscaler",
@@ -1106,16 +1199,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "spec": {
                 "targetRef": {
                     "apiVersion": "apps/v1",
-                    "kind": "Deployment",
+                    "kind": (
+                        "StatefulSet"
+                        if self.should_use_stateful_set()
+                        else "Deployment"
+                    ),
                     "name": name,
                 },
-                "updatePolicy": {"updateMode": "Off"},
+                "updatePolicy": {"updateMode": self.get_vpa_update_mode()},
+                "recommenders": [{"name": recommender}],
                 "resourcePolicy": {
                     "containerPolicies": [
-                        {
-                            "containerName": self.get_sanitised_instance_name(),
-                            "mode": "Auto",
-                        },
+                        main_container_policy,
                         {"containerName": "*", "mode": "Off"},
                     ]
                 },
@@ -2155,7 +2250,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaled_instances(self) -> Optional[int]:
         try:
-            if self.get_persistent_volumes():
+            if self.should_use_stateful_set():
                 return (
                     KubeClient()
                     .deployments.read_namespaced_stateful_set(
@@ -2352,6 +2447,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return complete_config
 
+    def should_use_stateful_set(self) -> bool:
+        return bool(self.get_persistent_volumes())
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -2360,7 +2458,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             docker_url = self.get_docker_url()
             git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
             complete_config: Union[V1StatefulSet, V1Deployment]
-            if self.get_persistent_volumes():
+            if self.should_use_stateful_set():
                 complete_config = V1StatefulSet(
                     api_version="apps/v1",
                     kind="StatefulSet",
@@ -3648,6 +3746,20 @@ def delete_custom_resource(
     )
 
 
+@time_cache(ttl=300)
+def vpa_api_is_available(kube_client: KubeClient) -> bool:
+    """Check whether the cluster serves the VPA API, i.e. whether the VPA CRDs are installed.
+
+    This reads the API discovery document, which every authenticated client can read,
+    so it needs no extra RBAC. The result is cached so that setup_kubernetes_job makes
+    this call once per run instead of once per instance.
+    """
+    for group in ApisApi(kube_client.api_client).get_api_versions().groups:
+        if group.name == VPA_GROUP:
+            return any(version.version == VPA_VERSION for version in group.versions)
+    return False
+
+
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
     if instance_count == 0:
         return 0
@@ -3703,7 +3815,7 @@ def set_instances_for_kubernetes_service(
     name = service_config.get_sanitised_deployment_name()
     formatted_application = service_config.format_kubernetes_app()
     formatted_application.spec.replicas = instance_count
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         kube_client.deployments.patch_namespaced_stateful_set_scale(
             name=name,
             namespace=service_config.get_namespace(),
@@ -3721,7 +3833,7 @@ def get_annotations_for_kubernetes_service(
     kube_client: KubeClient, service_config: KubernetesDeploymentConfig
 ) -> Dict:
     name = service_config.get_sanitised_deployment_name()
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         k8s_service = kube_client.deployments.read_namespaced_stateful_set(
             name=name, namespace=service_config.get_namespace()
         )
@@ -3740,7 +3852,7 @@ def write_annotation_for_kubernetes_service(
 ) -> None:
     name = formatted_application.metadata.name
     formatted_application.metadata.annotations = annotation
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         kube_client.deployments.patch_namespaced_stateful_set(
             name=name,
             namespace=service_config.get_namespace(),
