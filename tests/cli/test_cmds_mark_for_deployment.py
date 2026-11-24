@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import asyncio
 import importlib.metadata
 import os
@@ -2234,3 +2235,131 @@ def test_MarkForDeployProcess_deploys_when_recording_fails():
 
     mock_put_item.assert_called_once()
     assert mfdp.state == "_begin"
+
+
+@pytest.mark.parametrize(
+    "extra_args,expected",
+    [
+        ([], []),
+        (["--previous-deploy-groups", "prod.canary"], ["prod.canary"]),
+        (
+            ["--previous-deploy-groups", "prod.canary, prod.other"],
+            ["prod.canary", "prod.other"],
+        ),
+        (["--previous-deploy-groups", "prod.canary,,"], ["prod.canary"]),
+        (["--previous-deploy-groups", ""], []),
+    ],
+)
+def test_previous_deploy_groups_arg_parsing(extra_args, expected):
+    parser = argparse.ArgumentParser()
+    mark_for_deployment.add_subparser(parser.add_subparsers())
+    args = parser.parse_args(
+        ["mark-for-deployment", "-s", "service", "-c", "a" * 40, "-l", "group"]
+        + extra_args
+    )
+    assert args.previous_deploy_groups == expected
+
+
+def _make_rollback_process(previous_deploy_groups):
+    return WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={"pipeline": [{"step": "prod.non_canary"}]},
+        deploy_group="prod.non_canary",
+        commit="bad_commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+        previous_deploy_groups=previous_deploy_groups,
+    )
+
+
+@pytest.mark.parametrize(
+    "previous_deploy_groups,expected_groups",
+    [
+        (None, ["prod.non_canary"]),
+        ([], ["prod.non_canary"]),
+        (["prod.canary"], ["prod.non_canary", "prod.canary"]),
+        # the group being rolled back is never rolled back twice
+        (["prod.canary", "prod.non_canary"], ["prod.non_canary", "prod.canary"]),
+    ],
+)
+def test_MarkForDeployProcess_start_rollback_previous_deploy_groups(
+    mock_periodically_update_slack, previous_deploy_groups, expected_groups
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ) as mock_mfd, patch(
+        "paasta_tools.remote_git.create_rollback_tag", autospec=True, return_value=0
+    ) as mock_tag, patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True
+    ):
+        mfdp = _make_rollback_process(previous_deploy_groups)
+        with patch.object(mfdp, "trigger", autospec=True) as mock_trigger, patch.object(
+            mfdp, "update_slack_status", autospec=True
+        ), patch.object(mfdp, "update_slack_thread", autospec=True), patch.object(
+            mfdp, "cancel_auto_rollback_countdown", autospec=True
+        ), patch.object(
+            mfdp, "deploy_group_is_set_to_notify", autospec=True, return_value=False
+        ):
+            mfdp.on_enter_start_rollback()
+
+    assert [c.kwargs["deploy_group"] for c in mock_mfd.call_args_list] == (
+        expected_groups
+    )
+    assert all(c.kwargs["commit"] == "old_git_sha" for c in mock_mfd.call_args_list)
+    assert [c.kwargs["deploy_group"] for c in mock_tag.call_args_list] == (
+        expected_groups
+    )
+    assert all(c.kwargs["bad_sha"] == "bad_commit" for c in mock_tag.call_args_list)
+    mock_trigger.assert_called_once_with("mfd_succeeded")
+
+
+def test_MarkForDeployProcess_start_rollback_previous_group_failure_only_warns(
+    mock_periodically_update_slack,
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        side_effect=[0, 1],
+    ) as mock_mfd, patch(
+        "paasta_tools.remote_git.create_rollback_tag", autospec=True, return_value=0
+    ) as mock_tag, patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True
+    ):
+        mfdp = _make_rollback_process(["prod.canary"])
+        with patch.object(mfdp, "trigger", autospec=True) as mock_trigger, patch.object(
+            mfdp, "update_slack_status", autospec=True
+        ), patch.object(mfdp, "update_slack_thread", autospec=True) as mock_thread, patch.object(
+            mfdp, "cancel_auto_rollback_countdown", autospec=True
+        ), patch.object(
+            mfdp, "deploy_group_is_set_to_notify", autospec=True, return_value=False
+        ):
+            mfdp.on_enter_start_rollback()
+
+    assert mock_mfd.call_count == 2
+    # no rollback tag for the group that failed to roll back
+    assert [c.kwargs["deploy_group"] for c in mock_tag.call_args_list] == [
+        "prod.non_canary"
+    ]
+    assert any(
+        "Failed to roll back prior deploy group `prod.canary`" in c.args[0]
+        for c in mock_thread.call_args_list
+    )
+    # the main group's rollback still succeeded
+    mock_trigger.assert_called_once_with("mfd_succeeded")
