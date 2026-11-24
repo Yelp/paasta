@@ -121,6 +121,7 @@ class FakeArgs:
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
     authors = None
+    previous_deploy_groups: list = []
     warn = 17
     polling_interval = None
     diagnosis_interval = None
@@ -2345,7 +2346,9 @@ def test_MarkForDeployProcess_start_rollback_previous_group_failure_only_warns(
         mfdp = _make_rollback_process(["prod.canary"])
         with patch.object(mfdp, "trigger", autospec=True) as mock_trigger, patch.object(
             mfdp, "update_slack_status", autospec=True
-        ), patch.object(mfdp, "update_slack_thread", autospec=True) as mock_thread, patch.object(
+        ), patch.object(
+            mfdp, "update_slack_thread", autospec=True
+        ) as mock_thread, patch.object(
             mfdp, "cancel_auto_rollback_countdown", autospec=True
         ), patch.object(
             mfdp, "deploy_group_is_set_to_notify", autospec=True, return_value=False
