@@ -1374,10 +1374,6 @@ def test_diagnose_why_instance_is_stuck_returns_restart_counts():
         autospec=True,
         return_value=mock_api,
     ), patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.get_paasta_oapi_api_clustername",
-        autospec=True,
-        return_value="cluster1",
-    ), patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_pod_restart_counts",
         autospec=True,
         return_value={"pod1": 3, "pod2": 4},

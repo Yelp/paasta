@@ -64,7 +64,6 @@ from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
 from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import trigger_deploys
@@ -2183,12 +2182,7 @@ def diagnose_why_instance_is_stuck(
     * None: unable to talk to the PaaSTA API
     * Dict[str, int]: pod_name → restart_count for pods of the target version
     """
-    api = client.get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(
-            cluster=cluster,
-            is_eks=instance_config.get_instance_type().endswith("eks"),
-        ),
-    )
+    api = client.get_paasta_oapi_client(cluster=cluster)
     try:
         status = api.service.status_instance(
             service=service,
@@ -2350,12 +2344,7 @@ def check_if_instance_is_done(
     api: Optional[client.PaastaOApiClient] = None,
 ) -> bool:
     if api is None:
-        api = client.get_paasta_oapi_client(
-            cluster=get_paasta_oapi_api_clustername(
-                cluster=cluster,
-                is_eks=instance_config.get_instance_type().endswith("eks"),
-            ),
-        )
+        api = client.get_paasta_oapi_client(cluster=cluster)
         if not api:
             log.warning(
                 "Couldn't reach the PaaSTA api for {}! Assuming it is not "

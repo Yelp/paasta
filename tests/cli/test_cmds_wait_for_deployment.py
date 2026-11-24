@@ -166,7 +166,7 @@ def test_check_if_instance_is_done(
                 branch_dict=None,
                 soa_dir="fake_soa_dir",
             ),
-            "eks-infrastage",
+            "infrastage",
         ),
         (
             CassandraClusterDeploymentConfig(
@@ -188,7 +188,7 @@ def test_check_if_instance_is_done(
                 branch_dict=None,
                 soa_dir="fake_soa_dir",
             ),
-            "eks-infrastage",
+            "infrastage",
         ),
     ],
 )
