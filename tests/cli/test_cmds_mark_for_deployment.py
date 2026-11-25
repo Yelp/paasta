@@ -26,6 +26,7 @@ from botocore.exceptions import EndpointConnectionError
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
+from sticht.rollbacks.base import ALERT_GATE_STATE
 from sticht.rollbacks.slo import SLOWatcher
 
 from paasta_tools import utils
@@ -2234,3 +2235,135 @@ def test_MarkForDeployProcess_deploys_when_recording_fails():
 
     mock_put_item.assert_called_once()
     assert mfdp.state == "_begin"
+
+
+@fixture
+def gated_deploy_patches():
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
+        autospec=True,
+        return_value=0,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment",
+        autospec=True,
+    ), patch(
+        "paasta_tools.cli.cmds.mark_for_deployment._log",
+        autospec=True,
+    ):
+        yield
+
+
+def make_mfdp_for_alert_gate(
+    block=True, alertmanager_rollback=True, preexisting_alerts=True
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={
+            "pipeline": [
+                {"step": "deploy_group", "alertmanager_rollback": alertmanager_rollback}
+            ]
+        },
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=block,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    mfdp.alertmanager_watcher = mock.Mock(
+        first_poll_done=mock.Mock(wait=mock.Mock(return_value=True)),
+        has_preexisting_alerts=preexisting_alerts,
+        active_alerts=set(),
+        preexisting_alert_names={"OldAlert"} if preexisting_alerts else set(),
+    )
+    return mfdp
+
+
+@pytest.mark.parametrize(
+    "block,alertmanager_rollback,expected",
+    [
+        (True, True, True),
+        # Nobody is watching to click proceed without --wait-for-deployment
+        (False, True, False),
+        (True, False, False),
+        (False, False, False),
+    ],
+)
+def test_alert_gate_enabled(
+    block,
+    alertmanager_rollback,
+    expected,
+    mock_periodically_update_slack,
+    gated_deploy_patches,
+):
+    mfdp = make_mfdp_for_alert_gate(
+        block=block, alertmanager_rollback=alertmanager_rollback
+    )
+
+    assert mfdp.alert_gate_enabled() is expected
+    assert (ALERT_GATE_STATE in mfdp.machine.states) is expected
+
+
+def test_alert_gate_holds_deploy_until_proceed_is_clicked(
+    mock_periodically_update_slack, gated_deploy_patches
+):
+    mfdp = make_mfdp_for_alert_gate()
+
+    mfdp.event_loop.run_until_complete(mfdp.before_start())
+
+    assert mfdp.state == ALERT_GATE_STATE
+    assert "proceed" in mfdp.get_available_buttons()
+
+    mfdp.trigger("proceed_button_clicked")
+
+    assert mfdp.state_history == [ALERT_GATE_STATE, "start_deploy", "deploying"]
+
+
+def test_alert_gate_releases_when_alerts_clear(
+    mock_periodically_update_slack, gated_deploy_patches
+):
+    mfdp = make_mfdp_for_alert_gate()
+    mfdp.event_loop.run_until_complete(mfdp.before_start())
+
+    mfdp.preexisting_alerts_cleared_callback()
+
+    assert mfdp.state == "deploying"
+
+
+def test_alert_gate_does_not_hold_deploy_without_preexisting_alerts(
+    mock_periodically_update_slack, gated_deploy_patches
+):
+    mfdp = make_mfdp_for_alert_gate(preexisting_alerts=False)
+
+    mfdp.event_loop.run_until_complete(mfdp.before_start())
+
+    assert mfdp.state == "_begin"
+
+
+def test_new_alert_at_alert_gate_does_not_start_a_rollback_countdown(
+    mock_periodically_update_slack, gated_deploy_patches
+):
+    mfdp = make_mfdp_for_alert_gate()
+    mfdp.event_loop.run_until_complete(mfdp.before_start())
+
+    # Nothing has been deployed yet, so there's nothing to roll back
+    mfdp.trigger("alertmanager_started_failing")
+
+    assert mfdp.state == ALERT_GATE_STATE
+    assert not mfdp.is_auto_rollback_countdown_running()
+
+
+def test_get_button_text_proceed(mock_periodically_update_slack, gated_deploy_patches):
+    mfdp = make_mfdp_for_alert_gate()
+
+    assert mfdp.get_button_text("proceed", is_active=False).endswith("anyway :warning:")
