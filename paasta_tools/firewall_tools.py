@@ -84,6 +84,12 @@ def network_policy_for_service_instance(
             _egress_rule_for_firewall_rule(rule)
             for rule in firewall_config.get("egress", []) + baseline_egress
         ]
+        policy_types = []
+        if egress_rules:
+            policy_types.append("Egress")
+        if ingress_rules:
+            policy_types.append("Ingress")
+
         network_policy = V1NetworkPolicy(
             api_version="networking.k8s.io/v1",
             kind="NetworkPolicy",
@@ -103,9 +109,7 @@ def network_policy_for_service_instance(
                         "paasta.yelp.com/instance": instance,
                     }
                 ),
-                policy_types=["Egress", "Ingress"]
-                if (egress_rules and ingress_rules)
-                else (["Egress"] if egress_rules else ["Ingress"]),
+                policy_types=policy_types,
                 ingress=ingress_rules or None,
                 egress=egress_rules or None,
             ),
