@@ -304,6 +304,10 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
+    # Keep this label: the Flink operator copies CR labels onto its pods, so
+    # removing or changing it would restart every Flink pod.
+    resource["metadata"]["labels"][paasta_prefixed("eks")] = "True"
+
     url = get_dashboard_base_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
