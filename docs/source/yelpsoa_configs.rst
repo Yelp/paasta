@@ -539,25 +539,27 @@ instance MAY have:
     For example:
 
     .. code-block:: yaml
-
         main:
+          cpus: 0.5
           firewall:
             egress:
-              # Allow MySQL traffic to any instance of some-service
-              - to_services: [some-service]
-                ports: [{protocol: TCP, port: 3306}]
-              # Allow traffic to a vendor's published IP range
-              - to_cidrs: [52.94.0.0/16]
+              # allow HTTPS to vendor-published CIDR ranges
+              - to_cidrs:
+                  - 52.94.0.0/16
+                  - 140.82.0.0/16
+                ports:
+                  - protocol: TCP
+                    port: 443
             ingress:
-              # Allow some-api.main to reach this instance on port 8080
-              - from_services: [some-api.main]
-                ports: [{protocol: TCP, port: 8080}]
+              # allow internal traffic on 8080
+              - from_cidrs:
+                  - 10.0.0.0/8
+                ports:
+                  - protocol: TCP
+                    port: 8080
+
 
     Each rule must have at least one of these:
-
-    * ``to_services`` / ``from_services``: a list of services and/or
-      service-instances. ``some-service`` matches all of its instances;
-      ``some-service.main`` matches only that instance.
     * ``to_cidrs`` / ``from_cidrs``: a list of IPv4 CIDR blocks, such as
       ``52.94.0.0/16``.
 
