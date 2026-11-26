@@ -36,9 +36,10 @@ FIREWALL_RULE_KEYS = {
 }
 
 
-class FirewallPortDict(TypedDict):
+class FirewallPortDict(TypedDict, total=False):
     protocol: Literal["TCP", "UDP", "SCTP"]
     port: int
+    endPort: int
 
 
 class FirewallRuleDict(TypedDict, total=False):
@@ -72,6 +73,17 @@ def network_policy_for_service_instance(
     :return: V1NetworkPolicy object for service instance
     """
     try:
+        # Only constrain directions that have rules: an empty ingress/egress
+        # list with the direction in policyTypes means deny-all, so a config
+        # with only egress rules must not drag in deny-all ingress
+        ingress_rules = [
+            _ingress_rule_for_firewall_rule(rule)
+            for rule in firewall_config.get("ingress", []) + baseline_ingress
+        ]
+        egress_rules = [
+            _egress_rule_for_firewall_rule(rule)
+            for rule in firewall_config.get("egress", []) + baseline_egress
+        ]
         network_policy = V1NetworkPolicy(
             api_version="networking.k8s.io/v1",
             kind="NetworkPolicy",
@@ -91,15 +103,11 @@ def network_policy_for_service_instance(
                         "paasta.yelp.com/instance": instance,
                     }
                 ),
-                policy_types=["Egress", "Ingress"],
-                ingress=[
-                    _ingress_rule_for_firewall_rule(rule)
-                    for rule in firewall_config.get("ingress", []) + baseline_ingress
-                ],
-                egress=[
-                    _egress_rule_for_firewall_rule(rule)
-                    for rule in firewall_config.get("egress", []) + baseline_egress
-                ],
+                policy_types=["Egress", "Ingress"]
+                if (egress_rules and ingress_rules)
+                else (["Egress"] if egress_rules else ["Ingress"]),
+                ingress=ingress_rules or None,
+                egress=egress_rules or None,
             ),
         )
     except Exception as e:
@@ -152,6 +160,7 @@ def _network_policy_ports(rule: FirewallRuleDict) -> List[V1NetworkPolicyPort]:
             V1NetworkPolicyPort(
                 protocol=port["protocol"],
                 port=port["port"],
+                end_port=port.get("endPort"),
             )
         )
     return ports

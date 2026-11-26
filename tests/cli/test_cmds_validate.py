@@ -601,6 +601,40 @@ def test_validate_firewall_cidrs_absent_block(capsys):
     assert validate_firewall_cidrs({"main": {}}, "fake_path")
 
 
+def test_validate_firewall_port_range_valid():
+    config = {
+        "main": {
+            "firewall": {
+                "egress": [
+                    {
+                        "to_cidrs": ["10.0.0.0/8"],
+                        "ports": [{"protocol": "TCP", "port": 1, "endPort": 1000}],
+                    }
+                ]
+            }
+        }
+    }
+    assert validate_firewall_cidrs(config, "fake_path")
+
+
+def test_validate_firewall_port_range_invalid(capsys):
+    config = {
+        "main": {
+            "firewall": {
+                "egress": [
+                    {
+                        "to_cidrs": ["10.0.0.0/8"],
+                        "ports": [{"protocol": "TCP", "port": 100, "endPort": 50}],
+                    }
+                ]
+            }
+        }
+    }
+    assert not validate_firewall_cidrs(config, "fake_path")
+    output, _ = capsys.readouterr()
+    assert "endPort 50 is less than port 100" in output
+
+
 @pytest.mark.parametrize(
     "mock_config, expected",
     (

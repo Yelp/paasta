@@ -390,6 +390,13 @@ def validate_firewall_cidrs(config_file_object, file_path):
                             errors.append(
                                 f"{instance_name}.{direction}.{cidr_key}: {cidr}"
                             )
+                for port in rule.get("ports") or []:
+                    end_port = port.get("endPort")
+                    if end_port is not None and end_port < port["port"]:
+                        errors.append(
+                            f"{instance_name}.{direction}.ports: endPort "
+                            f"{end_port} is less than port {port['port']}"
+                        )
     if errors:
         error_string = "\n".join(errors)
         print(

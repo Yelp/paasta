@@ -565,7 +565,9 @@ instance MAY have:
 
     .. NOTE:: IPv6 addresses and domain names aren't supported yet.
 
-    ``ports`` is optional. If you leave it out, the rule allows all ports.
+    ``ports`` is optional. If you leave it out, the rule allows all ports. Each
+    port entry has ``protocol`` and ``port``; add ``endPort`` for an inclusive
+    range (``port: 1, endPort: 1000``).
 
     Under the hood, PaaSTA puts these rules into a Kubernetes NetworkPolicy.
 

@@ -54,6 +54,16 @@ def test_network_policy_ports_empty():
     assert _network_policy_ports({"to_cidrs": ["52.94.0.0/16"]}) == []
 
 
+def test_network_policy_ports_range():
+    rule = {
+        "to_cidrs": ["52.94.0.0/16"],
+        "ports": [{"protocol": "TCP", "port": 1, "endPort": 1000}],
+    }
+    assert _network_policy_ports(rule) == [
+        V1NetworkPolicyPort(protocol="TCP", port=1, end_port=1000)
+    ]
+
+
 def test_egress_rule_for_firewall_rule():
     rule = {
         "to_cidrs": ["52.94.0.0/16"],
@@ -221,6 +231,32 @@ def test_network_policy_for_service_instance_baselines():
         ),
     )
     assert policy == expected_policy
+
+
+def test_network_policy_for_service_instance_egress_only():
+    # No ingress rules at all (config or baseline): ingress must stay
+    # unrestricted, not deny-all
+    firewall_config = FirewallConfigDict(
+        egress=[FirewallRuleDict(to_cidrs=["52.94.0.0/16"])]
+    )
+
+    policy = network_policy_for_service_instance(
+        service="some-service",
+        instance="main",
+        namespace="paastasvc-some-service",
+        firewall_config=firewall_config,
+        baseline_egress=[],
+        baseline_ingress=[],
+    )
+
+    assert policy.spec.policy_types == ["Egress"]
+    assert policy.spec.ingress is None
+    assert policy.spec.egress == [
+        V1NetworkPolicyEgressRule(
+            to=[V1NetworkPolicyPeer(ip_block=V1IPBlock(cidr="52.94.0.0/16"))],
+            ports=[],
+        )
+    ]
 
 
 def test_network_policy_for_service_instance_invalid_rule_raises():

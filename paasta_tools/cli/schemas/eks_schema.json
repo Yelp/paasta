@@ -914,6 +914,11 @@
                                                 },
                                                 "port": {
                                                     "type": "integer"
+                                                },
+                                                "endPort": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "description": "Optional upper bound; with port, defines an inclusive range. Requires Kubernetes >= 1.25."
                                                 }
                                             }
                                         }
@@ -960,6 +965,11 @@
                                                 },
                                                 "port": {
                                                     "type": "integer"
+                                                },
+                                                "endPort": {
+                                                    "type": "integer",
+                                                    "minimum": 1,
+                                                    "description": "Optional upper bound; with port, defines an inclusive range. Requires Kubernetes >= 1.25."
                                                 }
                                             }
                                         }
