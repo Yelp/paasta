@@ -545,11 +545,18 @@ instance MAY have:
             egress:
               # allow HTTPS to vendor-published CIDR ranges
               - to_cidrs:
-                  - 52.94.0.0/16
-                  - 140.82.0.0/16
+                  - 52.94.0.0/16   # AWS
+                  - 140.82.0.0/16  # GitHub
                 ports:
                   - protocol: TCP
                     port: 443
+              # allow the 1025-65535 port range to an internal host
+              - to_cidrs:
+                  - 10.123.45.67/32
+                ports:
+                  - protocol: TCP
+                    port: 1025
+                    endPort: 65535
             ingress:
               # allow internal traffic on 8080
               - from_cidrs:
