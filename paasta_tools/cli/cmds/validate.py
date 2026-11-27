@@ -144,6 +144,10 @@ OVERRIDE_SINGLE_REPLICA_ACK_PATTERN = (
 )
 
 OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+
+# we expect a comment that starts with # override-
+OVERRIDE_POOL_CPU_LIMIT_PATTERN = r"#\s*override-"
+
 # for now, double the autotune cap to give people the benefit of the doubt
 # if we see that people are still misusing this configuration, we can lower
 # this to the autotune cap (i.e., 1)
@@ -918,33 +922,67 @@ def validate_pool_limits(service_path: str) -> bool:
     Validate that services in specific pools won't exceed per-node capacities.
     For the most part, this isn't normally an issue - but there are several pools where
     folks tend to want to run extra-large workloads that won't fit (e.g., large single-node batches).
+
+    Users can override this check by adding an # override- comment next to `cpus` in their
+    yelpsoa config.
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
+    system_paasta_config = load_system_paasta_config()
+    config_loader = PaastaServiceConfigLoader(
+        service=service, soa_dir=soa_dir, load_deployments=False
+    )
 
-    for cluster in list_clusters(service, soa_dir):
-        pool_limits_for_cluster: Dict[str, PoolLimits] = (
-            load_system_paasta_config().get_pool_limits().get(cluster, {})
-        )
-        for instance, instance_config in load_all_instance_configs_for_service(
-            service=service, cluster=cluster, soa_dir=soa_dir
+    for cluster in config_loader.clusters:
+        pool_limits_for_cluster: Dict[
+            str, PoolLimits
+        ] = system_paasta_config.get_pool_limits().get(cluster, {})
+        if not pool_limits_for_cluster:
+            continue
+
+        if __is_templated(service, soa_dir, cluster, workload="eks"):
+            # we should eventually make the python templates add the override comment
+            # to the corresponding YAML line, but until then we just opt these out of
+            # that validation
+            continue
+
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=EksDeploymentConfig
         ):
-            cpu = instance_config.get_cpus()
             pool = instance_config.get_pool()
-
             pool_limits = pool_limits_for_cluster.get(pool)
             if pool_limits is None:
                 continue
 
-            if cpu >= pool_limits["max_cpus"]:
-                returncode = False
-                print(
-                    failure(
-                        f"""{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the limit of {pool_limits['max_cpus']} for the {pool} pool.
-                        If you need to run a workload with this many CPUs, consider using the {pool_limits['recommended_pool']} pool instead.""",
-                        "",
-                    )
+            cpu = instance_config.get_cpus()
+            if cpu < pool_limits["max_cpus"]:
+                continue
+
+            instance = instance_config.get_instance()
+            config = get_config_file_dict(
+                instance_config.get_config_path(),
+                use_ruamel=True,
+            )
+            cpu_comment = _get_comments_for_key(
+                data=config[instance],
+                key="cpus",
+            )
+
+            if cpu_comment is not None and re.search(
+                pattern=OVERRIDE_POOL_CPU_LIMIT_PATTERN,
+                string=cpu_comment,
+            ):
+                continue
+
+            returncode = False
+            print(
+                failure(
+                    f"{service}.{instance} in {cluster} has {cpu} CPUs, which exceeds the recommended limit of {pool_limits['max_cpus']} for the {pool} pool."
+                    " To override, add a comment next to cpus in your yelpsoa config (e.g. cpus: 32  # override-need-large-pod)."
+                    " If you have any questions, reach out to #compute-infra.",
+                    "",
                 )
+            )
     return returncode
 
 
