@@ -3098,6 +3098,55 @@ class TestKubernetesDeploymentConfig:
         ]
 
     @pytest.mark.parametrize(
+        "autotune_limits,expected_min_allowed,expected_max_allowed",
+        [
+            (
+                {},
+                {"cpu": "250m", "memory": "512Mi"},
+                {"cpu": "30000m", "memory": "262144Mi"},
+            ),
+            (
+                {"cpus": {"max": 2}, "mem": {"min": 1024}},
+                {"cpu": "250m", "memory": "1024Mi"},
+                {"cpu": "2000m", "memory": "262144Mi"},
+            ),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_cluster_bounds(
+        self, autotune_limits, expected_min_allowed, expected_max_allowed
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits=autotune_limits,
+            )
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                vertical_autoscaling={
+                    "enabled": True,
+                    "min_cpus": 0.25,
+                    "max_cpus": 30,
+                    "min_memory": 512,
+                    "max_memory": 262144,
+                }
+            ),
+            "/fake/dir/",
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"][0] == {
+            "containerName": "fm--canary",
+            "mode": "Auto",
+            "minAllowed": expected_min_allowed,
+            "maxAllowed": expected_max_allowed,
+        }
+
+    @pytest.mark.parametrize(
         "vertical_autoscaling,expected_main_policy",
         [
             (

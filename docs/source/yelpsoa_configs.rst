@@ -666,6 +666,7 @@ instance MAY have:
     NOTE: it's possible to set only one of the bounds, if you only want to set a lower or upper bound (i.e., setting both min/max is not required).
 
     If ``vertical_autoscaling`` uses a VPA, the ``cpus`` and ``mem`` bounds also become the VPA's ``minAllowed`` and ``maxAllowed`` for the main container, so its recommendations stay inside them.
+    Any of those four bounds you don't set comes from the cluster's default, if it has one.
     VPA doesn't scale disk, so ``disk`` only applies to the autotuner.
 
   * ``vertical_autoscaling``: Optionally choose what recommends CPU and memory for this instance. Only EKS instances (``eks-*.yaml``) support it.

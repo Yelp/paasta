@@ -1157,25 +1157,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_vpa_resource_bounds(
-        self,
+        self, system_paasta_config: SystemPaastaConfig
     ) -> Tuple[VpaResourceListDict, VpaResourceListDict]:
-        """Turn autotune_limits into minAllowed and maxAllowed for the main container's VPA policy.
+        """Return minAllowed and maxAllowed for the main container's VPA policy.
 
-        autotune_limits sets cpus in cores and mem in MiB. VPA doesn't scale disk, so disk is ignored.
+        Each bound comes from the instance's autotune_limits if it sets one, else from the
+        cluster's vertical_autoscaling system config. Both give CPU in cores and memory in MiB.
+        VPA doesn't scale disk, so autotune_limits' disk is ignored.
         """
+        cluster_config = system_paasta_config.get_vertical_autoscaling_config()
         autotune_limits = self.config_dict.get("autotune_limits", {})
         cpus = autotune_limits.get("cpus", {})
         mem = autotune_limits.get("mem", {})
+        min_cpus = cpus.get("min", cluster_config.get("min_cpus"))
+        max_cpus = cpus.get("max", cluster_config.get("max_cpus"))
+        min_memory = mem.get("min", cluster_config.get("min_memory"))
+        max_memory = mem.get("max", cluster_config.get("max_memory"))
+
         min_allowed: VpaResourceListDict = {}
         max_allowed: VpaResourceListDict = {}
-        if "min" in cpus:
-            min_allowed["cpu"] = f"{round(cpus['min'] * 1000)}m"
-        if "max" in cpus:
-            max_allowed["cpu"] = f"{round(cpus['max'] * 1000)}m"
-        if "min" in mem:
-            min_allowed["memory"] = f"{mem['min']}Mi"
-        if "max" in mem:
-            max_allowed["memory"] = f"{mem['max']}Mi"
+        if min_cpus is not None:
+            min_allowed["cpu"] = f"{round(min_cpus * 1000)}m"
+        if max_cpus is not None:
+            max_allowed["cpu"] = f"{round(max_cpus * 1000)}m"
+        if min_memory is not None:
+            min_allowed["memory"] = f"{min_memory}Mi"
+        if max_memory is not None:
+            max_allowed["memory"] = f"{max_memory}Mi"
         return min_allowed, max_allowed
 
     def get_vertical_pod_autoscaler(
@@ -1202,7 +1210,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         controlled_resources = self.get_vpa_controlled_resources()
         if controlled_resources is not None:
             main_container_policy["controlledResources"] = controlled_resources
-        min_allowed, max_allowed = self.get_vpa_resource_bounds()
+        min_allowed, max_allowed = self.get_vpa_resource_bounds(system_paasta_config)
         if min_allowed:
             main_container_policy["minAllowed"] = min_allowed
         if max_allowed:
