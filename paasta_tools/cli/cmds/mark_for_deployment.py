@@ -51,6 +51,7 @@ from botocore.config import Config
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
+from sticht.rollbacks.base import ALERT_GATE_STATE
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
 from sticht.rollbacks.slo import SLOWatcher
 
@@ -1400,7 +1401,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "dest": None,
             "trigger": "slos_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
-            "unless": [self.already_rolling_back],
+            "unless": [self.already_rolling_back, self.waiting_at_alert_gate],
             "before": functools.partial(
                 self.start_auto_rollback_countdown,
                 "rollback_slo_failure",
@@ -1419,7 +1420,11 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "dest": None,
             "trigger": "alertmanager_started_failing",
             "conditions": [self.alertmanager_rollbacks_enabled],
-            "unless": [self.already_rolling_back, self._alertmanager_dry_run],
+            "unless": [
+                self.already_rolling_back,
+                self.waiting_at_alert_gate,
+                self._alertmanager_dry_run,
+            ],
             "before": functools.partial(
                 self.start_auto_rollback_countdown,
                 "rollback_alertmanager_failure",
@@ -1516,6 +1521,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.alertmanager_rollback_enabled
 
+    def alert_gate_enabled(self) -> bool:
+        """Whether to wait for pre-existing alerts before deploying.
+
+        Without --wait-for-deployment nobody is watching to click proceed, so we deploy as before."""
+        return self.block and self.alertmanager_rollback_enabled
+
+    def alert_gate_release_state(self) -> str:
+        return "start_deploy"
+
     def crashloop_rollbacks_enabled(self) -> bool:
         """Whether crashloop-based auto-rollbacks are enabled.
 
@@ -1548,6 +1562,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def already_rolling_back(self) -> bool:
         return self.state in self.rollback_states
+
+    def waiting_at_alert_gate(self) -> bool:
+        """Whether we're waiting for pre-existing alerts, i.e., nothing has been deployed yet.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.state == ALERT_GATE_STATE
 
     def status_code_by_state(self) -> Mapping[str, int]:
         codes = {
@@ -1882,6 +1902,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         inactive_button_texts = {
             "forward": f"Continue Forward to {version_short_str} :arrow_forward:",
             "complete": f"Complete deploy to {version_short_str} :white_check_mark:",
+            "proceed": f"Deploy {version_short_str} anyway :warning:",
             "snooze": "Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
