@@ -362,6 +362,11 @@ VPA_GROUP = "autoscaling.k8s.io"
 VPA_VERSION = "v1"
 VPA_PLURAL = "verticalpodautoscalers"
 VPA_VERTICAL_AUTOSCALING_PREFIX = "vpa-"
+# Each vpa-* type uses the VPA recommender whose --recommender-name is the type itself,
+# except vpa-default, which uses the recommender that VPA names "default". That one also
+# serves VPAs that don't name a recommender.
+VPA_DEFAULT_TYPE = "vpa-default"
+VPA_DEFAULT_RECOMMENDER = "default"
 
 VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
 # Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
@@ -1129,7 +1134,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         scaling_type = self.get_vertical_autoscaling_type()
         if not scaling_type.startswith(VPA_VERTICAL_AUTOSCALING_PREFIX):
             return None
-        return scaling_type.removeprefix(VPA_VERTICAL_AUTOSCALING_PREFIX)
+        if scaling_type == VPA_DEFAULT_TYPE:
+            return VPA_DEFAULT_RECOMMENDER
+        return scaling_type
 
     def get_vpa_update_mode(self) -> VpaUpdateMode:
         return self.config_dict.get("vertical_autoscaling", {}).get(

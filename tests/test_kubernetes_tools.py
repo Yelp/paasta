@@ -3078,6 +3078,15 @@ class TestKubernetesDeploymentConfig:
                 "vpa-default",
                 "default",
             ),
+            # Not a valid type yet, but future vpa-* types name their recommender
+            # after themselves.
+            (
+                KubernetesDeploymentConfigDict(
+                    vertical_autoscaling={"type": "vpa-conservative"}
+                ),
+                "vpa-conservative",
+                "vpa-conservative",
+            ),
         ],
     )
     def test_get_vertical_autoscaling_type_and_recommender(
