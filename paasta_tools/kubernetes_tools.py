@@ -392,7 +392,7 @@ class AutotuneLimitsDict(TypedDict, total=False):
 
 class VpaTargetRefDict(TypedDict):
     apiVersion: str
-    kind: Literal["Deployment", "StatefulSet"]
+    kind: str
     name: str
 
 
@@ -984,9 +984,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="Value",
                         # shared rules return avg load per replica (total_load / replicas);
@@ -1003,9 +1001,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="Value",
                         # we average the number of instances needed to handle the current (or
@@ -1033,9 +1029,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 type="Object",
                 object=V2ObjectMetricSource(
                     metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=metric_target,
                 ),
             )
@@ -1050,9 +1044,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="AverageValue",
                         average_value=target,
@@ -1123,9 +1115,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name=name
-                ),
+                scale_target_ref=self.get_target_ref(name),
             ),
         )
 
@@ -1184,6 +1174,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if max_allowed:
             main_container_policy["maxAllowed"] = max_allowed
 
+        target_ref = self.get_target_ref(name)
         return {
             "apiVersion": f"{VPA_GROUP}/{VPA_VERSION}",
             "kind": "VerticalPodAutoscaler",
@@ -1198,13 +1189,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             },
             "spec": {
                 "targetRef": {
-                    "apiVersion": "apps/v1",
-                    "kind": (
-                        "StatefulSet"
-                        if self.should_use_stateful_set()
-                        else "Deployment"
-                    ),
-                    "name": name,
+                    "apiVersion": target_ref.api_version,
+                    "kind": target_ref.kind,
+                    "name": target_ref.name,
                 },
                 "updatePolicy": {"updateMode": self.get_vpa_update_mode()},
                 "recommenders": [{"name": recommender}],
@@ -2449,6 +2436,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def should_use_stateful_set(self) -> bool:
         return bool(self.get_persistent_volumes())
+
+    def get_target_ref(self, name: str) -> V2CrossVersionObjectReference:
+        """Return a reference to this instance's StatefulSet if it has persistent volumes, else its Deployment."""
+        return V2CrossVersionObjectReference(
+            api_version="apps/v1",
+            kind="StatefulSet" if self.should_use_stateful_set() else "Deployment",
+            name=name,
+        )
 
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""

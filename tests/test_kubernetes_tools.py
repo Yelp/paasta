@@ -2963,6 +2963,28 @@ class TestKubernetesDeploymentConfig:
             is None
         )
 
+    @pytest.mark.parametrize(
+        "config_dict,expected_kind",
+        [
+            (KubernetesDeploymentConfigDict(), "Deployment"),
+            (
+                KubernetesDeploymentConfigDict(
+                    persistent_volumes=[
+                        {"container_path": "/data", "size": 10, "mode": "RW"}
+                    ]
+                ),
+                "StatefulSet",
+            ),
+        ],
+    )
+    def test_get_target_ref(self, config_dict, expected_kind):
+        deployment = self.make_vpa_deployment(config_dict)
+        assert deployment.get_target_ref(
+            "kurupt-fm--canary"
+        ) == V2CrossVersionObjectReference(
+            api_version="apps/v1", kind=expected_kind, name="kurupt-fm--canary"
+        )
+
     def test_get_vertical_pod_autoscaler_targets_stateful_set(self):
         deployment = self.make_vpa_deployment(
             KubernetesDeploymentConfigDict(
