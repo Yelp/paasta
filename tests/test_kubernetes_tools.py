@@ -3166,7 +3166,41 @@ class TestKubernetesDeploymentConfig:
         deployment = self.make_vpa_deployment(config_dict)
         assert deployment.get_vertical_autoscaling_type() == expected_type
         assert deployment.get_vpa_recommender() == expected_recommender
-        assert deployment.get_vpa_update_mode() == "Off"
+        assert deployment.get_vpa_update_mode(VPA_ENABLED_SYSTEM_CONFIG) == "Off"
+
+    # Off is the only valid update_mode for now, so Initial here only shows which
+    # config the value comes from.
+    @pytest.mark.parametrize(
+        "instance_update_mode,cluster_update_mode,expected",
+        [
+            (None, None, "Off"),
+            (None, "Initial", "Initial"),
+            ("Off", "Initial", "Off"),
+        ],
+    )
+    def test_get_vpa_update_mode(
+        self, instance_update_mode, cluster_update_mode, expected
+    ):
+        vertical_autoscaling = {"type": "vpa-default"}
+        if instance_update_mode is not None:
+            vertical_autoscaling["update_mode"] = instance_update_mode
+        cluster_config = {"enabled": True}
+        if cluster_update_mode is not None:
+            cluster_config["update_mode"] = cluster_update_mode
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling=vertical_autoscaling)
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(vertical_autoscaling=cluster_config), "/fake/dir/"
+        )
+        assert deployment.get_vpa_update_mode(system_paasta_config) == expected
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["updatePolicy"] == {"updateMode": expected}
 
     @pytest.mark.parametrize(
         "metrics_provider",

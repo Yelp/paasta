@@ -181,6 +181,7 @@ from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
+from paasta_tools.utils import VpaUpdateMode
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import get_config_hash
@@ -369,9 +370,6 @@ VPA_DEFAULT_TYPE = "vpa-default"
 VPA_DEFAULT_RECOMMENDER = "default"
 
 VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
-# Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
-# also need the VPA updater, and no cluster runs either yet.
-VpaUpdateMode = Literal["Off"]
 VpaControlledResource = Literal["cpu", "memory"]
 
 
@@ -1141,9 +1139,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return VPA_DEFAULT_RECOMMENDER
         return scaling_type
 
-    def get_vpa_update_mode(self) -> VpaUpdateMode:
-        return self.config_dict.get("vertical_autoscaling", {}).get(
+    def get_vpa_update_mode(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> VpaUpdateMode:
+        """Return the instance's update_mode, else the cluster's default, else Off."""
+        cluster_default = system_paasta_config.get_vertical_autoscaling_config().get(
             "update_mode", "Off"
+        )
+        return self.config_dict.get("vertical_autoscaling", {}).get(
+            "update_mode", cluster_default
         )
 
     def get_vpa_controlled_resources(self) -> Optional[List[VpaControlledResource]]:
@@ -1223,7 +1227,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "kind": target_ref.kind,
                     "name": target_ref.name,
                 },
-                "updatePolicy": {"updateMode": self.get_vpa_update_mode()},
+                "updatePolicy": {
+                    "updateMode": self.get_vpa_update_mode(system_paasta_config)
+                },
                 "recommenders": [{"name": recommender}],
                 "resourcePolicy": {
                     "containerPolicies": [

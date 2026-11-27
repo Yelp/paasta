@@ -1922,8 +1922,14 @@ class KubeCustomResourceDict(TypedDict, total=False):
     group: str
 
 
+# Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
+# also need the VPA updater, and no cluster runs either yet.
+VpaUpdateMode = Literal["Off"]
+
+
 class VerticalAutoscalingSystemConfigDict(TypedDict, total=False):
     enabled: bool
+    update_mode: VpaUpdateMode
 
 
 class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):

@@ -132,5 +132,6 @@ These are the keys that may exist in system configs:
 
     * ``enabled``: Whether PaaSTA creates VerticalPodAutoscalers (VPAs) on this cluster. Defaults to ``false``.
       Setting it back to ``false`` deletes the VPAs PaaSTA created, and every instance falls back to the autotuner.
+    * ``update_mode``: The VPA ``update_mode`` for instances that don't set one. The only value for now is ``"Off"``, which is also the default.
 
-    Example: ``"vertical_autoscaling": {"enabled": true}``
+    Example: ``"vertical_autoscaling": {"enabled": true, "update_mode": "Off"}``

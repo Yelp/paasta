@@ -678,7 +678,8 @@ instance MAY have:
         ``autotuned_defaults`` keep applying, and the VPA reads ``autotune_limits`` as described above.
         PaaSTA only creates the VPA on clusters that serve the VPA API and enable ``vertical_autoscaling`` in their system config. It deletes the VPA when ``type`` changes back to ``autotuner``, the instance is removed, or the cluster disables ``vertical_autoscaling``.
 
-    * ``update_mode``: Optional, and only allowed with a ``vpa-*`` type. Controls whether the VPA changes pods. The only value for now is ``'Off'``, which is also the default: the VPA writes recommendations and never changes pods.
+    * ``update_mode``: Optional, and only allowed with a ``vpa-*`` type. Controls whether the VPA changes pods. The only value for now is ``'Off'``: the VPA writes recommendations and never changes pods.
+      Defaults to the cluster's ``vertical_autoscaling.update_mode`` system config, or ``'Off'`` if the cluster doesn't set one.
       Quote the value, because YAML reads a bare ``Off`` as ``false``.
 
     * ``controlled_resources``: Optional, and only allowed with a ``vpa-*`` type. A list of the resources the VPA recommends for the main container: ``cpu``, ``memory``, or both.
