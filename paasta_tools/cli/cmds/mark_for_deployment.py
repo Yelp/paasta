@@ -305,6 +305,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Additional author(s) of the deploy, who will be pinged in Slack",
     )
     list_parser.add_argument(
+        "--triggered-by",
+        dest="triggered_by",
+        default=None,
+        help="User who triggered this deploy, who will be sent a Slack DM if it is rolled back",
+    )
+    list_parser.add_argument(
         "--polling-interval",
         dest="polling_interval",
         type=float,
@@ -827,6 +833,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             if old_deployment_version
             else None,
             authors=args.authors,
+            triggered_by=args.triggered_by,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
             time_before_first_diagnosis=args.time_before_first_diagnosis,
@@ -901,6 +908,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         image_version: Optional[str] = None,
         old_image_version: Optional[str] = None,
         authors: Optional[List[str]] = None,
+        triggered_by: Optional[str] = None,
         polling_interval: float = None,
         diagnosis_interval: float = None,
         time_before_first_diagnosis: float = None,
@@ -933,6 +941,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
         self.authors = authors
+        self.triggered_by = triggered_by
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
@@ -1629,6 +1638,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         # rollback itself being canceled
 
         self.cancel_auto_rollback_countdown(quiet=True)
+        self.dm_authors_about_rollback()
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
@@ -1771,6 +1781,39 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             log.error("Caught exception in wait_for_deployment:")
             log.error(traceback.format_exc())
             self.trigger("deploy_errored")
+
+    def get_rollback_dm_text(self, is_triggerer: bool, is_author: bool) -> str:
+        lines = [
+            f":rewind: `{self.service}` is being rolled back in `{self.deploy_group}`.",
+            f"Rolling back to `{self.old_deployment_version.short_sha_repr()}` from "
+            f"`{self.deployment_version.short_sha_repr()}`.",
+        ]
+        if is_triggerer:
+            lines.append("You triggered this deploy.")
+        if is_author:
+            lines.append("You are listed as an author of this deploy.")
+        link = self.get_thread_link()
+        if link:
+            lines.append(f"Deploy thread: {link}")
+        return "\n".join(lines)
+
+    def dm_authors_about_rollback(self) -> None:
+        try:
+            authors: Set[str] = set(self.authors or [])
+            recipients = set(authors)
+            if self.triggered_by:
+                recipients.add(self.triggered_by)
+            self.dm_users(
+                {
+                    username: self.get_rollback_dm_text(
+                        is_triggerer=username == self.triggered_by,
+                        is_author=username in authors,
+                    )
+                    for username in recipients
+                }
+            )
+        except Exception:
+            log.warning(f"Failed to DM authors: {traceback.format_exc()}")
 
     def on_enter_rolled_back(self) -> None:
         message = f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
