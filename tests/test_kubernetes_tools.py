@@ -3108,7 +3108,7 @@ class TestKubernetesDeploymentConfig:
                 {"cpu": "100m", "memory": "128Mi"},
                 {"cpu": "2000m", "memory": "4096Mi"},
             ),
-            # The instance's CPU max can't raise the ceiling. Memory has no ceiling.
+            # The instance's CPU max can't raise the ceiling. This pool has no max_mem.
             (
                 {"cpus": {"max": 64}, "mem": {"max": 524288}},
                 {"cpu": "250m", "memory": "512Mi"},
@@ -3158,6 +3158,45 @@ class TestKubernetesDeploymentConfig:
             "minAllowed": expected_min_allowed,
             "maxAllowed": expected_max_allowed,
         }
+
+    @pytest.mark.parametrize(
+        "mem,expected_min_memory,expected_max_memory",
+        [
+            ({}, None, "262144Mi"),
+            ({"max": 4096}, None, "4096Mi"),
+            ({"max": 524288}, None, "262144Mi"),
+            ({"min": 300000}, "262144Mi", "262144Mi"),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_pool_max_mem(
+        self, mem, expected_min_memory, expected_max_memory
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits={"mem": mem},
+            )
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                vertical_autoscaling={"enabled": True},
+                pool_limits={
+                    "brentford": {
+                        "default": {
+                            "max_cpus": 30,
+                            "recommended_pool": "large",
+                            "max_mem": 262144,
+                        }
+                    }
+                },
+            ),
+            "/fake/dir/",
+        )
+        min_allowed, max_allowed = deployment.get_vpa_resource_bounds(
+            system_paasta_config
+        )
+        assert min_allowed.get("memory") == expected_min_memory
+        assert max_allowed == {"cpu": "30000m", "memory": expected_max_memory}
 
     @pytest.mark.parametrize(
         "pool_limits",

@@ -1189,9 +1189,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Return minAllowed and maxAllowed for the main container's VPA policy.
 
         The instance's autotune_limits set the bounds. A min it leaves out comes from the cluster's
-        vertical_autoscaling system config. Its pool's max_cpus in pool_limits is a ceiling on the
-        CPU max, so the VPA never recommends more CPU than a node in the pool can fit. All of these
-        give CPU in cores and memory in MiB. VPA doesn't scale disk, so autotune_limits' disk is ignored.
+        vertical_autoscaling system config. Its pool's max_cpus and max_mem in pool_limits are
+        ceilings on the max, so the VPA never recommends more than a node in the pool can fit. All
+        of these give CPU in cores and memory in MiB. VPA doesn't scale disk, so autotune_limits'
+        disk is ignored.
         """
         vertical_autoscaling = system_paasta_config.get_vertical_autoscaling_config()
         pool_limits = (
@@ -1212,7 +1213,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             instance_min=mem.get("min"),
             instance_max=mem.get("max"),
             default_min=vertical_autoscaling.get("min_memory"),
-            ceiling=None,
+            ceiling=pool_limits.get("max_mem") if pool_limits else None,
         )
 
         min_allowed: VpaResourceListDict = {}

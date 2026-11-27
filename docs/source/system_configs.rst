@@ -136,7 +136,7 @@ These are the keys that may exist in system configs:
     * ``min_cpus`` and ``min_memory``: Default lower bounds on the VPA's CPU (in cores) and memory (in MiB) recommendations for an instance's main container.
       A ``min`` in the instance's ``autotune_limits`` replaces them.
 
-    The VPA's CPU recommendation is also capped at the instance's pool's ``max_cpus`` in ``pool_limits``.
+    The VPA's CPU and memory recommendations are also capped at the instance's pool's ``max_cpus`` and ``max_mem`` in ``pool_limits``.
     If a lower bound ends up above the upper bound, PaaSTA lowers it to the upper bound.
 
     Example: ``"vertical_autoscaling": {"enabled": true, "update_mode": "Off", "min_cpus": 0.25, "min_memory": 512}``
@@ -146,5 +146,7 @@ These are the keys that may exist in system configs:
     * ``max_cpus``: The most CPUs one instance in the pool can request. ``paasta validate`` rejects instances whose ``cpus`` is at or above it,
       and it caps the CPU recommendation of instances that use a VPA. An instance's ``autotune_limits`` can lower that cap but not raise it.
     * ``recommended_pool``: The pool that ``paasta validate`` suggests for instances over ``max_cpus``.
+    * ``max_mem``: Optional. The most memory, in MiB, that the VPA recommends for one instance in the pool.
+      An instance's ``autotune_limits`` can lower it but not raise it. ``paasta validate`` doesn't check it.
 
-    Example: ``"pool_limits": {"uswest1-prod": {"default": {"max_cpus": 29.5, "recommended_pool": "large"}}}``
+    Example: ``"pool_limits": {"uswest1-prod": {"default": {"max_cpus": 29.5, "recommended_pool": "large", "max_mem": 240000}}}``
