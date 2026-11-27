@@ -251,6 +251,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=False,
     )
     list_parser.add_argument(
+        "--previous-deploy-groups",
+        help="Comma-separated list of deploy groups that were already deployed earlier in "
+        "this pipeline. If an auto-rollback happens for --deploy-group, these groups are "
+        "also rolled back to the same previous version. Defaults to none.",
+        dest="previous_deploy_groups",
+        type=lambda x: [dg.strip() for dg in x.split(",") if dg.strip()],
+        default=[],
+    )
+    list_parser.add_argument(
         "-d",
         "--soa-dir",
         dest="soa_dir",
@@ -815,6 +824,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             old_git_sha=old_deployment_version.sha if old_deployment_version else None,
             git_url=args.git_url,
             auto_rollback=args.auto_rollback,
+            previous_deploy_groups=args.previous_deploy_groups,
             block=args.block,
             soa_dir=args.soa_dir,
             timeout=args.timeout,
@@ -900,6 +910,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         auto_rollback_delay: float,
         image_version: Optional[str] = None,
         old_image_version: Optional[str] = None,
+        previous_deploy_groups: Optional[List[str]] = None,
         authors: Optional[List[str]] = None,
         polling_interval: float = None,
         diagnosis_interval: float = None,
@@ -908,6 +919,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "paasta.mark_for_deployment"
         ),
     ) -> None:
+        self.previous_deploy_groups = previous_deploy_groups
         self.service = service
         self.deploy_info = deploy_info
         self.deploy_group = deploy_group
@@ -1664,6 +1676,41 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     else ""
                 )
             )
+
+            for prior_group in self.previous_deploy_groups or []:
+                if prior_group == self.deploy_group:
+                    continue
+                if (
+                    mark_for_deployment(
+                        git_url=self.git_url,
+                        deploy_group=prior_group,
+                        service=self.service,
+                        commit=self.old_git_sha,
+                        image_version=self.old_image_version,
+                    )
+                    != 0
+                ):
+                    self.update_slack_thread(
+                        f"WARNING: Failed to roll back prior deploy group `{prior_group}`."
+                    )
+                    continue
+                if (
+                    remote_git.create_rollback_tag(
+                        git_url=self.git_url,
+                        deploy_group=prior_group,
+                        bad_sha=self.commit,
+                        image_version=self.image_version,
+                    )
+                    != 0
+                ):
+                    self.update_slack_thread(
+                        f"WARNING: Failed to create rollback tag for `{self.commit[:8]}` "
+                        f"on `{prior_group}`. Jenkins will automatically re-deploy this "
+                        "commit in the near future!"
+                    )
+                self.update_slack_thread(
+                    f"Marked `{self.old_git_sha[:8]}` for {prior_group}."
+                )
 
             self.trigger("mfd_succeeded")
 
