@@ -3100,15 +3100,25 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "autotune_limits,expected_min_allowed,expected_max_allowed",
         [
+            # The mins default to the cluster's, and the CPU max to the pool's max_cpus.
+            ({}, {"cpu": "250m", "memory": "512Mi"}, {"cpu": "30000m"}),
+            # The instance's mins replace the defaults, and its CPU max lowers the ceiling.
             (
-                {},
-                {"cpu": "250m", "memory": "512Mi"},
-                {"cpu": "30000m", "memory": "262144Mi"},
+                {"cpus": {"min": 0.1, "max": 2}, "mem": {"min": 128, "max": 4096}},
+                {"cpu": "100m", "memory": "128Mi"},
+                {"cpu": "2000m", "memory": "4096Mi"},
             ),
+            # The instance's CPU max can't raise the ceiling. Memory has no ceiling.
             (
-                {"cpus": {"max": 2}, "mem": {"min": 1024}},
-                {"cpu": "250m", "memory": "1024Mi"},
-                {"cpu": "2000m", "memory": "262144Mi"},
+                {"cpus": {"max": 64}, "mem": {"max": 524288}},
+                {"cpu": "250m", "memory": "512Mi"},
+                {"cpu": "30000m", "memory": "524288Mi"},
+            ),
+            # A CPU min above the ceiling is lowered to it.
+            (
+                {"cpus": {"min": 40}},
+                {"cpu": "30000m", "memory": "512Mi"},
+                {"cpu": "30000m"},
             ),
         ],
     )
@@ -3126,10 +3136,13 @@ class TestKubernetesDeploymentConfig:
                 vertical_autoscaling={
                     "enabled": True,
                     "min_cpus": 0.25,
-                    "max_cpus": 30,
                     "min_memory": 512,
-                    "max_memory": 262144,
-                }
+                },
+                pool_limits={
+                    "brentford": {
+                        "default": {"max_cpus": 30, "recommended_pool": "large"}
+                    }
+                },
             ),
             "/fake/dir/",
         )
@@ -3144,6 +3157,38 @@ class TestKubernetesDeploymentConfig:
             "mode": "Auto",
             "minAllowed": expected_min_allowed,
             "maxAllowed": expected_max_allowed,
+        }
+
+    @pytest.mark.parametrize(
+        "pool_limits",
+        [
+            {"brentford": {"large": {"max_cpus": 30, "recommended_pool": "large"}}},
+            {"other": {"default": {"max_cpus": 30, "recommended_pool": "large"}}},
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_ignores_other_pools_limits(self, pool_limits):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits={"cpus": {"max": 64}},
+            )
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                vertical_autoscaling={"enabled": True}, pool_limits=pool_limits
+            ),
+            "/fake/dir/",
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"][0] == {
+            "containerName": "fm--canary",
+            "mode": "Auto",
+            "maxAllowed": {"cpu": "64000m"},
         }
 
     @pytest.mark.parametrize(
@@ -4862,6 +4907,29 @@ def test_get_annotations_for_kubernetes_service(
         mock_client, mock_kube_deploy_config
     )
     assert annotations == expected_annotations
+
+
+@pytest.mark.parametrize(
+    "instance_min,instance_max,default_min,ceiling,expected",
+    [
+        (None, None, None, None, (None, None)),
+        (None, None, 1, 8, (1, 8)),
+        (2, 4, 1, 8, (2, 4)),
+        (None, 16, None, 8, (None, 8)),
+        (4, 2, None, None, (2, 2)),
+        (12, None, None, 8, (8, 8)),
+    ],
+)
+def test_combine_vpa_bounds(instance_min, instance_max, default_min, ceiling, expected):
+    assert (
+        kubernetes_tools.combine_vpa_bounds(
+            instance_min=instance_min,
+            instance_max=instance_max,
+            default_min=default_min,
+            ceiling=ceiling,
+        )
+        == expected
+    )
 
 
 def api_group(name, *versions):

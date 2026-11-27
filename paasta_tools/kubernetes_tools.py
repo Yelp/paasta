@@ -41,6 +41,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 from typing import cast
 
@@ -371,6 +372,32 @@ VPA_DEFAULT_RECOMMENDER = "default"
 
 VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
 VpaControlledResource = Literal["cpu", "memory"]
+
+
+VpaBound = TypeVar("VpaBound", int, float)
+
+
+def combine_vpa_bounds(
+    instance_min: Optional[VpaBound],
+    instance_max: Optional[VpaBound],
+    default_min: Optional[VpaBound],
+    ceiling: Optional[VpaBound],
+) -> Tuple[Optional[VpaBound], Optional[VpaBound]]:
+    """Combine an instance's VPA bounds for one resource with its cluster's default and ceiling.
+
+    The instance's min replaces the default min. The instance's max can lower the ceiling but
+    not raise it. If the min ends up above the max, it's lowered to the max.
+    """
+    min_value = default_min if instance_min is None else instance_min
+    if instance_max is None:
+        max_value = ceiling
+    elif ceiling is None:
+        max_value = instance_max
+    else:
+        max_value = min(instance_max, ceiling)
+    if min_value is not None and max_value is not None:
+        min_value = min(min_value, max_value)
+    return min_value, max_value
 
 
 class VerticalAutoscalingDict(TypedDict, total=False):
@@ -1161,18 +1188,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> Tuple[VpaResourceListDict, VpaResourceListDict]:
         """Return minAllowed and maxAllowed for the main container's VPA policy.
 
-        Each bound comes from the instance's autotune_limits if it sets one, else from the
-        cluster's vertical_autoscaling system config. Both give CPU in cores and memory in MiB.
-        VPA doesn't scale disk, so autotune_limits' disk is ignored.
+        The instance's autotune_limits set the bounds. A min it leaves out comes from the cluster's
+        vertical_autoscaling system config. Its pool's max_cpus in pool_limits is a ceiling on the
+        CPU max, so the VPA never recommends more CPU than a node in the pool can fit. All of these
+        give CPU in cores and memory in MiB. VPA doesn't scale disk, so autotune_limits' disk is ignored.
         """
-        cluster_config = system_paasta_config.get_vertical_autoscaling_config()
+        vertical_autoscaling = system_paasta_config.get_vertical_autoscaling_config()
+        pool_limits = (
+            system_paasta_config.get_pool_limits()
+            .get(self.cluster, {})
+            .get(self.get_pool())
+        )
         autotune_limits = self.config_dict.get("autotune_limits", {})
         cpus = autotune_limits.get("cpus", {})
         mem = autotune_limits.get("mem", {})
-        min_cpus = cpus.get("min", cluster_config.get("min_cpus"))
-        max_cpus = cpus.get("max", cluster_config.get("max_cpus"))
-        min_memory = mem.get("min", cluster_config.get("min_memory"))
-        max_memory = mem.get("max", cluster_config.get("max_memory"))
+        min_cpus, max_cpus = combine_vpa_bounds(
+            instance_min=cpus.get("min"),
+            instance_max=cpus.get("max"),
+            default_min=vertical_autoscaling.get("min_cpus"),
+            ceiling=pool_limits.get("max_cpus") if pool_limits else None,
+        )
+        min_memory, max_memory = combine_vpa_bounds(
+            instance_min=mem.get("min"),
+            instance_max=mem.get("max"),
+            default_min=vertical_autoscaling.get("min_memory"),
+            ceiling=None,
+        )
 
         min_allowed: VpaResourceListDict = {}
         max_allowed: VpaResourceListDict = {}

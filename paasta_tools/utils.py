@@ -1930,11 +1930,10 @@ VpaUpdateMode = Literal["Off"]
 class VerticalAutoscalingSystemConfigDict(TypedDict, total=False):
     enabled: bool
     update_mode: VpaUpdateMode
-    # Default VPA bounds for instances whose autotune_limits don't set them.
+    # Default VPA lower bounds for instances whose autotune_limits don't set a min.
+    # The CPU upper bound comes from pool_limits.
     min_cpus: float
-    max_cpus: float
     min_memory: int  # MiB
-    max_memory: int  # MiB
 
 
 class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
