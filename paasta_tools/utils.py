@@ -60,6 +60,7 @@ from typing import List
 from typing import Literal
 from typing import Mapping
 from typing import NamedTuple
+from typing import NotRequired
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -1931,7 +1932,7 @@ class VerticalAutoscalingSystemConfigDict(TypedDict, total=False):
     enabled: bool
     update_mode: VpaUpdateMode
     # Default VPA lower bounds for instances whose autotune_limits don't set a min.
-    # The CPU upper bound comes from pool_limits.
+    # The upper bounds come from pool_limits.
     min_cpus: float
     min_memory: int  # MiB
 
@@ -1953,6 +1954,8 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
 class PoolLimits(TypedDict):
     max_cpus: float
     recommended_pool: str
+    # MiB. Only caps VPA memory recommendations, paasta validate doesn't check it.
+    max_mem: NotRequired[int]
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
