@@ -54,7 +54,6 @@ from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeployment
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
@@ -137,11 +136,6 @@ InstanceStatusWriter = Callable[
     int,
 ]
 
-EKS_DEPLOYMENT_CONFIGS = [
-    EksDeploymentConfig,
-    FlinkEksDeploymentConfig,
-    CassandraClusterEksDeploymentConfig,
-]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 CASSANDRA_DEPLOYMENT_CONFIGS = [
     CassandraClusterDeploymentConfig,
@@ -326,15 +320,14 @@ def paasta_status_on_api_endpoint(
     printer: CancellablePrinter,
     verbose: int,
     new: bool = False,
-    is_eks: bool = False,
     all_namespaces: bool = False,
 ) -> int:
     output = [
         "",
-        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
+        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}",
     ]
     client = get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -981,7 +974,7 @@ def print_flinkeks_status(
     system_paasta_config = load_system_paasta_config()
 
     client = get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=True),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -1993,7 +1986,6 @@ def report_status_for_cluster(
                 verbose=verbose,
                 new=new,
                 all_namespaces=all_namespaces,
-                is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
 

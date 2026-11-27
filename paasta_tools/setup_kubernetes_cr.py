@@ -254,7 +254,7 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_base_url(kind: str, cluster: str, is_eks: bool) -> Optional[str]:
+def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
@@ -283,7 +283,6 @@ def format_custom_resource(
     group: str,
     namespace: str,
     git_sha: str,
-    is_eks: bool,
 ) -> Mapping[str, Any]:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -305,10 +304,11 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
-    if is_eks:
-        resource["metadata"]["labels"][paasta_prefixed("eks")] = str(is_eks)
+    # Keep this label: the Flink operator copies CR labels onto its pods, so
+    # removing or changing it would restart every Flink pod.
+    resource["metadata"]["labels"][paasta_prefixed("eks")] = "True"
 
-    url = get_dashboard_base_url(kind, cluster, is_eks)
+    url = get_dashboard_base_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
     owner = get_cr_owner(kind)
@@ -340,10 +340,6 @@ def reconcile_kubernetes_resource(
     succeeded = True
     config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
 
-    is_eks = False
-    if crd.file_prefix.endswith("eks"):
-        is_eks = True
-
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
@@ -372,7 +368,6 @@ def reconcile_kubernetes_resource(
                 group=group,
                 namespace=f"paasta-{kind.plural}",
                 git_sha=git_sha,
-                is_eks=is_eks,
             )
             desired_resource = KubeCustomResource(
                 service=service,

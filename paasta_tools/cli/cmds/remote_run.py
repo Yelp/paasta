@@ -21,7 +21,6 @@ import sys
 import time
 from typing import List
 
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import parse_error
@@ -89,7 +88,7 @@ def paasta_remote_run_copy(
     system_paasta_config: SystemPaastaConfig,
 ) -> int:
     client = get_paasta_oapi_client_with_auth(
-        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        cluster=args.cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -167,7 +166,7 @@ def paasta_remote_run_start(
 ) -> int:
     status_prefix = "\x1b[2K\r"  # Clear line, carriage return
     client = get_paasta_oapi_client_with_auth(
-        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        cluster=args.cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -280,7 +279,7 @@ def paasta_remote_run_stop(
     system_paasta_config: SystemPaastaConfig,
 ) -> int:
     client = get_paasta_oapi_client_with_auth(
-        cluster=get_paasta_oapi_api_clustername(cluster=args.cluster, is_eks=True),
+        cluster=args.cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
