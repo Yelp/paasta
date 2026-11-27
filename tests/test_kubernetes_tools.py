@@ -3061,6 +3061,38 @@ class TestKubernetesDeploymentConfig:
         ]
 
     @pytest.mark.parametrize(
+        "vertical_autoscaling,expected_main_policy",
+        [
+            (
+                {"type": "vpa-default"},
+                {"containerName": "fm--canary", "mode": "Auto"},
+            ),
+            (
+                {"type": "vpa-default", "controlled_resources": ["memory"]},
+                {
+                    "containerName": "fm--canary",
+                    "mode": "Auto",
+                    "controlledResources": ["memory"],
+                },
+            ),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_controlled_resources(
+        self, vertical_autoscaling, expected_main_policy
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling=vertical_autoscaling)
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary", namespace="paastasvc-kurupt"
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"] == [
+            expected_main_policy,
+            {"containerName": "*", "mode": "Off"},
+        ]
+
+    @pytest.mark.parametrize(
         "config_dict,expected_type,expected_recommender",
         [
             (KubernetesDeploymentConfigDict(), "autotuner", None),

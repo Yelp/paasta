@@ -372,11 +372,13 @@ VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
 # Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
 # also need the VPA updater, and no cluster runs either yet.
 VpaUpdateMode = Literal["Off"]
+VpaControlledResource = Literal["cpu", "memory"]
 
 
 class VerticalAutoscalingDict(TypedDict, total=False):
     type: VerticalAutoscalingType
     update_mode: VpaUpdateMode
+    controlled_resources: List[VpaControlledResource]
 
 
 class AutotuneCpuLimitsDict(TypedDict, total=False):
@@ -417,6 +419,7 @@ class VpaResourceListDict(TypedDict, total=False):
 class VpaContainerPolicyDict(TypedDict):
     containerName: str
     mode: Literal["Auto", "Off"]
+    controlledResources: NotRequired[List[VpaControlledResource]]
     minAllowed: NotRequired[VpaResourceListDict]
     maxAllowed: NotRequired[VpaResourceListDict]
 
@@ -1143,6 +1146,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "update_mode", "Off"
         )
 
+    def get_vpa_controlled_resources(self) -> Optional[List[VpaControlledResource]]:
+        """Return the resources the VPA recommends, or None to leave VPA's default of CPU and memory."""
+        return self.config_dict.get("vertical_autoscaling", {}).get(
+            "controlled_resources"
+        )
+
     def get_vpa_resource_bounds(
         self,
     ) -> Tuple[VpaResourceListDict, VpaResourceListDict]:
@@ -1177,6 +1186,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "containerName": self.get_sanitised_instance_name(),
             "mode": "Auto",
         }
+        controlled_resources = self.get_vpa_controlled_resources()
+        if controlled_resources is not None:
+            main_container_policy["controlledResources"] = controlled_resources
         min_allowed, max_allowed = self.get_vpa_resource_bounds()
         if min_allowed:
             main_container_policy["minAllowed"] = min_allowed

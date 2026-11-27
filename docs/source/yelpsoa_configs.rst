@@ -681,11 +681,15 @@ instance MAY have:
     * ``update_mode``: Optional, and only allowed with a ``vpa-*`` type. Controls whether the VPA changes pods. The only value for now is ``'Off'``, which is also the default: the VPA writes recommendations and never changes pods.
       Quote the value, because YAML reads a bare ``Off`` as ``false``.
 
+    * ``controlled_resources``: Optional, and only allowed with a ``vpa-*`` type. A list of the resources the VPA recommends for the main container: ``cpu``, ``memory``, or both.
+      Defaults to both.
+
     Example::
 
       vertical_autoscaling:
         type: vpa-default
         update_mode: 'Off'
+        controlled_resources: ['memory']
 
     You can read the recommendations with ``kubectl describe vpa <deployment name> -n <namespace>``.
     Changing to a different ``vpa-*`` type later starts that instance's recommendations from scratch.
