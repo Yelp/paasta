@@ -1175,9 +1175,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return min_allowed, max_allowed
 
     def get_vertical_pod_autoscaler(
-        self, name: str, namespace: str
+        self, name: str, namespace: str, system_paasta_config: SystemPaastaConfig
     ) -> Optional[VerticalPodAutoscalerDict]:
-        """Return the VPA this instance should have, or None if its vertical_autoscaling type isn't a VPA."""
+        """Return the VPA this instance should have, or None if it shouldn't have one.
+
+        An instance has no VPA if its vertical_autoscaling type isn't a VPA, or if the cluster's
+        vertical_autoscaling system config isn't enabled. That system config is a killswitch:
+        turning it off makes every instance fall back to the autotuner.
+        """
+        if not system_paasta_config.get_vertical_autoscaling_config().get(
+            "enabled", False
+        ):
+            return None
         recommender = self.get_vpa_recommender()
         if recommender is None:
             return None

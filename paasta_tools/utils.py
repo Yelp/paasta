@@ -1922,6 +1922,10 @@ class KubeCustomResourceDict(TypedDict, total=False):
     group: str
 
 
+class VerticalAutoscalingSystemConfigDict(TypedDict, total=False):
+    enabled: bool
+
+
 class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
     unaggregated_metrics: List[str]
     summed_metric_to_group_keys: Dict[str, List[str]]
@@ -2076,6 +2080,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
     reconciled_iam_service_account_namespaces: List[str]
+    vertical_autoscaling: VerticalAutoscalingSystemConfigDict
 
 
 def load_system_paasta_config(
@@ -2858,6 +2863,10 @@ class SystemPaastaConfig:
 
     def get_reconciled_iam_service_account_namespaces(self) -> List[str]:
         return self.config_dict.get("reconciled_iam_service_account_namespaces", [])
+
+    def get_vertical_autoscaling_config(self) -> VerticalAutoscalingSystemConfigDict:
+        """Cluster-wide settings for instances that set vertical_autoscaling."""
+        return self.config_dict.get("vertical_autoscaling", {})
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)

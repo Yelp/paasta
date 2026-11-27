@@ -262,7 +262,9 @@ class Application(ABC):
         namespace = self.item.metadata.namespace
         existing_vpa = self.get_existing_vertical_pod_autoscaler(kube_client)
         desired_vpa = self.soa_config.get_vertical_pod_autoscaler(
-            name=name, namespace=namespace
+            name=name,
+            namespace=namespace,
+            system_paasta_config=load_system_paasta_config(),
         )
         if desired_vpa is None:
             if existing_vpa is not None:

@@ -676,7 +676,7 @@ instance MAY have:
       * ``autotuner``: The default when ``vertical_autoscaling`` is unset. The autotuner writes recommendations to ``autotuned_defaults``.
       * ``vpa-default``: PaaSTA also creates a VerticalPodAutoscaler (VPA) for the instance, which the cluster's ``default`` VPA recommender fills with recommendations for the main container. Sidecars get no recommendations.
         ``autotuned_defaults`` keep applying, and the VPA reads ``autotune_limits`` as described above.
-        PaaSTA only creates the VPA on clusters that serve the VPA API, and deletes it when ``type`` changes back to ``autotuner`` or the instance is removed.
+        PaaSTA only creates the VPA on clusters that serve the VPA API and enable ``vertical_autoscaling`` in their system config. It deletes the VPA when ``type`` changes back to ``autotuner``, the instance is removed, or the cluster disables ``vertical_autoscaling``.
 
     * ``update_mode``: Optional, and only allowed with a ``vpa-*`` type. Controls whether the VPA changes pods. The only value for now is ``'Off'``, which is also the default: the VPA writes recommendations and never changes pods.
       Quote the value, because YAML reads a bare ``Off`` as ``false``.

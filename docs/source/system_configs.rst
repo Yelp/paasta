@@ -126,3 +126,11 @@ These are the keys that may exist in system configs:
     ``table_name``.
 
     Example: ``"slack_thread_writer_config": {"table_name": "deploy-slack-threads", "region": "us-west-2"}``
+
+  * ``vertical_autoscaling``: Cluster-wide settings for instances whose ``vertical_autoscaling`` type is a ``vpa-*`` type.
+    A dictionary with the following keys:
+
+    * ``enabled``: Whether PaaSTA creates VerticalPodAutoscalers (VPAs) on this cluster. Defaults to ``false``.
+      Setting it back to ``false`` deletes the VPAs PaaSTA created, and every instance falls back to the autotuner.
+
+    Example: ``"vertical_autoscaling": {"enabled": true}``
