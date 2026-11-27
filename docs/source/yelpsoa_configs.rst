@@ -665,15 +665,15 @@ instance MAY have:
 
     NOTE: it's possible to set only one of the bounds, if you only want to set a lower or upper bound (i.e., setting both min/max is not required).
 
-    If ``vertical_scaling`` uses a VPA, the ``cpus`` and ``mem`` bounds also become the VPA's ``minAllowed`` and ``maxAllowed`` for the main container, so its recommendations stay inside them.
+    If ``vertical_autoscaling`` uses a VPA, the ``cpus`` and ``mem`` bounds also become the VPA's ``minAllowed`` and ``maxAllowed`` for the main container, so its recommendations stay inside them.
     VPA doesn't scale disk, so ``disk`` only applies to the autotuner.
 
-  * ``vertical_scaling``: Optionally choose what recommends CPU and memory for this instance. Only EKS instances (``eks-*.yaml``) support it.
+  * ``vertical_autoscaling``: Optionally choose what recommends CPU and memory for this instance. Only EKS instances (``eks-*.yaml``) support it.
     This is a dictionary with the following keys:
 
     * ``type``: Required. One of:
 
-      * ``autotuner``: The default when ``vertical_scaling`` is unset. The autotuner writes recommendations to ``autotuned_defaults``.
+      * ``autotuner``: The default when ``vertical_autoscaling`` is unset. The autotuner writes recommendations to ``autotuned_defaults``.
       * ``vpa-default``: PaaSTA also creates a VerticalPodAutoscaler (VPA) for the instance, which the cluster's ``default`` VPA recommender fills with recommendations for the main container. Sidecars get no recommendations.
         ``autotuned_defaults`` keep applying, and the VPA reads ``autotune_limits`` as described above.
         PaaSTA only creates the VPA on clusters that serve the VPA API, and deletes it when ``type`` changes back to ``autotuner`` or the instance is removed.
@@ -683,7 +683,7 @@ instance MAY have:
 
     Example::
 
-      vertical_scaling:
+      vertical_autoscaling:
         type: vpa-default
         update_mode: 'Off'
 

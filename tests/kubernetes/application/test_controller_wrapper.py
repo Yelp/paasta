@@ -343,7 +343,7 @@ VPA_API_KWARGS = {
     "namespace": "faasta",
     "plural": "verticalpodautoscalers",
 }
-VPA_CONFIG = {"instances": 1, "vertical_scaling": {"type": "vpa-default"}}
+VPA_CONFIG = {"instances": 1, "vertical_autoscaling": {"type": "vpa-default"}}
 
 
 @pytest.fixture
@@ -482,7 +482,7 @@ def test_sync_vertical_pod_autoscaler_patches_changed_spec(mock_vpa_api_is_avail
 
 @pytest.mark.parametrize(
     "config_dict",
-    [{"instances": 1}, {"instances": 1, "vertical_scaling": {"type": "autotuner"}}],
+    [{"instances": 1}, {"instances": 1, "vertical_autoscaling": {"type": "autotuner"}}],
 )
 def test_sync_vertical_pod_autoscaler_deletes_vpa_when_not_opted_in(
     mock_vpa_api_is_available, config_dict

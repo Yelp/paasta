@@ -2913,7 +2913,7 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_vertical_pod_autoscaler(self):
         deployment = self.make_vpa_deployment(
-            KubernetesDeploymentConfigDict(vertical_scaling={"type": "vpa-default"})
+            KubernetesDeploymentConfigDict(vertical_autoscaling={"type": "vpa-default"})
         )
         assert deployment.get_vertical_pod_autoscaler(
             name="kurupt-fm--canary", namespace="paastasvc-kurupt"
@@ -2950,7 +2950,7 @@ class TestKubernetesDeploymentConfig:
         "config_dict",
         [
             KubernetesDeploymentConfigDict(),
-            KubernetesDeploymentConfigDict(vertical_scaling={"type": "autotuner"}),
+            KubernetesDeploymentConfigDict(vertical_autoscaling={"type": "autotuner"}),
         ],
     )
     def test_get_vertical_pod_autoscaler_without_vpa(self, config_dict):
@@ -2988,7 +2988,7 @@ class TestKubernetesDeploymentConfig:
     def test_get_vertical_pod_autoscaler_targets_stateful_set(self):
         deployment = self.make_vpa_deployment(
             KubernetesDeploymentConfigDict(
-                vertical_scaling={"type": "vpa-default"},
+                vertical_autoscaling={"type": "vpa-default"},
                 persistent_volumes=[
                     {"container_path": "/data", "size": 10, "mode": "RW"}
                 ],
@@ -3047,7 +3047,7 @@ class TestKubernetesDeploymentConfig:
     ):
         deployment = self.make_vpa_deployment(
             KubernetesDeploymentConfigDict(
-                vertical_scaling={"type": "vpa-default"},
+                vertical_autoscaling={"type": "vpa-default"},
                 autotune_limits=autotune_limits,
             )
         )
@@ -3065,24 +3065,26 @@ class TestKubernetesDeploymentConfig:
         [
             (KubernetesDeploymentConfigDict(), "autotuner", None),
             (
-                KubernetesDeploymentConfigDict(vertical_scaling={"type": "autotuner"}),
+                KubernetesDeploymentConfigDict(
+                    vertical_autoscaling={"type": "autotuner"}
+                ),
                 "autotuner",
                 None,
             ),
             (
                 KubernetesDeploymentConfigDict(
-                    vertical_scaling={"type": "vpa-default", "update_mode": "Off"}
+                    vertical_autoscaling={"type": "vpa-default", "update_mode": "Off"}
                 ),
                 "vpa-default",
                 "default",
             ),
         ],
     )
-    def test_get_vertical_scaling_type_and_recommender(
+    def test_get_vertical_autoscaling_type_and_recommender(
         self, config_dict, expected_type, expected_recommender
     ):
         deployment = self.make_vpa_deployment(config_dict)
-        assert deployment.get_vertical_scaling_type() == expected_type
+        assert deployment.get_vertical_autoscaling_type() == expected_type
         assert deployment.get_vpa_recommender() == expected_recommender
         assert deployment.get_vpa_update_mode() == "Off"
 

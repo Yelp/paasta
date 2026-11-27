@@ -971,7 +971,7 @@
                         }
                     }
                 },
-                "vertical_scaling": {
+                "vertical_autoscaling": {
                     "type": "object",
                     "additionalProperties": false,
                     "required": [

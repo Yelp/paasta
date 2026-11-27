@@ -248,7 +248,7 @@ class Application(ABC):
 
     def sync_vertical_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
-        Create, update, or delete this application's VPA to match its vertical_scaling config.
+        Create, update, or delete this application's VPA to match its vertical_autoscaling config.
         Deployments and StatefulSets call this after syncing everything else, so a VPA error
         can't stop their other related objects from syncing.
         :param kube_client:

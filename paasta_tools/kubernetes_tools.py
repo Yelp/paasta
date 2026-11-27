@@ -361,16 +361,16 @@ class HpaOverride(TypedDict):
 VPA_GROUP = "autoscaling.k8s.io"
 VPA_VERSION = "v1"
 VPA_PLURAL = "verticalpodautoscalers"
-VPA_VERTICAL_SCALING_PREFIX = "vpa-"
+VPA_VERTICAL_AUTOSCALING_PREFIX = "vpa-"
 
-VerticalScalingType = Literal["autotuner", "vpa-default"]
+VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
 # Only Off for now: Initial needs the VPA admission controller, and Recreate/Auto
 # also need the VPA updater, and no cluster runs either yet.
 VpaUpdateMode = Literal["Off"]
 
 
-class VerticalScalingDict(TypedDict, total=False):
-    type: VerticalScalingType
+class VerticalAutoscalingDict(TypedDict, total=False):
+    type: VerticalAutoscalingType
     update_mode: VpaUpdateMode
 
 
@@ -566,7 +566,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_on_datastore_credentials_change: bool
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
-    vertical_scaling: VerticalScalingDict
+    vertical_autoscaling: VerticalAutoscalingDict
     autotune_limits: AutotuneLimitsDict
 
 
@@ -1121,18 +1121,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return hpa
 
-    def get_vertical_scaling_type(self) -> VerticalScalingType:
-        return self.config_dict.get("vertical_scaling", {}).get("type", "autotuner")
+    def get_vertical_autoscaling_type(self) -> VerticalAutoscalingType:
+        return self.config_dict.get("vertical_autoscaling", {}).get("type", "autotuner")
 
     def get_vpa_recommender(self) -> Optional[str]:
         """Return the name of the VPA recommender for this instance, or None if it doesn't use a VPA."""
-        scaling_type = self.get_vertical_scaling_type()
-        if not scaling_type.startswith(VPA_VERTICAL_SCALING_PREFIX):
+        scaling_type = self.get_vertical_autoscaling_type()
+        if not scaling_type.startswith(VPA_VERTICAL_AUTOSCALING_PREFIX):
             return None
-        return scaling_type.removeprefix(VPA_VERTICAL_SCALING_PREFIX)
+        return scaling_type.removeprefix(VPA_VERTICAL_AUTOSCALING_PREFIX)
 
     def get_vpa_update_mode(self) -> VpaUpdateMode:
-        return self.config_dict.get("vertical_scaling", {}).get("update_mode", "Off")
+        return self.config_dict.get("vertical_autoscaling", {}).get(
+            "update_mode", "Off"
+        )
 
     def get_vpa_resource_bounds(
         self,
@@ -1159,7 +1161,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_vertical_pod_autoscaler(
         self, name: str, namespace: str
     ) -> Optional[VerticalPodAutoscalerDict]:
-        """Return the VPA this instance should have, or None if its vertical_scaling type isn't a VPA."""
+        """Return the VPA this instance should have, or None if its vertical_autoscaling type isn't a VPA."""
         recommender = self.get_vpa_recommender()
         if recommender is None:
             return None
