@@ -529,6 +529,55 @@ instance MAY have:
     percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
+  * ``firewall``: Optional. Limits the network traffic this instance can send and
+    receive. When you add a ``firewall`` block, PaaSTA blocks all traffic except:
+
+    * the rules you list under ``egress`` (outbound) and ``ingress`` (inbound)
+    * a default set of rules that every instance gets, covering
+      generally-expected traffic (e.g. DNS, monitoring tools, etc.)
+
+    For example:
+
+    .. code-block:: yaml
+        main:
+          cpus: 0.5
+          firewall:
+            egress:
+              # allow HTTPS to vendor-published CIDR ranges
+              - to_cidrs:
+                  - 52.94.0.0/16   # AWS
+                  - 140.82.0.0/16  # GitHub
+                ports:
+                  - protocol: TCP
+                    port: 443
+              # allow the 1025-65535 port range to an internal host
+              - to_cidrs:
+                  - 10.123.45.67/32
+                ports:
+                  - protocol: TCP
+                    port: 1025
+                    endPort: 65535
+            ingress:
+              # allow internal traffic on 8080
+              - from_cidrs:
+                  - 10.0.0.0/8
+                ports:
+                  - protocol: TCP
+                    port: 8080
+
+
+    Each rule must have at least one of these:
+    * ``to_cidrs`` / ``from_cidrs``: a list of IPv4 CIDR blocks, such as
+      ``52.94.0.0/16``.
+
+    .. NOTE:: IPv6 addresses and domain names aren't supported yet.
+
+    ``ports`` is optional. If you leave it out, the rule allows all ports. Each
+    port entry has ``protocol`` and ``port``; add ``endPort`` for an inclusive
+    range (``port: 1, endPort: 1000``).
+
+    Under the hood, PaaSTA puts these rules into a Kubernetes NetworkPolicy.
+
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
     If set to ``http`` or ``https``, a ``curl`` command will be executed
     inside the container.
