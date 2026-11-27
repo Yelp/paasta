@@ -12,21 +12,28 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config_no_cache
+from paasta_tools.kubernetes_tools import VPA_GROUP
+from paasta_tools.kubernetes_tools import VPA_PLURAL
+from paasta_tools.kubernetes_tools import VPA_VERSION
 from paasta_tools.kubernetes_tools import HpaOverride
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import VerticalPodAutoscalerDict
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_job
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.kubernetes_tools import vpa_api_is_available
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -239,11 +246,94 @@ class Application(ABC):
                 namespace=pdr.metadata.namespace,
             )
 
+    def sync_vertical_pod_autoscaler(self, kube_client: KubeClient) -> None:
+        """
+        Create, update, or delete this application's VPA to match its vertical_autoscaling config.
+        Deployments and StatefulSets call this after syncing everything else, so a VPA error
+        can't stop their other related objects from syncing.
+        :param kube_client:
+        """
+        if not isinstance(self.soa_config, EksDeploymentConfig):
+            return
+        if not vpa_api_is_available(kube_client):
+            return
+
+        name = self.item.metadata.name
+        namespace = self.item.metadata.namespace
+        existing_vpa = self.get_existing_vertical_pod_autoscaler(kube_client)
+        desired_vpa = self.soa_config.get_vertical_pod_autoscaler(
+            name=name,
+            namespace=namespace,
+            system_paasta_config=load_system_paasta_config(),
+        )
+        if desired_vpa is None:
+            if existing_vpa is not None:
+                self.delete_vertical_pod_autoscaler(kube_client)
+            return
+
+        if existing_vpa is None:
+            self.logging.info(f"Creating VPA {namespace}/{name}")
+            kube_client.custom.create_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=namespace,
+                plural=VPA_PLURAL,
+                body=desired_vpa,
+            )
+        elif existing_vpa["spec"] != desired_vpa["spec"]:
+            self.logging.info(f"Updating VPA {namespace}/{name}")
+            kube_client.custom.patch_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=namespace,
+                plural=VPA_PLURAL,
+                name=name,
+                body={"spec": desired_vpa["spec"]},
+            )
+        else:
+            self.logging.debug(f"VPA {namespace}/{name} is up to date")
+
+    def get_existing_vertical_pod_autoscaler(
+        self, kube_client: KubeClient
+    ) -> Optional[VerticalPodAutoscalerDict]:
+        try:
+            return kube_client.custom.get_namespaced_custom_object(
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                namespace=self.item.metadata.namespace,
+                plural=VPA_PLURAL,
+                name=self.item.metadata.name,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+
+    def delete_vertical_pod_autoscaler(self, kube_client: KubeClient) -> None:
+        name = self.item.metadata.name
+        namespace = self.item.metadata.namespace
+        try:
+            delete_custom_resource(
+                kube_client=kube_client,
+                name=name,
+                namespace=namespace,
+                group=VPA_GROUP,
+                version=VPA_VERSION,
+                plural=VPA_PLURAL,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                # The VPA, or the VPA API itself, doesn't exist, so there is nothing to delete.
+                self.logging.debug(f"not deleting nonexistent VPA {namespace}/{name}")
+                return
+            raise
+        self.logging.info(f"Deleted VPA {namespace}/{name}")
+
 
 class DeploymentWrapper(Application):
     def __init__(
         self,
-        item: Union[V1Deployment, V1StatefulSet],
+        item: V1Deployment,
         logging=logging.getLogger(__name__),
         hpa_override: Optional[HpaOverride] = None,
     ) -> None:
@@ -283,6 +373,7 @@ class DeploymentWrapper(Application):
             )
         self.delete_pod_disruption_budget(kube_client)
         self.delete_horizontal_pod_autoscaler(kube_client)
+        self.delete_vertical_pod_autoscaler(kube_client)
 
     def get_existing_app(self, kube_client: KubeClient):
         return kube_client.deployments.read_namespaced_deployment(
@@ -310,6 +401,7 @@ class DeploymentWrapper(Application):
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
+        self.sync_vertical_pod_autoscaler(kube_client)
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
@@ -433,6 +525,7 @@ class StatefulSetWrapper(Application):
                 )
             )
         self.delete_pod_disruption_budget(kube_client)
+        self.delete_vertical_pod_autoscaler(kube_client)
 
     def create(self, kube_client: KubeClient):
         create_stateful_set(
@@ -448,6 +541,10 @@ class StatefulSetWrapper(Application):
             formatted_stateful_set=self.item,
             namespace=self.soa_config.get_namespace(),
         )
+
+    def update_related_api_objects(self, kube_client: KubeClient) -> None:
+        super().update_related_api_objects(kube_client)
+        self.sync_vertical_pod_autoscaler(kube_client)
 
 
 class JobWrapper(Application):

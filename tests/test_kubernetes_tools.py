@@ -15,6 +15,8 @@ from hypothesis.strategies import integers
 from kubernetes import client as kube_client
 from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
+from kubernetes.client import V1APIGroup
+from kubernetes.client import V1APIGroupList
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Capabilities
 from kubernetes.client import V1Container
@@ -26,6 +28,7 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
+from kubernetes.client import V1GroupVersionForDiscovery
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1Job
@@ -336,6 +339,12 @@ def test_load_kubernetes_service_config():
             soa_dir="/nail/blah",
         )
         assert ret == mock_load_kubernetes_service_config_no_cache.return_value
+
+
+VPA_ENABLED_SYSTEM_CONFIG = SystemPaastaConfig(
+    SystemPaastaConfigDict({"vertical_autoscaling": {"enabled": True}}),
+    "/fake/dir/",
+)
 
 
 class TestKubernetesDeploymentConfig:
@@ -2897,6 +2906,396 @@ class TestKubernetesDeploymentConfig:
                 namespace="paastasvc-kurupt",
             )
 
+    def make_vpa_deployment(
+        self, config_dict: KubernetesDeploymentConfigDict
+    ) -> KubernetesDeploymentConfig:
+        return KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm_canary",
+            cluster="brentford",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+
+    def test_get_vertical_pod_autoscaler(self):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling={"type": "vpa-default"})
+        )
+        assert deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=VPA_ENABLED_SYSTEM_CONFIG,
+        ) == {
+            "apiVersion": "autoscaling.k8s.io/v1",
+            "kind": "VerticalPodAutoscaler",
+            "metadata": {
+                "name": "kurupt-fm--canary",
+                "namespace": "paastasvc-kurupt",
+                "labels": {
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm_canary",
+                    "paasta.yelp.com/managed": "true",
+                },
+            },
+            "spec": {
+                "targetRef": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "kurupt-fm--canary",
+                },
+                "updatePolicy": {"updateMode": "Off"},
+                "recommenders": [{"name": "default"}],
+                "resourcePolicy": {
+                    "containerPolicies": [
+                        {"containerName": "fm--canary", "mode": "Auto"},
+                        {"containerName": "*", "mode": "Off"},
+                    ]
+                },
+            },
+        }
+
+    @pytest.mark.parametrize(
+        "config_dict",
+        [
+            KubernetesDeploymentConfigDict(),
+            KubernetesDeploymentConfigDict(vertical_autoscaling={"type": "autotuner"}),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_without_vpa(self, config_dict):
+        deployment = self.make_vpa_deployment(config_dict)
+        assert deployment.get_vpa_recommender() is None
+        assert (
+            deployment.get_vertical_pod_autoscaler(
+                name="kurupt-fm--canary",
+                namespace="paastasvc-kurupt",
+                system_paasta_config=VPA_ENABLED_SYSTEM_CONFIG,
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize(
+        "system_config_dict",
+        [
+            {},
+            {"vertical_autoscaling": {}},
+            {"vertical_autoscaling": {"enabled": False}},
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_disabled_for_cluster(self, system_config_dict):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling={"type": "vpa-default"})
+        )
+        assert (
+            deployment.get_vertical_pod_autoscaler(
+                name="kurupt-fm--canary",
+                namespace="paastasvc-kurupt",
+                system_paasta_config=SystemPaastaConfig(
+                    SystemPaastaConfigDict(system_config_dict), "/fake/dir/"
+                ),
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize(
+        "config_dict,expected_kind",
+        [
+            (KubernetesDeploymentConfigDict(), "Deployment"),
+            (
+                KubernetesDeploymentConfigDict(
+                    persistent_volumes=[
+                        {"container_path": "/data", "size": 10, "mode": "RW"}
+                    ]
+                ),
+                "StatefulSet",
+            ),
+        ],
+    )
+    def test_get_target_ref(self, config_dict, expected_kind):
+        deployment = self.make_vpa_deployment(config_dict)
+        assert deployment.get_target_ref(
+            "kurupt-fm--canary"
+        ) == V2CrossVersionObjectReference(
+            api_version="apps/v1", kind=expected_kind, name="kurupt-fm--canary"
+        )
+
+    def test_get_vertical_pod_autoscaler_targets_stateful_set(self):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                persistent_volumes=[
+                    {"container_path": "/data", "size": 10, "mode": "RW"}
+                ],
+            )
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=VPA_ENABLED_SYSTEM_CONFIG,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["targetRef"] == {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "name": "kurupt-fm--canary",
+        }
+
+    @pytest.mark.parametrize(
+        "autotune_limits,expected_main_policy",
+        [
+            (
+                {
+                    "cpus": {"min": 0.25, "max": 2},
+                    "mem": {"min": 512, "max": 4096},
+                    "disk": {"min": 1000},
+                },
+                {
+                    "containerName": "fm--canary",
+                    "mode": "Auto",
+                    "minAllowed": {"cpu": "250m", "memory": "512Mi"},
+                    "maxAllowed": {"cpu": "2000m", "memory": "4096Mi"},
+                },
+            ),
+            (
+                {"cpus": {"min": 0.1}},
+                {
+                    "containerName": "fm--canary",
+                    "mode": "Auto",
+                    "minAllowed": {"cpu": "100m"},
+                },
+            ),
+            (
+                {"mem": {"max": 1024}},
+                {
+                    "containerName": "fm--canary",
+                    "mode": "Auto",
+                    "maxAllowed": {"memory": "1024Mi"},
+                },
+            ),
+            (
+                {"disk": {"min": 1000}},
+                {"containerName": "fm--canary", "mode": "Auto"},
+            ),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_autotune_limits(
+        self, autotune_limits, expected_main_policy
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits=autotune_limits,
+            )
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=VPA_ENABLED_SYSTEM_CONFIG,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"] == [
+            expected_main_policy,
+            {"containerName": "*", "mode": "Off"},
+        ]
+
+    @pytest.mark.parametrize(
+        "autotune_limits,expected_min_allowed,expected_max_allowed",
+        [
+            # The mins default to the cluster's, and the CPU max to the pool's max_cpus.
+            ({}, {"cpu": "250m", "memory": "512Mi"}, {"cpu": "30000m"}),
+            # The instance's mins replace the defaults, and its CPU max lowers the ceiling.
+            (
+                {"cpus": {"min": 0.1, "max": 2}, "mem": {"min": 128, "max": 4096}},
+                {"cpu": "100m", "memory": "128Mi"},
+                {"cpu": "2000m", "memory": "4096Mi"},
+            ),
+            # The instance's CPU max can't raise the ceiling. Memory has no ceiling.
+            (
+                {"cpus": {"max": 64}, "mem": {"max": 524288}},
+                {"cpu": "250m", "memory": "512Mi"},
+                {"cpu": "30000m", "memory": "524288Mi"},
+            ),
+            # A CPU min above the ceiling is lowered to it.
+            (
+                {"cpus": {"min": 40}},
+                {"cpu": "30000m", "memory": "512Mi"},
+                {"cpu": "30000m"},
+            ),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_cluster_bounds(
+        self, autotune_limits, expected_min_allowed, expected_max_allowed
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits=autotune_limits,
+            )
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                vertical_autoscaling={
+                    "enabled": True,
+                    "min_cpus": 0.25,
+                    "min_memory": 512,
+                },
+                pool_limits={
+                    "brentford": {
+                        "default": {"max_cpus": 30, "recommended_pool": "large"}
+                    }
+                },
+            ),
+            "/fake/dir/",
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"][0] == {
+            "containerName": "fm--canary",
+            "mode": "Auto",
+            "minAllowed": expected_min_allowed,
+            "maxAllowed": expected_max_allowed,
+        }
+
+    @pytest.mark.parametrize(
+        "pool_limits",
+        [
+            {"brentford": {"large": {"max_cpus": 30, "recommended_pool": "large"}}},
+            {"other": {"default": {"max_cpus": 30, "recommended_pool": "large"}}},
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_ignores_other_pools_limits(self, pool_limits):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(
+                vertical_autoscaling={"type": "vpa-default"},
+                autotune_limits={"cpus": {"max": 64}},
+            )
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(
+                vertical_autoscaling={"enabled": True}, pool_limits=pool_limits
+            ),
+            "/fake/dir/",
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"][0] == {
+            "containerName": "fm--canary",
+            "mode": "Auto",
+            "maxAllowed": {"cpu": "64000m"},
+        }
+
+    @pytest.mark.parametrize(
+        "vertical_autoscaling,expected_main_policy",
+        [
+            (
+                {"type": "vpa-default"},
+                {"containerName": "fm--canary", "mode": "Auto"},
+            ),
+            (
+                {"type": "vpa-default", "controlled_resources": ["memory"]},
+                {
+                    "containerName": "fm--canary",
+                    "mode": "Auto",
+                    "controlledResources": ["memory"],
+                },
+            ),
+        ],
+    )
+    def test_get_vertical_pod_autoscaler_controlled_resources(
+        self, vertical_autoscaling, expected_main_policy
+    ):
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling=vertical_autoscaling)
+        )
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=VPA_ENABLED_SYSTEM_CONFIG,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["resourcePolicy"]["containerPolicies"] == [
+            expected_main_policy,
+            {"containerName": "*", "mode": "Off"},
+        ]
+
+    @pytest.mark.parametrize(
+        "config_dict,expected_type,expected_recommender",
+        [
+            (KubernetesDeploymentConfigDict(), "autotuner", None),
+            (
+                KubernetesDeploymentConfigDict(
+                    vertical_autoscaling={"type": "autotuner"}
+                ),
+                "autotuner",
+                None,
+            ),
+            (
+                KubernetesDeploymentConfigDict(
+                    vertical_autoscaling={"type": "vpa-default", "update_mode": "Off"}
+                ),
+                "vpa-default",
+                "default",
+            ),
+            # Not a valid type yet, but future vpa-* types name their recommender
+            # after themselves.
+            (
+                KubernetesDeploymentConfigDict(
+                    vertical_autoscaling={"type": "vpa-conservative"}
+                ),
+                "vpa-conservative",
+                "vpa-conservative",
+            ),
+        ],
+    )
+    def test_get_vertical_autoscaling_type_and_recommender(
+        self, config_dict, expected_type, expected_recommender
+    ):
+        deployment = self.make_vpa_deployment(config_dict)
+        assert deployment.get_vertical_autoscaling_type() == expected_type
+        assert deployment.get_vpa_recommender() == expected_recommender
+        assert deployment.get_vpa_update_mode(VPA_ENABLED_SYSTEM_CONFIG) == "Off"
+
+    # Off is the only valid update_mode for now, so Initial here only shows which
+    # config the value comes from.
+    @pytest.mark.parametrize(
+        "instance_update_mode,cluster_update_mode,expected",
+        [
+            (None, None, "Off"),
+            (None, "Initial", "Initial"),
+            ("Off", "Initial", "Off"),
+        ],
+    )
+    def test_get_vpa_update_mode(
+        self, instance_update_mode, cluster_update_mode, expected
+    ):
+        vertical_autoscaling = {"type": "vpa-default"}
+        if instance_update_mode is not None:
+            vertical_autoscaling["update_mode"] = instance_update_mode
+        cluster_config = {"enabled": True}
+        if cluster_update_mode is not None:
+            cluster_config["update_mode"] = cluster_update_mode
+        deployment = self.make_vpa_deployment(
+            KubernetesDeploymentConfigDict(vertical_autoscaling=vertical_autoscaling)
+        )
+        system_paasta_config = SystemPaastaConfig(
+            SystemPaastaConfigDict(vertical_autoscaling=cluster_config), "/fake/dir/"
+        )
+        assert deployment.get_vpa_update_mode(system_paasta_config) == expected
+        vpa = deployment.get_vertical_pod_autoscaler(
+            name="kurupt-fm--canary",
+            namespace="paastasvc-kurupt",
+            system_paasta_config=system_paasta_config,
+        )
+        assert vpa is not None
+        assert vpa["spec"]["updatePolicy"] == {"updateMode": expected}
+
     @pytest.mark.parametrize(
         "metrics_provider",
         (METRICS_PROVIDER_CPU, METRICS_PROVIDER_MEMORY),
@@ -4454,7 +4853,7 @@ def test_set_instances_for_kubernetes_service_deployment(mock_kube_deploy_config
     mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
         "fake_deployment"
     )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = False
+    mock_kube_deploy_config.should_use_stateful_set.return_value = False
     mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
     set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
     assert mock_client.deployments.patch_namespaced_deployment_scale.call_count == 1
@@ -4467,7 +4866,7 @@ def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_confi
     mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
         "fake_stateful_set"
     )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = True
+    mock_kube_deploy_config.should_use_stateful_set.return_value = True
     mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
     set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
     assert mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
@@ -4500,12 +4899,70 @@ def test_get_annotations_for_kubernetes_service(
     mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
         "fake_k8s_service"
     )
-    mock_kube_deploy_config.get_persistent_volumes.return_value = has_persistent_volumes
+    mock_kube_deploy_config.should_use_stateful_set.return_value = (
+        has_persistent_volumes
+    )
     mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
     annotations = get_annotations_for_kubernetes_service(
         mock_client, mock_kube_deploy_config
     )
     assert annotations == expected_annotations
+
+
+@pytest.mark.parametrize(
+    "instance_min,instance_max,default_min,ceiling,expected",
+    [
+        (None, None, None, None, (None, None)),
+        (None, None, 1, 8, (1, 8)),
+        (2, 4, 1, 8, (2, 4)),
+        (None, 16, None, 8, (None, 8)),
+        (4, 2, None, None, (2, 2)),
+        (12, None, None, 8, (8, 8)),
+    ],
+)
+def test_combine_vpa_bounds(instance_min, instance_max, default_min, ceiling, expected):
+    assert (
+        kubernetes_tools.combine_vpa_bounds(
+            instance_min=instance_min,
+            instance_max=instance_max,
+            default_min=default_min,
+            ceiling=ceiling,
+        )
+        == expected
+    )
+
+
+def api_group(name, *versions):
+    return V1APIGroup(
+        name=name,
+        versions=[
+            V1GroupVersionForDiscovery(group_version=f"{name}/{v}", version=v)
+            for v in versions
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "groups,expected",
+    [
+        ([api_group("apps", "v1"), api_group("autoscaling.k8s.io", "v1")], True),
+        ([api_group("autoscaling.k8s.io", "v1beta2")], False),
+        ([api_group("apps", "v1")], False),
+    ],
+)
+def test_vpa_api_is_available(groups, expected):
+    # a new client per test, so time_cache can't return another test's result
+    mock_client = mock.Mock()
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.ApisApi", autospec=True
+    ) as mock_apis_api:
+        mock_apis_api.return_value.get_api_versions.return_value = V1APIGroupList(
+            groups=groups
+        )
+        assert kubernetes_tools.vpa_api_is_available(mock_client) is expected
+        # a second call within the TTL uses the cached answer
+        assert kubernetes_tools.vpa_api_is_available(mock_client) is expected
+    mock_apis_api.assert_called_once_with(mock_client.api_client)
 
 
 def test_create_custom_resource():

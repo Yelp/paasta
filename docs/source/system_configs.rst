@@ -126,3 +126,25 @@ These are the keys that may exist in system configs:
     ``table_name``.
 
     Example: ``"slack_thread_writer_config": {"table_name": "deploy-slack-threads", "region": "us-west-2"}``
+
+  * ``vertical_autoscaling``: Cluster-wide settings for instances whose ``vertical_autoscaling`` type is a ``vpa-*`` type.
+    A dictionary with the following keys:
+
+    * ``enabled``: Whether PaaSTA creates VerticalPodAutoscalers (VPAs) on this cluster. Defaults to ``false``.
+      Setting it back to ``false`` deletes the VPAs PaaSTA created, and every instance falls back to the autotuner.
+    * ``update_mode``: The VPA ``update_mode`` for instances that don't set one. The only value for now is ``"Off"``, which is also the default.
+    * ``min_cpus`` and ``min_memory``: Default lower bounds on the VPA's CPU (in cores) and memory (in MiB) recommendations for an instance's main container.
+      A ``min`` in the instance's ``autotune_limits`` replaces them.
+
+    The VPA's CPU recommendation is also capped at the instance's pool's ``max_cpus`` in ``pool_limits``.
+    If a lower bound ends up above the upper bound, PaaSTA lowers it to the upper bound.
+
+    Example: ``"vertical_autoscaling": {"enabled": true, "update_mode": "Off", "min_cpus": 0.25, "min_memory": 512}``
+
+  * ``pool_limits``: Per-node limits for pools, as a dictionary of cluster to pool to limits. Each pool's limits have the following keys:
+
+    * ``max_cpus``: The most CPUs one instance in the pool can request. ``paasta validate`` rejects instances whose ``cpus`` is at or above it,
+      and it caps the CPU recommendation of instances that use a VPA. An instance's ``autotune_limits`` can lower that cap but not raise it.
+    * ``recommended_pool``: The pool that ``paasta validate`` suggests for instances over ``max_cpus``.
+
+    Example: ``"pool_limits": {"uswest1-prod": {"default": {"max_cpus": 29.5, "recommended_pool": "large"}}}``

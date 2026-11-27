@@ -971,6 +971,53 @@
                         }
                     }
                 },
+                "vertical_autoscaling": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "type"
+                    ],
+                    "properties": {
+                        "type": {
+                            "enum": [
+                                "autotuner",
+                                "vpa-default"
+                            ]
+                        },
+                        "update_mode": {
+                            "enum": [
+                                "Off"
+                            ]
+                        },
+                        "controlled_resources": {
+                            "type": "array",
+                            "minItems": 1,
+                            "uniqueItems": true,
+                            "items": {
+                                "enum": [
+                                    "cpu",
+                                    "memory"
+                                ]
+                            }
+                        }
+                    },
+                    "dependencies": {
+                        "update_mode": {
+                            "properties": {
+                                "type": {
+                                    "pattern": "^vpa-"
+                                }
+                            }
+                        },
+                        "controlled_resources": {
+                            "properties": {
+                                "type": {
+                                    "pattern": "^vpa-"
+                                }
+                            }
+                        }
+                    }
+                },
                 "topology_spread_constraints": {
                     "type": "array",
                     "items": {

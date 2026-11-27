@@ -530,6 +530,41 @@ main:
         assert SCHEMA_INVALID in output
 
 
+@pytest.mark.parametrize(
+    "vertical_autoscaling,expected_valid",
+    [
+        ("{type: autotuner}", True),
+        ("{type: vpa-default}", True),
+        (
+            "{type: vpa-default, update_mode: 'Off', controlled_resources: [memory]}",
+            True,
+        ),
+        ("{type: vpa-default, controlled_resources: [cpu, memory]}", True),
+        ("{update_mode: 'Off'}", False),
+        ("{type: vpa-conservative}", False),
+        ("{type: autotuner, update_mode: 'Off'}", False),
+        ("{type: autotuner, controlled_resources: [cpu]}", False),
+        ("{type: vpa-default, controlled_resources: []}", False),
+        ("{type: vpa-default, controlled_resources: [disk]}", False),
+        ("{type: vpa-default, controlled_resources: [cpu, cpu]}", False),
+    ],
+)
+def test_eks_validate_schema_vertical_autoscaling(
+    vertical_autoscaling, expected_valid, capsys
+):
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = f"""
+main:
+    vertical_autoscaling: {vertical_autoscaling}
+"""
+        assert validate_schema("unused_service_path.yaml", "eks") is expected_valid
+
+    output, _ = capsys.readouterr()
+    assert (SCHEMA_VALID if expected_valid else SCHEMA_INVALID) in output
+
+
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_kubernetes_validate_schema_list_hashes_good(mock_get_file_contents, capsys):
     kubernetes_content = """

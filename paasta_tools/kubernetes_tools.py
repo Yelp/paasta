@@ -36,10 +36,12 @@ from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
+from typing import NotRequired
 from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 from typing import cast
 
@@ -48,6 +50,7 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import ApisApi
 from kubernetes.client import CoreV1Event
 from kubernetes.client import RbacV1Subject
 from kubernetes.client import V1Affinity
@@ -179,6 +182,7 @@ from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
+from paasta_tools.utils import VpaUpdateMode
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import get_config_hash
@@ -356,6 +360,119 @@ class HpaOverride(TypedDict):
     expire_after: str
 
 
+VPA_GROUP = "autoscaling.k8s.io"
+VPA_VERSION = "v1"
+VPA_PLURAL = "verticalpodautoscalers"
+VPA_VERTICAL_AUTOSCALING_PREFIX = "vpa-"
+# Each vpa-* type uses the VPA recommender whose --recommender-name is the type itself,
+# except vpa-default, which uses the recommender that VPA names "default". That one also
+# serves VPAs that don't name a recommender.
+VPA_DEFAULT_TYPE = "vpa-default"
+VPA_DEFAULT_RECOMMENDER = "default"
+
+VerticalAutoscalingType = Literal["autotuner", "vpa-default"]
+VpaControlledResource = Literal["cpu", "memory"]
+
+
+VpaBound = TypeVar("VpaBound", int, float)
+
+
+def combine_vpa_bounds(
+    instance_min: Optional[VpaBound],
+    instance_max: Optional[VpaBound],
+    default_min: Optional[VpaBound],
+    ceiling: Optional[VpaBound],
+) -> Tuple[Optional[VpaBound], Optional[VpaBound]]:
+    """Combine an instance's VPA bounds for one resource with its cluster's default and ceiling.
+
+    The instance's min replaces the default min. The instance's max can lower the ceiling but
+    not raise it. If the min ends up above the max, it's lowered to the max.
+    """
+    min_value = default_min if instance_min is None else instance_min
+    if instance_max is None:
+        max_value = ceiling
+    elif ceiling is None:
+        max_value = instance_max
+    else:
+        max_value = min(instance_max, ceiling)
+    if min_value is not None and max_value is not None:
+        min_value = min(min_value, max_value)
+    return min_value, max_value
+
+
+class VerticalAutoscalingDict(TypedDict, total=False):
+    type: VerticalAutoscalingType
+    update_mode: VpaUpdateMode
+    controlled_resources: List[VpaControlledResource]
+
+
+class AutotuneCpuLimitsDict(TypedDict, total=False):
+    min: float
+    max: float
+
+
+class AutotuneSizeLimitsDict(TypedDict, total=False):
+    min: int  # MiB
+    max: int  # MiB
+
+
+class AutotuneLimitsDict(TypedDict, total=False):
+    cpus: AutotuneCpuLimitsDict
+    mem: AutotuneSizeLimitsDict
+    disk: AutotuneSizeLimitsDict
+
+
+class VpaTargetRefDict(TypedDict):
+    apiVersion: str
+    kind: str
+    name: str
+
+
+class VpaUpdatePolicyDict(TypedDict):
+    updateMode: VpaUpdateMode
+
+
+class VpaRecommenderDict(TypedDict):
+    name: str
+
+
+class VpaResourceListDict(TypedDict, total=False):
+    cpu: str  # Kubernetes quantity, e.g. "250m"
+    memory: str  # Kubernetes quantity, e.g. "1024Mi"
+
+
+class VpaContainerPolicyDict(TypedDict):
+    containerName: str
+    mode: Literal["Auto", "Off"]
+    controlledResources: NotRequired[List[VpaControlledResource]]
+    minAllowed: NotRequired[VpaResourceListDict]
+    maxAllowed: NotRequired[VpaResourceListDict]
+
+
+class VpaResourcePolicyDict(TypedDict):
+    containerPolicies: List[VpaContainerPolicyDict]
+
+
+class VpaSpecDict(TypedDict):
+    targetRef: VpaTargetRefDict
+    updatePolicy: VpaUpdatePolicyDict
+    recommenders: List[VpaRecommenderDict]
+    resourcePolicy: VpaResourcePolicyDict
+
+
+class VpaMetadataDict(TypedDict):
+    name: str
+    namespace: str
+    labels: Dict[str, str]
+
+
+class VerticalPodAutoscalerDict(TypedDict):
+    apiVersion: str
+    kind: str
+    metadata: VpaMetadataDict
+    spec: VpaSpecDict
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -482,6 +599,8 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_on_datastore_credentials_change: bool
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     enable_aws_lb_readiness_gate: bool
+    vertical_autoscaling: VerticalAutoscalingDict
+    autotune_limits: AutotuneLimitsDict
 
 
 def load_kubernetes_service_config_no_cache(
@@ -898,9 +1017,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="Value",
                         # shared rules return avg load per replica (total_load / replicas);
@@ -917,9 +1034,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="Value",
                         # we average the number of instances needed to handle the current (or
@@ -947,9 +1062,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 type="Object",
                 object=V2ObjectMetricSource(
                     metric=V2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=metric_target,
                 ),
             )
@@ -964,9 +1077,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name=prometheus_hpa_metric_name,
                         selector=metric_selector,
                     ),
-                    described_object=V2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
+                    described_object=self.get_target_ref(name),
                     target=V2MetricTarget(
                         type="AverageValue",
                         average_value=target,
@@ -1037,13 +1148,146 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name=name
-                ),
+                scale_target_ref=self.get_target_ref(name),
             ),
         )
 
         return hpa
+
+    def get_vertical_autoscaling_type(self) -> VerticalAutoscalingType:
+        return self.config_dict.get("vertical_autoscaling", {}).get("type", "autotuner")
+
+    def get_vpa_recommender(self) -> Optional[str]:
+        """Return the name of the VPA recommender for this instance, or None if it doesn't use a VPA."""
+        scaling_type = self.get_vertical_autoscaling_type()
+        if not scaling_type.startswith(VPA_VERTICAL_AUTOSCALING_PREFIX):
+            return None
+        if scaling_type == VPA_DEFAULT_TYPE:
+            return VPA_DEFAULT_RECOMMENDER
+        return scaling_type
+
+    def get_vpa_update_mode(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> VpaUpdateMode:
+        """Return the instance's update_mode, else the cluster's default, else Off."""
+        cluster_default = system_paasta_config.get_vertical_autoscaling_config().get(
+            "update_mode", "Off"
+        )
+        return self.config_dict.get("vertical_autoscaling", {}).get(
+            "update_mode", cluster_default
+        )
+
+    def get_vpa_controlled_resources(self) -> Optional[List[VpaControlledResource]]:
+        """Return the resources the VPA recommends, or None to leave VPA's default of CPU and memory."""
+        return self.config_dict.get("vertical_autoscaling", {}).get(
+            "controlled_resources"
+        )
+
+    def get_vpa_resource_bounds(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> Tuple[VpaResourceListDict, VpaResourceListDict]:
+        """Return minAllowed and maxAllowed for the main container's VPA policy.
+
+        The instance's autotune_limits set the bounds. A min it leaves out comes from the cluster's
+        vertical_autoscaling system config. Its pool's max_cpus in pool_limits is a ceiling on the
+        CPU max, so the VPA never recommends more CPU than a node in the pool can fit. All of these
+        give CPU in cores and memory in MiB. VPA doesn't scale disk, so autotune_limits' disk is ignored.
+        """
+        vertical_autoscaling = system_paasta_config.get_vertical_autoscaling_config()
+        pool_limits = (
+            system_paasta_config.get_pool_limits()
+            .get(self.cluster, {})
+            .get(self.get_pool())
+        )
+        autotune_limits = self.config_dict.get("autotune_limits", {})
+        cpus = autotune_limits.get("cpus", {})
+        mem = autotune_limits.get("mem", {})
+        min_cpus, max_cpus = combine_vpa_bounds(
+            instance_min=cpus.get("min"),
+            instance_max=cpus.get("max"),
+            default_min=vertical_autoscaling.get("min_cpus"),
+            ceiling=pool_limits.get("max_cpus") if pool_limits else None,
+        )
+        min_memory, max_memory = combine_vpa_bounds(
+            instance_min=mem.get("min"),
+            instance_max=mem.get("max"),
+            default_min=vertical_autoscaling.get("min_memory"),
+            ceiling=None,
+        )
+
+        min_allowed: VpaResourceListDict = {}
+        max_allowed: VpaResourceListDict = {}
+        if min_cpus is not None:
+            min_allowed["cpu"] = f"{round(min_cpus * 1000)}m"
+        if max_cpus is not None:
+            max_allowed["cpu"] = f"{round(max_cpus * 1000)}m"
+        if min_memory is not None:
+            min_allowed["memory"] = f"{min_memory}Mi"
+        if max_memory is not None:
+            max_allowed["memory"] = f"{max_memory}Mi"
+        return min_allowed, max_allowed
+
+    def get_vertical_pod_autoscaler(
+        self, name: str, namespace: str, system_paasta_config: SystemPaastaConfig
+    ) -> Optional[VerticalPodAutoscalerDict]:
+        """Return the VPA this instance should have, or None if it shouldn't have one.
+
+        An instance has no VPA if its vertical_autoscaling type isn't a VPA, or if the cluster's
+        vertical_autoscaling system config isn't enabled. That system config is a killswitch:
+        turning it off makes every instance fall back to the autotuner.
+        """
+        if not system_paasta_config.get_vertical_autoscaling_config().get(
+            "enabled", False
+        ):
+            return None
+        recommender = self.get_vpa_recommender()
+        if recommender is None:
+            return None
+
+        main_container_policy: VpaContainerPolicyDict = {
+            "containerName": self.get_sanitised_instance_name(),
+            "mode": "Auto",
+        }
+        controlled_resources = self.get_vpa_controlled_resources()
+        if controlled_resources is not None:
+            main_container_policy["controlledResources"] = controlled_resources
+        min_allowed, max_allowed = self.get_vpa_resource_bounds(system_paasta_config)
+        if min_allowed:
+            main_container_policy["minAllowed"] = min_allowed
+        if max_allowed:
+            main_container_policy["maxAllowed"] = max_allowed
+
+        target_ref = self.get_target_ref(name)
+        return {
+            "apiVersion": f"{VPA_GROUP}/{VPA_VERSION}",
+            "kind": "VerticalPodAutoscaler",
+            "metadata": {
+                "name": name,
+                "namespace": namespace,
+                "labels": {
+                    paasta_prefixed("service"): self.service,
+                    paasta_prefixed("instance"): self.instance,
+                    paasta_prefixed("managed"): "true",
+                },
+            },
+            "spec": {
+                "targetRef": {
+                    "apiVersion": target_ref.api_version,
+                    "kind": target_ref.kind,
+                    "name": target_ref.name,
+                },
+                "updatePolicy": {
+                    "updateMode": self.get_vpa_update_mode(system_paasta_config)
+                },
+                "recommenders": [{"name": recommender}],
+                "resourcePolicy": {
+                    "containerPolicies": [
+                        main_container_policy,
+                        {"containerName": "*", "mode": "Off"},
+                    ]
+                },
+            },
+        }
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method
@@ -2078,7 +2322,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaled_instances(self) -> Optional[int]:
         try:
-            if self.get_persistent_volumes():
+            if self.should_use_stateful_set():
                 return (
                     KubeClient()
                     .deployments.read_namespaced_stateful_set(
@@ -2275,6 +2519,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return complete_config
 
+    def should_use_stateful_set(self) -> bool:
+        return bool(self.get_persistent_volumes())
+
+    def get_target_ref(self, name: str) -> V2CrossVersionObjectReference:
+        """Return a reference to this instance's StatefulSet if it has persistent volumes, else its Deployment."""
+        return V2CrossVersionObjectReference(
+            api_version="apps/v1",
+            kind="StatefulSet" if self.should_use_stateful_set() else "Deployment",
+            name=name,
+        )
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -2283,7 +2538,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             docker_url = self.get_docker_url()
             git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
             complete_config: Union[V1StatefulSet, V1Deployment]
-            if self.get_persistent_volumes():
+            if self.should_use_stateful_set():
                 complete_config = V1StatefulSet(
                     api_version="apps/v1",
                     kind="StatefulSet",
@@ -3571,6 +3826,20 @@ def delete_custom_resource(
     )
 
 
+@time_cache(ttl=300)
+def vpa_api_is_available(kube_client: KubeClient) -> bool:
+    """Check whether the cluster serves the VPA API, i.e. whether the VPA CRDs are installed.
+
+    This reads the API discovery document, which every authenticated client can read,
+    so it needs no extra RBAC. The result is cached so that setup_kubernetes_job makes
+    this call once per run instead of once per instance.
+    """
+    for group in ApisApi(kube_client.api_client).get_api_versions().groups:
+        if group.name == VPA_GROUP:
+            return any(version.version == VPA_VERSION for version in group.versions)
+    return False
+
+
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
     if instance_count == 0:
         return 0
@@ -3626,7 +3895,7 @@ def set_instances_for_kubernetes_service(
     name = service_config.get_sanitised_deployment_name()
     formatted_application = service_config.format_kubernetes_app()
     formatted_application.spec.replicas = instance_count
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         kube_client.deployments.patch_namespaced_stateful_set_scale(
             name=name,
             namespace=service_config.get_namespace(),
@@ -3644,7 +3913,7 @@ def get_annotations_for_kubernetes_service(
     kube_client: KubeClient, service_config: KubernetesDeploymentConfig
 ) -> Dict:
     name = service_config.get_sanitised_deployment_name()
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         k8s_service = kube_client.deployments.read_namespaced_stateful_set(
             name=name, namespace=service_config.get_namespace()
         )
@@ -3663,7 +3932,7 @@ def write_annotation_for_kubernetes_service(
 ) -> None:
     name = formatted_application.metadata.name
     formatted_application.metadata.annotations = annotation
-    if service_config.get_persistent_volumes():
+    if service_config.should_use_stateful_set():
         kube_client.deployments.patch_namespaced_stateful_set(
             name=name,
             namespace=service_config.get_namespace(),
