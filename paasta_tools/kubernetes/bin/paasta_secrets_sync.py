@@ -719,67 +719,88 @@ def sync_datastore_credentials(
         system_paasta_config.get_datastore_credentials_vault_overrides()
     )
 
+    instance_configs: List[
+        Union[KubernetesDeploymentConfig, EksDeploymentConfig, TronActionConfig]
+    ] = []
     for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
-        for instance_config in config_loader.instance_configs(
-            cluster=cluster, instance_type_class=instance_type_class
-        ):
-            namespace = (
-                overwrite_namespace
-                if overwrite_namespace is not None
-                else instance_config.get_namespace()
+        instance_configs.extend(
+            config_loader.instance_configs(
+                cluster=cluster, instance_type_class=instance_type_class
             )
-            datastore_credentials = instance_config.get_datastore_credentials()
-            with set_temporary_environment_variables(
-                datastore_credentials_vault_overrides
-            ):
-                # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
-                # in order to use a custom vault shard. overriden temporarily in this context
-                provider = get_secret_provider(
-                    secret_provider_name=secret_provider_name,
-                    soa_dir=soa_dir,
-                    service_name=service,
-                    cluster_names=[cluster],
-                    # overridden by env variables but still needed here for spec validation
-                    secret_provider_kwargs={
-                        "vault_cluster_config": vault_cluster_config,
-                        "vault_auth_method": "token",
-                        "vault_token_file": vault_token_file,
-                    },
-                )
+        )
+    # PaastaServiceConfigLoader.instance_configs assumes a flat <type>-<cluster>.yaml
+    # (one top-level key per instance). tron-<cluster>.yaml is job -> actions -> action,
+    # so it would yield one TronActionConfig per *job* with the job dict as config_dict
+    # (no action-level keys like datastore_credentials) and a bogus instance name.
+    # load_tron_instance_configs -> TronJobConfig.get_actions() knows the real shape,
+    # as sync_ssm_secrets does above.
+    instance_configs.extend(
+        load_tron_instance_configs(
+            service=service, cluster=cluster, load_deployments=False, soa_dir=soa_dir
+        )
+    )
 
-                secret_data = {}
-                for datastore, credentials in datastore_credentials.items():
-                    # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
-                    # https://github.com/python/mypy/issues/7178
-                    for credential in credentials:  # type: ignore
-                        vault_path = f"secrets/datastore/{datastore}/{credential}"
-                        secrets = provider.get_data_from_vault_path(vault_path)
-                        if not secrets:
-                            # no secrets found at this path. skip syncing
-                            log.debug(
-                                f"Warning: no secrets found at requested path {vault_path}."
-                            )
-                            continue
+    for instance_config in instance_configs:
+        datastore_credentials = instance_config.get_datastore_credentials()
+        if not datastore_credentials:
+            # nothing opted-in for this instance: don't litter namespaces (especially the
+            # shared tron namespace) with empty Secrets and signatures
+            continue
 
-                        # decrypt and save in secret_data
-                        vault_key_path = get_vault_key_secret_name(vault_path)
-
-                        # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
-                        # may look like:
-                        # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
-                        secret_data[vault_key_path] = base64.b64encode(
-                            json.dumps(secrets).encode("utf-8")
-                        ).decode("utf-8")
-
-            create_or_update_k8s_secret(
-                service=service,
-                signature_name=instance_config.get_datastore_credentials_signature_name(),
-                secret_name=instance_config.get_datastore_credentials_secret_name(),
-                get_secret_data=(lambda: secret_data),
-                secret_signature=_get_dict_signature(secret_data),
-                kube_client=kube_client,
-                namespace=namespace,
+        namespace = (
+            overwrite_namespace
+            if overwrite_namespace is not None
+            else instance_config.get_namespace()
+        )
+        with set_temporary_environment_variables(datastore_credentials_vault_overrides):
+            # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
+            # in order to use a custom vault shard. overriden temporarily in this context
+            provider = get_secret_provider(
+                secret_provider_name=secret_provider_name,
+                soa_dir=soa_dir,
+                service_name=service,
+                cluster_names=[cluster],
+                # overridden by env variables but still needed here for spec validation
+                secret_provider_kwargs={
+                    "vault_cluster_config": vault_cluster_config,
+                    "vault_auth_method": "token",
+                    "vault_token_file": vault_token_file,
+                },
             )
+
+            secret_data = {}
+            for datastore, credentials in datastore_credentials.items():
+                # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+                # https://github.com/python/mypy/issues/7178
+                for credential in credentials:  # type: ignore
+                    vault_path = f"secrets/datastore/{datastore}/{credential}"
+                    secrets = provider.get_data_from_vault_path(vault_path)
+                    if not secrets:
+                        # no secrets found at this path. skip syncing
+                        log.debug(
+                            f"Warning: no secrets found at requested path {vault_path}."
+                        )
+                        continue
+
+                    # decrypt and save in secret_data
+                    vault_key_path = get_vault_key_secret_name(vault_path)
+
+                    # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
+                    # may look like:
+                    # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
+                    secret_data[vault_key_path] = base64.b64encode(
+                        json.dumps(secrets).encode("utf-8")
+                    ).decode("utf-8")
+
+        create_or_update_k8s_secret(
+            service=service,
+            signature_name=instance_config.get_datastore_credentials_signature_name(),
+            secret_name=instance_config.get_datastore_credentials_secret_name(),
+            get_secret_data=(lambda: secret_data),
+            secret_signature=_get_dict_signature(secret_data),
+            kube_client=kube_client,
+            namespace=namespace,
+        )
 
     return True
 

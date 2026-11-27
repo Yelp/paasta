@@ -145,6 +145,28 @@ As an example the following deploy.yaml will execute steps ``security-check`` & 
      trigger_next_step_manually: true
    - step: prod.non_canary
 
+Multi-architecture images
+-------------------------
+
+By default, a service's image is built for ``amd64`` only. Yelp's Jenkins pipelines can instead build a multi-arch
+image when the service's ``jenkins.yaml`` lists more than one architecture in ``image_architectures``:
+
+.. sourcecode:: yaml
+
+   # jenkins.yaml
+   type: paasta
+   overrides:
+     paasta:
+       image_architectures: [amd64, arm64]
+
+Jenkins will then build and push 3 tags:
+* 2 architecture-suffixed images (``paasta-<sha>[-<image version>]-<arch>``)
+* a combined manifest at the standard tag (``paasta-<sha>[-<image version>]``)
+
+Because Jenkins will run your build pipeline once per architecture, your ``make cook-image`` and/or ``make itest`` targets
+should build for the architecture of the host it is currently running on (i.e. not hard-code ``amd64`` or pass
+``--platform`` as a Docker/Podman CLI flag).
+
 Crashloop auto-rollback
 ------------------------
 
@@ -163,7 +185,9 @@ This is configured per deploy_group in deploy.yaml:
   that must be crashlooping to trigger the rollback.
   (default: 1.0, i.e., all replicas must be crashlooping).
 
-Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack.
+Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack (by clicking
+"Disable auto rollbacks", which also turns off crashloop-based auto-rollbacks for the rest of the deploy, or
+the "Forward" button).
 
 A replica recovering does not cancel the rollback under the assumption that if we've had had enough repeated restarts
 across all replicas, something is fundamentally unsafe with the new deployment.
@@ -190,7 +214,9 @@ Any AlertManager rule that fires for the service during a deployment can trigger
 This is configured per deploy_group in deploy.yaml:
 
 * ``alertmanager_rollback`` (boolean, optional): Enable AlertManager-based auto-rollback
-  for this deploy group.
+  for this deploy group. This is independent of ``auto_rollback`` (which only controls
+  SLO-based auto-rollbacks): either can be enabled without the other.
+  NOTE: this feature may be enabled or disabled at the PaaSTA cluster-level: this value overrides that state
 
 * ``alertmanager_rollback_dry_run`` (boolean, optional): Run the AlertManager polling and
   evaluation logic but only log results without actually triggering a rollback. Useful for
@@ -199,7 +225,20 @@ This is configured per deploy_group in deploy.yaml:
 * ``alertmanager_poll_interval_s`` (integer, optional): How often (in seconds)
   PaaSTA polls AlertManager for firing alerts during a deployment (default: 30).
 
+Alerts that were already firing before the deployment started are ignored, unless they resolve
+and then fire again during the deployment.
+
+An alert is only considered resolved once it has been absent from AlertManager for several
+consecutive polls (currently 2, i.e. ~60 seconds with the default poll interval), so that brief
+blips in AlertManager don't cancel an in-progress rollback.
+
 Once triggered, the rollback countdown starts and can only be cancelled by a human in Slack or if the alert resolves during this period.
+
+The "Disable auto rollbacks" Slack button turns off SLO-based, AlertManager-based and crashloop-based auto-rollbacks
+for the current deploy (and cancels every pending rollback countdown); "Enable auto rollbacks" turns SLO-based and
+AlertManager-based auto-rollbacks back on, even if they weren't configured for this step, and turns crashloop-based
+auto-rollbacks back on if they're configured for this step. If AlertManager-based auto-rollbacks weren't configured,
+alerts that are already firing when "Enable auto rollbacks" is clicked are treated as pre-existing and ignored.
 
 Example:
 

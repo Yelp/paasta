@@ -54,7 +54,6 @@ from paasta_tools.cassandraclustereks_tools import CassandraClusterEksDeployment
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
@@ -66,6 +65,7 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import POD_EVENT_WINDOW_S
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import format_pod_event_messages
@@ -136,11 +136,6 @@ InstanceStatusWriter = Callable[
     int,
 ]
 
-EKS_DEPLOYMENT_CONFIGS = [
-    EksDeploymentConfig,
-    FlinkEksDeploymentConfig,
-    CassandraClusterEksDeploymentConfig,
-]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 CASSANDRA_DEPLOYMENT_CONFIGS = [
     CassandraClusterDeploymentConfig,
@@ -325,15 +320,14 @@ def paasta_status_on_api_endpoint(
     printer: CancellablePrinter,
     verbose: int,
     new: bool = False,
-    is_eks: bool = False,
     all_namespaces: bool = False,
 ) -> int:
     output = [
         "",
-        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
+        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}",
     ]
     client = get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -980,7 +974,7 @@ def print_flinkeks_status(
     system_paasta_config = load_system_paasta_config()
 
     client = get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=True),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:
@@ -1230,6 +1224,7 @@ class ReplicaState(Enum):
     EVICTED = "Evicted", PaastaColors.red
     ALL_CONTAINERS_WAITING = "All Containers Waiting", PaastaColors.red
     FAILED = "Failed", PaastaColors.red
+    EXITED = "Exited", PaastaColors.red
     MAIN_CONTAINER_NOT_RUNNING = "Main Container Not Running", PaastaColors.red
     NO_CONTAINERS_YET = "No Containers Yet", PaastaColors.red
     NOT_READY = "Not Ready", PaastaColors.red
@@ -1267,7 +1262,8 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 
 def recent_container_restart(
-    container: Optional[KubernetesContainerV2], time_window: int = 900
+    container: Optional[KubernetesContainerV2],
+    time_window: int = POD_EVENT_WINDOW_S,
 ) -> bool:
     if container:
         return kubernetes_tools.recent_container_restart(
@@ -1277,6 +1273,16 @@ def recent_container_restart(
             time_window_s=time_window,
         )
     return False
+
+
+def is_recently_deployed(
+    pod: KubernetesPodV2, main_container: KubernetesContainerV2
+) -> bool:
+    # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
+    return (
+        pod.create_timestamp + main_container.healthcheck_grace_period
+        > datetime.now(timezone.utc).timestamp()
+    )
 
 
 def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
@@ -1298,6 +1304,11 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         state = ReplicaState.EVICTED
     elif phase == "Failed":
         state = ReplicaState.FAILED
+    elif phase == "Succeeded":
+        # NOTE: this shouldn't really happen as we expect anything that `paasta status`
+        # will see to be a long-running service that continues running until k8s terminates
+        # it
+        state = ReplicaState.EXITED
     elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
@@ -1315,11 +1326,7 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         #   This logic likely needs refining
         main_container = get_main_container(pod)
         if main_container:
-            # NOTE: the k8s API returns timestamps in UTC, so we make sure to always work in UTC
-            warming_up = (
-                pod.create_timestamp + main_container.healthcheck_grace_period
-                > datetime.now(timezone.utc).timestamp()
-            )
+            warming_up = is_recently_deployed(pod, main_container)
             if pod.mesh_ready is False:
                 if main_container.state != "running":
                     state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
@@ -1442,7 +1449,9 @@ def create_replica_table(
                             f"  Still warming up, {humanized_duration} elapsed, {humanized_remaining} before healthchecking starts"
                         )
                     )
-        if recent_liveness_failure(pod) and state != ReplicaState.TERMINATING:
+        if recent_liveness_failure(pod) and (
+            state.is_unhealthy() or state == ReplicaState.WARNING
+        ):
             healthcheck_string = (
                 "check your healthcheck configuration in yelpsoa_configs"
             )
@@ -1977,7 +1986,6 @@ def report_status_for_cluster(
                 verbose=verbose,
                 new=new,
                 all_namespaces=all_namespaces,
-                is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
 

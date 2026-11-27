@@ -29,13 +29,10 @@ from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import get_paasta_oapi_client_with_auth
 from paasta_tools.cli.utils import parse_error
 from paasta_tools.cli.utils import trigger_deploys
-from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paastaapi.exceptions import ApiException
@@ -332,10 +329,8 @@ def paasta_start_or_stop(args, desired_state):
             cluster = service_config.cluster
             service = service_config.service
             instance = service_config.instance
-            is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
-
             client = get_paasta_oapi_client(
-                cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+                cluster=cluster,
                 system_paasta_config=system_paasta_config,
             )
             if not client:
@@ -469,11 +464,10 @@ def paasta_restart_replica(args: argparse.Namespace) -> int:
     )
 
     system_paasta_config = load_system_paasta_config()
-    is_eks = isinstance(service_config, EksDeploymentConfig)
 
     # We will restrict who can restart replicas in OPA, typically for service owners
     client = get_paasta_oapi_client_with_auth(
-        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
 

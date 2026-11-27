@@ -21,6 +21,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_datastore_crede
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_ssm_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
@@ -953,7 +954,11 @@ def datastore_credentials_patches():
     ) as mock_config_loader, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
         autospec=True,
-    ):
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_tron_instance_configs",
+        autospec=True,
+        return_value=[],
+    ) as mock_load_tron_configs:
         yield (
             mock_get_kubernetes_secret_signature,
             mock_create_secret,
@@ -963,6 +968,7 @@ def datastore_credentials_patches():
             mock_config_loader,
             mock_config_loader.return_value.instance_configs,
             mock_get_secret_provider,
+            mock_load_tron_configs,
         )
 
 
@@ -1007,6 +1013,7 @@ def test_sync_datastore_secrets(
         mock_config_loader,
         mock_config_loader_instances,
         mock_get_secret_provider,
+        _,
     ) = datastore_credentials_patches
     deployment = KubernetesDeploymentConfig(
         service="my-service",
@@ -1034,12 +1041,91 @@ def test_sync_datastore_secrets(
             soa_dir="/nail/blah",
             vault_token_file="/.vault-token",
         )
+        if not expected_keys_in_secrets_data:
+            # instances that haven't opted in shouldn't get an (empty) Secret
+            assert mock_create_or_update.call_count == 0
+            return
+
         # kwargs contains the calls to mock_create_or_update. check the secret_data in the lambda
         _, _, kwargs = mock_create_or_update.mock_calls[0]
         secret_data = kwargs["get_secret_data"]()
         assert len(secret_data) == len(expected_keys_in_secrets_data)
         for key in expected_keys_in_secrets_data:
             assert key in secret_data
+        assert kwargs["namespace"] == deployment.get_namespace()
+        assert (
+            kwargs["secret_name"] == deployment.get_datastore_credentials_secret_name()
+        )
+
+
+def test_sync_datastore_secrets_tron_configs(datastore_credentials_patches):
+    (
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        mock_config_loader_instances,
+        mock_get_secret_provider,
+        mock_load_tron_configs,
+    ) = datastore_credentials_patches
+    mock_config_loader_instances.return_value = []
+
+    opted_in_action = TronActionConfig(
+        service="my-service",
+        instance="my_job.my_action",
+        cluster="mega-cluster",
+        config_dict={"datastore_credentials": {"mysql": ["credential1"]}},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    other_action = TronActionConfig(
+        service="my-service",
+        instance="my_job.other_action",
+        cluster="mega-cluster",
+        config_dict={},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_load_tron_configs.return_value = (opted_in_action, other_action)
+    mock_get_secret_provider.return_value.get_data_from_vault_path.return_value = {
+        "master": {"user": "v-approle-mysql-serv-abc", "passwd": "hunter2"},
+    }
+
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
+        autospec=True,
+    ) as mock_create_or_update:
+        assert sync_datastore_credentials(
+            kube_client=mock.Mock(),
+            cluster="mega-cluster",
+            service="my-service",
+            secret_provider_name="faulty",
+            vault_cluster_config={},
+            soa_dir="/nail/blah",
+            vault_token_file="/.vault-token",
+        )
+
+    mock_load_tron_configs.assert_called_once_with(
+        service="my-service",
+        cluster="mega-cluster",
+        load_deployments=False,
+        soa_dir="/nail/blah",
+    )
+    # only the opted-in action gets a Secret, in the tron namespace, named consistently
+    # with what format_tron_action_dict will tell Tron to mount
+    assert mock_create_or_update.call_count == 1
+    _, kwargs = mock_create_or_update.call_args
+    assert kwargs["namespace"] == "tron"
+    assert (
+        kwargs["secret_name"] == opted_in_action.get_datastore_credentials_secret_name()
+    )
+    assert (
+        kwargs["signature_name"]
+        == opted_in_action.get_datastore_credentials_signature_name()
+    )
+    assert list(kwargs["get_secret_data"]()) == ["secrets-datastore-mysql-credential1"]
 
 
 @pytest.fixture()

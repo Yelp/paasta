@@ -60,11 +60,20 @@ def parse_args():
         dest="service",
     )
     parser.add_argument(
-        "--min-instance-count",
-        help="If a deploy group is added, the min_instance count to create it with",
+        "--prod-min-instance-count",
+        help="If a deploy group is added, the prod min_instance count to create it with",
+        required=False,
+        default=2,
+        type=int,
+        dest="prod_min_instance_count",
+    )
+    parser.add_argument(
+        "--non-prod-min-instance-count",
+        help="If a deploy group is added, the non-prod min_instance count to create it with",
         required=False,
         default=1,
-        dest="min_instance_count",
+        type=int,
+        dest="non_prod_min_instance_count",
     )
     parser.add_argument(
         "--prod-max-instance-count",
@@ -263,7 +272,11 @@ def main(args):
 
                     instance_config = {
                         "deploy_group": f"{deploy_prefix}.{args.shard_name}",
-                        "min_instances": args.min_instance_count,
+                        "min_instances": (
+                            args.prod_min_instance_count
+                            if deploy_prefix == "prod"
+                            else args.non_prod_min_instance_count
+                        ),
                         "max_instances": (
                             args.prod_max_instance_count
                             if deploy_prefix == "prod"

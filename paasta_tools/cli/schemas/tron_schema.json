@@ -270,6 +270,20 @@
                     },
                     "uniqueItems": true
                 },
+                "datastore_credentials": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "mysql": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_-]+$"
+                            },
+                            "uniqueItems": true
+                        }
+                    }
+                },
                 "uses_bulkdata": {
                     "type": "boolean"
                 },

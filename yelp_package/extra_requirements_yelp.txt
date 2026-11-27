@@ -24,14 +24,14 @@ pyjwt==2.9.0                        # okta-auth dependency
 pyopenssl==24.0.0                   # vault-tools dependency
 PySubnetTree==0.34                  # yelp-lib dependency
 python-jsonschema-objects==0.4.1    # slo-transcoder dependency
-saml-helper==3.1.2                  # okta-auth dependency
+saml-helper==3.2.1                  # okta-auth dependency
 scribereader==1.1.1
 signalform-tools==0.0.16            # slo-transcoder dependency
 slo-transcoder==3.3.0
 smmap==5.0.3                        # slo-transcoder, vault-tools dependency
 smmap2==2.0.3                       # slo-transcoder, vault-tools dependency
 srv-configs==1.1.0                  # yelp-profiling dependency
-sticht[yelp_internal]==2.1.0
+sticht[yelp_internal]==3.0.0
 tenacity==8.3.0                     # yelp-clog dependency
 thriftpy2==0.6.0                    # yelp-clog dependency
 vault-tools==2.3.1

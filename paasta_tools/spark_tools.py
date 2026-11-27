@@ -22,7 +22,7 @@ SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 SPARK_DRIVER_POOL = "stable"
 SPARK_TRON_JOB_USER = "TRON"
 SPARK_PROMETHEUS_SHARD = "ml-compute"
-SPARK_EXECUTOR_POD_TEMPLATE = "/nail/srv/configs/spark_executor_pod_template.yaml"
+SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 MEM_MULTIPLIER = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
 SPARK_DRIVER_DEFAULT_DISK_MB = 5120  # 5GB
 

@@ -1,3 +1,215 @@
+paasta-tools (1.66.2) jammy; urgency=medium
+
+  * 1.66.2 tagged with 'make release'
+    Commit: fix aactivator link
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 20 Nov 2026 04:56:48 -0800
+
+paasta-tools (1.66.1) jammy; urgency=medium
+
+  * 1.66.1 tagged with 'make release'
+    Commit: Actually handle multiple rollback reasons happening
+    concurrently (#4415)  This does a couple things that I noticed
+    during testing or that I wanted to fix as part of this effort: *
+    fixes some wording shenanigans (e.g., makes it clear that things are
+    still happening or have already happened when clicking the slack
+    buttons) * handles any of SLO/AlertManager/crashloop rollbacks
+    happening without losing track of "em   * and also handles
+    enabling/disabling them correctly from Slack * fixes some potential
+    race condition with the timers (e.g., certing while a rollback is
+    just now being triggered)
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 19 Nov 2026 08:35:19 -0800
+
+paasta-tools (1.66.0) jammy; urgency=medium
+
+  * 1.66.0 tagged with 'make release'
+    Commit: Teach paasta how to tag/combine multi-arch images (#4418)
+    This will build on top of (and is also required for some other)
+    internal PRs.  For the most part, this just sets up `paasta push-to-
+    registry` so that it can push architecture-suffixed tags in the
+    right format + teach it how to combine these per-arch images into a
+    single manifest.  Unless the new flags are passed, `paasta push-to-
+    registry` will continue working as-is :)  ---------  Co-authored-by:
+    Jason Perrin Co-authored-by: Evan Krall
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Nov 2026 08:13:58 -0800
+
+paasta-tools (1.65.1) jammy; urgency=medium
+
+  * 1.65.1 tagged with 'make release'
+    Commit: Teach get_replica_state() about Succeeded pods (#4414)
+    While this should never happen (we have a restart policy of
+    Always!), we have seen this occasionally happen - and when it does,
+    `paasta status` says to contact #paasta since an error occurred.
+    However, no error really occurred: it was just us not handling a
+    case that shouldn"t happen in the first place :p (especially since
+    the last time we saw this, it was a pod that was being evicted that
+    somehow ended up in this phase!)  ...but while we figure out how
+    this is happening, let"s add a matching conditional for this
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Nov 2026 13:57:49 -0800
+
+paasta-tools (1.65.0) jammy; urgency=medium
+
+  * 1.65.0 tagged with 'make release'
+    Commit: Refactor paasta_cleanup_stale_nodes so that it actually
+    works (#4417)  This has been claiming to be deleting stale nodes for
+    a while, but that"s been a lie (likely ever since our switch to
+    Karpenter)  The delete node call is really just a request to delete,
+    but the Karpenter-placed finalizer was blocking this - and iiuc,
+    nodes were likely only getting cleaned up whenever one of the
+    various controllers noticed things were extra-stale and actually
+    GC"d the orphaned node away.  However, we can"t generally wait for
+    that since we have some alerts on important DaemonSets and it"s
+    possible for those to fire on nodes that no longer exists (e.g.,
+    this entire PR was motivated by someone getting paged for this
+    yesterday: a DS was in a pending state according to the k8s API on a
+    node that hadn"t existed for quite some time).  I"m also not quite
+    sure how k8s is actually handling things for autoscaling, but in all
+    the cases I"ve seen while refactoring this script, the nodes
+    sometimes have a lot of pods "scheduled" on them...so I can see us
+    potentially being underscaled if it"s treating those replicas as
+    actually existing
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 11 Nov 2026 08:10:53 -0800
+
+paasta-tools (1.64.1) jammy; urgency=medium
+
+  * 1.64.1 tagged with 'make release'
+    Commit: PEREL-5643: support Gi/Mi strings in autotune_limits
+    mem/disk clamping (#4348)  ## Summary  - Add
+    `_resource_value_to_mib()` to normalize resource values (int/float
+    MiB or K8s strings like `"4Gi"`/`"512Mi"`) to a common unit before
+    comparing - Update `_clamp_recommendations()` to use it so Cassandra
+    clusters can set mem/disk floors via `autotune_limits` without
+    TypeError on string comparisons - Fix pre-existing log bug: max-
+    clamping branch was logging `min_value` instead of `max_value`
+    Cassandra autotune recommendations use Gi strings for mem/disk.
+    Direct `<`/`>` comparisons against integer limits would raise
+    TypeError. This is the paasta-side change; a follow-up yelpsoa-
+    configs PR will update the `cassandra_k8s/validate.py` schema from
+    `integer` to `string` pattern once this is deployed.  Jira:
+    https://jira.yelpcorp.com/browse/PEREL-5643
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 28 Oct 2026 07:39:38 -0700
+
+paasta-tools (1.64.0) jammy; urgency=medium
+
+  * 1.64.0 tagged with 'make release'
+    Commit: COREJAVA-2880: Add best-effort writer for deploy Slack
+    thread records (#4409)  Adds record_deploy_slack_thread(),
+    whichwrites a record of a  deploy"s Slack thread (channel,
+    thread_ts, sha, initiator) to a DynamoDB table so other tools can
+    reply in that thread.  The table comes from a new optional
+    slack_thread_writer_config system config, with a
+    PAASTA_DEPLOY_SLACK_THREADS_TABLE env override for manual runs. When
+    unset nothing is written. The write uses short timeouts and logs and
+    swallows every failure, so it can never affect a deploy.  Nothing
+    calls it yet; mark-for-deployment will in a follow-up.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 21 Oct 2026 11:42:33 -0700
+
+paasta-tools (1.63.0) jammy; urgency=medium
+
+  * 1.63.0 tagged with 'make release'
+    Commit: Merge pull request #4408 from Yelp/dpopes/tron-datastore-
+    credentials  Add datastore_credentials support to Tron actions
+
+ -- Daniel Popescu <dpopes@yelp.com>  Tue, 20 Oct 2026 14:46:32 -0700
+
+paasta-tools (1.62.0) jammy; urgency=medium
+
+  * 1.62.0 tagged with 'make release'
+    Commit: add --prod-min-instance-count and --non-prod-min-instance-
+    count args for service_shard_update, drop --min-instance-count
+    (#4411)  we will use this to ensure that prod services always have
+    at least 2 instances to prevent spot fleet from killing a shard
+    outright.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 19 Oct 2026 10:57:54 -0700
+
+paasta-tools (1.61.2) jammy; urgency=medium
+
+  * 1.61.2 tagged with 'make release'
+    Commit: Merge pull request #4407 from Yelp/luisp/sticht-bump  Use
+    sticht v2.4.0
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Wed, 14 Oct 2026 03:30:55 -0700
+
+paasta-tools (1.61.1) jammy; urgency=medium
+
+  * 1.61.1 tagged with 'make release'
+    Commit: Updating PaaSTA status to avoid confusion during deploys
+    (#4405)  * updating paasta status  * updating comment  * refactoring
+    based on comments  ---------  Co-authored-by: mbrankin
+    <mbrankin@cm2pxfyy7m.home>
+
+ -- Matthew Brankin <mbrankin@yelp.com>  Fri, 09 Oct 2026 02:51:56 -0700
+
+paasta-tools (1.61.0) jammy; urgency=medium
+
+  * 1.61.0 tagged with 'make release'
+    Commit: Merge pull request #4390 from Yelp/u/jfong/reconcile-paasta-
+    service-accounts  Add reconcile_paasta_service_accounts script
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Oct 2026 13:37:58 -0700
+
+paasta-tools (1.60.19) jammy; urgency=medium
+
+  * 1.60.19 tagged with 'make release'
+    Commit: Update slack thread in on_enter_rolled_back (#4402)  ...and
+    not just the status (i.e., the parent message) since unless you
+    happen to be watching Slack way too closely, it"s easy to miss that
+    the rollback was successful  Trying to look at the thread messages
+    to reconstruct what happened is somewhat hard to understand if
+    you"re not on CI since we really just say "marked $SHA for
+    deployment" and normal people aren"t keeping track of SHAs that
+    closely and will almost certainly be left wondering if the rollback
+    was successful or not :p
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 02 Oct 2026 06:13:57 -0700
+
+paasta-tools (1.60.18) jammy; urgency=medium
+
+  * 1.60.18 tagged with 'make release'
+    Commit: Merge pull request #4403 from Yelp/u/luisp/alertmanager-
+    rollback-docs  Bump sticht to show existing alerts + update docs
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 02 Oct 2026 03:37:17 -0700
+
+paasta-tools (1.60.17) jammy; urgency=medium
+
+  * 1.60.17 tagged with 'make release'
+    Commit: Use latest sticht version (#4401)  Which includes fixes for
+    various issues we"ve seen with alertmanager autorollbacks :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 28 Sep 2026 11:01:48 -0700
+
+paasta-tools (1.60.16) jammy; urgency=medium
+
+  * 1.60.16 tagged with 'make release'
+    Commit: Merge pull request #4398 from Yelp/u/abubakarrj/bump-sticht-
+    2.1.1  Bump sticht to v2.1.1
+
+ -- Abu-Bakarr Jalloh <abubakarrj@yelp.com>  Fri, 25 Sep 2026 09:03:44 -0700
+
+paasta-tools (1.60.15) jammy; urgency=medium
+
+  * 1.60.15 tagged with 'make release'
+    Commit: Revert "Change spark DNS pod template to spark executor pod
+    template" (#4397)
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 24 Sep 2026 14:58:55 -0700
+
+paasta-tools (1.60.14) jammy; urgency=medium
+
+  * 1.60.14 tagged with 'make release'
+    Commit: Fix deployment filtering for same service Tron Actions
+    (#4396)
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Thu, 24 Sep 2026 13:05:07 -0700
+
 paasta-tools (1.60.13) jammy; urgency=medium
 
   * 1.60.13 tagged with 'make release'

@@ -24,10 +24,8 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _log_audit
@@ -160,10 +158,7 @@ def paasta_autoscale(args):
         return 1
 
     api = client.get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(
-            cluster=args.cluster,
-            is_eks=(instance_config.__class__ == EksDeploymentConfig),
-        ),
+        cluster=args.cluster,
         http_res=True,
     )
     if not api:

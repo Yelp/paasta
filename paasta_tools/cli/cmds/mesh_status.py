@@ -20,10 +20,8 @@ from paasta_tools.cli.cmds.status import get_envoy_status_human
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import verify_instances
-from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
@@ -97,10 +95,7 @@ def paasta_mesh_status_on_api_endpoint(
         exit(1)
 
     client = get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(
-            cluster,
-            is_eks=(instance_config.__class__ == EksDeploymentConfig),
-        ),
+        cluster=cluster,
         system_paasta_config=system_paasta_config,
     )
     if not client:

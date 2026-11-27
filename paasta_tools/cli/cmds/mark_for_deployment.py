@@ -38,12 +38,16 @@ from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Set
 from typing import Tuple
+from typing import TypedDict
 
+import boto3
 import humanize
 import progressbar
+from botocore.config import Config
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
@@ -60,7 +64,6 @@ from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
 from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
-from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import trigger_deploys
@@ -82,6 +85,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -104,8 +108,37 @@ class DeployOutcome(Enum):
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
+MIN_AUTO_ROLLBACK_DELAY = 30  # seconds
+DEFAULT_SLO_AUTO_ROLLBACK_DELAY = 30  # seconds
+DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY = 120  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
+
+
+class RollbackCountdownReason(NamedTuple):
+    """Why a rollback countdown was started, shown in its messages so that overlapping countdowns can be told apart."""
+
+    # used as "will automatically roll back in N seconds ... because <reason>"
+    reason: str
+    # used as "countdown to automatically roll back cancelled (<cancelled_reason>)"
+    cancelled_reason: str
+
+
+SLO_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="an SLO is failing",
+    cancelled_reason="an SLO was failing",
+)
+ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="an AlertManager alert is firing",
+    cancelled_reason="an AlertManager alert was firing",
+)
+CRASHLOOP_ROLLBACK_COUNTDOWN_REASON = RollbackCountdownReason(
+    reason="replicas are crashlooping",
+    cancelled_reason="replicas were crashlooping",
+)
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
+# Lets a manual run target another table (e.g. a test table) without changing system config
+SLACK_THREAD_TABLE_ENV_VAR = "PAASTA_DEPLOY_SLACK_THREADS_TABLE"
+DEFAULT_SLACK_THREAD_TTL_DAYS = 30
 
 
 log = logging.getLogger(__name__)
@@ -248,11 +281,20 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=600,
         help="After a rollback finishes, wait this many seconds before automatically abandoning.",
     )
+
+    def _min_auto_rollback_delay(value: str) -> int:
+        int_value = int(value)
+        if int_value < MIN_AUTO_ROLLBACK_DELAY:
+            raise argparse.ArgumentTypeError(
+                f"auto-rollback-delay must be at least {MIN_AUTO_ROLLBACK_DELAY} seconds"
+            )
+        return int_value
+
     list_parser.add_argument(
         "--auto-rollback-delay",
         dest="auto_rollback_delay",
-        type=int,
-        default=30,
+        type=_min_auto_rollback_delay,
+        default=None,  # this default is set later depending on which type of rollback is enabled. See MarkForDeploymentProcess.__init__.
         help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
     )
     list_parser.add_argument(
@@ -521,6 +563,129 @@ def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     return read_deploy(file_path)
 
 
+class DeploySlackThreadRecord(TypedDict, total=False):
+    """A record of a deploy's Slack thread, so other tools can reply in it."""
+
+    # hash key: "<service>#<deploy_group>"; all records for a service and deploy group
+    service_deploy_group: str
+    # range key: epoch milliseconds when the record was written, so newest sorts last
+    created_at_ms: int
+    service: str
+    deploy_group: str
+    # Slack channel ID (e.g. C0123), which Slack API calls need along with thread_ts
+    channel: str
+    # the configured channel name (e.g. #my-service-deploys), for readability
+    channel_name: str
+    # ts of the deploy's top-level Slack message, i.e. the thread to reply in
+    thread_ts: str
+    # the commit being deployed, so readers can match a record to a deploy
+    sha: str
+    # what ran mark-for-deployment; always "jenkins" for now, as only Jenkins runs are recorded
+    initiator: str
+    # the Jenkins build URL
+    initiated_by: str
+    # the --author values: authors of the commits being deployed
+    authors: List[str]
+    # epoch seconds when the record was written
+    created_at: int
+    # epoch seconds after which DynamoDB deletes the record (the table's TTL attribute)
+    expires_at: int
+
+
+def build_deploy_slack_thread_record(
+    service: str,
+    deploy_group: str,
+    commit: str,
+    channel_id: str,
+    channel_name: Optional[str],
+    thread_ts: str,
+    authors: Optional[Collection[str]],
+    jenkins_build_url: str,
+    ttl_days: int,
+    now_ms: int,
+) -> DeploySlackThreadRecord:
+    created_at = now_ms // 1000
+    record: DeploySlackThreadRecord = {
+        "service_deploy_group": f"{service}#{deploy_group}",
+        "created_at_ms": now_ms,
+        "service": service,
+        "deploy_group": deploy_group,
+        "channel": channel_id,
+        "thread_ts": str(thread_ts),
+        "sha": commit,
+        "initiator": "jenkins",
+        "initiated_by": jenkins_build_url,
+        "created_at": created_at,
+        "expires_at": created_at + ttl_days * 24 * 60 * 60,
+    }
+    if channel_name:
+        record["channel_name"] = channel_name
+    if authors:
+        record["authors"] = list(authors)
+    return record
+
+
+def record_deploy_slack_thread(
+    system_paasta_config: SystemPaastaConfig,
+    service: str,
+    deploy_group: str,
+    commit: str,
+    channel_id: str,
+    channel_name: Optional[str],
+    thread_ts: str,
+    authors: Optional[Collection[str]] = None,
+) -> None:
+    """Best-effort write of a record of the deploy's Slack thread to DynamoDB.
+
+    Never raises: any failure is logged and swallowed, so it can't affect a deploy.
+    """
+    try:
+        config = system_paasta_config.get_slack_thread_writer_config()
+        table_name = os.environ.get(SLACK_THREAD_TABLE_ENV_VAR) or config.get(
+            "table_name"
+        )
+        if not table_name:
+            return
+        # Only Jenkins runs are recorded: only Jenkins roles can write to the table, so
+        # a devbox run would just log an access error. Readers want the latest
+        # Jenkins-initiated thread anyway.
+        jenkins_build_url = os.environ.get("BUILD_URL")
+        if not jenkins_build_url:
+            return
+
+        record = build_deploy_slack_thread_record(
+            service=service,
+            deploy_group=deploy_group,
+            commit=commit,
+            channel_id=channel_id,
+            channel_name=channel_name,
+            thread_ts=thread_ts,
+            authors=authors,
+            jenkins_build_url=jenkins_build_url,
+            ttl_days=config.get("ttl_days", DEFAULT_SLACK_THREAD_TTL_DAYS),
+            now_ms=int(time.time() * 1000),
+        )
+        table = boto3.resource(
+            "dynamodb",
+            region_name=config.get("region"),
+            # keep this fast: a slow or unreachable DynamoDB must not hold up a deploy
+            config=Config(
+                connect_timeout=2,
+                read_timeout=2,
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
+        ).Table(table_name)
+        table.put_item(
+            Item=record,
+            ConditionExpression="attribute_not_exists(service_deploy_group)",
+        )
+    except Exception:
+        log.warning(
+            "Failed to record the deploy Slack thread; continuing with the deploy",
+            exc_info=True,
+        )
+
+
 def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -753,12 +918,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.deployment_version = DeploymentVersion(commit, image_version)
         self.old_deployment_version = DeploymentVersion(old_git_sha, old_image_version)
         self.git_url = git_url
-        self.auto_rollback = (
-            auto_rollback
-            and old_git_sha is not None
+        rollback_is_possible = (
+            old_git_sha is not None
             and self.deployment_version != self.old_deployment_version
         )
-        self.auto_rollbacks_ever_enabled = self.auto_rollback
+        # NOTE: auto_rollback only controls SLO-based auto-rollbacks - AlertManager-based
+        # auto-rollbacks are controlled independently (see alertmanager_rollback_enabled below)
+        self.auto_rollback = auto_rollback and rollback_is_possible
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
@@ -766,7 +932,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.mark_for_deployment_return_code = -1
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
-        self.auto_rollback_delay = auto_rollback_delay
         self.authors = authors
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
@@ -780,10 +945,17 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
 
         system_paasta_config = load_system_paasta_config()
-        self.crashloop_auto_rollback_enabled = self._get_deploy_group_config(
-            "enable_crashloop_auto_rollback",
-            system_paasta_config.get_enable_crashloop_auto_rollback(),
+        # whether crashloop-based auto-rollbacks are configured for this step. This never changes during the deploy:
+        # the Slack buttons toggle crashloop_auto_rollback_enabled instead, which "Enable auto rollbacks" resets to this
+        self.crashloop_auto_rollback_available: bool = (
+            self._get_deploy_group_config(
+                "enable_crashloop_auto_rollback",
+                system_paasta_config.get_enable_crashloop_auto_rollback(),
+            )
+            # without this, a crashloop would start a countdown to a rollback that can't happen
+            and rollback_is_possible
         )
+        self.crashloop_auto_rollback_enabled = self.crashloop_auto_rollback_available
         self.min_restarts_for_crashloop_rollback = self._get_deploy_group_config(
             "min_restarts_for_crashloop_rollback",
             system_paasta_config.get_min_restarts_for_crashloop_rollback(),
@@ -792,10 +964,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "crashloop_rollback_percentage_threshold",
             system_paasta_config.get_crashloop_rollback_percentage_threshold(),
         )
-        self.alertmanager_rollback_enabled = self._get_deploy_group_config(
-            "alertmanager_rollback",
-            system_paasta_config.get_enable_alertmanager_rollback(),
+        self.alertmanager_rollback_enabled: bool = (
+            self._get_deploy_group_config(
+                "alertmanager_rollback",
+                system_paasta_config.get_enable_alertmanager_rollback(),
+            )
+            and rollback_is_possible
         )
+        self.alertmanager_url = system_paasta_config.get_alertmanager_url()
+        self.auto_rollbacks_ever_enabled = self.any_auto_rollbacks_enabled()
         self.alertmanager_poll_interval_s = self._get_deploy_group_config(
             "alertmanager_poll_interval_s",
             system_paasta_config.get_alertmanager_poll_interval_s(),
@@ -803,7 +980,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.alertmanager_rollback_dry_run = self._get_deploy_group_config(
             "alertmanager_rollback_dry_run", False
         )
-
+        if auto_rollback_delay is None:
+            if self.alertmanager_rollback_enabled:
+                auto_rollback_delay = DEFAULT_ALERTMANAGER_AUTO_ROLLBACK_DELAY
+            else:
+                auto_rollback_delay = DEFAULT_SLO_AUTO_ROLLBACK_DELAY
+        self.auto_rollback_delay = auto_rollback_delay
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
 
@@ -817,33 +999,59 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.slo_watchers: List[SLOWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
-        if self.alertmanager_rollback_enabled and (
-            alertmanager_url := system_paasta_config.get_alertmanager_url()
-        ):
-            filters = build_alertmanager_rollback_filters(
-                service=self.service,
-                instance_configs_per_cluster=self.instance_configs_per_cluster,
-            )
-            self.start_alertmanager_watcher_threads(
-                alertmanager_url=alertmanager_url,
-                filters=filters,
-                check_interval_s=self.alertmanager_poll_interval_s,
-                # while we can technically grab these from the filters, we'll pass
-                # these through separately so that we're not relying on a specific filter format :p
-                extra_monitoring_labels={
-                    "deploy_group": self.deploy_group,
-                    "service": self.service,
-                },
-            )
+        if self.alertmanager_rollback_enabled:
+            self.start_alertmanager_watcher()
 
         # Initialize Slack threads and send the first message
         super().__init__()
+        self.record_slack_thread(system_paasta_config)
         self.print_who_is_running_this()
+
+    def start_alertmanager_watcher(self) -> None:
+        if self.alertmanager_watcher is not None or not self.alertmanager_url:
+            return
+        filters = build_alertmanager_rollback_filters(
+            service=self.service,
+            instance_configs_per_cluster=self.instance_configs_per_cluster,
+        )
+        self.start_alertmanager_watcher_threads(
+            alertmanager_url=self.alertmanager_url,
+            filters=filters,
+            check_interval_s=self.alertmanager_poll_interval_s,
+            # while we can technically grab these from the filters, we'll pass
+            # these through separately so that we're not relying on a specific filter format :p
+            extra_monitoring_labels={
+                "deploy_group": self.deploy_group,
+                "service": self.service,
+            },
+        )
 
     def get_progress(self, summary: bool = False) -> str:
         if not self.block:
             return "Deploying in background, progress not tracked."
         return self.progress.human_readable(summary)
+
+    def record_slack_thread(self, system_paasta_config: SystemPaastaConfig) -> None:
+        """Record this deploy's Slack thread so other tools can reply in it.
+
+        Done here rather than in send_initial_slack_message, which sticht calls again
+        when it falls back to the default channel, so that each deploy writes one record.
+        """
+        # slack_ts is never set when there's no Slack client, and is None if posting failed
+        thread_ts = getattr(self, "slack_ts", None)
+        channel_id = getattr(self, "slack_channel_id", None)
+        if not thread_ts or not channel_id:
+            return
+        record_deploy_slack_thread(
+            system_paasta_config=system_paasta_config,
+            service=self.service,
+            deploy_group=self.deploy_group,
+            commit=self.commit,
+            channel_id=channel_id,
+            channel_name=self.slack_channel,
+            thread_ts=thread_ts,
+            authors=self.authors,
+        )
 
     def print_who_is_running_this(self) -> None:
         build_url = get_jenkins_build_output_url()
@@ -930,7 +1138,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("mfd_failed")
         else:
             self.update_slack_thread(
-                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}."
+                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}. Waiting for it to "
+                "roll out..."
                 + (
                     "\n" + self.get_authors()
                     if self.deploy_group_is_set_to_notify("notify_after_mark")
@@ -1088,6 +1297,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_slo_failure",
+                # countdowns are cancelled when rollbacks are disabled, but let's be extra careful to never roll
+                # back after a human has told us not to
+                "conditions": [self.auto_rollbacks_enabled],
                 "before": self.log_slo_rollback,
             }
             yield {
@@ -1099,6 +1311,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_alertmanager_failure",
+                "conditions": [self.alertmanager_rollbacks_enabled],
+                "unless": [self._alertmanager_dry_run],
                 "before": self.log_alertmanager_rollback,
             }
             yield {
@@ -1110,6 +1324,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_crashloop_failure",
+                "conditions": [self.crashloop_rollbacks_enabled],
                 "before": self.log_crashloop_rollback,
             }
             yield {
@@ -1121,11 +1336,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
+                "before": self.on_forward_button_clicked,
             }
             yield {
                 "source": self.rollforward_states,
-                "dest": None,  # this makes it an "internal transition", effectively a noop.
+                "dest": None,  # this makes it an "internal transition": we stay put, but still clear any countdowns
                 "trigger": "forward_button_clicked",
+                "before": self.on_forward_button_clicked,
             }
             yield {
                 "source": "start_rollback",
@@ -1142,8 +1359,16 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "deployed",
             "dest": "complete",
             "trigger": "complete_button_clicked",
+            "before": self.on_complete_button_clicked,
         }
-        yield {"source": "deployed", "dest": "complete", "trigger": "auto_certify"}
+        yield {
+            "source": "deployed",
+            "dest": "complete",
+            "trigger": "auto_certify",
+            # starting a rollback countdown cancels auto-certify, but let's be extra careful to never certify a deploy
+            # that we're about to roll back
+            "unless": [self.is_auto_rollback_countdown_running],
+        }
         yield {
             "source": ["rolled_back", "rolling_back"],
             "dest": "abandon",
@@ -1157,7 +1382,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": "*",
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "enable_auto_rollbacks_button_clicked",
-                "unless": [self.auto_rollbacks_enabled],
+                "unless": [self.any_auto_rollbacks_enabled],
                 "before": self.enable_auto_rollbacks,
             }
             yield {
@@ -1166,7 +1391,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "disable_auto_rollbacks_button_clicked",
                 "conditions": [
                     self.any_rollback_condition_failing,
-                    self.auto_rollbacks_enabled,
+                    self.any_auto_rollback_kind_enabled,
                 ],
                 "before": self.disable_auto_rollbacks,
             }
@@ -1177,25 +1402,29 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_slo_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_slo_failure",
+                reason=SLO_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=SLO_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         yield {
             "source": "*",
             "dest": None,
             "trigger": "slos_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_slo_failure"
-            ),
+            "before": self.on_slos_stopped_failing,
         }
         yield {
             "source": "*",
             "dest": None,
             "trigger": "alertmanager_started_failing",
-            "conditions": [self.auto_rollbacks_enabled],
+            "conditions": [self.alertmanager_rollbacks_enabled],
             "unless": [self.already_rolling_back, self._alertmanager_dry_run],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_alertmanager_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_alertmanager_failure",
+                reason=ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=ALERTMANAGER_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         # without this, the trigger would be silently swallowed in dry-run mode
@@ -1218,9 +1447,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "source": "*",
             "dest": None,
             "trigger": "crashloops_started_failing",
+            "conditions": [self.crashloop_rollbacks_enabled],
             "unless": [self.already_rolling_back],
             "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_crashloop_failure"
+                self.start_auto_rollback_countdown,
+                "rollback_crashloop_failure",
+                reason=CRASHLOOP_ROLLBACK_COUNTDOWN_REASON.reason,
+                cancelled_reason=CRASHLOOP_ROLLBACK_COUNTDOWN_REASON.cancelled_reason,
             ),
         }
         yield {
@@ -1231,23 +1464,75 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self, trigger: str) -> None:
-        self.cancel_auto_rollback_countdown(trigger=trigger)
+    def disable_auto_rollbacks(self) -> None:
+        self.cancel_auto_rollback_countdown()
         self.auto_rollback = False
-        self.update_slack_status(
-            f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        self.alertmanager_rollback_enabled = False
+        self.crashloop_auto_rollback_enabled = False
+        self.restart_auto_certify_if_safe()
+        message = (
+            "Automatic SLO, AlertManager and crashloop rollbacks disabled for this deploy. "
+            "To disable this permanently, edit `deploy.yaml` and set `auto_rollback: false` (for SLO-triggered rollbacks) "
+            "+ `alertmanager_rollback: false` (for AlertManager-triggered rollbacks) "
+            f"+ `enable_crashloop_auto_rollback: false` (for crashloop-triggered rollbacks) for the `{self.deploy_group}` step."
         )
+        self.update_slack_status(message)
+        self.update_slack_thread(message)
 
     def enable_auto_rollbacks(self) -> None:
         self.auto_rollback = True
+        self.alertmanager_rollback_enabled = True
+        # unlike SLO/AlertManager rollbacks, we only watch for crashloops if they're configured for this step - so we
+        # can only turn crashloop rollbacks back on if they were configured in the first place
+        self.crashloop_auto_rollback_enabled = self.crashloop_auto_rollback_available
         self.auto_rollbacks_ever_enabled = True
-        self.update_slack_status(
-            f"Automatic rollback enabled for this deploy. Will watch for failures and rollback when necessary. To set this permanently, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        # NOTE: if AlertManager rollbacks weren't enabled at the start of this deploy, the watcher
+        # will only be started now - so any alerts that are already firing will be ignored
+        self.start_alertmanager_watcher()
+        enabled = (
+            "SLO, AlertManager and crashloop"
+            if self.crashloop_auto_rollback_enabled
+            else "SLO and AlertManager"
         )
+        message = (
+            f"Automatic {enabled} rollback enabled for this deploy. "
+            "Will watch for failures and rollback when necessary. "
+            "To set this permanently, edit `deploy.yaml` and set `auto_rollback: true` (for SLO-triggered rollbacks) "
+            "+ `alertmanager_rollback: true` (for AlertManager-triggered rollbacks) "
+            f"+ `enable_crashloop_auto_rollback: true` (for crashloop-triggered rollbacks) for the `{self.deploy_group}` step."
+        )
+        self.update_slack_status(message)
+        self.update_slack_thread(message)
 
     def auto_rollbacks_enabled(self) -> bool:
-        """This getter exists so it can be a condition on transitions, since those need to be callables."""
+        """Whether SLO-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.auto_rollback
+
+    def alertmanager_rollbacks_enabled(self) -> bool:
+        """Whether AlertManager-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.alertmanager_rollback_enabled
+
+    def crashloop_rollbacks_enabled(self) -> bool:
+        """Whether crashloop-based auto-rollbacks are enabled.
+
+        This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.crashloop_auto_rollback_enabled
+
+    def any_auto_rollback_kind_enabled(self) -> bool:
+        """Whether any kind of auto-rollback (SLO, AlertManager or crashloop) is enabled."""
+        return self.any_auto_rollbacks_enabled() or self.crashloop_rollbacks_enabled()
+
+    def any_rollback_condition_failing(self) -> bool:
+        return super().any_rollback_condition_failing() or (
+            self.crashloop_rollbacks_enabled() and self.any_crashloop_failing()
+        )
+
+    def any_auto_rollbacks_enabled(self) -> bool:
+        return self.auto_rollbacks_enabled() or self.alertmanager_rollbacks_enabled()
 
     def get_auto_rollback_delay(self) -> float:
         return self.auto_rollback_delay
@@ -1314,7 +1599,36 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.stop_waiting_for_deployment(self.commit)
         self.cancel_paasta_status_reminder()
 
+    def on_forward_button_clicked(self) -> None:
+        # a human telling us to go forward overrides any pending automatic rollback
+        self.cancel_auto_rollback_countdown()
+        # if we'd rolled back, we're going forward again rather than abandoning: say so (rather than letting
+        # on_exit_rolled_back post a "Countdown to abandon cancelled." that reads as if the deploy has stopped)
+        if self.cancel_timer(trigger="auto_abandon", quiet=True):
+            self.update_slack_thread(
+                f"Not abandoning: rolling forward to `{self.deployment_version.short_sha_repr()}` again instead."
+            )
+        self.restart_auto_certify_if_safe()
+
+    def on_complete_button_clicked(self) -> None:
+        # same idea as in on_forward_button_clicked: there's no longer any need to count down to certify, since a
+        # human just did it
+        if self.cancel_timer(trigger="auto_certify", quiet=True):
+            self.update_slack_thread(
+                "Deploy certified, no need to wait for the auto-certify countdown."
+            )
+
+    def on_exit_deployed(self) -> None:
+        # auto_certify can only certify from deployed: once we've left (e.g., to roll back), it must not fire
+        self.cancel_timer(trigger="auto_certify")
+
     def on_enter_start_rollback(self) -> None:
+        # we're already rolling back, so any other countdowns (e.g., for other failing conditions) are moot - and
+        # leaving them running would roll us back *again* if someone then clicked forward. This is quiet since a
+        # "Countdown to automatically roll back cancelled" right before we roll back could be interpreted as the
+        # rollback itself being canceled
+
+        self.cancel_auto_rollback_countdown(quiet=True)
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
@@ -1363,6 +1677,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 daemon=True,
             )
             thread.start()
+
+    def on_exit_rolled_back(self) -> None:
+        # auto_abandon can only abandon from rolled_back: once we've left (e.g., to go forward), it must not fire
+        self.cancel_timer(trigger="auto_abandon")
 
     def on_exit_rolling_back(self) -> None:
         self.stop_waiting_for_deployment(self.old_git_sha, self.old_image_version)
@@ -1423,8 +1741,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                     # ...and we can't easily make wait_for_deployment() an instance method 'cause we reuse that in places
                     # where we don't want a MarkForDeploymentProcess (e.g., the `wait-for-deployment` CLI :p)
                     crashloop_fn=self.on_crashloop_detected
-                    if self.crashloop_auto_rollback_enabled
-                    else None,
+                    # NOTE: we watch for crashloops whenever they're configured (rather than only while they're
+                    # enabled), so that "Enable auto rollbacks" can turn them back on mid-deploy
+                    if self.crashloop_auto_rollback_available else None,
                     min_restarts_for_crashloop_rollback=self.min_restarts_for_crashloop_rollback,
                     crashloop_rollback_percentage_threshold=self.crashloop_rollback_percentage_threshold,
                 )
@@ -1454,9 +1773,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("deploy_errored")
 
     def on_enter_rolled_back(self) -> None:
-        self.update_slack_status(
-            f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
-        )
+        message = f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
+        self.update_slack_status(message)
+        # NOTE: update_slack_status() only edits the status message at the top of the thread (which is easy to miss/editable),
+        # so we also post this to the thread itself so that it's always clear that a rollback happened and was successful
+        # XXX: perhaps we should audit our update_* calls and ensure we do this everywhere?
+        self.update_slack_thread(message)
         line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
@@ -1469,17 +1791,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
 
-        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+        reason = self.get_reason_not_to_auto_certify()
+        if reason is not None:
             self.ping_authors(
-                "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
-            )
-        elif self.any_alertmanager_failing() and self.auto_rollbacks_enabled():
-            self.ping_authors(
-                "Because an AlertManager alert for this service is currently firing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
-            )
-        elif self.any_crashloop_failing():
-            self.ping_authors(
-                "Because the new deployment has replicas that are repeatedly crashing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+                f"Because {reason}, we will not automatically certify. Instead, we will wait until this is resolved or you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1488,6 +1803,33 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 )
                 if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
                     self.ping_authors()
+
+    def restart_auto_certify_if_safe(self) -> None:
+        """If we're waiting in deployed only because of something that has since been resolved (e.g., a failing SLO
+        recovered or a human disabled auto rollbacks), start counting down to certify again."""
+        if (
+            self.state != "deployed"
+            or self.get_auto_certify_delay() <= 0
+            or self.is_timer_running("auto_certify")
+            or self.get_reason_not_to_auto_certify() is not None
+        ):
+            return
+        self.update_slack_thread(
+            "Nothing is preventing us from automatically certifying anymore."
+        )
+        self.start_timer(self.get_auto_certify_delay(), "auto_certify", "certify")
+
+    def get_reason_not_to_auto_certify(self) -> Optional[str]:
+        """If it isn't currently safe to automatically certify this deploy, returns a human-readable reason why."""
+        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+            return "an SLO is currently failing"
+        elif self.any_alertmanager_failing():
+            return "an AlertManager alert for this service is currently firing"
+        elif self.crashloop_rollbacks_enabled() and self.any_crashloop_failing():
+            return "the new deployment has replicas that are repeatedly crashing"
+        elif self.is_auto_rollback_countdown_running():
+            return "an automatic rollback countdown is running"
+        return None
 
     def on_enter_complete(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
@@ -1562,13 +1904,26 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
-        cancel_button_text = self.get_button_text(
-            button="disable_auto_rollbacks",
-            is_active=False,
-        )
+    def start_auto_rollback_countdown(
+        self,
+        trigger: str,
+        extra_text: str = "",
+        reason: str = "",
+        cancelled_reason: str = "",
+    ) -> None:
+        # a deploy that we might be about to roll back shouldn't be certified in the meantime
+        self.cancel_timer(trigger="auto_certify")
+        if not extra_text:
+            cancel_button_text = self.get_button_text(
+                button="disable_auto_rollbacks",
+                is_active=False,
+            )
+            extra_text = f'Click "{cancel_button_text}" to cancel this!'
         super().start_auto_rollback_countdown(
-            trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
+            trigger=trigger,
+            extra_text=extra_text,
+            reason=reason,
+            cancelled_reason=cancelled_reason,
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
@@ -1609,11 +1964,18 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
         self._log_rollback(rollback_details)
 
+    def on_slos_stopped_failing(self) -> None:
+        self.cancel_auto_rollback_countdown("rollback_slo_failure")
+        self.restart_auto_certify_if_safe()
+
     def _on_alertmanager_stopped_failing(self) -> None:
-        self.cancel_auto_rollback_countdown("rollback_alertmanager_failure")
-        self.metrics_interface.create_counter(
-            "alertmanager_rollback_cancelled",
-        ).count()
+        # only count this if we actually cancelled a countdown (e.g., not when in dry-run mode or when we're
+        # already rolling back)
+        if self.cancel_auto_rollback_countdown("rollback_alertmanager_failure"):
+            self.metrics_interface.create_counter(
+                "alertmanager_rollback_cancelled",
+            ).count()
+        self.restart_auto_certify_if_safe()
 
     def _alertmanager_dry_run(self) -> bool:
         return self.alertmanager_rollback_dry_run
@@ -1820,12 +2182,7 @@ def diagnose_why_instance_is_stuck(
     * None: unable to talk to the PaaSTA API
     * Dict[str, int]: pod_name → restart_count for pods of the target version
     """
-    api = client.get_paasta_oapi_client(
-        cluster=get_paasta_oapi_api_clustername(
-            cluster=cluster,
-            is_eks=instance_config.get_instance_type().endswith("eks"),
-        ),
-    )
+    api = client.get_paasta_oapi_client(cluster=cluster)
     try:
         status = api.service.status_instance(
             service=service,
@@ -1987,12 +2344,7 @@ def check_if_instance_is_done(
     api: Optional[client.PaastaOApiClient] = None,
 ) -> bool:
     if api is None:
-        api = client.get_paasta_oapi_client(
-            cluster=get_paasta_oapi_api_clustername(
-                cluster=cluster,
-                is_eks=instance_config.get_instance_type().endswith("eks"),
-            ),
-        )
+        api = client.get_paasta_oapi_client(cluster=cluster)
         if not api:
             log.warning(
                 "Couldn't reach the PaaSTA api for {}! Assuming it is not "

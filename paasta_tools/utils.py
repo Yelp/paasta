@@ -1909,6 +1909,12 @@ class KubeKindDict(TypedDict, total=False):
     plural: str
 
 
+class SlackThreadWriterConfig(TypedDict, total=False):
+    table_name: str
+    region: str
+    ttl_days: int
+
+
 class KubeCustomResourceDict(TypedDict, total=False):
     version: str
     file_prefix: str
@@ -1997,6 +2003,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_alertmanager_rollback: bool
     alertmanager_poll_interval_s: int
     autorollback_prometheus_shard_region_overrides: Dict[str, str]
+    slack_thread_writer_config: SlackThreadWriterConfig
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2067,6 +2074,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readonly_docker_registry_auth_file: str
     private_docker_registries: List[str]
     unhealthy_pod_eviction_policy: str
+    reconciled_iam_service_account_namespaces: List[str]
 
 
 def load_system_paasta_config(
@@ -2710,6 +2718,10 @@ class SystemPaastaConfig:
     def get_alertmanager_poll_interval_s(self) -> int:
         return self.config_dict.get("alertmanager_poll_interval_s", 30)
 
+    def get_slack_thread_writer_config(self) -> SlackThreadWriterConfig:
+        """Where mark-for-deployment records deploy Slack threads; empty to not record them."""
+        return self.config_dict.get("slack_thread_writer_config", {})
+
     def get_autorollback_prometheus_shard_region_overrides(self) -> Dict[str, str]:
         return self.config_dict.get(
             "autorollback_prometheus_shard_region_overrides", {}
@@ -2842,6 +2854,9 @@ class SystemPaastaConfig:
 
     def get_enable_cost_owner_label(self) -> bool:
         return self.config_dict.get("enable_cost_owner_label", False)
+
+    def get_reconciled_iam_service_account_namespaces(self) -> List[str]:
+        return self.config_dict.get("reconciled_iam_service_account_namespaces", [])
 
     def get_remote_run_duration_limit(self, default: int) -> int:
         return self.config_dict.get("remote_run_duration_limit", default)

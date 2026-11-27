@@ -58,8 +58,11 @@ jobs:
         arch: [amd64]
         runner: [ubuntu-22.04]
         include:
-          # Only build jammy on arm64 for now
+          # Only build jammy and resolute on arm64 for now
           - dist: jammy
+            arch: arm64
+            runner: ubuntu-22.04-arm
+          - dist: resolute
             arch: arm64
             runner: ubuntu-22.04-arm
     steps:
@@ -91,6 +94,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: deb-resolute-amd64
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-resolute-arm64
           path: dist/
       - name: Release
         uses: softprops/action-gh-release@v1

@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import importlib.metadata
+import os
 from unittest import mock
 from unittest.mock import ANY
 from unittest.mock import AsyncMock
@@ -21,9 +22,11 @@ from unittest.mock import call
 from unittest.mock import patch
 
 import pytest
+from botocore.exceptions import EndpointConnectionError
 from pytest import fixture
 from pytest import raises
 from slackclient import SlackClient
+from sticht.rollbacks.slo import SLOWatcher
 
 from paasta_tools import utils
 from paasta_tools.cli.cmds import mark_for_deployment
@@ -43,6 +46,18 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
     ),
     "/mock/system/configs",
 )
+
+
+# The slack thread writer tests run under mock.patch.dict(os.environ, ..., clear=True) so
+# that the real environment (e.g. Jenkins' BUILD_URL) doesn't change their behavior;
+# they set BUILD_URL themselves to simulate running in Jenkins
+JENKINS_ENV = {"BUILD_URL": "https://jenkins.example.com/job/1/"}
+WRITER_CONFIG: utils.SystemPaastaConfigDict = {
+    "slack_thread_writer_config": {
+        "table_name": "deploy-slack-threads",
+        "region": "us-west-2",
+    }
+}
 
 
 @fixture(autouse=True)
@@ -85,8 +100,8 @@ def mock_alertmanager_watcher_threads():
     with patch(
         "sticht.rollbacks.base.RollbackSlackDeploymentProcess.start_alertmanager_watcher_threads",
         autospec=True,
-    ):
-        yield
+    ) as mock_start_alertmanager_watcher_threads:
+        yield mock_start_alertmanager_watcher_threads
 
 
 class FakeArgs:
@@ -1111,7 +1126,11 @@ def test_MarkForDeployProcess_crashloop_triggers_rollback(
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
-            deploy_info={"pipeline": []},
+            deploy_info={
+                "pipeline": [
+                    {"step": "deploy_group", "enable_crashloop_auto_rollback": True}
+                ]
+            },
             deploy_group="deploy_group",
             commit="commit",
             old_git_sha="old_git_sha",
@@ -1355,10 +1374,6 @@ def test_diagnose_why_instance_is_stuck_returns_restart_counts():
         autospec=True,
         return_value=mock_api,
     ), patch(
-        "paasta_tools.cli.cmds.mark_for_deployment.get_paasta_oapi_api_clustername",
-        autospec=True,
-        return_value="cluster1",
-    ), patch(
         "paasta_tools.cli.cmds.mark_for_deployment.get_pod_restart_counts",
         autospec=True,
         return_value={"pod1": 3, "pod2": 4},
@@ -1487,11 +1502,10 @@ def test_alertmanager_rollback_config_from_system_config(
 def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     mock_periodically_update_slack,
 ):
-    """When an alertmanager alert fires during deploying, the state machine transitions to rollback.
+    """When an alertmanager alert fires during deploying and alertmanager_rollback is enabled, the state
+    machine transitions to rollback - even if (SLO-based) auto_rollback is disabled.
 
-    NOTE: we don't need alertmanager_rollback_enabled here because the test fires the trigger directly
-    via simulate_alert (bypassing the real AlertManager watcher). The state machine transition only
-    requires auto_rollback=True, not the alertmanager-specific config.
+    NOTE: the test fires the trigger directly via simulate_alert (bypassing the real AlertManager watcher).
     """
 
     def simulate_alert(self, target_commit, target_image_version, rollback_type=None):
@@ -1517,12 +1531,14 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
     ):
         mfdp = WrappedMarkForDeploymentProcess(
             service="service",
-            deploy_info={"pipeline": []},
+            deploy_info={
+                "pipeline": [{"step": "deploy_group", "alertmanager_rollback": True}]
+            },
             deploy_group="deploy_group",
             commit="commit",
             old_git_sha="old_git_sha",
             git_url="git_url",
-            auto_rollback=True,
+            auto_rollback=False,
             block=True,
             soa_dir="soa_dir",
             timeout=3600,
@@ -1533,6 +1549,8 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             authors=None,
         )
 
+        # AlertManager-only deploys still wait before certifying so that alerts can be caught
+        assert mfdp.get_auto_certify_delay() > 0
         mfdp.run_timeout = (
             1  # fail fast if the state machine gets stuck instead of hanging
         )
@@ -1547,6 +1565,145 @@ def test_MarkForDeployProcess_alertmanager_alert_triggers_rollback(
             "auto_abandon",
         ]
         assert mfdp.rollback_type == RollbackTypes.AUTOMATIC_ALERTMANAGER_ROLLBACK
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+def test_MarkForDeployProcess_auto_rollback_buttons_toggle_every_kind_of_rollback(
+    mock_get_instance_configs,
+    mock_alertmanager_watcher_threads,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={
+            "pipeline": [
+                {"step": "deploy_group", "enable_crashloop_auto_rollback": True}
+            ]
+        },
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    mfdp.state = "deploying"
+    mfdp.slo_watchers = [
+        MagicMock(
+            spec=SLOWatcher,
+            failing=True,
+            label="some_slo",
+            bad_before_mark=False,
+            bad_after_mark=True,
+        )
+    ]
+    mfdp.alertmanager_url = "http://alertmanager"
+    assert not mock_alertmanager_watcher_threads.called
+
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running("rollback_slo_failure")
+
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+    assert not mfdp.any_auto_rollback_kind_enabled()
+    # let the event loop run any timers that are still (incorrectly) scheduled: the cancelled countdown must not
+    # fire and roll us back
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert "rollback_slo_failure" not in mfdp.trigger_history
+    assert mfdp.state == "deploying"
+    # ...and even if something does trigger a rollback, we must not roll back once a human has disabled them
+    mfdp.trigger("rollback_slo_failure")
+    assert mfdp.state == "deploying"
+
+    # enabling turns on both SLO-based and AlertManager-based rollbacks, even though
+    # AlertManager-based rollbacks weren't configured - so the watcher is started on click
+    # (crashloop-based rollbacks are configured, so they're turned back on too)
+    mfdp.trigger("enable_auto_rollbacks_button_clicked")
+    assert mfdp.auto_rollbacks_enabled()
+    assert mfdp.alertmanager_rollbacks_enabled()
+    assert mfdp.crashloop_rollbacks_enabled()
+    mock_alertmanager_watcher_threads.assert_called_once()
+
+    # crashloop countdowns can be disabled too - even when nothing else is failing
+    mfdp.slo_watchers[0].failing = False
+    mfdp.on_crashloop_detected("cluster", "instance", True)
+    assert mfdp.is_timer_running("rollback_crashloop_failure")
+    assert "disable_auto_rollbacks" in mfdp.get_available_buttons()
+    mfdp.trigger("disable_auto_rollbacks_button_clicked")
+    assert not mfdp.is_timer_running()
+
+    # the AlertManager watcher keeps running after disabling, so new alerts must not start a countdown
+    mfdp.trigger("alertmanager_started_failing")
+    assert not mfdp.is_timer_running()
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+def test_MarkForDeployProcess_rollback_countdowns_and_auto_certify(
+    mock_log,
+    mock_get_instance_configs,
+):
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info={"pipeline": []},
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+    slo_watcher = MagicMock(
+        spec=SLOWatcher,
+        failing=False,
+        label="some_slo",
+        bad_before_mark=False,
+        bad_after_mark=False,
+    )
+    mfdp.slo_watchers = [slo_watcher]
+    mfdp.state = "deploying"
+    mfdp.trigger("deploy_finished")
+    assert mfdp.is_timer_running("auto_certify")
+
+    # an SLO failing after we've started counting down to certify must stop us from certifying
+    slo_watcher.failing = True
+    mfdp.trigger("slos_started_failing")
+    assert mfdp.is_timer_running("rollback_slo_failure")
+    assert not mfdp.is_timer_running("auto_certify")
+    mfdp.trigger("auto_certify")
+    assert mfdp.state == "deployed"
+
+    # a human telling us to go forward overrides the pending rollback - but the SLO is still failing, so we still
+    # shouldn't certify
+    mfdp.trigger("forward_button_clicked")
+    assert not mfdp.is_auto_rollback_countdown_running()
+    assert not mfdp.is_timer_running("auto_certify")
+
+    # once the SLO recovers, there's nothing stopping us from certifying anymore
+    slo_watcher.failing = False
+    mfdp.trigger("slos_stopped_failing")
+    assert mfdp.is_timer_running("auto_certify")
+    mfdp.event_loop.run_until_complete(asyncio.sleep(0.01))
+    assert mfdp.state == "complete"
 
 
 def test_MarkForDeployProcess_alertmanager_dry_run_does_not_rollback(
@@ -1782,3 +1939,294 @@ def test_default_error_alert_filter_multiple_registrations(
         'paasta_rollback_metric="true"',
         'instance=~"^(uswest2-prod.my_service.main|uswest2-prod.my_service.main_alt)($|[.].*)"',
     ]
+
+
+def test_build_deploy_slack_thread_record():
+    record = mark_for_deployment.build_deploy_slack_thread_record(
+        service="fake_service",
+        deploy_group="prod.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name="#fake-channel",
+        thread_ts="1791500000.123456",
+        authors=["alice", "bob"],
+        jenkins_build_url="https://jenkins.example.com/job/1/",
+        ttl_days=30,
+        now_ms=1791500000123,
+    )
+    assert record == {
+        "service_deploy_group": "fake_service#prod.everything",
+        "created_at_ms": 1791500000123,
+        "service": "fake_service",
+        "deploy_group": "prod.everything",
+        "channel": "C0123",
+        "channel_name": "#fake-channel",
+        "thread_ts": "1791500000.123456",
+        "sha": "abc123",
+        "initiator": "jenkins",
+        "initiated_by": "https://jenkins.example.com/job/1/",
+        "authors": ["alice", "bob"],
+        "created_at": 1791500000,
+        "expires_at": 1791500000 + 30 * 86400,
+    }
+
+
+def test_build_deploy_slack_thread_record_without_optional_fields():
+    record = mark_for_deployment.build_deploy_slack_thread_record(
+        service="fake_service",
+        deploy_group="dev.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name=None,
+        thread_ts="1791500000.123456",
+        authors=None,
+        jenkins_build_url="https://jenkins.example.com/job/1/",
+        ttl_days=7,
+        now_ms=1791500000123,
+    )
+    assert record["expires_at"] == 1791500000 + 7 * 86400
+    assert "channel_name" not in record
+    assert "authors" not in record
+
+
+def record_fake_deploy_slack_thread(config_dict: utils.SystemPaastaConfigDict) -> None:
+    mark_for_deployment.record_deploy_slack_thread(
+        system_paasta_config=utils.SystemPaastaConfig(config_dict, "/fake/dir"),
+        service="fake_service",
+        deploy_group="prod.everything",
+        commit="abc123",
+        channel_id="C0123",
+        channel_name="#fake-channel",
+        thread_ts="1791500000.123456",
+        authors=["alice"],
+    )
+
+
+def test_record_deploy_slack_thread_writes_to_configured_table():
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    assert mock_resource.call_args[0] == ("dynamodb",)
+    assert mock_resource.call_args[1]["region_name"] == "us-west-2"
+    mock_resource.return_value.Table.assert_called_once_with("deploy-slack-threads")
+    mock_resource.return_value.Table.return_value.put_item.assert_called_once_with(
+        Item=ANY,
+        ConditionExpression="attribute_not_exists(service_deploy_group)",
+    )
+
+
+def test_record_deploy_slack_thread_env_var_overrides_table():
+    with mock.patch.dict(
+        os.environ,
+        {
+            **JENKINS_ENV,
+            mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads-test",
+        },
+        clear=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    mock_resource.return_value.Table.assert_called_once_with(
+        "deploy-slack-threads-test"
+    )
+
+
+def test_record_deploy_slack_thread_does_nothing_when_not_configured():
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        record_fake_deploy_slack_thread({})
+
+    mock_resource.assert_not_called()
+
+
+def test_record_deploy_slack_thread_does_nothing_outside_jenkins():
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    mock_resource.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        EndpointConnectionError(
+            endpoint_url="https://dynamodb.us-west-2.amazonaws.com"
+        ),
+        Exception("boom"),
+    ],
+)
+def test_record_deploy_slack_thread_swallows_errors(error):
+    with mock.patch.dict(os.environ, JENKINS_ENV, clear=True), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource, mock.patch.object(
+        mark_for_deployment.log, "warning", autospec=True
+    ) as mock_warning:
+        mock_resource.return_value.Table.return_value.put_item.side_effect = error
+        record_fake_deploy_slack_thread(WRITER_CONFIG)
+
+    mock_warning.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "auto_rollback, alertmanager_auto_rollback_enabled, auto_rollback_delay, expected_result",
+    [
+        (True, False, None, 30),
+        (False, True, None, 120),
+        (True, False, 100, 100),
+        (False, True, 100, 100),
+    ],
+)
+def test_auto_rollback_delay_defaults(
+    mock_load_system_paasta_config,
+    auto_rollback,
+    alertmanager_auto_rollback_enabled,
+    auto_rollback_delay,
+    expected_result,
+):
+    with patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ):
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info={
+                "pipeline": [
+                    {
+                        "step": "deploy_group",
+                        "alertmanager_rollback": alertmanager_auto_rollback_enabled,
+                    }
+                ]
+            },
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=auto_rollback,
+            block=True,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=auto_rollback_delay,
+            authors=None,
+        )
+    assert mfdp.alertmanager_rollback_enabled == alertmanager_auto_rollback_enabled
+    assert mfdp.auto_rollback_delay == expected_result
+
+
+def test_MarkForDeployProcess_records_slack_thread_once():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+        autospec=True,
+    ) as mock_record_deploy_slack_thread:
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_record_deploy_slack_thread.assert_called_once_with(
+        system_paasta_config=mark_for_deployment.load_system_paasta_config(),
+        service="service",
+        deploy_group="deploy_group",
+        commit="commit",
+        channel_id="FAKE CHANNEL ID",
+        channel_name=mfdp.slack_channel,
+        thread_ts=1234531337,
+        authors=["fakeuser1"],
+    )
+
+
+class NoSlackMarkForDeploymentProcess(WrappedMarkForDeploymentProcess):
+    def get_slack_client(self):
+        return None
+
+
+def test_MarkForDeployProcess_skips_recording_without_slack():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.record_deploy_slack_thread",
+        autospec=True,
+    ) as mock_record_deploy_slack_thread:
+        NoSlackMarkForDeploymentProcess(
+            service="service",
+            deploy_info=MagicMock(),
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_record_deploy_slack_thread.assert_not_called()
+
+
+def test_MarkForDeployProcess_deploys_when_recording_fails():
+    with mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+        autospec=True,
+    ), mock.patch.dict(
+        os.environ,
+        {
+            **JENKINS_ENV,
+            mark_for_deployment.SLACK_THREAD_TABLE_ENV_VAR: "deploy-slack-threads",
+        },
+    ), mock.patch(
+        "paasta_tools.cli.cmds.mark_for_deployment.boto3.resource", autospec=True
+    ) as mock_resource:
+        mock_put_item = mock_resource.return_value.Table.return_value.put_item
+        mock_put_item.side_effect = Exception("boom")
+        mfdp = WrappedMarkForDeploymentProcess(
+            service="service",
+            # a real channel name, so the record serializes and reaches put_item
+            deploy_info={"slack_channels": ["#fake-channel"]},
+            deploy_group="deploy_group",
+            commit="commit",
+            old_git_sha="old_git_sha",
+            git_url="git_url",
+            auto_rollback=False,
+            block=False,
+            soa_dir="soa_dir",
+            timeout=3600,
+            warn_pct=50,
+            auto_certify_delay=None,
+            auto_abandon_delay=600,
+            auto_rollback_delay=30,
+            authors=["fakeuser1"],
+        )
+
+    mock_put_item.assert_called_once()
+    assert mfdp.state == "_begin"

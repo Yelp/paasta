@@ -57,7 +57,7 @@ def test_push_to_registry_run_fail(
     )
     mock_is_docker_image_already_in_registry.return_value = False
     mock_run.return_value = (1, "Bad")
-    args = MagicMock(image_version=None)
+    args, _ = parse_args(["push-to-registry", "-s", "foo", "-c", "abcd" * 10])
     assert paasta_push_to_registry(args) == 1
     assert not mock_log_audit.called
 
@@ -465,3 +465,97 @@ def test_retag_versioned_image(mock_run, mock_build_docker_tag):
             call("foo", "aaaabbbbcccc", "extrastuff"),
         ]
     )
+
+
+@patch(
+    "paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry",
+    autospec=True,
+)
+@patch("paasta_tools.cli.cmds.push_to_registry.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.push_to_registry._run", autospec=True)
+@patch("paasta_tools.cli.cmds.push_to_registry._log", autospec=True)
+@patch("paasta_tools.cli.cmds.push_to_registry._log_audit", autospec=True)
+@patch(
+    "paasta_tools.utils.get_service_docker_registry",
+    autospec=True,
+    return_value="registry",
+)
+def test_push_to_registry_multi_arch(
+    mock_get_registry,
+    mock_log_audit,
+    mock_log,
+    mock_run,
+    mock_validate_service_name,
+    mock_is_docker_image_already_in_registry,
+):
+    sha = "abcd" * 10
+    mock_run.return_value = (0, "")
+    mock_is_docker_image_already_in_registry.return_value = False
+
+    # each native builder pushes its local image under an arch-specific tag
+    args, _ = parse_args(
+        ["push-to-registry", "-s", "foo", "-c", sha, "--architecture", "arm64"]
+    )
+    assert paasta_push_to_registry(args) == 0
+    assert [c.args[0] for c in mock_run.call_args_list] == [
+        [
+            "docker",
+            "tag",
+            f"registry/services-foo:paasta-{sha}",
+            f"registry/services-foo:paasta-{sha}-arm64",
+        ],
+        f"docker push registry/services-foo:paasta-{sha}-arm64",
+    ]
+
+    # ...then the arch-specific tags are combined under the normal (and versioned) tags
+    mock_run.reset_mock()
+    args, _ = parse_args(
+        [
+            "push-to-registry",
+            "-s",
+            "foo",
+            "-c",
+            sha,
+            "--image-version",
+            "v1",
+            "--combine-architectures",
+            "amd64,arm64",
+        ]
+    )
+    assert paasta_push_to_registry(args) == 0
+    mock_run.assert_called_once_with(
+        [
+            "docker",
+            "buildx",
+            "imagetools",
+            "create",
+            "--tag",
+            f"registry/services-foo:paasta-{sha}",
+            "--tag",
+            f"registry/services-foo:paasta-{sha}-v1",
+            f"registry/services-foo:paasta-{sha}-v1-amd64",
+            f"registry/services-foo:paasta-{sha}-v1-arm64",
+        ],
+        timeout=3600,
+        log=True,
+        component="build",
+        service="foo",
+        loglevel="debug",
+    )
+
+    # tags that already exist aren't overwritten: only the missing versioned tag is created
+    mock_run.reset_mock()
+    mock_is_docker_image_already_in_registry.side_effect = (
+        lambda service, soa_dir, sha, image_version: image_version is None
+    )
+    assert paasta_push_to_registry(args) == 0
+    assert mock_run.call_args.args[0] == [
+        "docker",
+        "buildx",
+        "imagetools",
+        "create",
+        "--tag",
+        f"registry/services-foo:paasta-{sha}-v1",
+        f"registry/services-foo:paasta-{sha}-v1-amd64",
+        f"registry/services-foo:paasta-{sha}-v1-arm64",
+    ]

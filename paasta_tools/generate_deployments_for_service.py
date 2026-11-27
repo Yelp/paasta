@@ -146,10 +146,11 @@ def get_deploy_group_mappings(
 
     service_configs = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
 
+    # Tron defaults the action's service to its own service. We only exclude a different service.
     deploy_group_branch_mappings = {
         config.get_branch(): config.get_deploy_group()
         for config in service_configs
-        if not config.get_service_override()
+        if config.get_service_override() in (None, service)
     }
     if not deploy_group_branch_mappings:
         log.info("Service %s has no valid deploy groups. Skipping.", service)

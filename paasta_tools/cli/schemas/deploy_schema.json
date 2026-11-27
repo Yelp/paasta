@@ -27,7 +27,8 @@
                     "type": "boolean"
                 },
                 "auto_rollback": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Enable SLO-based auto-rollbacks for this step. Independent of alertmanager_rollback."
                 },
                 "auto_certify_delay": {
                     "type": "integer"
@@ -36,7 +37,8 @@
                     "type": "integer"
                 },
                 "auto_rollback_delay": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 30
                 },
                 "timeout": {
                     "type": "integer"
@@ -106,7 +108,8 @@
                     "type": "boolean"
                 },
                 "alertmanager_rollback": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Enable AlertManager-based auto-rollbacks for this step. Independent of auto_rollback."
                 },
                 "alertmanager_rollback_dry_run": {
                     "type": "boolean"

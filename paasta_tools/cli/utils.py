@@ -1095,18 +1095,6 @@ def verify_instances(
     return misspelled_instances
 
 
-def get_paasta_oapi_api_clustername(cluster: str, is_eks: bool) -> str:
-    """
-    We'll be doing a tiny bit of lying while we have both EKS and non-EKS
-    clusters: these will generally share the same PaaSTA name (i.e., the
-    soaconfigs suffix will stay the same) - but we'll need a way to route API
-    requests to the correct place. To do so, we'll add "fake" entries to our
-    api_endpoints SystemPaastaConfig that are the PaaSTA clustername with an
-    "eks-" prefix
-    """
-    return f"eks-{cluster}" if is_eks else cluster
-
-
 def get_paasta_oapi_client_with_auth(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,
