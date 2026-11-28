@@ -36,6 +36,7 @@ from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
 from paasta_tools.paastaapi.model.instance_replica_restart_outcome import InstanceReplicaRestartOutcome
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus
 from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
+from paasta_tools.paastaapi.model.pod_lookup_response import PodLookupResponse
 
 
 class ServiceApi(object):
@@ -1574,6 +1575,134 @@ class ServiceApi(object):
             callable=__list_services_for_cluster
         )
 
+        def __lookup_pod(
+            self,
+            pod_name,
+            **kwargs
+        ):
+            """Look up a PaaSTA pod by name across all namespaces in this cluster  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.lookup_pod(pod_name, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                pod_name (str): Pod name
+
+            Keyword Args:
+                service (str): Only include pods for this service (matches labels and annotations). [optional]
+                instance (str): Only include pods for this instance (matches labels and annotations). [optional]
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                PodLookupResponse
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['pod_name'] = \
+                pod_name
+            return self.call_with_http_info(**kwargs)
+
+        self.lookup_pod = Endpoint(
+            settings={
+                'response_type': (PodLookupResponse,),
+                'auth': [],
+                'endpoint_path': '/pods/{pod_name}',
+                'operation_id': 'lookup_pod',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'pod_name',
+                    'service',
+                    'instance',
+                ],
+                'required': [
+                    'pod_name',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'pod_name':
+                        (str,),
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                },
+                'attribute_map': {
+                    'pod_name': 'pod_name',
+                    'service': 'service',
+                    'instance': 'instance',
+                },
+                'location_map': {
+                    'pod_name': 'path',
+                    'service': 'query',
+                    'instance': 'query',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__lookup_pod
+        )
+
         def __mesh_instance(
             self,
             service,
@@ -1704,6 +1833,172 @@ class ServiceApi(object):
             },
             api_client=api_client,
             callable=__mesh_instance
+        )
+
+        def __pod_logs(
+            self,
+            service,
+            instance,
+            pod_name,
+            **kwargs
+        ):
+            """Fetch (and optionally follow) the logs of a single pod for service_name.instance_name  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.pod_logs(service, instance, pod_name, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+                pod_name (str): Pod name
+
+            Keyword Args:
+                container (str): Container name; defaults to the only container of the pod. [optional]
+                follow (bool): Follow the log stream of the pod. paasta-api closes each follow stream cleanly after 115 seconds (before its 120s request timeout); reconnect and resume with since_time to continue. The stream can also end earlier when the pod&#39;s logs finish. [optional] if omitted the server will use the default value of False
+                previous (bool): Return previous terminated container logs. [optional] if omitted the server will use the default value of False
+                tail_lines (int): If set, the number of lines from the end of the logs to show. [optional]
+                since_time (str): Only return logs newer than or equal to this ISO8601 timestamp. Lines are prefixed with RFC3339Nano timestamps (timestamps&#x3D;true) which can be used to resume after a reconnect. [optional]
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                str
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            kwargs['pod_name'] = \
+                pod_name
+            return self.call_with_http_info(**kwargs)
+
+        self.pod_logs = Endpoint(
+            settings={
+                'response_type': (str,),
+                'auth': [],
+                'endpoint_path': '/services/{service}/{instance}/pods/{pod_name}/logs',
+                'operation_id': 'pod_logs',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                    'pod_name',
+                    'container',
+                    'follow',
+                    'previous',
+                    'tail_lines',
+                    'since_time',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                    'pod_name',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                    'pod_name':
+                        (str,),
+                    'container':
+                        (str,),
+                    'follow':
+                        (bool,),
+                    'previous':
+                        (bool,),
+                    'tail_lines':
+                        (int,),
+                    'since_time':
+                        (str,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                    'pod_name': 'pod_name',
+                    'container': 'container',
+                    'follow': 'follow',
+                    'previous': 'previous',
+                    'tail_lines': 'tail_lines',
+                    'since_time': 'since_time',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                    'pod_name': 'path',
+                    'container': 'query',
+                    'follow': 'query',
+                    'previous': 'query',
+                    'tail_lines': 'query',
+                    'since_time': 'query',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'text/plain'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__pod_logs
         )
 
         def __status_instance(

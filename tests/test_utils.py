@@ -3040,3 +3040,18 @@ def test_SystemPaastaConfig_get_enable_cost_owner_label_enabled():
         {"enable_cost_owner_label": True}, "/some/fake/dir"
     )
     assert fake_config.get_enable_cost_owner_label() is True
+
+
+def test_SystemPaastaConfig_get_logs_via_api():
+    fake_config = utils.SystemPaastaConfig({"logs_via_api": True}, "/some/fake/dir")
+    assert fake_config.get_logs_via_api() is True
+
+
+def test_SystemPaastaConfig_get_logs_via_api_disabled():
+    fake_config = utils.SystemPaastaConfig({"logs_via_api": False}, "/some/fake/dir")
+    assert fake_config.get_logs_via_api() is False
+
+
+def test_SystemPaastaConfig_get_logs_via_api_dne():
+    fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
+    assert fake_config.get_logs_via_api() is False

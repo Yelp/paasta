@@ -13,7 +13,9 @@
 # limitations under the License.
 import contextlib
 import datetime
+import http.client
 import json
+import threading
 from multiprocessing import Queue
 from queue import Empty
 from unittest import mock
@@ -21,6 +23,7 @@ from unittest import mock
 import isodate
 import pytest
 import pytz
+import urllib3
 from pytest import raises
 
 from paasta_tools.cli.cli import parse_args
@@ -1215,3 +1218,715 @@ def test_pick_default_log_mode():
 
         # Supports tailing , time and line counts. Line counts should be prioritized
         assert logs_by_lines.call_count == 1
+
+
+class FakeApiError(Exception):
+    def __init__(self, status, body=""):
+        super().__init__(body)
+        self.status = status
+        self.body = body
+
+
+class FakeKubeStreamResponse:
+    """Stand-in for the un-preloaded urllib3 response returned by the
+    generated client when called with _preload_content=False."""
+
+    def __init__(self, chunks):
+        self.chunks = list(chunks)
+        self.released = False
+        self.closed = False
+
+    def stream(self, amt):
+        for chunk in self.chunks:
+            if isinstance(chunk, Exception):
+                raise chunk
+            yield chunk
+
+    def release_conn(self):
+        self.released = True
+
+    def close(self):
+        self.closed = True
+
+
+class FakePaastaApiClient:
+    def __init__(self, responses):
+        self.api_error = FakeApiError
+        self.service = mock.Mock()
+        self.responses = list(responses)
+        self.pod_logs_calls = []
+        self.service.pod_logs.side_effect = self._pod_logs
+
+    def _pod_logs(self, service, instance, pod_name, **kwargs):
+        self.pod_logs_calls.append(
+            {"service": service, "instance": instance, "pod_name": pod_name, **kwargs}
+        )
+        result = self.responses.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def test_pod_logs_via_api_enabled_uses_config_when_env_var_unset(monkeypatch):
+    monkeypatch.delenv(logs.PAASTA_LOGS_VIA_API_ENV_VAR, raising=False)
+    mock_config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    mock_config.get_logs_via_api.return_value = True
+    assert logs.pod_logs_via_api_enabled(mock_config) is True
+    mock_config.get_logs_via_api.return_value = False
+    assert logs.pod_logs_via_api_enabled(mock_config) is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "Yes", " on "])
+def test_pod_logs_via_api_enabled_env_var_forces_on(value):
+    mock_config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    mock_config.get_logs_via_api.return_value = False
+    with mock.patch.dict("os.environ", {logs.PAASTA_LOGS_VIA_API_ENV_VAR: value}):
+        assert logs.pod_logs_via_api_enabled(mock_config) is True
+
+
+@pytest.mark.parametrize("value", ["0", "false", "no", "OFF", ""])
+def test_pod_logs_via_api_enabled_env_var_forces_off(value):
+    mock_config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    mock_config.get_logs_via_api.return_value = True
+    with mock.patch.dict("os.environ", {logs.PAASTA_LOGS_VIA_API_ENV_VAR: value}):
+        assert logs.pod_logs_via_api_enabled(mock_config) is False
+
+
+def test_pod_logs_via_api_enabled_env_var_invalid_value_warns():
+    mock_config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    mock_config.get_logs_via_api.return_value = True
+    with mock.patch.dict("os.environ", {logs.PAASTA_LOGS_VIA_API_ENV_VAR: "banana"}):
+        with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True) as mock_log:
+            assert logs.pod_logs_via_api_enabled(mock_config) is False
+            assert mock_log.warning.call_count == 1
+
+
+def test_split_kube_log_line():
+    assert logs.split_kube_log_line("2023-06-01T21:49:16.045075559Z hello world") == (
+        "2023-06-01T21:49:16.045075559Z",
+        "hello world",
+    )
+    assert logs.split_kube_log_line("2023-06-01T21:49:16Z hello") == (
+        "2023-06-01T21:49:16Z",
+        "hello",
+    )
+    assert logs.split_kube_log_line("not a timestamped line") == (
+        None,
+        "not a timestamped line",
+    )
+
+
+def test_floor_kube_timestamp_to_second():
+    assert (
+        logs.floor_kube_timestamp_to_second("2023-06-01T21:49:16.045075559Z")
+        == "2023-06-01T21:49:16+00:00"
+    )
+
+
+def test_iter_kube_log_lines():
+    response = FakeKubeStreamResponse(
+        [b"2023-06-01T21:49:16.04", b"5075559Z line one\n", b"no trailing newline"]
+    )
+    actual = list(logs.iter_kube_log_lines(response))
+    assert actual == ["2023-06-01T21:49:16.045075559Z line one", "no trailing newline"]
+    assert response.released
+    assert response.closed
+
+
+def test_fetch_pod_logs_via_api(capsys):
+    client = FakePaastaApiClient(
+        [
+            FakeKubeStreamResponse(
+                [
+                    b"2023-06-01T21:49:16.045075559Z line one\n",
+                    b"2023-06-01T21:49:17.123Z line two\n",
+                ]
+            )
+        ]
+    )
+    logs.fetch_pod_logs_via_api(
+        client=client,
+        service="fake_service",
+        instance="fake_instance",
+        pod="fake-pod",
+        line_count=100,
+        prefix="",
+        strip_headers=False,
+        print_lock=threading.Lock(),
+    )
+    captured = capsys.readouterr()
+    assert "2023-06-01T21:49:16.045075559Z line one" in captured.out
+    assert "2023-06-01T21:49:17.123Z line two" in captured.out
+    assert client.pod_logs_calls[0]["tail_lines"] == 100
+
+
+def test_fetch_pod_logs_via_api_error(capsys):
+    client = FakePaastaApiClient([FakeApiError(500, "oh no")])
+    logs.fetch_pod_logs_via_api(
+        client=client,
+        service="fake_service",
+        instance="fake_instance",
+        pod="fake-pod",
+        line_count=100,
+        prefix="",
+        strip_headers=False,
+        print_lock=threading.Lock(),
+    )
+    captured = capsys.readouterr()
+    assert "Failed to fetch logs for pod fake-pod" in captured.err
+
+
+@mock.patch("paasta_tools.cli.cmds.logs.sleep", autospec=True)
+def test_follow_pod_logs_via_api_reconnects_without_duplicates(mock_sleep, capsys):
+    line_a = b"2023-06-01T21:49:16.045075559Z line a\n"
+    line_b = b"2023-06-01T21:49:17.123Z line b\n"
+    line_c = b"2023-06-01T21:49:18.456Z line c\n"
+    # First connection breaks mid-stream after two lines (like the paasta-api
+    # request timeout killing a gunicorn worker); the second connection resumes
+    # from the last seen timestamp with some overlap, then ends cleanly.
+    client = FakePaastaApiClient(
+        [
+            FakeKubeStreamResponse([line_a, line_b, http.client.IncompleteRead(b"")]),
+            FakeKubeStreamResponse([line_b, line_c]),
+            # An immediate stream with no new lines means the pod is finished.
+            FakeKubeStreamResponse([]),
+        ]
+    )
+    logs.follow_pod_logs_via_api(
+        client=client,
+        service="fake_service",
+        instance="fake_instance",
+        pod="fake-pod",
+        prefix="",
+        strip_headers=False,
+        print_lock=threading.Lock(),
+        stop_event=threading.Event(),
+    )
+    captured = capsys.readouterr()
+    assert captured.out.count("line a") == 1
+    assert captured.out.count("line b") == 1
+    assert captured.out.count("line c") == 1
+    # the reconnect resumed from the second below the last seen timestamp,
+    # without re-reading a fixed tail (and without passing None params, which
+    # the generated client would serialize as the string "None")
+    assert client.pod_logs_calls[1]["since_time"] == "2023-06-01T21:49:17+00:00"
+    assert "tail_lines" not in client.pod_logs_calls[1]
+
+
+def test_follow_pod_logs_via_api_clean_rotation_is_quiet(capsys):
+    line_a = b"2023-06-01T21:49:16.045075559Z line a\n"
+    client = FakePaastaApiClient(
+        [
+            # The API's expected 115-second follow rotation ends cleanly.
+            FakeKubeStreamResponse([line_a]),
+            # An immediately empty response then indicates actual termination.
+            FakeKubeStreamResponse([]),
+        ]
+    )
+    with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True) as mock_log:
+        logs.follow_pod_logs_via_api(
+            client=client,
+            service="fake_service",
+            instance="fake_instance",
+            pod="fake-pod",
+            prefix="",
+            strip_headers=False,
+            print_lock=threading.Lock(),
+            stop_event=threading.Event(),
+        )
+    captured = capsys.readouterr()
+    assert captured.out.count("line a") == 1
+    assert mock_log.warning.call_count == 0
+    assert len(client.pod_logs_calls) == 2
+
+
+@mock.patch("paasta_tools.cli.cmds.logs.sleep", autospec=True)
+def test_follow_pod_logs_via_api_unexpected_errors_still_warn(mock_sleep):
+    client = FakePaastaApiClient(
+        [
+            FakeKubeStreamResponse([http.client.IncompleteRead(b"")]),
+            FakeApiError(404, "pod gone"),
+        ]
+    )
+    with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True) as mock_log:
+        logs.follow_pod_logs_via_api(
+            client=client,
+            service="fake_service",
+            instance="fake_instance",
+            pod="fake-pod",
+            prefix="",
+            strip_headers=False,
+            print_lock=threading.Lock(),
+            stop_event=threading.Event(),
+        )
+    assert mock_log.warning.call_count == 1
+    assert "broke" in mock_log.warning.call_args.args[0]
+
+
+@mock.patch("paasta_tools.cli.cmds.logs.sleep", autospec=True)
+def test_follow_pod_logs_via_api_connection_errors_warn_and_retry(mock_sleep):
+    client = FakePaastaApiClient(
+        [
+            urllib3.exceptions.MaxRetryError(None, "http://api", "connection refused"),
+            FakeApiError(404, "pod gone"),
+        ]
+    )
+    with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True) as mock_log:
+        logs.follow_pod_logs_via_api(
+            client=client,
+            service="fake_service",
+            instance="fake_instance",
+            pod="fake-pod",
+            prefix="",
+            strip_headers=False,
+            print_lock=threading.Lock(),
+            stop_event=threading.Event(),
+        )
+    assert mock_log.warning.call_count == 1
+    assert "Could not connect" in mock_log.warning.call_args.args[0]
+    assert len(client.pod_logs_calls) == 2
+
+
+def test_follow_pod_logs_via_api_long_quiet_stream_reconnects(capsys):
+    client = FakePaastaApiClient(
+        [FakeKubeStreamResponse([]), FakeKubeStreamResponse([])]
+    )
+    # The first empty stream lasted 115 seconds (the API's expected rotation),
+    # so it must not be mistaken for a finished pod. The second ends
+    # immediately and therefore terminates following.
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.monotonic",
+        autospec=True,
+        side_effect=[0, 115, 200, 200],
+    ), mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True) as mock_log:
+        logs.follow_pod_logs_via_api(
+            client=client,
+            service="fake_service",
+            instance="fake_instance",
+            pod="fake-pod",
+            prefix="",
+            strip_headers=False,
+            print_lock=threading.Lock(),
+            stop_event=threading.Event(),
+        )
+    assert len(client.pod_logs_calls) == 2
+    assert mock_log.warning.call_count == 0
+
+
+def test_follow_pod_logs_via_api_stops_on_404(capsys):
+    client = FakePaastaApiClient([FakeApiError(404, "pod gone")])
+    logs.follow_pod_logs_via_api(
+        client=client,
+        service="fake_service",
+        instance="fake_instance",
+        pod="fake-pod",
+        prefix="",
+        strip_headers=False,
+        print_lock=threading.Lock(),
+        stop_event=threading.Event(),
+    )
+    captured = capsys.readouterr()
+    assert "Pod fake-pod is gone" in captured.err
+
+
+def test_paasta_pod_logs_via_api_unsupported_components(capsys):
+    args, _ = parse_args(
+        [
+            "logs",
+            "-c",
+            "fake_cluster",
+            "-i",
+            "fake_instance",
+            "-p",
+            "fake-pod",
+            "-C",
+            "deploy",
+        ]
+    )
+    exit_code = logs.paasta_pod_logs_via_api(
+        args=args, service="fake_service", instance="fake_instance", pods=["fake-pod"]
+    )
+    assert exit_code == 1
+    assert (
+        "Only the stdout and stderr components are supported" in capsys.readouterr().err
+    )
+
+
+def test_paasta_pod_logs_via_api_no_api_endpoint(capsys):
+    args, _ = parse_args(
+        ["logs", "-c", "fake_cluster", "-i", "fake_instance", "-p", "fake-pod"]
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.get_paasta_oapi_client_with_auth",
+        autospec=True,
+        return_value=None,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ):
+        exit_code = logs.paasta_pod_logs_via_api(
+            args=args,
+            service="fake_service",
+            instance="fake_instance",
+            pods=["fake-pod"],
+        )
+    assert exit_code == 1
+    assert "does not have a paasta API endpoint" in capsys.readouterr().err
+
+
+def test_paasta_pod_logs_via_api_fetches_each_pod(capsys):
+    args, _ = parse_args(
+        ["logs", "-c", "fake_cluster", "-i", "fake_instance", "-p", "pod1,pod2"]
+    )
+    fake_client = FakePaastaApiClient(
+        [
+            FakeKubeStreamResponse([b"2023-06-01T21:49:16.045075559Z one\n"]),
+            FakeKubeStreamResponse([b"2023-06-01T21:49:17.123Z two\n"]),
+        ]
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.get_paasta_oapi_client_with_auth",
+        autospec=True,
+        return_value=fake_client,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ):
+        exit_code = logs.paasta_pod_logs_via_api(
+            args=args,
+            service="fake_service",
+            instance="fake_instance",
+            pods=["pod1", "pod2"],
+        )
+    assert exit_code == 0
+    assert [call["pod_name"] for call in fake_client.pod_logs_calls] == ["pod1", "pod2"]
+    captured = capsys.readouterr()
+    # multiple pods get a pod-name prefix on every line
+    assert (
+        f"{logs.PaastaColors.bold('pod1')}: 2023-06-01T21:49:16.045075559Z one"
+        in captured.out
+    )
+    assert (
+        f"{logs.PaastaColors.bold('pod2')}: 2023-06-01T21:49:17.123Z two"
+        in captured.out
+    )
+
+
+def test_paasta_logs_dispatches_to_pod_logs_via_api_when_enabled():
+    # No -s/-i/-c: API-backed pod logs may infer all of them from the pod name.
+    args, _ = parse_args(["logs", "-p", "fake-pod"])
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.figure_out_service_name", autospec=True
+    ) as mock_figure, mock.patch(
+        "paasta_tools.cli.cmds.logs.verify_instances", autospec=True, return_value=0
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.pod_logs_via_api_enabled",
+        autospec=True,
+        return_value=True,
+    ) as mock_enabled, mock.patch(
+        "paasta_tools.cli.cmds.logs.paasta_pod_logs_via_api",
+        autospec=True,
+        return_value=42,
+    ) as mock_via_api:
+        actual = logs.paasta_logs(args)
+    assert actual == 42
+    mock_enabled.assert_called_once()
+    mock_figure.assert_not_called()
+    mock_via_api.assert_called_once_with(
+        args=args,
+        service=None,
+        instance=None,
+        pods=["fake-pod"],
+    )
+
+
+def test_paasta_logs_does_not_use_pod_logs_via_api_without_pods():
+    args, _ = parse_args(["logs", "-c", "fake_cluster", "-i", "fake_instance"])
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.figure_out_service_name", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.verify_instances", autospec=True, return_value=0
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.pod_logs_via_api_enabled", autospec=True
+    ) as mock_enabled, mock.patch(
+        "paasta_tools.cli.cmds.logs.paasta_pod_logs_via_api", autospec=True
+    ) as mock_via_api, mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader:
+        mock_get_log_reader.return_value = mock.Mock(autospec=logs.LogReader)
+        logs.paasta_logs(args)
+    mock_enabled.assert_not_called()
+    mock_via_api.assert_not_called()
+
+
+def test_paasta_logs_does_not_use_pod_logs_via_api_when_disabled():
+    args, _ = parse_args(
+        ["logs", "-c", "fake_cluster", "-i", "fake_instance", "-p", "fake-pod"]
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.figure_out_service_name", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.verify_instances", autospec=True, return_value=0
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.pod_logs_via_api_enabled",
+        autospec=True,
+        return_value=False,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.paasta_pod_logs_via_api", autospec=True
+    ) as mock_via_api, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader:
+        fake_reader = mock.Mock(autospec=logs.LogReader)
+        mock_get_log_reader.return_value = fake_reader
+        logs.paasta_logs(args)
+    mock_via_api.assert_not_called()
+    mock_get_log_reader.assert_called_once()
+
+
+def test_generated_pod_logs_client_serialization():
+    """Regression test driving the real generated client against a local HTTP
+    server: the query params must be serialized exactly as the API accepts
+    them. In particular the generated client serializes explicitly-passed None
+    values as the string "None" (which the API would reject), so the follow
+    loop must only pass the parameters that are actually set."""
+    from http.server import BaseHTTPRequestHandler
+    from http.server import HTTPServer
+    from urllib.parse import parse_qs
+    from urllib.parse import urlparse
+
+    from paasta_tools import paastaapi
+    from paasta_tools.paastaapi.api.service_api import ServiceApi
+
+    captured = {}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            captured["path"] = self.path
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+            line = b"2023-06-01T21:49:18.456Z resumed\n"
+            self.wfile.write(b"%x\r\n" % len(line) + line + b"\r\n")
+            self.wfile.write(b"0\r\n\r\n")
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    try:
+        import threading
+
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        config = paastaapi.Configuration(
+            server_variables={
+                "scheme": "http",
+                "host": f"127.0.0.1:{server.server_address[1]}",
+            },
+            discard_unknown_keys=True,
+        )
+        service_api = ServiceApi(paastaapi.ApiClient(configuration=config))
+
+        # reconnect-style request: since_time set, no tail_lines
+        response = service_api.pod_logs(
+            "fake_service",
+            "fake_instance",
+            "fake-pod",
+            follow=True,
+            since_time="2023-06-01T21:49:17+00:00",
+            _preload_content=False,
+        )
+        lines = list(logs.iter_kube_log_lines(response))
+
+        parsed_query = {
+            k: v[0] for k, v in parse_qs(urlparse(captured["path"]).query).items()
+        }
+        assert parsed_query == {
+            "follow": "True",
+            "since_time": "2023-06-01T21:49:17+00:00",
+        }
+        assert lines == ["2023-06-01T21:49:18.456Z resumed"]
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def make_resolution_config():
+    config = mock.Mock(autospec="paasta_tools.utils.SystemPaastaConfig")
+    config.get_api_endpoints.return_value = {
+        "cluster1": "http://cluster1",
+        "cluster2": "http://cluster2",
+    }
+    return config
+
+
+class FakePodLookupClient:
+    def __init__(self, pods=(), error=None):
+        self.api_error = FakeApiError
+        self.service = mock.Mock()
+        self.lookup_calls = []
+        self._pods = list(pods)
+        self._error = error
+        self.service.lookup_pod.side_effect = self._lookup_pod
+
+    def _lookup_pod(self, pod_name, **kwargs):
+        self.lookup_calls.append({"pod_name": pod_name, **kwargs})
+        if self._error is not None:
+            raise self._error
+        return mock.Mock(pods=self._pods)
+
+
+def make_lookup_pod(service="foo", instance="bar", namespace="test_namespace"):
+    return mock.Mock(
+        name="foo-bar-0",
+        namespace=namespace,
+        service=service,
+        instance=instance,
+    )
+
+
+def test_resolve_pod_logs_target_looks_up_all_clusters():
+    clients = {
+        "cluster1": FakePodLookupClient(),
+        "cluster2": FakePodLookupClient([make_lookup_pod()]),
+    }
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service=None,
+        instance=None,
+        cluster=None,
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.service == "foo"
+    assert target.instance == "bar"
+    assert target.cluster == "cluster2"
+    assert target.namespace == "test_namespace"
+    assert "service" not in clients["cluster1"].lookup_calls[0]
+    assert "instance" not in clients["cluster1"].lookup_calls[0]
+
+
+def test_resolve_pod_logs_target_errors_on_multiple_clusters():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient([make_lookup_pod()]),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "multiple locations" in str(excinfo.value)
+    assert "--cluster" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_errors_on_multiple_namespaces():
+    clients = {
+        "cluster1": FakePodLookupClient(
+            [
+                make_lookup_pod(namespace="namespace_a"),
+                make_lookup_pod(namespace="namespace_b"),
+            ]
+        ),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster="cluster1",
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "namespace_a" in str(excinfo.value)
+    assert "namespace_b" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_explicit_cluster_disambiguates():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient(),
+    }
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service=None,
+        instance=None,
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.cluster == "cluster1"
+    assert len(clients["cluster1"].lookup_calls) == 1
+    assert clients["cluster2"].lookup_calls == []
+
+
+def test_resolve_pod_logs_target_forwards_optional_filters():
+    clients = {"cluster1": FakePodLookupClient([make_lookup_pod()])}
+    logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service="foo",
+        instance=None,
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    call = clients["cluster1"].lookup_calls[0]
+    assert call["service"] == "foo"
+    assert "instance" not in call
+
+
+def test_resolve_pod_logs_target_no_matching_pod():
+    clients = {
+        "cluster1": FakePodLookupClient(),
+        "cluster2": FakePodLookupClient(),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "No PaaSTA pod named foo-bar-0 found" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_does_not_ignore_lookup_errors():
+    clients = {
+        "cluster1": FakePodLookupClient([make_lookup_pod()]),
+        "cluster2": FakePodLookupClient(error=FakeApiError(500, "boom")),
+    }
+    with raises(logs.PodLogsResolutionError) as excinfo:
+        logs.resolve_pod_logs_target(
+            pod_name="foo-bar-0",
+            service=None,
+            instance=None,
+            cluster=None,
+            system_paasta_config=make_resolution_config(),
+            clients=clients,
+        )
+    assert "could not rule out" in str(excinfo.value)
+
+
+def test_resolve_pod_logs_target_fully_specified_skips_lookup():
+    clients = {"cluster1": FakePodLookupClient()}
+    target = logs.resolve_pod_logs_target(
+        pod_name="foo-bar-0",
+        service="foo",
+        instance="bar",
+        cluster="cluster1",
+        system_paasta_config=make_resolution_config(),
+        clients=clients,
+    )
+    assert target.cluster == "cluster1"
+    clients["cluster1"].service.lookup_pod.assert_not_called()

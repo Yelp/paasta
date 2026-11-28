@@ -1299,6 +1299,143 @@
                     }
                 ]
             }
+        },
+        "/services/{service}/{instance}/pods/{pod_name}/logs": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Log lines, each prefixed with an RFC3339Nano timestamp",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "since_time not parsable or conflicting log options"
+                    },
+                    "404": {
+                        "description": "Pod not found or service/instance not found"
+                    },
+                    "500": {
+                        "description": "Instance failure or kubernetes client unavailable"
+                    },
+                    "409": {
+                        "description": "Multiple pods with this name and service.instance in different namespaces"
+                    }
+                },
+                "produces": [
+                    "text/plain"
+                ],
+                "summary": "Fetch (and optionally follow) the logs of a single pod for service_name.instance_name",
+                "operationId": "pod_logs",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Pod name",
+                        "name": "pod_name",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Container name; defaults to the only container of the pod",
+                        "name": "container",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Follow the log stream of the pod. paasta-api closes each follow stream cleanly after 115 seconds (before its 120s request timeout); reconnect and resume with since_time to continue. The stream can also end earlier when the pod's logs finish",
+                        "name": "follow",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Return previous terminated container logs",
+                        "name": "previous",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "If set, the number of lines from the end of the logs to show",
+                        "name": "tail_lines",
+                        "required": false,
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only return logs newer than or equal to this ISO8601 timestamp",
+                        "name": "since_time",
+                        "required": false,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/pods/{pod_name}": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "All PaaSTA pods with this name in the cluster; possibly multiple namespaces",
+                        "schema": {
+                            "$ref": "#/definitions/PodLookupResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kubernetes client unavailable"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Look up a PaaSTA pod by name across all namespaces in this cluster",
+                "operationId": "lookup_pod",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Pod name",
+                        "name": "pod_name",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only include pods for this service (matches labels and annotations)",
+                        "name": "service",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Only include pods for this instance (matches labels and annotations)",
+                        "name": "instance",
+                        "required": false,
+                        "type": "string"
+                    }
+                ]
+            }
         }
     },
     "definitions": {
@@ -2701,6 +2838,41 @@
                 },
                 "error_message": {
                     "type": "string"
+                }
+            }
+        },
+        "PodLocation": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "instance": {
+                    "type": "string"
+                }
+            }
+        },
+        "PodLookupResponse": {
+            "type": "object",
+            "required": [
+                "pods"
+            ],
+            "properties": {
+                "pods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PodLocation"
+                    }
                 }
             }
         }
