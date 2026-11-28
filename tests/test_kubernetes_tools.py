@@ -153,12 +153,9 @@ from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_MEMORY
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI_V2
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_WORKER_LOAD
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -1802,9 +1799,7 @@ class TestKubernetesDeploymentConfig:
         "autoscaling_metric_provider",
         [
             None,
-            METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
             METRICS_PROVIDER_WORKER_LOAD,
         ],
     )
@@ -1935,21 +1930,10 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/deploy_group": "brentford.fm",
         }
 
-        if autoscaling_metric_provider in (
-            METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
-        ):
-            expected_labels[
-                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
-            ] = "true"
+        if autoscaling_metric_provider == METRICS_PROVIDER_PISCINA:
+            expected_labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
         elif autoscaling_metric_provider == METRICS_PROVIDER_WORKER_LOAD:
             expected_labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
-
-        if autoscaling_metric_provider in (
-            METRICS_PROVIDER_UWSGI,
-            METRICS_PROVIDER_GUNICORN,
-            METRICS_PROVIDER_WORKER_LOAD,
-        ):
             routable_ip = "true"
 
         if in_smtstk:
@@ -1964,9 +1948,6 @@ class TestKubernetesDeploymentConfig:
                 "paasta.yelp.com/routable_ip": routable_ip,
                 "iam.amazonaws.com/role": "",
             }
-
-        if autoscaling_metric_provider == METRICS_PROVIDER_UWSGI:
-            expected_annotations["autoscaling"] = "uwsgi"
 
         expected = V1PodTemplateSpec(
             metadata=V1ObjectMeta(
@@ -2015,101 +1996,37 @@ class TestKubernetesDeploymentConfig:
             # No metrics providers
             ([], {}),
             # Single providers
-            ([METRICS_PROVIDER_UWSGI], {}),
             (
                 [METRICS_PROVIDER_PISCINA],
                 {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
             ),
             (
-                [METRICS_PROVIDER_GUNICORN],
+                [METRICS_PROVIDER_WORKER_LOAD],
                 {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
             ),
             ([METRICS_PROVIDER_CPU], {}),
-            ([METRICS_PROVIDER_UWSGI_V2], {}),
             # Two provider combinations
             (
-                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_PISCINA],
-                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
-            ),
-            (
-                [METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_GUNICORN],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
-            ),
-            (
-                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_GUNICORN],
+                [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_WORKER_LOAD],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
                     "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
                 },
             ),
-            ([METRICS_PROVIDER_UWSGI, METRICS_PROVIDER_CPU], {}),
             (
                 [METRICS_PROVIDER_PISCINA, METRICS_PROVIDER_CPU],
                 {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
             ),
             (
-                [METRICS_PROVIDER_GUNICORN, METRICS_PROVIDER_CPU],
+                [METRICS_PROVIDER_WORKER_LOAD, METRICS_PROVIDER_CPU],
                 {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
-            ),
-            # Three provider combinations
-            (
-                [
-                    METRICS_PROVIDER_UWSGI,
-                    METRICS_PROVIDER_PISCINA,
-                    METRICS_PROVIDER_GUNICORN,
-                ],
-                {
-                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
-                },
-            ),
-            (
-                [
-                    METRICS_PROVIDER_UWSGI,
-                    METRICS_PROVIDER_PISCINA,
-                    METRICS_PROVIDER_CPU,
-                ],
-                {"paasta.yelp.com/scrape_piscina_prometheus": "true"},
-            ),
-            (
-                [
-                    METRICS_PROVIDER_UWSGI,
-                    METRICS_PROVIDER_GUNICORN,
-                    METRICS_PROVIDER_CPU,
-                ],
-                {"paasta.yelp.com/scrape_gunicorn_prometheus": "true"},
-            ),
-            (
-                [
-                    METRICS_PROVIDER_PISCINA,
-                    METRICS_PROVIDER_GUNICORN,
-                    METRICS_PROVIDER_CPU,
-                ],
-                {
-                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
-                },
             ),
             # All providers
             (
                 [
-                    METRICS_PROVIDER_UWSGI,
                     METRICS_PROVIDER_PISCINA,
-                    METRICS_PROVIDER_GUNICORN,
+                    METRICS_PROVIDER_WORKER_LOAD,
                     METRICS_PROVIDER_CPU,
-                ],
-                {
-                    "paasta.yelp.com/scrape_piscina_prometheus": "true",
-                    "paasta.yelp.com/scrape_gunicorn_prometheus": "true",
-                },
-            ),
-            (
-                [
-                    METRICS_PROVIDER_UWSGI,
-                    METRICS_PROVIDER_PISCINA,
-                    METRICS_PROVIDER_GUNICORN,
-                    METRICS_PROVIDER_CPU,
-                    METRICS_PROVIDER_UWSGI_V2,
                 ],
                 {
                     "paasta.yelp.com/scrape_piscina_prometheus": "true",
@@ -2186,9 +2103,8 @@ class TestKubernetesDeploymentConfig:
 
         # Deploy group label is only set when specific metrics providers are used
         deploy_group_providers = {
-            METRICS_PROVIDER_UWSGI,
             METRICS_PROVIDER_PISCINA,
-            METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_WORKER_LOAD,
         }
         if any(provider in deploy_group_providers for provider in metrics_providers):
             assert actual_labels.get("paasta.yelp.com/deploy_group") == "fake_group"
@@ -2205,15 +2121,14 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "ip_configured,in_smtstk,prometheus_port,should_use_uwsgi_provider,should_use_gunicorn_provider,expected",
+        "ip_configured,in_smtstk,prometheus_port,should_use_worker_load_provider,expected",
         [
-            (False, True, 8888, False, False, "true"),
-            (False, False, 8888, False, False, "true"),
-            (False, True, None, False, False, "true"),
-            (True, False, None, False, False, "true"),
-            (False, False, None, True, False, "true"),
-            (False, False, None, False, False, "false"),
-            (False, False, None, False, True, "true"),
+            (False, True, 8888, False, "true"),
+            (False, False, 8888, False, "true"),
+            (False, True, None, False, "true"),
+            (True, False, None, False, "true"),
+            (False, False, None, True, "true"),
+            (False, False, None, False, "false"),
         ],
     )
     def test_routable_ip(
@@ -2223,15 +2138,12 @@ class TestKubernetesDeploymentConfig:
         ip_configured,
         in_smtstk,
         prometheus_port,
-        should_use_uwsgi_provider,
-        should_use_gunicorn_provider,
+        should_use_worker_load_provider,
         expected,
     ):
         def mock_should_use_metrics_provider_fn(p: str) -> bool:
-            if p == METRICS_PROVIDER_UWSGI:
-                return should_use_uwsgi_provider
-            elif p == METRICS_PROVIDER_GUNICORN:
-                return should_use_gunicorn_provider
+            if p == METRICS_PROVIDER_WORKER_LOAD:
+                return should_use_worker_load_provider
             return False
 
         mock_get_prometheus_port.return_value = prometheus_port
@@ -2963,7 +2875,7 @@ class TestKubernetesDeploymentConfig:
         )
         assert expected_res == return_value
 
-    def test_get_autoscaling_metric_spec_uwsgi_prometheus(
+    def test_get_autoscaling_metric_spec_piscina_prometheus(
         self, mock_load_system_paasta_config
     ):
         mock_load_system_paasta_config.return_value = mock.Mock(
@@ -2976,7 +2888,7 @@ class TestKubernetesDeploymentConfig:
                 "autoscaling": {
                     "metrics_providers": [
                         {
-                            "type": METRICS_PROVIDER_UWSGI,
+                            "type": METRICS_PROVIDER_PISCINA,
                             "setpoint": 0.4,
                             "forecast_policy": "moving_average",
                             "moving_average_window_seconds": 300,
@@ -3019,7 +2931,7 @@ class TestKubernetesDeploymentConfig:
                         type="Object",
                         object=V2ObjectMetricSource(
                             metric=V2MetricIdentifier(
-                                name="uwsgi-prom-300",
+                                name="piscina-prom-300",
                                 selector=V1LabelSelector(
                                     match_labels={
                                         "paasta_cluster": "cluster",
@@ -3031,93 +2943,6 @@ class TestKubernetesDeploymentConfig:
                             target=V2MetricTarget(
                                 type="Value",
                                 value=0.4,
-                            ),
-                            described_object=V2CrossVersionObjectReference(
-                                api_version="apps/v1",
-                                kind="Deployment",
-                                name="fake_name",
-                            ),
-                        ),
-                    ),
-                ],
-                scale_target_ref=V2CrossVersionObjectReference(
-                    api_version="apps/v1",
-                    kind="Deployment",
-                    name="fake_name",
-                ),
-            ),
-        )
-
-        assert expected_res == return_value
-
-    def test_get_autoscaling_metric_spec_uwsgi_v2_prometheus(
-        self, mock_load_system_paasta_config
-    ):
-        mock_load_system_paasta_config.return_value = mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
-        )
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "min_instances": 1,
-                "max_instances": 3,
-                "autoscaling": {
-                    "metrics_providers": [
-                        {
-                            "type": METRICS_PROVIDER_UWSGI_V2,
-                            "setpoint": 0.4,
-                            "forecast_policy": "moving_average",
-                            "moving_average_window_seconds": 300,
-                        }
-                    ]
-                },
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config,
-            "fake_name",
-            "cluster",
-            KubeClient(),
-            "paasta",
-        )
-        expected_res = V2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name",
-                namespace="paasta",
-                annotations={},
-                labels=mock.ANY,
-            ),
-            spec=V2HorizontalPodAutoscalerSpec(
-                behavior=mock_config.get_autoscaling_scaling_policy(
-                    autoscaling_params={},
-                    max_replicas=3,
-                ),
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2MetricSpec(
-                        type="Object",
-                        object=V2ObjectMetricSource(
-                            metric=V2MetricIdentifier(
-                                name="uwsgi-v2-prom-300",
-                                selector=V1LabelSelector(
-                                    match_labels={
-                                        "paasta_cluster": "cluster",
-                                        "paasta_service": "service",
-                                        "paasta_instance": "instance",
-                                    }
-                                ),
-                            ),
-                            target=V2MetricTarget(
-                                type="AverageValue",
-                                average_value=0.4,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
@@ -3202,93 +3027,6 @@ class TestKubernetesDeploymentConfig:
                             target=V2MetricTarget(
                                 type="AverageValue",
                                 average_value=0.5,
-                            ),
-                            described_object=V2CrossVersionObjectReference(
-                                api_version="apps/v1",
-                                kind="Deployment",
-                                name="fake_name",
-                            ),
-                        ),
-                    ),
-                ],
-                scale_target_ref=V2CrossVersionObjectReference(
-                    api_version="apps/v1",
-                    kind="Deployment",
-                    name="fake_name",
-                ),
-            ),
-        )
-
-        assert expected_res == return_value
-
-    def test_get_autoscaling_metric_spec_gunicorn_prometheus(
-        self, mock_load_system_paasta_config
-    ):
-        mock_load_system_paasta_config.return_value = mock.Mock(
-            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query",
-        )
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "min_instances": 1,
-                "max_instances": 3,
-                "autoscaling": {
-                    "metrics_providers": [
-                        {
-                            "type": METRICS_PROVIDER_GUNICORN,
-                            "setpoint": 0.5,
-                            "forecast_policy": "moving_average",
-                            "moving_average_window_seconds": 300,
-                        }
-                    ]
-                },
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config,
-            "fake_name",
-            "cluster",
-            KubeClient(),
-            "paasta",
-        )
-        expected_res = V2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name",
-                namespace="paasta",
-                annotations={},
-                labels=mock.ANY,
-            ),
-            spec=V2HorizontalPodAutoscalerSpec(
-                behavior=mock_config.get_autoscaling_scaling_policy(
-                    autoscaling_params={},
-                    max_replicas=3,
-                ),
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2MetricSpec(
-                        type="Object",
-                        object=V2ObjectMetricSource(
-                            metric=V2MetricIdentifier(
-                                name="gunicorn-prom-300",
-                                selector=V1LabelSelector(
-                                    match_labels={
-                                        "paasta_cluster": "cluster",
-                                        "paasta_service": "service",
-                                        "paasta_instance": "instance",
-                                    }
-                                ),
-                            ),
-                            target=V2MetricTarget(
-                                type="Value",
-                                value=0.5,
                             ),
                             described_object=V2CrossVersionObjectReference(
                                 api_version="apps/v1",
