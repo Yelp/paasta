@@ -137,6 +137,57 @@
                     "CLUSTER_PROVIDED"
                 ]
             },
+            "hash_policy": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "header": {
+                            "type": "object",
+                            "properties": {
+                                "header_name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                },
+                                "regex_rewrite": {
+                                    "type": "object",
+                                    "properties": {
+                                        "pattern": {
+                                            "type": "object",
+                                            "properties": {
+                                                "regex": {
+                                                    "type": "string",
+                                                    "minLength": 1
+                                                }
+                                            },
+                                            "required": [
+                                                "regex"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "substitution": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "pattern",
+                                        "substitution"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "required": [
+                                "header_name"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [
+                        "header"
+                    ],
+                    "additionalProperties": false
+                }
+            },
             "choice_count": {
                 "type": "integer",
                 "minimum": 1
