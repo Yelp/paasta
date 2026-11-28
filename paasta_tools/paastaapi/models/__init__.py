@@ -60,9 +60,6 @@ from paasta_tools.paastaapi.model.remote_run_outcome import RemoteRunOutcome
 from paasta_tools.paastaapi.model.remote_run_start import RemoteRunStart
 from paasta_tools.paastaapi.model.remote_run_stop import RemoteRunStop
 from paasta_tools.paastaapi.model.remote_run_token import RemoteRunToken
-from paasta_tools.paastaapi.model.resource import Resource
-from paasta_tools.paastaapi.model.resource_item import ResourceItem
-from paasta_tools.paastaapi.model.resource_value import ResourceValue
 from paasta_tools.paastaapi.model.smartstack_backend import SmartstackBackend
 from paasta_tools.paastaapi.model.smartstack_location import SmartstackLocation
 from paasta_tools.paastaapi.model.smartstack_status import SmartstackStatus
